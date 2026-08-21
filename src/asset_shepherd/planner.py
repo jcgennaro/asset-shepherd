@@ -171,7 +171,12 @@ def _normalization_candidate(
     )
 
 
-def plan_repairs(inspection: InspectionResult, profile: ProjectProfile) -> RepairPlan:
+def plan_repairs(
+    inspection: InspectionResult,
+    profile: ProjectProfile,
+    *,
+    excluded_candidate_ids: frozenset[str] = frozenset(),
+) -> RepairPlan:
     """Generate only registered version-1 candidates from deterministic findings."""
     blocked_reasons: list[str] = []
     if inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH:
@@ -224,6 +229,9 @@ def plan_repairs(inspection: InspectionResult, profile: ProjectProfile) -> Repai
         normalization = _normalization_candidate(inspection, profile)
         if normalization is not None:
             candidates.append(normalization)
+    candidates = [
+        candidate for candidate in candidates if candidate.id not in excluded_candidate_ids
+    ]
 
     auto_ids = tuple(
         candidate.id for candidate in candidates if candidate.action_class is ActionClass.AUTO_SAFE

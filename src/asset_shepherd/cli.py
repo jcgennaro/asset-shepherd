@@ -9,9 +9,10 @@ from typing import cast
 from pydantic import ValidationError
 
 from asset_shepherd.inspector import inspect_asset, render_inspection_report
-from asset_shepherd.models import ProjectProfile
+from asset_shepherd.models import JobState, ProjectProfile
 from asset_shepherd.planner import plan_repairs
 from asset_shepherd.repair import apply_repairs, create_decisions
+from asset_shepherd.workflow import run_workflow
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -52,6 +53,9 @@ def build_parser() -> argparse.ArgumentParser:
     repair_parser = subparsers.add_parser("repair", help="Apply a plan with explicit approvals")
     _add_job_arguments(repair_parser)
     repair_parser.add_argument("--approvals", type=Path, required=True)
+    run_parser = subparsers.add_parser("run", help="Run the complete deterministic workflow")
+    _add_job_arguments(run_parser)
+    run_parser.add_argument("--approvals", type=Path, required=True)
     return parser
 
 
@@ -62,6 +66,14 @@ def run_cli(arguments: list[str] | None = None) -> int:
         profile = _load_profile(args.profile)
     except (OSError, ValidationError) as error:
         build_parser().error(f"Could not load profile: {error}")
+    if args.command == "run":
+        try:
+            approvals = _load_approvals(args.approvals)
+            result = run_workflow(args.source, profile, approvals, args.output)
+        except (OSError, ValueError) as error:
+            build_parser().error(f"Workflow failed: {error}")
+        _write_json(args.output / "job_result.json", result.model_dump(mode="json"))
+        return 0 if result.state is JobState.COMPLETED else 4
     args.output.mkdir(parents=True, exist_ok=True)
     inspection = inspect_asset(args.source, profile)
     _write_json(args.output / "inspection.json", inspection.model_dump(mode="json"))
