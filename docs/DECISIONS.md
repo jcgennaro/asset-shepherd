@@ -4,6 +4,45 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D005 — Keep Patchling single-material and move PBR diversity to the corpus
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** RW1 / RW2 / M10
+
+**Context**
+
+Patchling is visually strong and survives the deterministic pipeline without corruption, but the
+untouched Tripo export contains one opaque material with a single embedded base-color texture. It
+does not supply the preferred distinct material surfaces, emissive channel, transparency, normal
+map, or metallic-roughness texture. The user approved continuing if the one-material limitation
+could be handled honestly.
+
+**Options considered**
+
+- Modify Patchling to manufacture additional materials or PBR channels.
+- Reject an otherwise strong hero asset solely because it misses a corpus selection preference.
+- Preserve Patchling exactly as generated, use it as the visual hero and resource-preservation case,
+  and require later Asset Flock members to cover multi-material and richer PBR stress dimensions.
+
+**Decision**
+
+Keep Patchling's material structure unchanged. Material creation, merging, texture generation, and
+artistic editing remain outside Asset Shepherd's scope. Retain Patchling as the current demo
+candidate, disclose its material limitations, and make Shader Lantern the next requested asset with
+transparency and emissive behavior as primary selection criteria.
+
+**Evidence and consequences**
+
+The raw and Shepherd GLBs have identical geometry, bounds, material, texture, and image counts in
+both deterministic inspection and Blender 5.1.2. This avoids an unsafe or scenario-specific repair
+while preserving a memorable mascot. Patchling alone cannot support claims about broad PBR
+preservation; those claims remain blocked until the minimum corpus supplies explicit evidence.
+
 ### D004 — General compact-static-mesh profile prevents Patchling over-scaling
 
 **Date:** 2026-08-21

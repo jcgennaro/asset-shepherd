@@ -2,16 +2,32 @@
   "asset_id": "patchling_01",
   "display_name": "Patchling Courier",
   "export_format": "glb",
-  "export_settings": {},
-  "generation_date_utc": null,
-  "generation_settings": {},
+  "export_settings": {
+    "file_name": "friendly repair robot 3d model",
+    "format": "GLB",
+    "resource_packaging": "embedded in GLB",
+    "source_state": "untouched direct Tripo export",
+    "texture_resolution": "4k (Current)"
+  },
+  "generation_date_utc": "2026-08-21T21:49:00Z",
+  "generation_settings": {
+    "mesh_mode": "Smart Mesh",
+    "smart_mesh_version": "P1.0",
+    "speed_preset": "Fast",
+    "target_polygon_count": 25000,
+    "topology_target": "quad",
+    "tripo_ui_final_faces": 18727,
+    "tripo_ui_final_vertices": 26135,
+    "workspace_item_id": "853e8986-e0e3-4d8e-a977-439ac9155787",
+    "workspace_url": "https://studio.tripo3d.ai/workspace/generate/853e8986-e0e3-4d8e-a977-439ac9155787"
+  },
   "generator": "Tripo",
-  "model_or_mode": "",
+  "model_or_mode": "Tripo Smart Mesh P1.0 - Fast",
   "negative_prompt_or_constraints": "No background, ground plane, text, letters, logos, weapons, human, detached props, or franchise resemblance.",
-  "notes": "",
+  "notes": "Tripo displayed the item at 08-21 17:49 in the America/New_York browser session; this is recorded as 2026-08-21T21:49:00Z. The user confirmed on 2026-08-21 that the asset was generated on a paid Tripo account with commercial rights. The workspace URL is retained as a provenance reference and is not assumed to be publicly accessible.",
   "prompt": "Create a single isolated stylized 3D game asset of a friendly small repair-courier automaton named Patchling. It is an original whimsical shepherd-inspired helper robot with a clearly readable face and front direction, compact stable feet, a braided cable tail or scarf, one asymmetrical utility satchel, a crook-shaped repair wrench, and a small geometric wayfinding post attached to its backpack. Use painted metal, rubber, cloth, glass, and one warm emissive diagnostic light. Include a clear translucent visor if feasible. Strong clean silhouette, charming fantasy-technology design, detailed PBR textures, game-ready proportions, full body visible, centered, no background, no ground plane, no text, no letters, no logos, no weapons, no human, no extra detached props, no franchise resemblance.",
-  "public_use_confirmed": false,
+  "public_use_confirmed": true,
   "raw_sha256": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d",
   "schema_version": 1,
-  "selected_candidate_reason": ""
+  "selected_candidate_reason": "Selected for its strong friendly repair-courier silhouette, readable front and stable feet, asymmetric backpack and tool details, embedded 4K texture, static-mesh eligibility, and suitability as the Patchling hero asset. The user approved continuing after review with the single-material limitation documented."
 }

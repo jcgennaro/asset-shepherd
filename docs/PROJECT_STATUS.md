@@ -1,9 +1,9 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** RW1 evidence commit (this file is included)
-**Current milestone:** RW1 Patchling blind baseline
-**Overall state:** HUMAN_ACTION_REQUIRED
+**Current commit:** RW1 completion commit (this file is included)
+**Current milestone:** RW2 Minimum Asset Flock
+**Overall state:** IN_PROGRESS
 
 ## Milestones
 
@@ -28,18 +28,19 @@
 | Milestone | State | Evidence | Notes |
 |---|---|---|---|
 | RW0 Adopt and scaffold | COMPLETE | Canonical addendum; typed schemas; ignored corpus; generation card; registration, mutation, Blender, Unreal, and report tooling | 085545efdda09aa3a77aa115ce521ab4dfecb3b0; D003; no product behavior change |
-| RW1 Patchling blind baseline | IN_PROGRESS | Untouched raw hash; frozen inspect/plan/repair/verify/package; Blender raw/repaired evidence; turntable views | D004; human provenance and visual adjudication remain |
-| RW2 Minimum Asset Flock | NOT_STARTED |  | Begins after Patchling baseline |
+| RW1 Patchling blind baseline | COMPLETE | Registered untouched raw hash; frozen inspect/plan/repair/verify/package; Blender raw/repaired evidence; turntable views; human rights and visual adjudication | D004 and D005; zero unsafe repairs or visual/resource regressions |
+| RW2 Minimum Asset Flock | HUMAN_ACTION_REQUIRED | Shader Lantern is the next one-batch Tripo request | Patchling remains the hero/preservation case; richer PBR coverage moves to the corpus |
 | RW3 Controlled realistic variants | SCAFFOLDED | Repeatable normalization, hierarchy, and material/texture mutation code; fixture dry runs | Real variants wait for registered corpus assets |
 | RW4 Blender and Unreal acceptance | SCAFFOLDED | Blender 5.1.2 import/re-export evidence; Unreal 5.8 isolated map and three-arm fixture import | Real comparison and visual checkpoint wait for corpus/human reference |
 | RW5 Evaluation report and demo | SCAFFOLDED | Typed adjudication and traceable case-study report renderer | Public claims remain prohibited until evidence exists |
 
 ## Current gate
 
-RW1 automation passes for the received Patchling candidate. The raw GLB remains byte-identical; the
-canonical compact-asset profile requires only safe display-name repairs; verification passes; and
-Blender imports raw and repaired outputs with identical geometry and resources. RW1 remains open
-until required human provenance and visual adjudication are recorded.
+RW1 is complete. The registered Patchling raw GLB remains byte-identical; the canonical compact-asset
+profile requires only safe display-name repairs; verification passes; and Blender imports raw and
+repaired outputs with identical geometry and resources. Rights, Tripo settings, the workspace item
+reference, selection rationale, and visual adjudication are recorded. RW2 needs an untouched Shader
+Lantern export; M8 remains unblocked and can proceed while that human asset is generated.
 
 ## Latest evidence
 
@@ -54,16 +55,20 @@ until required human provenance and visual adjudication are recorded.
   animation, morph, negative scale, or grounding issue. Name-only repair verifies project-ready.
 - Blender imports Patchling raw and repaired outputs with identical bounds, geometry, material, and
   packed-image counts and no missing image.
+- Provenance registration passed with identical before/after raw hashes. The user confirmed paid
+  Tripo commercial rights; Smart Mesh P1.0/Fast, 25k quad target, workspace item ID, and the GLB/4K
+  export panel values are recorded.
+- Patchling is accepted as the visual hero and preservation case. Its one-material limitation is
+  disclosed and is not treated as an in-scope repair; D005 assigns richer PBR coverage to RW2.
 - Generated fixture evidence stays below ignored `build/validation/`; only reproducible scripts,
   schemas, templates, and typed records are committed.
 
 ## Blockers
 
-Patchling generation time, Tripo model/mode and settings, selection rationale, export settings, and
-public-use confirmation are not known. Human visual adjudication is also required. The raw binary
-and screenshots remain ignored and will not be published while rights are unconfirmed.
+RW2 requires the user to generate and hand off an untouched Shader Lantern GLB. This does not block
+M8 local web-product work. Unreal comparison and a human-cleaned reference remain future RW4 work.
 
 ## Next action
 
-Complete the missing fields in `validation/corpus/patchling_01/provenance.json` and confirm whether
-this candidate may be committed and shown publicly. Do not edit or re-export the raw GLB.
+Issue the one-batch Shader Lantern generation card, then continue M8 while its untouched Tripo GLB
+is pending. Preserve Patchling as the immutable registered baseline.

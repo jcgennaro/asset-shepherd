@@ -37,8 +37,8 @@ def test_validation_schemas_are_current_and_draft_2020_12(tmp_path: Path) -> Non
         Draft202012Validator.check_schema(json.loads(generated_path.read_text(encoding="utf-8")))
 
 
-def test_patchling_drafts_are_typed_and_prompt_is_frozen() -> None:
-    """The next asset has valid draft records with the exact approved prompt."""
+def test_patchling_registration_is_typed_and_prompt_is_frozen() -> None:
+    """The registered Patchling record remains typed and keeps the approved prompt."""
     provenance = AssetProvenance.model_validate_json(
         (PATCHLING_ROOT / "provenance.json").read_text(encoding="utf-8")
     )
@@ -51,7 +51,12 @@ def test_patchling_drafts_are_typed_and_prompt_is_frozen() -> None:
     assert provenance.prompt in card
     assert provenance.prompt in prompt_record
     assert len(provenance.raw_sha256) == 64
-    assert not provenance.public_use_confirmed
+    assert provenance.public_use_confirmed
+    assert provenance.registration_errors() == ()
+    assert (
+        provenance.generation_settings["workspace_item_id"]
+        == "853e8986-e0e3-4d8e-a977-439ac9155787"
+    )
 
 
 def test_small_stylized_profile_matches_addendum_height_range() -> None:
@@ -92,14 +97,24 @@ def test_unreal_harness_is_syntax_checked_and_isolated() -> None:
 
 def test_report_renderer_marks_missing_evidence_without_inventing_claims() -> None:
     """Draft records render explicit unknowns and the required case-study boundary."""
-    provenance = AssetProvenance.model_validate_json(
+    registered = AssetProvenance.model_validate_json(
         (PATCHLING_ROOT / "provenance.json").read_text(encoding="utf-8")
     )
-    adjudication = Adjudication.model_validate_json(
+    provenance = registered.model_copy(
+        update={
+            "generation_date_utc": None,
+            "model_or_mode": "",
+            "raw_sha256": "",
+            "selected_candidate_reason": "",
+            "public_use_confirmed": False,
+        }
+    )
+    recorded_adjudication = Adjudication.model_validate_json(
         (PATCHLING_ROOT / "observed_real_world" / "adjudication.json").read_text(encoding="utf-8")
     )
+    adjudication = recorded_adjudication.model_copy(update={"visual_fidelity_assessment": ""})
     report = render_validation_report(provenance, adjudication)
-    assert provenance.raw_sha256 in report
+    assert "Raw SHA-256: `NOT_REGISTERED`" in report
     assert "Model or mode: NOT_RECORDED" in report
     assert "REQUIRES_HUMAN_ADJUDICATION" in report
     assert "Unsafe automatic repairs: 0" in report
@@ -110,8 +125,23 @@ def test_registration_refuses_incomplete_human_provenance(tmp_path: Path) -> Non
     """Blind registration cannot proceed before rights and generation facts are recorded."""
     asset = tmp_path / "asset.glb"
     asset.write_bytes((PROJECT_ROOT / "fixtures" / "clean_robot.glb").read_bytes())
+    registered = AssetProvenance.model_validate_json(
+        (PATCHLING_ROOT / "provenance.json").read_text(encoding="utf-8")
+    )
+    incomplete = registered.model_copy(
+        update={
+            "generation_date_utc": None,
+            "model_or_mode": "",
+            "raw_sha256": "",
+            "selected_candidate_reason": "",
+            "public_use_confirmed": False,
+        }
+    )
     provenance = tmp_path / "provenance.json"
-    provenance.write_bytes((PATCHLING_ROOT / "provenance.json").read_bytes())
+    provenance.write_text(
+        f"{json.dumps(incomplete.model_dump(mode='json'), indent=2, sort_keys=True)}\n",
+        encoding="utf-8",
+    )
     source_before = asset.read_bytes()
     with pytest.raises(RegistrationError, match="Provenance is incomplete"):
         register_raw_asset(asset, provenance)

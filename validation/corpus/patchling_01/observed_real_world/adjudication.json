@@ -1,38 +1,38 @@
 {
   "asset_id": "patchling_01",
   "correctly_blocked_cases": [],
-  "demo_candidate": false,
+  "demo_candidate": true,
   "false_severe_findings": [],
   "findings": [
     {
-      "classification": "NOT_ADJUDICATED",
+      "classification": "TRUE_POSITIVE",
       "downstream_evidence": [
         "blind_asset_shepherd/verification.json",
         "observed_real_world/blender_raw.json",
         "observed_real_world/blender_shepherd.json"
       ],
       "finding_code": "MESH_NAME_INVALID",
-      "human_notes": ""
+      "human_notes": "The raw mesh name was missing and objectively violated the selected profile. The deterministic Mesh_000 display-name repair preserved geometry, materials, textures, and Blender import behavior."
     },
     {
-      "classification": "NOT_ADJUDICATED",
+      "classification": "TRUE_POSITIVE",
       "downstream_evidence": [
         "blind_asset_shepherd/verification.json",
         "observed_real_world/blender_raw.json",
         "observed_real_world/blender_shepherd.json"
       ],
       "finding_code": "NODE_NAME_INVALID",
-      "human_notes": ""
+      "human_notes": "The raw Tripo UUID node name violated the selected profile. The deterministic Node_000 display-name repair preserved hierarchy references, geometry, materials, textures, and Blender import behavior."
     }
   ],
   "human_reference_unreal_result": "",
   "manual_minutes_after_shepherd": null,
   "manual_minutes_raw_to_usable": null,
   "missed_required_repairs": [],
-  "product_version": "085545efdda09aa3a77aa115ce521ab4dfecb3b0",
+  "product_version": "61e18d686625320c1b0306f6bf105ed917fa380b",
   "raw_unreal_result": "",
   "schema_version": 1,
   "shepherd_unreal_result": "",
   "unsafe_automatic_repairs": [],
-  "visual_fidelity_assessment": ""
+  "visual_fidelity_assessment": "Blender 5.1.2 turntable evidence shows no visible raw-versus-Shepherd regression. The user approved continuing with Patchling after review, with its single opaque base-color material recorded as a corpus limitation rather than a repair target."
 }
