@@ -4,6 +4,45 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D007 — Track Patchling as the first distributable real-world input
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** RW1 / M8 / RW5
+
+**Context**
+
+The addendum requires the final public repository to contain enough original or distributable assets
+to reproduce at least one complete demo workflow. D003 intentionally ignored all real-asset binaries
+until rights and repository-size policy were known. The user has now confirmed that Patchling was
+generated under a paid Tripo account with commercial/public-use rights, and the immutable GLB is
+4,860,944 bytes.
+
+**Options considered**
+
+- Keep every real-world binary private and defer reproducibility to an external handoff.
+- Track Patchling with Git LFS despite its modest size.
+- Track only the byte-identical Patchling raw GLB in ordinary Git, while continuing to ignore
+  repaired outputs, ZIPs, DCC files, Unreal content, and screenshots.
+
+**Decision**
+
+Add an exact `.gitignore` exception for `patchling_01/raw/asset.glb` and track that file in ordinary
+Git. Continue ignoring all other raw corpus assets until their individual rights and size are
+confirmed. Keep generated outputs reproducible from the raw input, profile, approvals, and code.
+
+**Evidence and consequences**
+
+The tracked file's SHA-256 remains
+`dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d`, matching the download,
+registration record, frozen blind inspection, and pre/post registration checks. Its size is well
+below GitHub's ordinary file limit and does not justify LFS overhead. Public reproduction no longer
+depends on the owner's authenticated Tripo workspace link.
+
 ### D006 — Server-rendered local web product with in-process Strands sessions
 
 **Date:** 2026-08-21

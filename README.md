@@ -21,6 +21,9 @@ Courier is registered as the current hero and preservation case. Shader Lantern 
 one-batch human-generated asset; its exact prompt, selection criteria, export settings, destination,
 and untouched-file rules are in the
 [Shader Lantern generation card](validation/corpus/shader_lantern_01/generation-card.md).
+The rights-confirmed 4.86 MB
+[Patchling raw GLB](validation/corpus/patchling_01/raw/asset.glb) is the repository's first
+distributable real-world demo input; generated outputs remain reproducible and untracked.
 
 ## Local web product
 

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** M8 completion commit (this file is included)
+**Current commit:** Patchling distribution commit (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -60,6 +60,8 @@ model access, region, and cost-control setup before any paid invocation or resou
   export panel values are recorded.
 - Patchling is accepted as the visual hero and preservation case. Its one-material limitation is
   disclosed and is not treated as an in-scope repair; D005 assigns richer PBR coverage to RW2.
+- Patchling's rights-confirmed 4.86 MB raw GLB is the first tracked real-world demo input. D007 keeps
+  generated results ignored and preserves the registered SHA-256 as the reproducibility anchor.
 - The one-batch Shader Lantern card freezes the exact contracted prompt, 3-candidate request,
   untouched GLB/4K export settings, destination path, and transparency/emissive selection criteria.
 - Web acceptance: broken-fixture refresh/approve/resume/download; clean no-approval completion twice

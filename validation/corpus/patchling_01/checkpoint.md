@@ -8,7 +8,7 @@ recorded.
 - Untouched filename: `friendly repair robot 3d model.glb`
 - Size: 4,860,944 bytes
 - SHA-256: `dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d`
-- Repository raw copy: `raw/asset.glb` (ignored, byte-identical, not committed)
+- Repository raw copy: `raw/asset.glb` (tracked distributable baseline, byte-identical)
 - Product version: `61e18d686625320c1b0306f6bf105ed917fa380b`
 
 ## Tripo provenance and rights

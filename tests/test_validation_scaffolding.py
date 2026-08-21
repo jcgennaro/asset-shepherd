@@ -54,6 +54,9 @@ def test_patchling_registration_is_typed_and_prompt_is_frozen() -> None:
     assert len(provenance.raw_sha256) == 64
     assert provenance.public_use_confirmed
     assert provenance.registration_errors() == ()
+    raw_asset = PATCHLING_ROOT / "raw" / "asset.glb"
+    assert raw_asset.stat().st_size == 4_860_944
+    assert hash_file(raw_asset) == provenance.raw_sha256
     assert (
         provenance.generation_settings["workspace_item_id"]
         == "853e8986-e0e3-4d8e-a977-439ac9155787"

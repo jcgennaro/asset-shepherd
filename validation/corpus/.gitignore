@@ -12,6 +12,9 @@
 **/screenshots/*.png
 **/screenshots/*.jpg
 
+# Patchling is the first rights-confirmed, size-reviewed distributable raw demo input.
+!patchling_01/raw/asset.glb
+
 !.gitignore
 !README.md
 !**/README.md
