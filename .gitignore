@@ -40,6 +40,9 @@ htmlcov/
 venv/
 env/
 ENV/
+.env
+.env.*
+!.env.example
 
 # Editors and operating systems
 .idea/

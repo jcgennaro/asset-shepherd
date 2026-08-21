@@ -56,6 +56,17 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run the complete deterministic workflow")
     _add_job_arguments(run_parser)
     run_parser.add_argument("--approvals", type=Path, required=True)
+    agent_parser = subparsers.add_parser(
+        "agent-run",
+        help="Run the Strands workflow with a native approval interrupt",
+    )
+    _add_job_arguments(agent_parser)
+    agent_parser.add_argument("--decision", choices=("approve", "reject"), required=True)
+    agent_parser.add_argument(
+        "--offline-scripted",
+        action="store_true",
+        help="Use the zero-network scripted model harness instead of environment configuration",
+    )
     return parser
 
 
@@ -66,6 +77,38 @@ def run_cli(arguments: list[str] | None = None) -> int:
         profile = _load_profile(args.profile)
     except (OSError, ValidationError) as error:
         build_parser().error(f"Could not load profile: {error}")
+    if args.command == "agent-run":
+        from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
+        from asset_shepherd.agent_runtime import build_live_agent, build_scripted_agent
+
+        try:
+            job = AgentJob(args.source, args.profile, args.output)
+            runtime = build_scripted_agent(job) if args.offline_scripted else build_live_agent(job)
+            result = runtime.start()
+            if result.stop_reason == "interrupt":
+                interrupts = tuple(result.interrupts or ())
+                if len(interrupts) != 1:
+                    raise AgentWorkflowError("Expected one normalization approval interrupt")
+                interrupt = interrupts[0]
+                print(
+                    json.dumps(
+                        {
+                            "interrupt_id": interrupt.id,
+                            "approval_card": interrupt.reason,
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+                result = runtime.resume(
+                    interrupt.id,
+                    approved=args.decision == "approve",
+                )
+            workflow_result = runtime.complete(result)
+        except (OSError, ValueError, AgentWorkflowError) as error:
+            build_parser().error(f"Agent workflow failed: {error}")
+        print(json.dumps(workflow_result.model_dump(mode="json"), indent=2, sort_keys=True))
+        return 0 if workflow_result.job_result.state is JobState.COMPLETED else 4
     if args.command == "run":
         try:
             approvals = _load_approvals(args.approvals)

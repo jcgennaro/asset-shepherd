@@ -369,6 +369,38 @@ class CandidateRepair(ContractModel):
         return self
 
 
+class PlanSelection(ContractModel):
+    """Agent selection of registered candidates from one deterministic plan."""
+
+    schema_version: Literal[1] = 1
+    plan_id: str
+    candidate_ids: tuple[str, ...]
+
+
+class ApprovalCard(ContractModel):
+    """JSON-serializable human decision card for one normalization operation."""
+
+    schema_version: Literal[1] = 1
+    plan_id: str
+    candidate_id: str
+    finding_ids: tuple[str, ...]
+    title: str
+    consequence_summary: str
+    before_bounds: Bounds3D
+    proposed_matrix: Matrix4
+    expected_after_bounds: Bounds3D
+    components: tuple[NormalizationComponent, ...]
+    options: tuple[Literal["APPROVE", "REJECT"], ...] = ("APPROVE", "REJECT")
+
+
+class ApprovalResponse(ContractModel):
+    """Validated human response returned through a Strands interrupt ID."""
+
+    schema_version: Literal[1] = 1
+    candidate_id: str
+    approved: bool
+
+
 class RepairPlan(ContractModel):
     """Deterministic set of version-1 repair candidates."""
 
@@ -463,6 +495,48 @@ class JobResult(ContractModel):
     artifact_names: tuple[str, ...]
     result_zip: str | None
     message: str
+
+
+class AgentTokenUsage(ContractModel):
+    """Model token usage exposed by Strands when the provider reports it."""
+
+    input_tokens: NonNegativeInt
+    output_tokens: NonNegativeInt
+    total_tokens: NonNegativeInt
+
+
+class AgentToolMetric(ContractModel):
+    """Aggregated execution metrics for one Strands tool."""
+
+    name: str
+    call_count: NonNegativeInt
+    success_count: NonNegativeInt
+    error_count: NonNegativeInt
+    duration_seconds: Annotated[float, Field(ge=0.0)]
+
+
+class AgentMetrics(ContractModel):
+    """Observable metrics for one complete interrupted agent workflow."""
+
+    schema_version: Literal[1] = 1
+    provider: str
+    model_id: str
+    invocation_duration_seconds: Annotated[float, Field(ge=0.0)]
+    token_usage: AgentTokenUsage | None
+    tool_calls: tuple[AgentToolMetric, ...]
+    interrupt_count: NonNegativeInt
+    correction_attempts: Annotated[int, Field(ge=0, le=1)]
+    final_verification_state: VerificationState
+
+
+class AgentWorkflowResult(ContractModel):
+    """Structured agent result kept outside the contracted deterministic ZIP."""
+
+    schema_version: Literal[1] = 1
+    prompt_version: Literal[1] = 1
+    job_result: JobResult
+    user_message: str
+    metrics: AgentMetrics
 
 
 class FixtureManifest(ContractModel):

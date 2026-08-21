@@ -1,0 +1,314 @@
+{
+  "$defs": {
+    "Bounds3D": {
+      "additionalProperties": false,
+      "description": "World-space bounds represented in meters and centimeters.",
+      "properties": {
+        "dimensions_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions Cm",
+          "type": "array"
+        },
+        "dimensions_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions M",
+          "type": "array"
+        },
+        "maximum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum Cm",
+          "type": "array"
+        },
+        "maximum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum M",
+          "type": "array"
+        },
+        "minimum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum Cm",
+          "type": "array"
+        },
+        "minimum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "minimum_m",
+        "maximum_m",
+        "dimensions_m",
+        "minimum_cm",
+        "maximum_cm",
+        "dimensions_cm"
+      ],
+      "title": "Bounds3D",
+      "type": "object"
+    },
+    "NormalizationComponent": {
+      "additionalProperties": false,
+      "description": "Evidence for one component of a combined normalization transform.",
+      "properties": {
+        "component": {
+          "enum": [
+            "scale",
+            "orientation",
+            "grounding"
+          ],
+          "title": "Component",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component",
+        "evidence",
+        "confidence"
+      ],
+      "title": "NormalizationComponent",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/approval_card.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "JSON-serializable human decision card for one normalization operation.",
+  "properties": {
+    "before_bounds": {
+      "$ref": "#/$defs/Bounds3D"
+    },
+    "candidate_id": {
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "components": {
+      "items": {
+        "$ref": "#/$defs/NormalizationComponent"
+      },
+      "title": "Components",
+      "type": "array"
+    },
+    "consequence_summary": {
+      "title": "Consequence Summary",
+      "type": "string"
+    },
+    "expected_after_bounds": {
+      "$ref": "#/$defs/Bounds3D"
+    },
+    "finding_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Finding Ids",
+      "type": "array"
+    },
+    "options": {
+      "default": [
+        "APPROVE",
+        "REJECT"
+      ],
+      "items": {
+        "enum": [
+          "APPROVE",
+          "REJECT"
+        ],
+        "type": "string"
+      },
+      "title": "Options",
+      "type": "array"
+    },
+    "plan_id": {
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "proposed_matrix": {
+      "maxItems": 4,
+      "minItems": 4,
+      "prefixItems": [
+        {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        }
+      ],
+      "title": "Proposed Matrix",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "plan_id",
+    "candidate_id",
+    "finding_ids",
+    "title",
+    "consequence_summary",
+    "before_bounds",
+    "proposed_matrix",
+    "expected_after_bounds",
+    "components"
+  ],
+  "title": "ApprovalCard",
+  "type": "object"
+}

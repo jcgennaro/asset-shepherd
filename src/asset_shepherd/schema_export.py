@@ -8,12 +8,16 @@ from typing import Final
 from pydantic import BaseModel
 
 from asset_shepherd.models import (
+    AgentMetrics,
+    AgentWorkflowResult,
+    ApprovalCard,
     CandidateRepair,
     Decisions,
     Finding,
     FixtureManifest,
     InspectionResult,
     JobResult,
+    PlanSelection,
     ProjectProfile,
     Provenance,
     RepairPlan,
@@ -21,12 +25,16 @@ from asset_shepherd.models import (
 )
 
 SCHEMA_MODELS: Final[dict[str, type[BaseModel]]] = {
+    "agent_metrics.schema.json": AgentMetrics,
+    "agent_workflow_result.schema.json": AgentWorkflowResult,
+    "approval_card.schema.json": ApprovalCard,
     "candidate_repair.schema.json": CandidateRepair,
     "decisions.schema.json": Decisions,
     "finding.schema.json": Finding,
     "fixture_manifest.schema.json": FixtureManifest,
     "inspection.schema.json": InspectionResult,
     "job_result.schema.json": JobResult,
+    "plan_selection.schema.json": PlanSelection,
     "profile.schema.json": ProjectProfile,
     "provenance.schema.json": Provenance,
     "repair_plan.schema.json": RepairPlan,

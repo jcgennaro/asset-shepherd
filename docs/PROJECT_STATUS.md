@@ -1,9 +1,9 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** b129fdce8548a8a0569af693305c83be39c1541f
-**Current milestone:** M7 Strands agent
-**Overall state:** IN_PROGRESS
+**Current commit:** a077077ca94c44b9693893672a7208d84d1f05b8
+**Current milestone:** M7 mandatory checkpoint
+**Overall state:** CHECKPOINT
 
 ## Milestones
 
@@ -16,7 +16,7 @@
 | M4 Inspector | COMPLETE | Broken fixture yields all 10 expected defects; clean has no false severe/auto-safe findings; deterministic CLI artifacts | 4f7434b6ba58127d38e35f793db8ed27fddd3331 | Completed 2026-08-21 |
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | This commit | Completed and checkpoint-reviewed 2026-08-21 |
-| M7 Strands agent | IN_PROGRESS |  |  | Mandatory checkpoint after completion |
+| M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | This commit | Completed 2026-08-21; D002; mandatory checkpoint 2 |
 | M8 Web product | NOT_STARTED |  |  |  |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | NOT_STARTED |  |  |  |
@@ -25,19 +25,18 @@
 
 ## Current gate
 
-Complete the local Strands workflow with typed deterministic tools, structured plan selection, a
-real approval interrupt/resume, approve and reject paths, bounded correction, metrics, an exact
-deterministic package, offline unit tests, and an opt-in live integration test.
+Mandatory checkpoint 2: review the completed local Strands workflow before web or AWS work.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 24 passed, including explicit rejection, schema/ZIP audit, and
-  byte-identical clean control.
+- Tests: `uv run pytest` — 29 passed; the explicitly opt-in live-provider test skipped.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
-- Demo command or URL: see `docs/checkpoints/deterministic-core.md` for exact approved, rejected,
-  clean-control, package-audit, and Blender commands.
-- Generated artifacts: `repaired.glb`, `inspection.json`, `repair_plan.json`, `decisions.json`, `verification.json`, `provenance.json`, `report.md`, and `result.zip`.
+- Demo command or URL: `uv run asset-shepherd agent-run fixtures/broken_robot.glb --profile
+  profiles/unreal_indie_robot.json --output agent-demo-output --decision approve
+  --offline-scripted`.
+- Generated artifacts: the exact seven-file deterministic ZIP plus external `job_result.json` and
+  structured `agent_result.json` with metrics.
 
 ## Blockers
 
@@ -45,4 +44,4 @@ None.
 
 ## Next action
 
-Commit the reviewed deterministic checkpoint, then implement M7 without beginning web or AWS work.
+Stop at mandatory checkpoint 2. Do not begin M8 web or M9 AWS work until review.

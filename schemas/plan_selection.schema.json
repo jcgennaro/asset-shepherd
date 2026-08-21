@@ -1,0 +1,31 @@
+{
+  "$id": "https://asset-shepherd.dev/schemas/v1/plan_selection.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Agent selection of registered candidates from one deterministic plan.",
+  "properties": {
+    "candidate_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Candidate Ids",
+      "type": "array"
+    },
+    "plan_id": {
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "plan_id",
+    "candidate_ids"
+  ],
+  "title": "PlanSelection",
+  "type": "object"
+}

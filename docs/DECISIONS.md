@@ -4,6 +4,55 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D002 — Single Strands agent with state-bound tools and native tool interrupt
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** M7
+
+**Context**
+
+M7 requires genuine Strands orchestration without allowing model output to become an authorization
+or filesystem boundary. It also needs deterministic offline tests, a real approval pause/resume,
+observable metrics, and live-provider configuration without a hard-coded model ID.
+
+**Options considered**
+
+- Expose one tool that runs the whole deterministic workflow. This would make the agent ornamental
+  and hide plan selection, approval, and verification sequencing.
+- Use a pre-tool hook to interrupt repair. Hooks are viable, but a state-bound approval tool keeps
+  the approval card and response immediately adjacent to the consequential operation.
+- Use six narrow state-bound tools on one primary Strands agent, with native tool interrupts and a
+  one-attempt correction tool.
+- Make paid Bedrock calls mandatory in unit tests. This would make the gate credential-dependent and
+  violate the offline-test contract.
+
+**Decision**
+
+Use one primary Strands agent with a version-1 system prompt and six path-free tools bound to an
+`AgentJob`. Use `ToolContext.interrupt` for the combined normalization approval and resume only with
+the exact Strands interrupt ID. The deterministic core validates candidate selection, approval,
+repair, verification, retry count, and packaging. Keep a scripted model provider as a zero-network
+development harness over the real Strands event loop. Configure the live Bedrock model ID and region
+through environment variables and keep its integration test opt-in.
+
+**Evidence and consequences**
+
+Approve and reject runs both traverse the real Strands loop, stop once, resume the interrupted tool,
+and produce the exact seven-file deterministic package. The approved GLB is byte-identical to the M6
+output. Missing or mismatched approval records fail before mutation. A controlled first verification
+failure causes exactly one same-plan retry. Strands metrics expose tokens, duration, tool outcomes,
+interrupts, and final state in `agent_result.json` outside the contracted ZIP.
+
+The offline harness does not prove paid-model behavior; the environment-configured Bedrock test is
+opt-in and remains unexecuted until user-owned account configuration and cost controls are available.
+Durable interrupt persistence is deferred to the local web milestone rather than silently adding a
+session architecture during M7.
+
 ### D001 — Lightweight GLB implementation stack
 
 **Date:** 2026-08-21  

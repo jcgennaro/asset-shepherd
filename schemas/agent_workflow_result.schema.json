@@ -1,0 +1,254 @@
+{
+  "$defs": {
+    "AgentMetrics": {
+      "additionalProperties": false,
+      "description": "Observable metrics for one complete interrupted agent workflow.",
+      "properties": {
+        "correction_attempts": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Correction Attempts",
+          "type": "integer"
+        },
+        "final_verification_state": {
+          "$ref": "#/$defs/VerificationState"
+        },
+        "interrupt_count": {
+          "minimum": 0,
+          "title": "Interrupt Count",
+          "type": "integer"
+        },
+        "invocation_duration_seconds": {
+          "minimum": 0.0,
+          "title": "Invocation Duration Seconds",
+          "type": "number"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "token_usage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentTokenUsage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tool_calls": {
+          "items": {
+            "$ref": "#/$defs/AgentToolMetric"
+          },
+          "title": "Tool Calls",
+          "type": "array"
+        }
+      },
+      "required": [
+        "provider",
+        "model_id",
+        "invocation_duration_seconds",
+        "token_usage",
+        "tool_calls",
+        "interrupt_count",
+        "correction_attempts",
+        "final_verification_state"
+      ],
+      "title": "AgentMetrics",
+      "type": "object"
+    },
+    "AgentTokenUsage": {
+      "additionalProperties": false,
+      "description": "Model token usage exposed by Strands when the provider reports it.",
+      "properties": {
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "total_tokens": {
+          "minimum": 0,
+          "title": "Total Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "total_tokens"
+      ],
+      "title": "AgentTokenUsage",
+      "type": "object"
+    },
+    "AgentToolMetric": {
+      "additionalProperties": false,
+      "description": "Aggregated execution metrics for one Strands tool.",
+      "properties": {
+        "call_count": {
+          "minimum": 0,
+          "title": "Call Count",
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "minimum": 0.0,
+          "title": "Duration Seconds",
+          "type": "number"
+        },
+        "error_count": {
+          "minimum": 0,
+          "title": "Error Count",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "success_count": {
+          "minimum": 0,
+          "title": "Success Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "call_count",
+        "success_count",
+        "error_count",
+        "duration_seconds"
+      ],
+      "title": "AgentToolMetric",
+      "type": "object"
+    },
+    "JobResult": {
+      "additionalProperties": false,
+      "description": "Summary and artifact inventory for a deterministic job.",
+      "properties": {
+        "artifact_names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Artifact Names",
+          "type": "array"
+        },
+        "job_id": {
+          "title": "Job Id",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "ready_candidate": {
+          "title": "Ready Candidate",
+          "type": "boolean"
+        },
+        "result_zip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Result Zip"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/JobState"
+        },
+        "verification_state": {
+          "$ref": "#/$defs/VerificationState"
+        }
+      },
+      "required": [
+        "job_id",
+        "state",
+        "verification_state",
+        "ready_candidate",
+        "artifact_names",
+        "result_zip",
+        "message"
+      ],
+      "title": "JobResult",
+      "type": "object"
+    },
+    "JobState": {
+      "description": "Top-level deterministic job state.",
+      "enum": [
+        "COMPLETED",
+        "BLOCKED",
+        "FAILED"
+      ],
+      "title": "JobState",
+      "type": "string"
+    },
+    "VerificationState": {
+      "description": "Contracted final verification state.",
+      "enum": [
+        "PASSED_PROJECT_READY",
+        "PASSED_WITH_REMAINING_WARNINGS",
+        "FAILED",
+        "BLOCKED"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/agent_workflow_result.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Structured agent result kept outside the contracted deterministic ZIP.",
+  "properties": {
+    "job_result": {
+      "$ref": "#/$defs/JobResult"
+    },
+    "metrics": {
+      "$ref": "#/$defs/AgentMetrics"
+    },
+    "prompt_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Prompt Version",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "user_message": {
+      "title": "User Message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "job_result",
+    "user_message",
+    "metrics"
+  ],
+  "title": "AgentWorkflowResult",
+  "type": "object"
+}
