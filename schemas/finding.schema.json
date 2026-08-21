@@ -1,0 +1,160 @@
+{
+  "$defs": {
+    "ActionClass": {
+      "description": "Authorization class for a finding or candidate repair.",
+      "enum": [
+        "REPORT_ONLY",
+        "AUTO_SAFE",
+        "APPROVAL_REQUIRED",
+        "BLOCKED"
+      ],
+      "title": "ActionClass",
+      "type": "string"
+    },
+    "FindingEvidence": {
+      "additionalProperties": false,
+      "description": "Structured distinction between measurement and inference.",
+      "properties": {
+        "expected_value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "inference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inference"
+        },
+        "observation": {
+          "title": "Observation",
+          "type": "string"
+        },
+        "observed_value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "units": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "observation"
+      ],
+      "title": "FindingEvidence",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Severity": {
+      "description": "Finding severity independent of repairability.",
+      "enum": [
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "BLOCKER"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/finding.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One evidence-backed inspection finding.",
+  "properties": {
+    "action_class": {
+      "$ref": "#/$defs/ActionClass"
+    },
+    "affected_components": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Affected Components",
+      "type": "array"
+    },
+    "candidate_repairs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Candidate Repairs",
+      "type": "array"
+    },
+    "code": {
+      "title": "Code",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "domain": {
+      "title": "Domain",
+      "type": "string"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/FindingEvidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "profile_rule": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Profile Rule"
+    },
+    "severity": {
+      "$ref": "#/$defs/Severity"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "code",
+    "domain",
+    "title",
+    "description",
+    "severity",
+    "action_class",
+    "confidence",
+    "affected_components",
+    "evidence",
+    "profile_rule",
+    "candidate_repairs"
+  ],
+  "title": "Finding",
+  "type": "object"
+}

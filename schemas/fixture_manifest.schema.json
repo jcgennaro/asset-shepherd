@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "Bounds3D": {
+      "additionalProperties": false,
+      "description": "World-space bounds represented in meters and centimeters.",
+      "properties": {
+        "dimensions_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions Cm",
+          "type": "array"
+        },
+        "dimensions_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions M",
+          "type": "array"
+        },
+        "maximum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum Cm",
+          "type": "array"
+        },
+        "maximum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum M",
+          "type": "array"
+        },
+        "minimum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum Cm",
+          "type": "array"
+        },
+        "minimum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "minimum_m",
+        "maximum_m",
+        "dimensions_m",
+        "minimum_cm",
+        "maximum_cm",
+        "dimensions_cm"
+      ],
+      "title": "Bounds3D",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/fixture_manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Known facts and intended defects for a generated test fixture.",
+  "properties": {
+    "expected_bounds_m": {
+      "$ref": "#/$defs/Bounds3D"
+    },
+    "expected_defect_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Expected Defect Codes",
+      "type": "array"
+    },
+    "expected_material_count": {
+      "minimum": 0,
+      "title": "Expected Material Count",
+      "type": "integer"
+    },
+    "expected_triangle_count": {
+      "minimum": 0,
+      "title": "Expected Triangle Count",
+      "type": "integer"
+    },
+    "expected_vertex_count": {
+      "minimum": 0,
+      "title": "Expected Vertex Count",
+      "type": "integer"
+    },
+    "fixture_id": {
+      "title": "Fixture Id",
+      "type": "string"
+    },
+    "fixture_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Fixture Version",
+      "type": "integer"
+    },
+    "glb_filename": {
+      "title": "Glb Filename",
+      "type": "string"
+    },
+    "original_asset": {
+      "title": "Original Asset",
+      "type": "boolean"
+    },
+    "sha256": {
+      "title": "Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "fixture_id",
+    "glb_filename",
+    "sha256",
+    "expected_bounds_m",
+    "expected_vertex_count",
+    "expected_triangle_count",
+    "expected_material_count",
+    "expected_defect_codes",
+    "original_asset"
+  ],
+  "title": "FixtureManifest",
+  "type": "object"
+}

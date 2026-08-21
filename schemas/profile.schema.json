@@ -1,0 +1,193 @@
+{
+  "$defs": {
+    "BudgetPolicy": {
+      "additionalProperties": false,
+      "description": "Static asset resource budgets.",
+      "properties": {
+        "max_materials": {
+          "minimum": 0,
+          "title": "Max Materials",
+          "type": "integer"
+        },
+        "max_texture_dimension": {
+          "exclusiveMinimum": 0,
+          "title": "Max Texture Dimension",
+          "type": "integer"
+        },
+        "max_textures": {
+          "minimum": 0,
+          "title": "Max Textures",
+          "type": "integer"
+        },
+        "max_triangles": {
+          "minimum": 0,
+          "title": "Max Triangles",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_triangles",
+        "max_materials",
+        "max_textures",
+        "max_texture_dimension"
+      ],
+      "title": "BudgetPolicy",
+      "type": "object"
+    },
+    "ExpectedHeight": {
+      "additionalProperties": false,
+      "description": "Target physical height in the user-facing centimeter unit.",
+      "properties": {
+        "target": {
+          "exclusiveMinimum": 0.0,
+          "title": "Target",
+          "type": "number"
+        },
+        "tolerance": {
+          "minimum": 0.0,
+          "title": "Tolerance",
+          "type": "number"
+        }
+      },
+      "required": [
+        "target",
+        "tolerance"
+      ],
+      "title": "ExpectedHeight",
+      "type": "object"
+    },
+    "NamingPolicy": {
+      "additionalProperties": false,
+      "description": "Project naming rules.",
+      "properties": {
+        "pattern": {
+          "title": "Pattern",
+          "type": "string"
+        },
+        "require_unique_mesh_names": {
+          "title": "Require Unique Mesh Names",
+          "type": "boolean"
+        },
+        "require_unique_node_names": {
+          "title": "Require Unique Node Names",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pattern",
+        "require_unique_node_names",
+        "require_unique_mesh_names"
+      ],
+      "title": "NamingPolicy",
+      "type": "object"
+    },
+    "OrientationPolicy": {
+      "additionalProperties": false,
+      "description": "Project rules for orientation and ground contact.",
+      "properties": {
+        "ground_tolerance_cm": {
+          "minimum": 0.0,
+          "title": "Ground Tolerance Cm",
+          "type": "number"
+        },
+        "infer_vertical_from_dominant_extent": {
+          "title": "Infer Vertical From Dominant Extent",
+          "type": "boolean"
+        },
+        "require_ground_contact": {
+          "title": "Require Ground Contact",
+          "type": "boolean"
+        },
+        "require_y_up_geometry": {
+          "title": "Require Y Up Geometry",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "require_y_up_geometry",
+        "infer_vertical_from_dominant_extent",
+        "require_ground_contact",
+        "ground_tolerance_cm"
+      ],
+      "title": "OrientationPolicy",
+      "type": "object"
+    },
+    "RepairPolicy": {
+      "additionalProperties": false,
+      "description": "Project authorization policy for version-1 repairs.",
+      "properties": {
+        "auto_rename": {
+          "title": "Auto Rename",
+          "type": "boolean"
+        },
+        "require_approval_for_normalization_transform": {
+          "title": "Require Approval For Normalization Transform",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "auto_rename",
+        "require_approval_for_normalization_transform"
+      ],
+      "title": "RepairPolicy",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/profile.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Versioned target-project conventions.",
+  "properties": {
+    "asset_type": {
+      "const": "static_mesh",
+      "title": "Asset Type",
+      "type": "string"
+    },
+    "budgets": {
+      "$ref": "#/$defs/BudgetPolicy"
+    },
+    "engine": {
+      "title": "Engine",
+      "type": "string"
+    },
+    "expected_height_cm": {
+      "$ref": "#/$defs/ExpectedHeight"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "naming": {
+      "$ref": "#/$defs/NamingPolicy"
+    },
+    "orientation": {
+      "$ref": "#/$defs/OrientationPolicy"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "profile_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Profile Version",
+      "type": "integer"
+    },
+    "repair_policy": {
+      "$ref": "#/$defs/RepairPolicy"
+    }
+  },
+  "required": [
+    "profile_id",
+    "name",
+    "engine",
+    "asset_type",
+    "expected_height_cm",
+    "orientation",
+    "naming",
+    "budgets",
+    "repair_policy"
+  ],
+  "title": "ProjectProfile",
+  "type": "object"
+}

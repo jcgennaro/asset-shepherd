@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "JobState": {
+      "description": "Top-level deterministic job state.",
+      "enum": [
+        "COMPLETED",
+        "BLOCKED",
+        "FAILED"
+      ],
+      "title": "JobState",
+      "type": "string"
+    },
+    "VerificationState": {
+      "description": "Contracted final verification state.",
+      "enum": [
+        "PASSED_PROJECT_READY",
+        "PASSED_WITH_REMAINING_WARNINGS",
+        "FAILED",
+        "BLOCKED"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/job_result.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Summary and artifact inventory for a deterministic job.",
+  "properties": {
+    "artifact_names": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Artifact Names",
+      "type": "array"
+    },
+    "job_id": {
+      "title": "Job Id",
+      "type": "string"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "ready_candidate": {
+      "title": "Ready Candidate",
+      "type": "boolean"
+    },
+    "result_zip": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Result Zip"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "state": {
+      "$ref": "#/$defs/JobState"
+    },
+    "verification_state": {
+      "$ref": "#/$defs/VerificationState"
+    }
+  },
+  "required": [
+    "job_id",
+    "state",
+    "verification_state",
+    "ready_candidate",
+    "artifact_names",
+    "result_zip",
+    "message"
+  ],
+  "title": "JobResult",
+  "type": "object"
+}

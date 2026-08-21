@@ -1,0 +1,958 @@
+{
+  "$defs": {
+    "ActionClass": {
+      "description": "Authorization class for a finding or candidate repair.",
+      "enum": [
+        "REPORT_ONLY",
+        "AUTO_SAFE",
+        "APPROVAL_REQUIRED",
+        "BLOCKED"
+      ],
+      "title": "ActionClass",
+      "type": "string"
+    },
+    "Bounds3D": {
+      "additionalProperties": false,
+      "description": "World-space bounds represented in meters and centimeters.",
+      "properties": {
+        "dimensions_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions Cm",
+          "type": "array"
+        },
+        "dimensions_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions M",
+          "type": "array"
+        },
+        "maximum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum Cm",
+          "type": "array"
+        },
+        "maximum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum M",
+          "type": "array"
+        },
+        "minimum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum Cm",
+          "type": "array"
+        },
+        "minimum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "minimum_m",
+        "maximum_m",
+        "dimensions_m",
+        "minimum_cm",
+        "maximum_cm",
+        "dimensions_cm"
+      ],
+      "title": "Bounds3D",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "description": "One evidence-backed inspection finding.",
+      "properties": {
+        "action_class": {
+          "$ref": "#/$defs/ActionClass"
+        },
+        "affected_components": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Components",
+          "type": "array"
+        },
+        "candidate_repairs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Candidate Repairs",
+          "type": "array"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/FindingEvidence"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "profile_rule": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Profile Rule"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "domain",
+        "title",
+        "description",
+        "severity",
+        "action_class",
+        "confidence",
+        "affected_components",
+        "evidence",
+        "profile_rule",
+        "candidate_repairs"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "FindingEvidence": {
+      "additionalProperties": false,
+      "description": "Structured distinction between measurement and inference.",
+      "properties": {
+        "expected_value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "inference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inference"
+        },
+        "observation": {
+          "title": "Observation",
+          "type": "string"
+        },
+        "observed_value": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "units": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Units"
+        }
+      },
+      "required": [
+        "observation"
+      ],
+      "title": "FindingEvidence",
+      "type": "object"
+    },
+    "GeometryFacts": {
+      "additionalProperties": false,
+      "description": "Measured world-space geometry facts.",
+      "properties": {
+        "bounds": {
+          "$ref": "#/$defs/Bounds3D"
+        },
+        "dominant_dimension_axis": {
+          "enum": [
+            "X",
+            "Y",
+            "Z"
+          ],
+          "title": "Dominant Dimension Axis",
+          "type": "string"
+        },
+        "ground_relationship": {
+          "enum": [
+            "INTERSECTS",
+            "GROUNDED",
+            "FLOATS_ABOVE",
+            "EXTENDS_BELOW"
+          ],
+          "title": "Ground Relationship",
+          "type": "string"
+        },
+        "triangle_count": {
+          "minimum": 0,
+          "title": "Triangle Count",
+          "type": "integer"
+        },
+        "vertex_count": {
+          "minimum": 0,
+          "title": "Vertex Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "vertex_count",
+        "triangle_count",
+        "bounds",
+        "dominant_dimension_axis",
+        "ground_relationship"
+      ],
+      "title": "GeometryFacts",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "NamingFacts": {
+      "additionalProperties": false,
+      "description": "Measured naming defects and deterministic proposed replacements.",
+      "properties": {
+        "duplicate_mesh_names": {
+          "additionalProperties": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "title": "Duplicate Mesh Names",
+          "type": "object"
+        },
+        "duplicate_node_names": {
+          "additionalProperties": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "title": "Duplicate Node Names",
+          "type": "object"
+        },
+        "invalid_mesh_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Invalid Mesh Indices",
+          "type": "array"
+        },
+        "invalid_node_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Invalid Node Indices",
+          "type": "array"
+        },
+        "missing_mesh_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Missing Mesh Indices",
+          "type": "array"
+        },
+        "missing_node_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Missing Node Indices",
+          "type": "array"
+        },
+        "proposed_replacements": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Proposed Replacements",
+          "type": "object"
+        }
+      },
+      "required": [
+        "missing_node_indices",
+        "invalid_node_indices",
+        "duplicate_node_names",
+        "missing_mesh_indices",
+        "invalid_mesh_indices",
+        "duplicate_mesh_names",
+        "proposed_replacements"
+      ],
+      "title": "NamingFacts",
+      "type": "object"
+    },
+    "NodeHierarchyFact": {
+      "additionalProperties": false,
+      "description": "One node's parent-child relationship.",
+      "properties": {
+        "child_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Child Indices",
+          "type": "array"
+        },
+        "node_index": {
+          "minimum": 0,
+          "title": "Node Index",
+          "type": "integer"
+        },
+        "parent_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Index"
+        }
+      },
+      "required": [
+        "node_index",
+        "parent_index",
+        "child_indices"
+      ],
+      "title": "NodeHierarchyFact",
+      "type": "object"
+    },
+    "NodeTransformFact": {
+      "additionalProperties": false,
+      "description": "A node with a non-identity transform.",
+      "properties": {
+        "determinant": {
+          "title": "Determinant",
+          "type": "number"
+        },
+        "negative_determinant": {
+          "title": "Negative Determinant",
+          "type": "boolean"
+        },
+        "node_index": {
+          "minimum": 0,
+          "title": "Node Index",
+          "type": "integer"
+        },
+        "node_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Node Name"
+        },
+        "non_uniform_scale": {
+          "title": "Non Uniform Scale",
+          "type": "boolean"
+        },
+        "rotation": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Rotation",
+          "type": "array"
+        },
+        "scale": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Scale",
+          "type": "array"
+        },
+        "translation": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Translation",
+          "type": "array"
+        }
+      },
+      "required": [
+        "node_index",
+        "node_name",
+        "translation",
+        "rotation",
+        "scale",
+        "determinant",
+        "non_uniform_scale",
+        "negative_determinant"
+      ],
+      "title": "NodeTransformFact",
+      "type": "object"
+    },
+    "PackageFacts": {
+      "additionalProperties": false,
+      "description": "Container and glTF structure facts.",
+      "properties": {
+        "active_scene": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Active Scene"
+        },
+        "animation_count": {
+          "minimum": 0,
+          "title": "Animation Count",
+          "type": "integer"
+        },
+        "asset_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Asset Version"
+        },
+        "byte_size": {
+          "minimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "camera_count": {
+          "minimum": 0,
+          "title": "Camera Count",
+          "type": "integer"
+        },
+        "extensions_required": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Extensions Required",
+          "type": "array"
+        },
+        "extensions_used": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Extensions Used",
+          "type": "array"
+        },
+        "file_sha256": {
+          "title": "File Sha256",
+          "type": "string"
+        },
+        "generator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Generator"
+        },
+        "has_morph_targets": {
+          "title": "Has Morph Targets",
+          "type": "boolean"
+        },
+        "image_count": {
+          "minimum": 0,
+          "title": "Image Count",
+          "type": "integer"
+        },
+        "material_count": {
+          "minimum": 0,
+          "title": "Material Count",
+          "type": "integer"
+        },
+        "mesh_count": {
+          "minimum": 0,
+          "title": "Mesh Count",
+          "type": "integer"
+        },
+        "node_count": {
+          "minimum": 0,
+          "title": "Node Count",
+          "type": "integer"
+        },
+        "parse_success": {
+          "title": "Parse Success",
+          "type": "boolean"
+        },
+        "primitive_count": {
+          "minimum": 0,
+          "title": "Primitive Count",
+          "type": "integer"
+        },
+        "scene_count": {
+          "minimum": 0,
+          "title": "Scene Count",
+          "type": "integer"
+        },
+        "skin_count": {
+          "minimum": 0,
+          "title": "Skin Count",
+          "type": "integer"
+        },
+        "texture_count": {
+          "minimum": 0,
+          "title": "Texture Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "file_sha256",
+        "byte_size",
+        "asset_version",
+        "generator",
+        "parse_success",
+        "scene_count",
+        "active_scene",
+        "node_count",
+        "mesh_count",
+        "primitive_count",
+        "material_count",
+        "texture_count",
+        "image_count",
+        "skin_count",
+        "animation_count",
+        "camera_count",
+        "extensions_used",
+        "extensions_required",
+        "has_morph_targets"
+      ],
+      "title": "PackageFacts",
+      "type": "object"
+    },
+    "RepairEligibility": {
+      "description": "Whether inspection may proceed to structural repair.",
+      "enum": [
+        "ELIGIBLE_STATIC_MESH",
+        "INSPECTION_ONLY_UNSUPPORTED_FEATURES",
+        "INVALID_OR_UNREADABLE"
+      ],
+      "title": "RepairEligibility",
+      "type": "string"
+    },
+    "ResourceFacts": {
+      "additionalProperties": false,
+      "description": "Material and texture inspection facts.",
+      "properties": {
+        "budget_violations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Budget Violations",
+          "type": "array"
+        },
+        "image_count": {
+          "minimum": 0,
+          "title": "Image Count",
+          "type": "integer"
+        },
+        "material_count": {
+          "minimum": 0,
+          "title": "Material Count",
+          "type": "integer"
+        },
+        "texture_count": {
+          "minimum": 0,
+          "title": "Texture Count",
+          "type": "integer"
+        },
+        "textures": {
+          "items": {
+            "$ref": "#/$defs/TextureFact"
+          },
+          "title": "Textures",
+          "type": "array"
+        }
+      },
+      "required": [
+        "material_count",
+        "texture_count",
+        "image_count",
+        "textures",
+        "budget_violations"
+      ],
+      "title": "ResourceFacts",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "Finding severity independent of repairability.",
+      "enum": [
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "BLOCKER"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "TextureFact": {
+      "additionalProperties": false,
+      "description": "Readable metadata for one embedded image resource.",
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Detail"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Height"
+        },
+        "image_index": {
+          "minimum": 0,
+          "title": "Image Index",
+          "type": "integer"
+        },
+        "mime_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mime Type"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        },
+        "readable": {
+          "title": "Readable",
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Width"
+        }
+      },
+      "required": [
+        "image_index",
+        "name",
+        "mime_type",
+        "width",
+        "height",
+        "readable",
+        "detail"
+      ],
+      "title": "TextureFact",
+      "type": "object"
+    },
+    "TransformFacts": {
+      "additionalProperties": false,
+      "description": "Scene hierarchy and transform facts.",
+      "properties": {
+        "hierarchy": {
+          "items": {
+            "$ref": "#/$defs/NodeHierarchyFact"
+          },
+          "title": "Hierarchy",
+          "type": "array"
+        },
+        "negative_determinant_nodes": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Negative Determinant Nodes",
+          "type": "array"
+        },
+        "non_identity_transforms": {
+          "items": {
+            "$ref": "#/$defs/NodeTransformFact"
+          },
+          "title": "Non Identity Transforms",
+          "type": "array"
+        },
+        "non_uniform_scale_nodes": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Non Uniform Scale Nodes",
+          "type": "array"
+        },
+        "root_nodes": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Root Nodes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "root_nodes",
+        "non_identity_transforms",
+        "negative_determinant_nodes",
+        "non_uniform_scale_nodes",
+        "hierarchy"
+      ],
+      "title": "TransformFacts",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/inspection.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Complete deterministic inspection output.",
+  "properties": {
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "geometry": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GeometryFacts"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "inspection_id": {
+      "title": "Inspection Id",
+      "type": "string"
+    },
+    "naming": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NamingFacts"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "package": {
+      "$ref": "#/$defs/PackageFacts"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "profile_version": {
+      "const": 1,
+      "title": "Profile Version",
+      "type": "integer"
+    },
+    "repair_eligibility": {
+      "$ref": "#/$defs/RepairEligibility"
+    },
+    "resources": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceFacts"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_filename": {
+      "title": "Source Filename",
+      "type": "string"
+    },
+    "transforms": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TransformFacts"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "inspection_id",
+    "source_filename",
+    "profile_id",
+    "profile_version",
+    "package",
+    "geometry",
+    "transforms",
+    "naming",
+    "resources",
+    "repair_eligibility",
+    "findings"
+  ],
+  "title": "InspectionResult",
+  "type": "object"
+}

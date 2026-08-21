@@ -1,0 +1,479 @@
+{
+  "$defs": {
+    "ActionClass": {
+      "description": "Authorization class for a finding or candidate repair.",
+      "enum": [
+        "REPORT_ONLY",
+        "AUTO_SAFE",
+        "APPROVAL_REQUIRED",
+        "BLOCKED"
+      ],
+      "title": "ActionClass",
+      "type": "string"
+    },
+    "Bounds3D": {
+      "additionalProperties": false,
+      "description": "World-space bounds represented in meters and centimeters.",
+      "properties": {
+        "dimensions_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions Cm",
+          "type": "array"
+        },
+        "dimensions_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions M",
+          "type": "array"
+        },
+        "maximum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum Cm",
+          "type": "array"
+        },
+        "maximum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum M",
+          "type": "array"
+        },
+        "minimum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum Cm",
+          "type": "array"
+        },
+        "minimum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "minimum_m",
+        "maximum_m",
+        "dimensions_m",
+        "minimum_cm",
+        "maximum_cm",
+        "dimensions_cm"
+      ],
+      "title": "Bounds3D",
+      "type": "object"
+    },
+    "CandidateRepair": {
+      "additionalProperties": false,
+      "description": "A registered repair derived from one or more findings.",
+      "properties": {
+        "action_class": {
+          "$ref": "#/$defs/ActionClass"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "finding_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Finding Ids",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RepairKind"
+        },
+        "payload": {
+          "discriminator": {
+            "mapping": {
+              "normalization": "#/$defs/NormalizationPayload",
+              "rename": "#/$defs/RenamePayload"
+            },
+            "propertyName": "payload_type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/RenamePayload"
+            },
+            {
+              "$ref": "#/$defs/NormalizationPayload"
+            }
+          ],
+          "title": "Payload"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "action_class",
+        "finding_ids",
+        "description",
+        "payload"
+      ],
+      "title": "CandidateRepair",
+      "type": "object"
+    },
+    "NormalizationComponent": {
+      "additionalProperties": false,
+      "description": "Evidence for one component of a combined normalization transform.",
+      "properties": {
+        "component": {
+          "enum": [
+            "scale",
+            "orientation",
+            "grounding"
+          ],
+          "title": "Component",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component",
+        "evidence",
+        "confidence"
+      ],
+      "title": "NormalizationComponent",
+      "type": "object"
+    },
+    "NormalizationPayload": {
+      "additionalProperties": false,
+      "description": "Parameters and consequences for the approval-required root transform.",
+      "properties": {
+        "before_bounds": {
+          "$ref": "#/$defs/Bounds3D"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/NormalizationComponent"
+          },
+          "title": "Components",
+          "type": "array"
+        },
+        "consequence_summary": {
+          "title": "Consequence Summary",
+          "type": "string"
+        },
+        "expected_after_bounds": {
+          "$ref": "#/$defs/Bounds3D"
+        },
+        "payload_type": {
+          "const": "normalization",
+          "default": "normalization",
+          "title": "Payload Type",
+          "type": "string"
+        },
+        "proposed_matrix": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "Proposed Matrix",
+          "type": "array"
+        }
+      },
+      "required": [
+        "before_bounds",
+        "proposed_matrix",
+        "expected_after_bounds",
+        "components",
+        "consequence_summary"
+      ],
+      "title": "NormalizationPayload",
+      "type": "object"
+    },
+    "RenamePayload": {
+      "additionalProperties": false,
+      "description": "Parameters for an index-preserving display-name repair.",
+      "properties": {
+        "after_name": {
+          "title": "After Name",
+          "type": "string"
+        },
+        "before_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Before Name"
+        },
+        "component_index": {
+          "minimum": 0,
+          "title": "Component Index",
+          "type": "integer"
+        },
+        "component_type": {
+          "enum": [
+            "node",
+            "mesh"
+          ],
+          "title": "Component Type",
+          "type": "string"
+        },
+        "payload_type": {
+          "const": "rename",
+          "default": "rename",
+          "title": "Payload Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "component_type",
+        "component_index",
+        "before_name",
+        "after_name"
+      ],
+      "title": "RenamePayload",
+      "type": "object"
+    },
+    "RepairKind": {
+      "description": "Registered version-1 repair operations.",
+      "enum": [
+        "RENAME_NODE",
+        "RENAME_MESH",
+        "NORMALIZATION_TRANSFORM"
+      ],
+      "title": "RepairKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/repair_plan.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Deterministic set of version-1 repair candidates.",
+  "properties": {
+    "approval_action_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Approval Action Ids",
+      "type": "array"
+    },
+    "auto_action_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Auto Action Ids",
+      "type": "array"
+    },
+    "blocked": {
+      "title": "Blocked",
+      "type": "boolean"
+    },
+    "blocked_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocked Reasons",
+      "type": "array"
+    },
+    "candidates": {
+      "items": {
+        "$ref": "#/$defs/CandidateRepair"
+      },
+      "title": "Candidates",
+      "type": "array"
+    },
+    "inspection_id": {
+      "title": "Inspection Id",
+      "type": "string"
+    },
+    "plan_id": {
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "profile_version": {
+      "const": 1,
+      "title": "Profile Version",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_sha256": {
+      "title": "Source Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "plan_id",
+    "inspection_id",
+    "source_sha256",
+    "profile_id",
+    "profile_version",
+    "candidates",
+    "auto_action_ids",
+    "approval_action_ids",
+    "blocked",
+    "blocked_reasons"
+  ],
+  "title": "RepairPlan",
+  "type": "object"
+}

@@ -1,0 +1,196 @@
+{
+  "$defs": {
+    "DecisionRecord": {
+      "additionalProperties": false,
+      "description": "Authorization or rejection of one candidate repair.",
+      "properties": {
+        "candidate_id": {
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/DecisionValue"
+        },
+        "interrupt_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interrupt Id"
+        },
+        "source": {
+          "$ref": "#/$defs/DecisionSource"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "decision",
+        "source",
+        "decided_at"
+      ],
+      "title": "DecisionRecord",
+      "type": "object"
+    },
+    "DecisionSource": {
+      "description": "Source of a repair authorization.",
+      "enum": [
+        "POLICY",
+        "USER_APPROVAL_FILE",
+        "USER_INTERACTIVE"
+      ],
+      "title": "DecisionSource",
+      "type": "string"
+    },
+    "DecisionValue": {
+      "description": "Recorded authorization outcome.",
+      "enum": [
+        "AUTO_AUTHORIZED",
+        "APPROVED",
+        "REJECTED"
+      ],
+      "title": "DecisionValue",
+      "type": "string"
+    },
+    "ExecutedAction": {
+      "additionalProperties": false,
+      "description": "One repair action recorded in provenance.",
+      "properties": {
+        "authorization": {
+          "$ref": "#/$defs/DecisionValue"
+        },
+        "candidate_id": {
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "finding_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Finding Ids",
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/RepairKind"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "kind",
+        "finding_ids",
+        "authorization"
+      ],
+      "title": "ExecutedAction",
+      "type": "object"
+    },
+    "RepairKind": {
+      "description": "Registered version-1 repair operations.",
+      "enum": [
+        "RENAME_NODE",
+        "RENAME_MESH",
+        "NORMALIZATION_TRANSFORM"
+      ],
+      "title": "RepairKind",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/provenance.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Source, authorization, software, and timing provenance.",
+  "properties": {
+    "application_version": {
+      "title": "Application Version",
+      "type": "string"
+    },
+    "commit_sha": {
+      "title": "Commit Sha",
+      "type": "string"
+    },
+    "completed_at": {
+      "format": "date-time",
+      "title": "Completed At",
+      "type": "string"
+    },
+    "decisions": {
+      "items": {
+        "$ref": "#/$defs/DecisionRecord"
+      },
+      "title": "Decisions",
+      "type": "array"
+    },
+    "executed_actions": {
+      "items": {
+        "$ref": "#/$defs/ExecutedAction"
+      },
+      "title": "Executed Actions",
+      "type": "array"
+    },
+    "library_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Library Versions",
+      "type": "object"
+    },
+    "output_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Output Sha256"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "profile_version": {
+      "const": 1,
+      "title": "Profile Version",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_sha256": {
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "output_sha256",
+    "profile_id",
+    "profile_version",
+    "application_version",
+    "commit_sha",
+    "library_versions",
+    "executed_actions",
+    "decisions",
+    "started_at",
+    "completed_at"
+  ],
+  "title": "Provenance",
+  "type": "object"
+}

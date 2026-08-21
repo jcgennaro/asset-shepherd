@@ -1,0 +1,54 @@
+{
+  "expected_bounds_m": {
+    "dimensions_cm": [
+      18199.99933242798,
+      12200.000286102295,
+      4000.000059604645
+    ],
+    "dimensions_m": [
+      181.99999332427979,
+      122.00000286102295,
+      40.00000059604645
+    ],
+    "maximum_cm": [
+      18199.99933242798,
+      16100.000143051147,
+      2199.999988079071
+    ],
+    "maximum_m": [
+      181.99999332427979,
+      161.00000143051147,
+      21.99999988079071
+    ],
+    "minimum_cm": [
+      0.0,
+      3899.9998569488525,
+      -1800.0000715255737
+    ],
+    "minimum_m": [
+      0.0,
+      38.999998569488525,
+      -18.000000715255737
+    ]
+  },
+  "expected_defect_codes": [
+    "HEIGHT_OUT_OF_RANGE",
+    "ORIENTATION_NOT_Y_UP",
+    "NOT_GROUNDED",
+    "NODE_NAME_INVALID",
+    "NODE_NAME_MISSING",
+    "NODE_NAME_DUPLICATE",
+    "MESH_NAME_INVALID",
+    "MESH_NAME_MISSING",
+    "MESH_NAME_DUPLICATE",
+    "MATERIAL_BUDGET_EXCEEDED"
+  ],
+  "expected_material_count": 9,
+  "expected_triangle_count": 180,
+  "expected_vertex_count": 360,
+  "fixture_id": "broken_robot",
+  "fixture_version": 1,
+  "glb_filename": "broken_robot.glb",
+  "original_asset": true,
+  "sha256": "a7603f8086b02eb9c8c077ba0b2294d670b15756bbc37811e90c8d25da8dd23c"
+}

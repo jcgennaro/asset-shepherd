@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "DecisionRecord": {
+      "additionalProperties": false,
+      "description": "Authorization or rejection of one candidate repair.",
+      "properties": {
+        "candidate_id": {
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/DecisionValue"
+        },
+        "interrupt_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interrupt Id"
+        },
+        "source": {
+          "$ref": "#/$defs/DecisionSource"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "decision",
+        "source",
+        "decided_at"
+      ],
+      "title": "DecisionRecord",
+      "type": "object"
+    },
+    "DecisionSource": {
+      "description": "Source of a repair authorization.",
+      "enum": [
+        "POLICY",
+        "USER_APPROVAL_FILE",
+        "USER_INTERACTIVE"
+      ],
+      "title": "DecisionSource",
+      "type": "string"
+    },
+    "DecisionValue": {
+      "description": "Recorded authorization outcome.",
+      "enum": [
+        "AUTO_AUTHORIZED",
+        "APPROVED",
+        "REJECTED"
+      ],
+      "title": "DecisionValue",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/decisions.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Versioned decision artifact for one repair plan.",
+  "properties": {
+    "plan_id": {
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/DecisionRecord"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "plan_id",
+    "records"
+  ],
+  "title": "Decisions",
+  "type": "object"
+}

@@ -1,0 +1,123 @@
+{
+  "$defs": {
+    "CheckStatus": {
+      "description": "Deterministic verification-check state.",
+      "enum": [
+        "PASS",
+        "WARNING",
+        "FAIL",
+        "BLOCKED"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "VerificationCheck": {
+      "additionalProperties": false,
+      "description": "One deterministic verification assertion.",
+      "properties": {
+        "actual": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "expected": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "status": {
+          "$ref": "#/$defs/CheckStatus"
+        }
+      },
+      "required": [
+        "code",
+        "status",
+        "description"
+      ],
+      "title": "VerificationCheck",
+      "type": "object"
+    },
+    "VerificationState": {
+      "description": "Contracted final verification state.",
+      "enum": [
+        "PASSED_PROJECT_READY",
+        "PASSED_WITH_REMAINING_WARNINGS",
+        "FAILED",
+        "BLOCKED"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/verification.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Independent reload and verification output.",
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/VerificationCheck"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "output_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Output Sha256"
+    },
+    "remaining_warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Remaining Warnings",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "second_plan_candidate_count": {
+      "minimum": 0,
+      "title": "Second Plan Candidate Count",
+      "type": "integer"
+    },
+    "source_sha256": {
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/VerificationState"
+    },
+    "verification_id": {
+      "title": "Verification Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "verification_id",
+    "source_sha256",
+    "output_sha256",
+    "state",
+    "checks",
+    "remaining_warnings",
+    "second_plan_candidate_count"
+  ],
+  "title": "VerificationResult",
+  "type": "object"
+}
