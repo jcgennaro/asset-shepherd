@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** Patchling distribution commit (this file is included)
+**Current commit:** M9 preflight audit (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | FastAPI/Jinja local product; real Strands interrupt/resume; dual GLB preview; verification/download; browser and automated acceptance | M8 completion commit (this file is included) | D006 |
+| M8 Web product | COMPLETE | FastAPI/Jinja local product; real Strands interrupt/resume; dual GLB preview; verification/download; browser and automated acceptance | 4459b7b70ff46aa05f6b28e43c44e2300875c6ef | D006 |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -77,8 +77,9 @@ model access, region, and cost-control setup before any paid invocation or resou
 
 RW2 requires the user to generate and hand off an untouched Shader Lantern GLB. M9 requires the user
 to configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock region/model
-access, and a budget alert before paid calls. Unreal comparison and a human-cleaned reference remain
-future RW4 work.
+access, and a budget alert before paid calls. Read-only preflight found that AWS CLI is not installed
+on this workstation (`Get-Command aws` returned no command). Unreal comparison and a human-cleaned
+reference remain future RW4 work.
 
 ## Next action
 
