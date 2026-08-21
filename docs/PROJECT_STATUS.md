@@ -1,9 +1,9 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** a077077ca94c44b9693893672a7208d84d1f05b8
-**Current milestone:** M7 mandatory checkpoint
-**Overall state:** CHECKPOINT
+**Current commit:** RW0 milestone commit (this file is included)
+**Current milestone:** RW1 Patchling blind baseline
+**Overall state:** HUMAN_ACTION_REQUIRED
 
 ## Milestones
 
@@ -15,33 +15,49 @@
 | M3 Schemas and fixtures | COMPLETE | Schemas validate; clean and broken robot artifacts regenerate byte-for-byte and independently reload | 444a99877a01694020209d22dab831660c84a47e | Completed 2026-08-21 |
 | M4 Inspector | COMPLETE | Broken fixture yields all 10 expected defects; clean has no false severe/auto-safe findings; deterministic CLI artifacts | 4f7434b6ba58127d38e35f793db8ed27fddd3331 | Completed 2026-08-21 |
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
-| M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | This commit | Completed and checkpoint-reviewed 2026-08-21 |
-| M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | This commit | Completed 2026-08-21; D002; mandatory checkpoint 2 |
+| M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
+| M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
 | M8 Web product | NOT_STARTED |  |  |  |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
-| M10 Evaluation | NOT_STARTED |  |  |  |
+| M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | This commit | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
 
+## Real-world validation milestones
+
+| Milestone | State | Evidence | Notes |
+|---|---|---|---|
+| RW0 Adopt and scaffold | COMPLETE | Canonical addendum; typed schemas; ignored corpus; generation card; registration, mutation, Blender, Unreal, and report tooling | D003; no product behavior change |
+| RW1 Patchling blind baseline | WAITING_FOR_HUMAN | Frozen prompt, provenance/adjudication drafts, exact generation card | Untouched textured Tripo GLB is the actual dependency |
+| RW2 Minimum Asset Flock | NOT_STARTED |  | Begins after Patchling baseline |
+| RW3 Controlled realistic variants | SCAFFOLDED | Repeatable normalization, hierarchy, and material/texture mutation code; fixture dry runs | Real variants wait for registered corpus assets |
+| RW4 Blender and Unreal acceptance | SCAFFOLDED | Blender 5.1.2 import/re-export evidence; Unreal 5.8 isolated map and three-arm fixture import | Real comparison and visual checkpoint wait for corpus/human reference |
+| RW5 Evaluation report and demo | SCAFFOLDED | Typed adjudication and traceable case-study report renderer | Public claims remain prohibited until evidence exists |
+
 ## Current gate
 
-Mandatory checkpoint 2: review the completed local Strands workflow before web or AWS work.
+RW0 passes. Start RW1 by generating Patchling exactly once from the checked-in generation card,
+then freeze the blind Asset Shepherd outputs before any Blender or Unreal diagnosis.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 29 passed; the explicitly opt-in live-provider test skipped.
+- Tests: `uv run pytest` — 39 passed, 1 explicitly opt-in live-provider test skipped; includes RW0
+  schema, registration, mutation, report, and harness checks.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
-- Demo command or URL: `uv run asset-shepherd agent-run fixtures/broken_robot.glb --profile
-  profiles/unreal_indie_robot.json --output agent-demo-output --decision approve
-  --offline-scripted`.
-- Generated artifacts: the exact seven-file deterministic ZIP plus external `job_result.json` and
-  structured `agent_result.json` with metrics.
+- Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
+  hash unchanged; Unreal 5.8 generated the isolated comparison map and imported three isolated arms
+  with 15 static meshes and 4 materials each.
+- Generated fixture evidence stays below ignored `build/validation/`; only reproducible scripts,
+  schemas, templates, and typed records are committed.
 
 ## Blockers
 
-None.
+RW1 requires one untouched, rights-confirmed Patchling GLB generated by the user in Tripo. This is a
+planned human dependency, not a product failure.
 
 ## Next action
 
-Stop at mandatory checkpoint 2. Do not begin M8 web or M9 AWS work until review.
+Follow `validation/corpus/patchling_01/generation-card.md`, place the untouched selected export at
+`validation/corpus/patchling_01/raw/asset.glb`, and complete the adjacent provenance fields without
+opening the asset in Blender, Unreal, or another DCC.

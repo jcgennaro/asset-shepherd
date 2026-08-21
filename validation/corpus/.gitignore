@@ -1,0 +1,17 @@
+# Raw and derived 3D binaries remain private/ignored until provenance and size policy are verified.
+**/raw/*.glb
+**/raw/*.fbx
+**/blind_asset_shepherd/*.glb
+**/blind_asset_shepherd/*.zip
+**/human_reference/*.blend
+**/human_reference/*.glb
+**/controlled_variants/**/*.glb
+**/unreal_results/**/*.uasset
+**/unreal_results/**/*.uexp
+**/unreal_results/**/*.ubulk
+**/screenshots/*.png
+**/screenshots/*.jpg
+
+!.gitignore
+!README.md
+!**/README.md

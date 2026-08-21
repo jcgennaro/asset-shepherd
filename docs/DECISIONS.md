@@ -4,6 +4,52 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D003 — Separate, metadata-tracked validation corpus with ignored binary evidence
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** RW0 / M10
+
+**Context**
+
+The real-world addendum requires immutable Tripo exports, reproducible controlled mutations, typed
+ground truth, independent Blender evidence, and an isolated Unreal comparison without expanding the
+hosted product or prematurely publishing large or rights-uncertain binaries.
+
+**Options considered**
+
+- Commit every raw and generated binary immediately. This would make rights and repository size
+  difficult to control before the first real asset is reviewed.
+- Use undocumented external files only. This would prevent judges from reproducing the workflow.
+- Track schemas, prompts, provenance, manifests, adjudication, reports, and automation; ignore raw
+  and generated binaries until rights and size policy are known; require at least one distributable
+  complete workflow before public release.
+- Put mutation and DCC behavior into the Asset Shepherd repair runtime. This would blur ground truth
+  with the system under test and violate scope protections.
+
+**Decision**
+
+Keep validation code and evidence under a distinct `validation` layer. Track typed Draft 2020-12
+schemas, human facts, mutation ground truth, templates, and reproducible scripts. Ignore raw Tripo,
+derived GLB, `.blend`, Unreal binary content, caches, and screenshots by default. A raw asset may be
+registered only after required provenance and public-use confirmation are complete; registration
+hashes and validates the GLB without mutating it. Controlled mutations operate only on copies and
+remain separate from product repair code. Blender and Unreal are local independent consumers, never
+hosted dependencies or product plugins.
+
+**Evidence and consequences**
+
+Incomplete provenance is rejected while the raw hash stays unchanged. Fixture mutations preserve
+geometry and source hashes and produce typed manifests whose expected findings are independently
+confirmed by the inspector. Blender 5.1.2 and an isolated Unreal 5.8 project both execute the
+checked-in harnesses successfully. The public repository does not yet contain a real benchmark
+binary; Patchling rights and size must be confirmed before one is deliberately added. No product
+behavior, repair policy, AWS architecture, or supported input format changes as a result.
+
 ### D002 — Single Strands agent with state-bound tools and native tool interrupt
 
 **Date:** 2026-08-21

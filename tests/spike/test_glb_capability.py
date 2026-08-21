@@ -47,7 +47,8 @@ def _pad_four(data: bytes) -> bytes:
     return data + b"\x00" * (-len(data) % 4)
 
 
-def _make_spike_glb(path: Path) -> None:
+def make_spike_glb(path: Path) -> None:
+    """Create the M2 textured-resource fixture for cross-milestone tests."""
     positions = np.asarray(
         [
             [-0.5, 0.0, -0.5],
@@ -182,7 +183,7 @@ def test_glb_round_trip_preserves_content_and_applies_root_transform(tmp_path: P
     """Rename and transform a GLB, then independently reload and measure it."""
     source = tmp_path / "source.glb"
     output = tmp_path / "output.glb"
-    _make_spike_glb(source)
+    make_spike_glb(source)
 
     gltf = load_glb(source)
     validate_loaded_glb(gltf)

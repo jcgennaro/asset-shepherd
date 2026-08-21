@@ -9,8 +9,16 @@ verification agent for game developers.
 ## Project control
 
 - [Project contract](docs/PROJECT_CONTRACT.md)
+- [Real-world validation plan](docs/REAL_WORLD_VALIDATION_PLAN.md)
 - [Project status](docs/PROJECT_STATUS.md)
 - [Decision log](docs/DECISIONS.md)
+
+## Real-world validation
+
+The [validation workspace](validation/README.md) preserves immutable raw provenance, controlled
+mutation ground truth, Blender evidence, and an isolated Unreal comparison harness. Patchling
+Courier is the next requested human-generated asset; its exact one-batch instructions are in the
+[Patchling generation card](validation/corpus/patchling_01/generation-card.md).
 
 ## Deterministic CLI demo
 

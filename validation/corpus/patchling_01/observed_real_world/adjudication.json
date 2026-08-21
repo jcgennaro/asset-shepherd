@@ -1,0 +1,17 @@
+{
+  "asset_id": "patchling_01",
+  "correctly_blocked_cases": [],
+  "demo_candidate": false,
+  "false_severe_findings": [],
+  "findings": [],
+  "human_reference_unreal_result": "",
+  "manual_minutes_after_shepherd": null,
+  "manual_minutes_raw_to_usable": null,
+  "missed_required_repairs": [],
+  "product_version": "",
+  "raw_unreal_result": "",
+  "schema_version": 1,
+  "shepherd_unreal_result": "",
+  "unsafe_automatic_repairs": [],
+  "visual_fidelity_assessment": ""
+}

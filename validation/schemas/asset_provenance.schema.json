@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://asset-shepherd.dev/schemas/validation/v1/asset_provenance.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Human-supplied generation facts plus immutable raw-file registration.",
+  "properties": {
+    "asset_id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "display_name": {
+      "title": "Display Name",
+      "type": "string"
+    },
+    "export_format": {
+      "const": "glb",
+      "default": "glb",
+      "title": "Export Format",
+      "type": "string"
+    },
+    "export_settings": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Export Settings",
+      "type": "object"
+    },
+    "generation_date_utc": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Generation Date Utc"
+    },
+    "generation_settings": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Generation Settings",
+      "type": "object"
+    },
+    "generator": {
+      "const": "Tripo",
+      "default": "Tripo",
+      "title": "Generator",
+      "type": "string"
+    },
+    "model_or_mode": {
+      "title": "Model Or Mode",
+      "type": "string"
+    },
+    "negative_prompt_or_constraints": {
+      "title": "Negative Prompt Or Constraints",
+      "type": "string"
+    },
+    "notes": {
+      "title": "Notes",
+      "type": "string"
+    },
+    "prompt": {
+      "title": "Prompt",
+      "type": "string"
+    },
+    "public_use_confirmed": {
+      "default": false,
+      "title": "Public Use Confirmed",
+      "type": "boolean"
+    },
+    "raw_sha256": {
+      "default": "",
+      "pattern": "^(?:[0-9a-f]{64})?$",
+      "title": "Raw Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "selected_candidate_reason": {
+      "title": "Selected Candidate Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "asset_id",
+    "display_name",
+    "generation_date_utc",
+    "prompt",
+    "negative_prompt_or_constraints",
+    "model_or_mode",
+    "generation_settings",
+    "selected_candidate_reason",
+    "export_settings",
+    "notes"
+  ],
+  "title": "AssetProvenance",
+  "type": "object"
+}

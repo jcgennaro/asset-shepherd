@@ -5,8 +5,11 @@ Before doing substantial work, read:
 1. `docs/PROJECT_CONTRACT.md`
 2. `docs/PROJECT_STATUS.md`
 3. `docs/DECISIONS.md`
+4. `docs/REAL_WORLD_VALIDATION_PLAN.md`
 
-`docs/PROJECT_CONTRACT.md` is the controlling product and execution specification.
+`docs/PROJECT_CONTRACT.md` is the controlling product and execution specification. The real-world
+validation plan is its controlling addendum for corpus, Tripo, Blender, Unreal, evaluation, and
+demo-asset work.
 
 Work directly on `main`. Do not create branches or pull requests. Do not force-push or use destructive Git cleanup. Preserve unrelated user changes.
 

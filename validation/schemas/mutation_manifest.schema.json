@@ -1,0 +1,176 @@
+{
+  "$defs": {
+    "ActionClass": {
+      "description": "Authorization class for a finding or candidate repair.",
+      "enum": [
+        "REPORT_ONLY",
+        "AUTO_SAFE",
+        "APPROVAL_REQUIRED",
+        "BLOCKED"
+      ],
+      "title": "ActionClass",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "MutationKind": {
+      "description": "Controlled realistic mutation categories from the approved addendum.",
+      "enum": [
+        "SCALE_MISMATCH",
+        "SIDEWAYS_ORIENTATION",
+        "FLOATING_GEOMETRY",
+        "PIVOT_DISPLACEMENT",
+        "NAME_CORRUPTION",
+        "EMPTY_HIERARCHY",
+        "MATERIAL_BLOAT",
+        "TEXTURE_BLOAT",
+        "NEGATIVE_SCALE",
+        "UNSUPPORTED_CONTENT"
+      ],
+      "title": "MutationKind",
+      "type": "string"
+    },
+    "MutationOperation": {
+      "additionalProperties": false,
+      "description": "One independently described mutation applied to a source copy.",
+      "properties": {
+        "affected_elements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Elements",
+          "type": "array"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "expected_action_classes": {
+          "items": {
+            "$ref": "#/$defs/ActionClass"
+          },
+          "title": "Expected Action Classes",
+          "type": "array"
+        },
+        "expected_finding_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Finding Codes",
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/MutationKind"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "description",
+        "parameters",
+        "affected_elements",
+        "expected_finding_codes",
+        "expected_action_classes"
+      ],
+      "title": "MutationOperation",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/validation/v1/mutation_manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Ground truth and preservation evidence for one realistic variant.",
+  "properties": {
+    "base_asset_id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Base Asset Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "expected_post_repair_invariants": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Expected Post Repair Invariants",
+      "type": "array"
+    },
+    "geometry_preserved": {
+      "title": "Geometry Preserved",
+      "type": "boolean"
+    },
+    "materials_preserved": {
+      "title": "Materials Preserved",
+      "type": "boolean"
+    },
+    "mutation_id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Mutation Id",
+      "type": "string"
+    },
+    "operations": {
+      "items": {
+        "$ref": "#/$defs/MutationOperation"
+      },
+      "title": "Operations",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "source_unchanged_verified": {
+      "title": "Source Unchanged Verified",
+      "type": "boolean"
+    },
+    "textures_preserved": {
+      "title": "Textures Preserved",
+      "type": "boolean"
+    },
+    "tool_version": {
+      "title": "Tool Version",
+      "type": "string"
+    },
+    "variant_parse_verified": {
+      "title": "Variant Parse Verified",
+      "type": "boolean"
+    },
+    "variant_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Variant Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "mutation_id",
+    "base_asset_id",
+    "source_sha256",
+    "variant_sha256",
+    "created_at",
+    "tool_version",
+    "operations",
+    "expected_post_repair_invariants",
+    "source_unchanged_verified",
+    "variant_parse_verified",
+    "geometry_preserved",
+    "materials_preserved",
+    "textures_preserved"
+  ],
+  "title": "MutationManifest",
+  "type": "object"
+}

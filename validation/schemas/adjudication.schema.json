@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "FindingAdjudication": {
+      "additionalProperties": false,
+      "description": "Human classification of one frozen blind finding.",
+      "properties": {
+        "classification": {
+          "$ref": "#/$defs/FindingClassification"
+        },
+        "downstream_evidence": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Downstream Evidence",
+          "type": "array"
+        },
+        "finding_code": {
+          "title": "Finding Code",
+          "type": "string"
+        },
+        "human_notes": {
+          "title": "Human Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding_code",
+        "classification",
+        "human_notes",
+        "downstream_evidence"
+      ],
+      "title": "FindingAdjudication",
+      "type": "object"
+    },
+    "FindingClassification": {
+      "description": "Allowed human adjudication outcomes for one product finding.",
+      "enum": [
+        "TRUE_POSITIVE",
+        "FALSE_POSITIVE",
+        "USEFUL_WARNING",
+        "CORRECTLY_BLOCKED",
+        "INCORRECT_ACTION_CLASS",
+        "NOT_ADJUDICATED"
+      ],
+      "title": "FindingClassification",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/validation/v1/adjudication.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Real-world findings, misses, safety results, and manual-effort evidence.",
+  "properties": {
+    "asset_id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "correctly_blocked_cases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Correctly Blocked Cases",
+      "type": "array"
+    },
+    "demo_candidate": {
+      "title": "Demo Candidate",
+      "type": "boolean"
+    },
+    "false_severe_findings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "False Severe Findings",
+      "type": "array"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/FindingAdjudication"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "human_reference_unreal_result": {
+      "title": "Human Reference Unreal Result",
+      "type": "string"
+    },
+    "manual_minutes_after_shepherd": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Manual Minutes After Shepherd"
+    },
+    "manual_minutes_raw_to_usable": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Manual Minutes Raw To Usable"
+    },
+    "missed_required_repairs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Missed Required Repairs",
+      "type": "array"
+    },
+    "product_version": {
+      "title": "Product Version",
+      "type": "string"
+    },
+    "raw_unreal_result": {
+      "title": "Raw Unreal Result",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "shepherd_unreal_result": {
+      "title": "Shepherd Unreal Result",
+      "type": "string"
+    },
+    "unsafe_automatic_repairs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Unsafe Automatic Repairs",
+      "type": "array"
+    },
+    "visual_fidelity_assessment": {
+      "title": "Visual Fidelity Assessment",
+      "type": "string"
+    }
+  },
+  "required": [
+    "asset_id",
+    "product_version",
+    "findings",
+    "missed_required_repairs",
+    "false_severe_findings",
+    "unsafe_automatic_repairs",
+    "correctly_blocked_cases",
+    "raw_unreal_result",
+    "shepherd_unreal_result",
+    "human_reference_unreal_result",
+    "manual_minutes_raw_to_usable",
+    "manual_minutes_after_shepherd",
+    "visual_fidelity_assessment",
+    "demo_candidate"
+  ],
+  "title": "Adjudication",
+  "type": "object"
+}
