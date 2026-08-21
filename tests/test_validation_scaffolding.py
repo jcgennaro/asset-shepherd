@@ -25,6 +25,7 @@ from spike.test_glb_capability import make_spike_glb
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PATCHLING_ROOT = PROJECT_ROOT / "validation" / "corpus" / "patchling_01"
+SHADER_LANTERN_ROOT = PROJECT_ROOT / "validation" / "corpus" / "shader_lantern_01"
 
 
 def test_validation_schemas_are_current_and_draft_2020_12(tmp_path: Path) -> None:
@@ -57,6 +58,31 @@ def test_patchling_registration_is_typed_and_prompt_is_frozen() -> None:
         provenance.generation_settings["workspace_item_id"]
         == "853e8986-e0e3-4d8e-a977-439ac9155787"
     )
+
+
+def test_shader_lantern_drafts_are_typed_and_prompt_is_frozen() -> None:
+    """The next requested asset has typed drafts with the contracted exact prompt."""
+    provenance = AssetProvenance.model_validate_json(
+        (SHADER_LANTERN_ROOT / "provenance.json").read_text(encoding="utf-8")
+    )
+    adjudication = Adjudication.model_validate_json(
+        (SHADER_LANTERN_ROOT / "observed_real_world" / "adjudication.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    card = (SHADER_LANTERN_ROOT / "generation-card.md").read_text(encoding="utf-8")
+    prompt_record = (SHADER_LANTERN_ROOT / "prompt.md").read_text(encoding="utf-8")
+    assert provenance.asset_id == adjudication.asset_id == "shader_lantern_01"
+    assert provenance.prompt in card
+    assert provenance.prompt in prompt_record
+    assert provenance.raw_sha256 == ""
+    assert not provenance.public_use_confirmed
+    assert set(provenance.registration_errors()) == {
+        "generation_date_utc",
+        "model_or_mode",
+        "public_use_confirmed",
+        "selected_candidate_reason",
+    }
 
 
 def test_small_stylized_profile_matches_addendum_height_range() -> None:

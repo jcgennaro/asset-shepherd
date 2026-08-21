@@ -29,7 +29,7 @@
 |---|---|---|---|
 | RW0 Adopt and scaffold | COMPLETE | Canonical addendum; typed schemas; ignored corpus; generation card; registration, mutation, Blender, Unreal, and report tooling | 085545efdda09aa3a77aa115ce521ab4dfecb3b0; D003; no product behavior change |
 | RW1 Patchling blind baseline | COMPLETE | Registered untouched raw hash; frozen inspect/plan/repair/verify/package; Blender raw/repaired evidence; turntable views; human rights and visual adjudication | D004 and D005; zero unsafe repairs or visual/resource regressions |
-| RW2 Minimum Asset Flock | HUMAN_ACTION_REQUIRED | Shader Lantern is the next one-batch Tripo request | Patchling remains the hero/preservation case; richer PBR coverage moves to the corpus |
+| RW2 Minimum Asset Flock | HUMAN_ACTION_REQUIRED | Shader Lantern generation card and typed drafts | Patchling remains the hero/preservation case; richer PBR coverage moves to the corpus |
 | RW3 Controlled realistic variants | SCAFFOLDED | Repeatable normalization, hierarchy, and material/texture mutation code; fixture dry runs | Real variants wait for registered corpus assets |
 | RW4 Blender and Unreal acceptance | SCAFFOLDED | Blender 5.1.2 import/re-export evidence; Unreal 5.8 isolated map and three-arm fixture import | Real comparison and visual checkpoint wait for corpus/human reference |
 | RW5 Evaluation report and demo | SCAFFOLDED | Typed adjudication and traceable case-study report renderer | Public claims remain prohibited until evidence exists |
@@ -60,6 +60,8 @@ Lantern export; M8 remains unblocked and can proceed while that human asset is g
   export panel values are recorded.
 - Patchling is accepted as the visual hero and preservation case. Its one-material limitation is
   disclosed and is not treated as an in-scope repair; D005 assigns richer PBR coverage to RW2.
+- The one-batch Shader Lantern card freezes the exact contracted prompt, 3-candidate request,
+  untouched GLB/4K export settings, destination path, and transparency/emissive selection criteria.
 - Generated fixture evidence stays below ignored `build/validation/`; only reproducible scripts,
   schemas, templates, and typed records are committed.
 
@@ -70,5 +72,6 @@ M8 local web-product work. Unreal comparison and a human-cleaned reference remai
 
 ## Next action
 
-Issue the one-batch Shader Lantern generation card, then continue M8 while its untouched Tripo GLB
-is pending. Preserve Patchling as the immutable registered baseline.
+The user generates the Shader Lantern batch and places the selected untouched GLB at
+`validation/corpus/shader_lantern_01/raw/asset.glb`. Codex continues M8 while that handoff is
+pending. Preserve Patchling as the immutable registered baseline.
