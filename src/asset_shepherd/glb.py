@@ -11,7 +11,7 @@ from typing import cast
 
 import numpy as np
 import numpy.typing as npt
-from pygltflib import FLOAT, GLTF2, TRIANGLES, Node
+from pygltflib import FLOAT, GLTF2, TRIANGLE_FAN, TRIANGLE_STRIP, TRIANGLES, Node
 from pygltflib.validator import validate as validate_gltf
 
 FloatArray = npt.NDArray[np.float64]
@@ -88,12 +88,15 @@ def geometry_counts(gltf: GLTF2) -> GeometryCounts:
                 raise GlbError("Mesh primitive has no POSITION accessor")
             position_accessor = gltf.accessors[position_index]
             vertices += position_accessor.count
-            if primitive.mode != TRIANGLES:
-                raise GlbError("Capability spike supports triangle-list primitives only")
-            if primitive.indices is None:
-                triangles += position_accessor.count // 3
-            else:
-                triangles += gltf.accessors[primitive.indices].count // 3
+            element_count = (
+                position_accessor.count
+                if primitive.indices is None
+                else gltf.accessors[primitive.indices].count
+            )
+            if primitive.mode == TRIANGLES:
+                triangles += element_count // 3
+            elif primitive.mode in {TRIANGLE_STRIP, TRIANGLE_FAN}:
+                triangles += max(element_count - 2, 0)
     return GeometryCounts(vertices=vertices, triangles=triangles)
 
 
