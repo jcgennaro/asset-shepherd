@@ -1,0 +1,49 @@
+{
+  "approval_action_ids": [],
+  "auto_action_ids": [
+    "rename-mesh-000",
+    "rename-node-000"
+  ],
+  "blocked": false,
+  "blocked_reasons": [],
+  "candidates": [
+    {
+      "action_class": "AUTO_SAFE",
+      "description": "Rename mesh:0 to Mesh_000 while preserving its index.",
+      "finding_ids": [
+        "finding-mesh-name-invalid"
+      ],
+      "id": "rename-mesh-000",
+      "kind": "RENAME_MESH",
+      "payload": {
+        "after_name": "Mesh_000",
+        "before_name": "meshes[0]",
+        "component_index": 0,
+        "component_type": "mesh",
+        "payload_type": "rename"
+      }
+    },
+    {
+      "action_class": "AUTO_SAFE",
+      "description": "Rename node:0 to Node_000 while preserving its index.",
+      "finding_ids": [
+        "finding-node-name-invalid"
+      ],
+      "id": "rename-node-000",
+      "kind": "RENAME_NODE",
+      "payload": {
+        "after_name": "Node_000",
+        "before_name": "tripo_node_bf3f0ad6-509e-455c-9526-6ee57a04edc7",
+        "component_index": 0,
+        "component_type": "node",
+        "payload_type": "rename"
+      }
+    }
+  ],
+  "inspection_id": "inspection-dc2f03ae8ed368f4-p1",
+  "plan_id": "plan-dc2f03ae8ed368f4-v1",
+  "profile_id": "small-stylized-static-mesh-v1",
+  "profile_version": 1,
+  "schema_version": 1,
+  "source_sha256": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d"
+}

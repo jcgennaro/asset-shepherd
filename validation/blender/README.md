@@ -16,3 +16,6 @@ source hash remains unchanged, and can optionally save a `.blend` and re-export 
 
 Visual anomalies still require human adjudication. The script does not silently clean or modify the
 imported asset.
+
+After blind outputs are frozen, `render_turntable.py` creates neutral front, right, back, and left
+PNG evidence views without changing the source GLB.

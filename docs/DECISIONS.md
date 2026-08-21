@@ -4,6 +4,47 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D004 — General compact-static-mesh profile prevents Patchling over-scaling
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** RW1 / M10
+
+**Context**
+
+The first untouched Patchling measurement used the existing Unreal indie robot profile, whose
+1.8-meter target produced a high-confidence proposal to scale a 0.998-meter asset by 1.8035225. The
+real-world addendum explicitly defines Patchling's preferred represented height as 0.9–1.5 meters.
+Approving the proposal would therefore have violated the intended asset scale even though the
+repair mechanism itself behaved correctly for its supplied profile.
+
+**Options considered**
+
+- Approve the 1.8-meter normalization because it was proposed by the existing profile.
+- Reject normalization only for the named Patchling asset in product code.
+- Create a versioned, general compact-stylized-static-mesh profile that encodes the addendum's
+  already-approved range as a 1.2-meter target with ±0.3-meter tolerance.
+- Remove scale inspection from real-world validation.
+
+**Decision**
+
+Preserve the initial prediction as profile-mismatch evidence and do not execute its normalization.
+Use `small-stylized-static-mesh-v1` for the canonical blind run. The profile is ordinary typed data,
+is applicable to compact mascot-style static meshes, and contains no asset-ID dispatch. Do not add
+a Patchling special case or change the repair engine.
+
+**Evidence and consequences**
+
+The canonical rerun proposes only two policy-safe display-name repairs. Verification preserves the
+0.998-meter height, geometry, material, texture, source hash, and independent bounds, then produces
+an empty second plan. Blender imports raw and repaired outputs with identical metrics and no missing
+image. The incident demonstrates that approval safety depends on correct project intent and that
+high-confidence measurements do not make an unsuitable profile correct.
+
 ### D003 — Separate, metadata-tracked validation corpus with ignored binary evidence
 
 **Date:** 2026-08-21

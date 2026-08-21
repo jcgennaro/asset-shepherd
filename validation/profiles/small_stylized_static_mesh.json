@@ -1,0 +1,32 @@
+{
+  "asset_type": "static_mesh",
+  "budgets": {
+    "max_materials": 8,
+    "max_texture_dimension": 4096,
+    "max_textures": 16,
+    "max_triangles": 100000
+  },
+  "engine": "unreal",
+  "expected_height_cm": {
+    "target": 120.0,
+    "tolerance": 30.0
+  },
+  "name": "Small Stylized Static Mesh",
+  "naming": {
+    "pattern": "^[A-Z][A-Za-z0-9_]*$",
+    "require_unique_mesh_names": true,
+    "require_unique_node_names": true
+  },
+  "orientation": {
+    "ground_tolerance_cm": 1.0,
+    "infer_vertical_from_dominant_extent": true,
+    "require_ground_contact": true,
+    "require_y_up_geometry": true
+  },
+  "profile_id": "small-stylized-static-mesh-v1",
+  "profile_version": 1,
+  "repair_policy": {
+    "auto_rename": true,
+    "require_approval_for_normalization_transform": true
+  }
+}

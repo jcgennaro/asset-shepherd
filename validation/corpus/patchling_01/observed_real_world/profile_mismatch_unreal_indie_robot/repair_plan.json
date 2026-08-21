@@ -1,0 +1,161 @@
+{
+  "approval_action_ids": [
+    "normalize-root-v1"
+  ],
+  "auto_action_ids": [
+    "rename-mesh-000",
+    "rename-node-000"
+  ],
+  "blocked": false,
+  "blocked_reasons": [],
+  "candidates": [
+    {
+      "action_class": "AUTO_SAFE",
+      "description": "Rename mesh:0 to Mesh_000 while preserving its index.",
+      "finding_ids": [
+        "finding-mesh-name-invalid"
+      ],
+      "id": "rename-mesh-000",
+      "kind": "RENAME_MESH",
+      "payload": {
+        "after_name": "Mesh_000",
+        "before_name": "meshes[0]",
+        "component_index": 0,
+        "component_type": "mesh",
+        "payload_type": "rename"
+      }
+    },
+    {
+      "action_class": "AUTO_SAFE",
+      "description": "Rename node:0 to Node_000 while preserving its index.",
+      "finding_ids": [
+        "finding-node-name-invalid"
+      ],
+      "id": "rename-node-000",
+      "kind": "RENAME_NODE",
+      "payload": {
+        "after_name": "Node_000",
+        "before_name": "tripo_node_bf3f0ad6-509e-455c-9526-6ee57a04edc7",
+        "component_index": 0,
+        "component_type": "node",
+        "payload_type": "rename"
+      }
+    },
+    {
+      "action_class": "APPROVAL_REQUIRED",
+      "description": "Apply one reversible root normalization transform.",
+      "finding_ids": [
+        "finding-height-out-of-range"
+      ],
+      "id": "normalize-root-v1",
+      "kind": "NORMALIZATION_TRANSFORM",
+      "payload": {
+        "before_bounds": {
+          "dimensions_cm": [
+            77.1484375,
+            99.8046875,
+            67.38280653953552
+          ],
+          "dimensions_m": [
+            0.771484375,
+            0.998046875,
+            0.6738280653953552
+          ],
+          "maximum_cm": [
+            38.57421875,
+            99.8046875,
+            33.69140326976776
+          ],
+          "maximum_m": [
+            0.3857421875,
+            0.998046875,
+            0.3369140326976776
+          ],
+          "minimum_cm": [
+            -38.57421875,
+            0.0,
+            -33.69140326976776
+          ],
+          "minimum_m": [
+            -0.3857421875,
+            0.0,
+            -0.3369140326976776
+          ]
+        },
+        "components": [
+          {
+            "component": "scale",
+            "confidence": 0.99,
+            "evidence": "Dominant extent 0.998046875 m versus target 1.8 m."
+          }
+        ],
+        "consequence_summary": "This changes world-space scale without modifying vertex data. The original file remains untouched.",
+        "expected_after_bounds": {
+          "dimensions_cm": [
+            139.13894324853229,
+            180.0,
+            121.52640803686094
+          ],
+          "dimensions_m": [
+            1.3913894324853229,
+            1.8,
+            1.2152640803686094
+          ],
+          "maximum_cm": [
+            69.56947162426614,
+            180.0,
+            60.76320401843047
+          ],
+          "maximum_m": [
+            0.6956947162426614,
+            1.8,
+            0.6076320401843047
+          ],
+          "minimum_cm": [
+            -69.56947162426614,
+            0.0,
+            -60.76320401843047
+          ],
+          "minimum_m": [
+            -0.6956947162426614,
+            0.0,
+            -0.6076320401843047
+          ]
+        },
+        "payload_type": "normalization",
+        "proposed_matrix": [
+          [
+            1.803522504892368,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.803522504892368,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.803522504892368,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      }
+    }
+  ],
+  "inspection_id": "inspection-dc2f03ae8ed368f4-p1",
+  "plan_id": "plan-dc2f03ae8ed368f4-v1",
+  "profile_id": "unreal-indie-robot-v1",
+  "profile_version": 1,
+  "schema_version": 1,
+  "source_sha256": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d"
+}

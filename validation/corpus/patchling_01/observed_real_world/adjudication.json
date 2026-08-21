@@ -3,12 +3,33 @@
   "correctly_blocked_cases": [],
   "demo_candidate": false,
   "false_severe_findings": [],
-  "findings": [],
+  "findings": [
+    {
+      "classification": "NOT_ADJUDICATED",
+      "downstream_evidence": [
+        "blind_asset_shepherd/verification.json",
+        "observed_real_world/blender_raw.json",
+        "observed_real_world/blender_shepherd.json"
+      ],
+      "finding_code": "MESH_NAME_INVALID",
+      "human_notes": ""
+    },
+    {
+      "classification": "NOT_ADJUDICATED",
+      "downstream_evidence": [
+        "blind_asset_shepherd/verification.json",
+        "observed_real_world/blender_raw.json",
+        "observed_real_world/blender_shepherd.json"
+      ],
+      "finding_code": "NODE_NAME_INVALID",
+      "human_notes": ""
+    }
+  ],
   "human_reference_unreal_result": "",
   "manual_minutes_after_shepherd": null,
   "manual_minutes_raw_to_usable": null,
   "missed_required_repairs": [],
-  "product_version": "",
+  "product_version": "085545efdda09aa3a77aa115ce521ab4dfecb3b0",
   "raw_unreal_result": "",
   "schema_version": 1,
   "shepherd_unreal_result": "",

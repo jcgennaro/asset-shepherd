@@ -1,0 +1,130 @@
+{
+  "checks": [
+    {
+      "actual": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d",
+      "code": "SOURCE_UNCHANGED",
+      "description": "The original source hash is unchanged and matches the plan.",
+      "expected": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d",
+      "status": "PASS"
+    },
+    {
+      "actual": "f3cf00e6c55f9eb2603e2b12ba5019b96044b644fdbafc673fd99e06c425ec7f",
+      "code": "OUTPUT_HASH_RECORDED",
+      "description": "The candidate hash matches repair outcome and provenance.",
+      "expected": "f3cf00e6c55f9eb2603e2b12ba5019b96044b644fdbafc673fd99e06c425ec7f",
+      "status": "PASS"
+    },
+    {
+      "actual": "valid GLB 2.0",
+      "code": "GLTF_VALIDATION",
+      "description": "The saved output parses as GLB 2.0 and passes selected structural validation.",
+      "expected": "valid GLB 2.0",
+      "status": "PASS"
+    },
+    {
+      "actual": true,
+      "code": "INDEPENDENT_REINSPECTION",
+      "description": "A fresh disk reload produced a complete deterministic inspection.",
+      "expected": true,
+      "status": "PASS"
+    },
+    {
+      "actual": 26135,
+      "code": "VERTEX_COUNT_PRESERVED",
+      "description": "Vertex Count Preserved",
+      "expected": 26135,
+      "status": "PASS"
+    },
+    {
+      "actual": 18727,
+      "code": "TRIANGLE_COUNT_PRESERVED",
+      "description": "Triangle Count Preserved",
+      "expected": 18727,
+      "status": "PASS"
+    },
+    {
+      "actual": 1,
+      "code": "MATERIAL_COUNT_PRESERVED",
+      "description": "Material Count Preserved",
+      "expected": 1,
+      "status": "PASS"
+    },
+    {
+      "actual": 1,
+      "code": "TEXTURE_COUNT_PRESERVED",
+      "description": "Texture Count Preserved",
+      "expected": 1,
+      "status": "PASS"
+    },
+    {
+      "actual": true,
+      "code": "NAMES_VALID_AND_UNIQUE",
+      "description": "All node and mesh names satisfy the profile and uniqueness rules.",
+      "expected": true,
+      "status": "PASS"
+    },
+    {
+      "actual": [
+        [
+          -0.3857421875,
+          0.0,
+          -0.3369140326976776
+        ],
+        [
+          0.3857421875,
+          0.998046875,
+          0.3369140326976776
+        ]
+      ],
+      "code": "INDEPENDENT_GEOMETRY_RELOAD",
+      "description": "Trimesh independently reloads the GLB and agrees on world bounds.",
+      "expected": [
+        [
+          -0.3857421875,
+          0.0,
+          -0.3369140326976776
+        ],
+        [
+          0.3857421875,
+          0.998046875,
+          0.3369140326976776
+        ]
+      ],
+      "status": "PASS"
+    },
+    {
+      "actual": [
+        "rename-mesh-000",
+        "rename-node-000"
+      ],
+      "code": "EXECUTED_ACTIONS_IN_PROVENANCE",
+      "description": "Every executed repair action appears exactly in provenance.",
+      "expected": [
+        "rename-mesh-000",
+        "rename-node-000"
+      ],
+      "status": "PASS"
+    },
+    {
+      "actual": [],
+      "code": "REJECTIONS_PRESERVED",
+      "description": "Rejected actions were not executed and remain rejected for this job.",
+      "expected": [],
+      "status": "PASS"
+    },
+    {
+      "actual": 0,
+      "code": "SECOND_PLAN_EMPTY",
+      "description": "A second version-1 planning pass proposes no non-rejected repairs.",
+      "expected": 0,
+      "status": "PASS"
+    }
+  ],
+  "output_sha256": "f3cf00e6c55f9eb2603e2b12ba5019b96044b644fdbafc673fd99e06c425ec7f",
+  "remaining_warnings": [],
+  "schema_version": 1,
+  "second_plan_candidate_count": 0,
+  "source_sha256": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d",
+  "state": "PASSED_PROJECT_READY",
+  "verification_id": "verification-f3cf00e6c55f9eb2-v1"
+}

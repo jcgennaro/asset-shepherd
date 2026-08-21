@@ -50,14 +50,28 @@ def test_patchling_drafts_are_typed_and_prompt_is_frozen() -> None:
     assert provenance.asset_id == "patchling_01"
     assert provenance.prompt in card
     assert provenance.prompt in prompt_record
-    assert provenance.raw_sha256 == ""
+    assert len(provenance.raw_sha256) == 64
     assert not provenance.public_use_confirmed
+
+
+def test_small_stylized_profile_matches_addendum_height_range() -> None:
+    """The general compact-asset profile expresses the contracted 0.9-1.5 m range."""
+    profile = ProjectProfile.model_validate_json(
+        (PROJECT_ROOT / "validation" / "profiles" / "small_stylized_static_mesh.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert profile.profile_id == "small-stylized-static-mesh-v1"
+    assert profile.expected_height_cm.target - profile.expected_height_cm.tolerance == 90.0
+    assert profile.expected_height_cm.target + profile.expected_height_cm.tolerance == 150.0
 
 
 def test_blender_evidence_script_is_valid_python() -> None:
     """The Blender-owned script is syntax checked without importing unavailable bpy."""
-    script = PROJECT_ROOT / "validation" / "blender" / "inspect_glb.py"
-    compile(script.read_text(encoding="utf-8"), str(script), "exec")
+    blender_root = PROJECT_ROOT / "validation" / "blender"
+    for filename in ("inspect_glb.py", "render_turntable.py"):
+        script = blender_root / filename
+        compile(script.read_text(encoding="utf-8"), str(script), "exec")
 
 
 def test_unreal_harness_is_syntax_checked_and_isolated() -> None:
@@ -85,7 +99,8 @@ def test_report_renderer_marks_missing_evidence_without_inventing_claims() -> No
         (PATCHLING_ROOT / "observed_real_world" / "adjudication.json").read_text(encoding="utf-8")
     )
     report = render_validation_report(provenance, adjudication)
-    assert "NOT_REGISTERED" in report
+    assert provenance.raw_sha256 in report
+    assert "Model or mode: NOT_RECORDED" in report
     assert "REQUIRES_HUMAN_ADJUDICATION" in report
     assert "Unsafe automatic repairs: 0" in report
     assert "not an industry-wide accuracy claim" in report
@@ -114,6 +129,7 @@ def test_registration_hashes_valid_glb_without_mutating_raw(tmp_path: Path) -> N
         update={
             "generation_date_utc": datetime(2026, 8, 21, 22, 0, tzinfo=UTC),
             "model_or_mode": "test-mode",
+            "raw_sha256": "",
             "selected_candidate_reason": "Test fixture for registration behavior.",
             "public_use_confirmed": True,
         }

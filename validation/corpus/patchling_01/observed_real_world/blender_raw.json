@@ -1,0 +1,61 @@
+{
+  "asset": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\patchling_01\\raw\\asset.glb",
+  "asset_sha256": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d",
+  "blender_version": "5.1.2",
+  "generated_at": "2026-08-21T22:20:23.979186Z",
+  "image_count": 1,
+  "images": [
+    {
+      "available": true,
+      "external_path": "",
+      "height": 4096,
+      "name": "friendly+repair+robot+3d+model_basecolor.jpg",
+      "packed": true,
+      "source": "FILE",
+      "width": 4096
+    }
+  ],
+  "import_settings": {
+    "default_operator_settings": true,
+    "filepath": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\patchling_01\\raw\\asset.glb",
+    "operator": "bpy.ops.import_scene.gltf"
+  },
+  "import_success": true,
+  "material_count": 1,
+  "materials": [
+    "tripo_node_bf3f0ad6-509e-455c-9526-6ee57a04edc7_material"
+  ],
+  "mesh_object_count": 1,
+  "missing_images": [],
+  "object_count": 1,
+  "operator_result": [
+    "FINISHED"
+  ],
+  "polygon_count": 18727,
+  "scene_bounds": {
+    "dimensions_m": [
+      0.771484375,
+      0.6738280653953552,
+      0.998046875
+    ],
+    "max_m": [
+      0.3857421875,
+      0.3369140326976776,
+      0.998046875
+    ],
+    "min_m": [
+      -0.3857421875,
+      -0.3369140326976776,
+      0.0
+    ]
+  },
+  "scene_unit_scale_length": 1.0,
+  "scene_unit_system": "METRIC",
+  "scene_up_axis": "Z",
+  "schema_version": 1,
+  "source_axis_conversion": "glTF +Y up converted by Blender importer",
+  "source_unchanged_verified": true,
+  "vertex_count": 26135,
+  "visual_anomalies": "REQUIRES_HUMAN_ADJUDICATION",
+  "warnings": []
+}

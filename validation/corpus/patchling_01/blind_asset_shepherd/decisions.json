@@ -1,0 +1,20 @@
+{
+  "plan_id": "plan-dc2f03ae8ed368f4-v1",
+  "records": [
+    {
+      "candidate_id": "rename-mesh-000",
+      "decided_at": "2026-08-21T22:19:58.627626Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    },
+    {
+      "candidate_id": "rename-node-000",
+      "decided_at": "2026-08-21T22:19:58.627626Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    }
+  ],
+  "schema_version": 1
+}

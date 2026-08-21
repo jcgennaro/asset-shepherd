@@ -1,0 +1,211 @@
+{
+  "findings": [
+    {
+      "action_class": "APPROVAL_REQUIRED",
+      "affected_components": [
+        "active_scene"
+      ],
+      "candidate_repairs": [
+        "normalize-root-v1"
+      ],
+      "code": "HEIGHT_OUT_OF_RANGE",
+      "confidence": 0.99,
+      "description": "The dominant measured extent does not match the target asset height.",
+      "domain": "geometry",
+      "evidence": [
+        {
+          "expected_value": {
+            "target_cm": 180.0,
+            "tolerance_cm": 10.0
+          },
+          "inference": "A scale factor of 1.8035225 reaches target height.",
+          "observation": "Dominant extent is 99.8047 cm.",
+          "observed_value": 99.8046875,
+          "units": "centimeters"
+        }
+      ],
+      "id": "finding-height-out-of-range",
+      "profile_rule": "expected_height_cm",
+      "severity": "ERROR",
+      "title": "Physical size is outside the project tolerance"
+    },
+    {
+      "action_class": "AUTO_SAFE",
+      "affected_components": [
+        "mesh:0"
+      ],
+      "candidate_repairs": [
+        "rename-mesh-000"
+      ],
+      "code": "MESH_NAME_INVALID",
+      "confidence": 1.0,
+      "description": "Display names can be normalized without changing index references.",
+      "domain": "naming",
+      "evidence": [
+        {
+          "expected_value": null,
+          "inference": "Deterministic valid unique names can replace these display names.",
+          "observation": "Affected mesh indices: [0]",
+          "observed_value": [
+            0
+          ],
+          "units": null
+        }
+      ],
+      "id": "finding-mesh-name-invalid",
+      "profile_rule": "naming.mesh_names",
+      "severity": "ERROR",
+      "title": "Mesh names violate the project pattern"
+    },
+    {
+      "action_class": "AUTO_SAFE",
+      "affected_components": [
+        "node:0"
+      ],
+      "candidate_repairs": [
+        "rename-node-000"
+      ],
+      "code": "NODE_NAME_INVALID",
+      "confidence": 1.0,
+      "description": "Display names can be normalized without changing index references.",
+      "domain": "naming",
+      "evidence": [
+        {
+          "expected_value": null,
+          "inference": "Deterministic valid unique names can replace these display names.",
+          "observation": "Affected node indices: [0]",
+          "observed_value": [
+            0
+          ],
+          "units": null
+        }
+      ],
+      "id": "finding-node-name-invalid",
+      "profile_rule": "naming.node_names",
+      "severity": "ERROR",
+      "title": "Node names violate the project pattern"
+    }
+  ],
+  "geometry": {
+    "bounds": {
+      "dimensions_cm": [
+        77.1484375,
+        99.8046875,
+        67.38280653953552
+      ],
+      "dimensions_m": [
+        0.771484375,
+        0.998046875,
+        0.6738280653953552
+      ],
+      "maximum_cm": [
+        38.57421875,
+        99.8046875,
+        33.69140326976776
+      ],
+      "maximum_m": [
+        0.3857421875,
+        0.998046875,
+        0.3369140326976776
+      ],
+      "minimum_cm": [
+        -38.57421875,
+        0.0,
+        -33.69140326976776
+      ],
+      "minimum_m": [
+        -0.3857421875,
+        0.0,
+        -0.3369140326976776
+      ]
+    },
+    "dominant_dimension_axis": "Y",
+    "ground_relationship": "GROUNDED",
+    "triangle_count": 18727,
+    "vertex_count": 26135
+  },
+  "inspection_id": "inspection-dc2f03ae8ed368f4-p1",
+  "naming": {
+    "duplicate_mesh_names": {},
+    "duplicate_node_names": {},
+    "invalid_mesh_indices": [
+      0
+    ],
+    "invalid_node_indices": [
+      0
+    ],
+    "mesh_names": [
+      "meshes[0]"
+    ],
+    "missing_mesh_indices": [],
+    "missing_node_indices": [],
+    "node_names": [
+      "tripo_node_bf3f0ad6-509e-455c-9526-6ee57a04edc7"
+    ],
+    "proposed_replacements": {
+      "mesh:0": "Mesh_000",
+      "node:0": "Node_000"
+    }
+  },
+  "package": {
+    "active_scene": 0,
+    "animation_count": 0,
+    "asset_version": "2.0",
+    "byte_size": 4860944,
+    "camera_count": 0,
+    "extensions_required": [],
+    "extensions_used": [
+      "FB_ngon_encoding",
+      "KHR_materials_volume"
+    ],
+    "file_sha256": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d",
+    "generator": "Tripo",
+    "has_morph_targets": false,
+    "image_count": 1,
+    "material_count": 1,
+    "mesh_count": 1,
+    "node_count": 1,
+    "parse_success": true,
+    "primitive_count": 1,
+    "scene_count": 1,
+    "skin_count": 0,
+    "texture_count": 1
+  },
+  "profile_id": "unreal-indie-robot-v1",
+  "profile_version": 1,
+  "repair_eligibility": "ELIGIBLE_STATIC_MESH",
+  "resources": {
+    "budget_violations": [],
+    "image_count": 1,
+    "material_count": 1,
+    "texture_count": 1,
+    "textures": [
+      {
+        "detail": null,
+        "height": 4096,
+        "image_index": 0,
+        "mime_type": "JPEG",
+        "name": "friendly+repair+robot+3d+model_basecolor.jpg",
+        "readable": true,
+        "width": 4096
+      }
+    ]
+  },
+  "schema_version": 1,
+  "source_filename": "asset.glb",
+  "transforms": {
+    "hierarchy": [
+      {
+        "child_indices": [],
+        "node_index": 0,
+        "parent_index": null
+      }
+    ],
+    "negative_determinant_nodes": [],
+    "non_identity_transforms": [],
+    "non_uniform_scale_nodes": [],
+    "root_nodes": [
+      0
+    ]
+  }
+}

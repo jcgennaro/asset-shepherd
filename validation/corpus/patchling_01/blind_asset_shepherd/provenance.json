@@ -1,0 +1,52 @@
+{
+  "application_version": "0.1.0",
+  "commit_sha": "085545efdda09aa3a77aa115ce521ab4dfecb3b0",
+  "completed_at": "2026-08-21T22:19:58.695665Z",
+  "decisions": [
+    {
+      "candidate_id": "rename-mesh-000",
+      "decided_at": "2026-08-21T22:19:58.627626Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    },
+    {
+      "candidate_id": "rename-node-000",
+      "decided_at": "2026-08-21T22:19:58.627626Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    }
+  ],
+  "executed_actions": [
+    {
+      "authorization": "AUTO_AUTHORIZED",
+      "candidate_id": "rename-mesh-000",
+      "finding_ids": [
+        "finding-mesh-name-invalid"
+      ],
+      "kind": "RENAME_MESH"
+    },
+    {
+      "authorization": "AUTO_AUTHORIZED",
+      "candidate_id": "rename-node-000",
+      "finding_ids": [
+        "finding-node-name-invalid"
+      ],
+      "kind": "RENAME_NODE"
+    }
+  ],
+  "library_versions": {
+    "Pillow": "12.3.0",
+    "numpy": "2.5.2",
+    "pydantic": "2.13.4",
+    "pygltflib": "1.16.5",
+    "trimesh": "5.0.0"
+  },
+  "output_sha256": "f3cf00e6c55f9eb2603e2b12ba5019b96044b644fdbafc673fd99e06c425ec7f",
+  "profile_id": "small-stylized-static-mesh-v1",
+  "profile_version": 1,
+  "schema_version": 1,
+  "source_sha256": "dc2f03ae8ed368f46c2a4ac9e2ebb71f23e980b0c9e6913c685d011e273f418d",
+  "started_at": "2026-08-21T22:19:58.596263Z"
+}

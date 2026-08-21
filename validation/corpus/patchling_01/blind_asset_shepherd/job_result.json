@@ -1,0 +1,19 @@
+{
+  "artifact_names": [
+    "decisions.json",
+    "inspection.json",
+    "provenance.json",
+    "repair_plan.json",
+    "repaired.glb",
+    "report.md",
+    "verification.json",
+    "result.zip"
+  ],
+  "job_id": "job-dc2f03ae8ed368f4-v1",
+  "message": "Deterministic workflow completed with a verified candidate.",
+  "ready_candidate": true,
+  "result_zip": "result.zip",
+  "schema_version": 1,
+  "state": "COMPLETED",
+  "verification_state": "PASSED_PROJECT_READY"
+}
