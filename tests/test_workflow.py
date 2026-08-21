@@ -1,10 +1,12 @@
 """M6 acceptance tests for verification, packaging, and the full CLI workflow."""
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
+from jsonschema.validators import validator_for
 
 from asset_shepherd.cli import run_cli
 from asset_shepherd.inspector import inspect_asset
@@ -26,6 +28,7 @@ from asset_shepherd.workflow import build_provenance, run_workflow
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = PROJECT_ROOT / "profiles" / "unreal_indie_robot.json"
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
+CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
 APPROVAL_PATH = PROJECT_ROOT / "examples" / "approve_normalization.json"
 FIXED_TIME = datetime(2026, 8, 21, 15, 30, tzinfo=UTC)
 PACKAGE_NAMES = {
@@ -37,6 +40,13 @@ PACKAGE_NAMES = {
     "repaired.glb",
     "verification.json",
 }
+SCHEMAS_BY_ARTIFACT = {
+    "decisions.json": "decisions.schema.json",
+    "inspection.json": "inspection.schema.json",
+    "provenance.json": "provenance.schema.json",
+    "repair_plan.json": "repair_plan.schema.json",
+    "verification.json": "verification.schema.json",
+}
 
 
 def _profile() -> ProjectProfile:
@@ -45,6 +55,15 @@ def _profile() -> ProjectProfile:
 
 def _fixed_clock() -> datetime:
     return FIXED_TIME
+
+
+def _assert_json_artifacts_match_schemas(output: Path) -> None:
+    for artifact_name, schema_name in SCHEMAS_BY_ARTIFACT.items():
+        instance = json.loads((output / artifact_name).read_text(encoding="utf-8"))
+        schema = json.loads((PROJECT_ROOT / "schemas" / schema_name).read_text(encoding="utf-8"))
+        validator_class = validator_for(schema)
+        validator_class.check_schema(schema)
+        validator_class(schema).validate(instance)
 
 
 def test_full_approved_workflow_verifies_and_packages_every_artifact(tmp_path: Path) -> None:
@@ -107,6 +126,7 @@ def test_full_approved_workflow_verifies_and_packages_every_artifact(tmp_path: P
     with ZipFile(first_output / "result.zip") as archive:
         assert set(archive.namelist()) == PACKAGE_NAMES
         assert archive.read("repaired.glb") == (first_output / "repaired.glb").read_bytes()
+    _assert_json_artifacts_match_schemas(first_output)
     report = (first_output / "report.md").read_text(encoding="utf-8")
     assert "## Before and after" in report
     assert "## Verification checks" in report
@@ -127,8 +147,26 @@ def test_rejected_normalization_is_preserved_through_verification(tmp_path: Path
     verification = VerificationResult.model_validate_json(
         (output / "verification.json").read_text(encoding="utf-8")
     )
+    decisions = Decisions.model_validate_json(
+        (output / "decisions.json").read_text(encoding="utf-8")
+    )
+    provenance = Provenance.model_validate_json(
+        (output / "provenance.json").read_text(encoding="utf-8")
+    )
     assert verification.state is VerificationState.PASSED_WITH_REMAINING_WARNINGS
     assert verification.second_plan_candidate_count == 0
+    normalization_record = next(
+        record for record in decisions.records if record.candidate_id == "normalize-root-v1"
+    )
+    assert normalization_record.decision is DecisionValue.REJECTED
+    assert "normalize-root-v1" not in {
+        action.candidate_id for action in provenance.executed_actions
+    }
+    assert {
+        "HEIGHT_OUT_OF_RANGE",
+        "ORIENTATION_NOT_Y_UP",
+        "NOT_GROUNDED",
+    } <= {warning.partition(":")[0] for warning in verification.remaining_warnings}
     rejected_check = next(
         check for check in verification.checks if check.code == "REJECTED_NORMALIZATION_NOT_APPLIED"
     )
@@ -137,6 +175,36 @@ def test_rejected_normalization_is_preserved_through_verification(tmp_path: Path
     assert repaired.geometry is not None
     assert repaired.geometry.dominant_dimension_axis == "X"
     assert repaired.geometry.ground_relationship == "FLOATS_ABOVE"
+
+
+def test_clean_control_proposes_nothing_and_preserves_glb_bytes(tmp_path: Path) -> None:
+    """A compliant asset is packaged without repairs or unnecessary serialization."""
+    output = tmp_path / "clean-control"
+    source_bytes = CLEAN_PATH.read_bytes()
+    result = run_workflow(CLEAN_PATH, _profile(), {}, output, clock=_fixed_clock)
+    plan = RepairPlan.model_validate_json((output / "repair_plan.json").read_text(encoding="utf-8"))
+    decisions = Decisions.model_validate_json(
+        (output / "decisions.json").read_text(encoding="utf-8")
+    )
+    provenance = Provenance.model_validate_json(
+        (output / "provenance.json").read_text(encoding="utf-8")
+    )
+    verification = VerificationResult.model_validate_json(
+        (output / "verification.json").read_text(encoding="utf-8")
+    )
+
+    assert result.state is JobState.COMPLETED
+    assert result.verification_state is VerificationState.PASSED_PROJECT_READY
+    assert plan.candidates == ()
+    assert decisions.records == ()
+    assert provenance.executed_actions == ()
+    assert (output / "repaired.glb").read_bytes() == source_bytes
+    assert verification.source_sha256 == verification.output_sha256
+    assert all(check.status.value == "PASS" for check in verification.checks)
+    with ZipFile(output / "result.zip") as archive:
+        assert set(archive.namelist()) == PACKAGE_NAMES
+        assert archive.read("repaired.glb") == source_bytes
+    _assert_json_artifacts_match_schemas(output)
 
 
 def test_invalid_input_returns_diagnostic_package_without_ready_asset(tmp_path: Path) -> None:

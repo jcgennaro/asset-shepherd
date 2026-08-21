@@ -1,9 +1,9 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** 27781e2d8afb185171a29982d3cad173e55fe90d
-**Current milestone:** M6 mandatory checkpoint
-**Overall state:** CHECKPOINT
+**Current commit:** b129fdce8548a8a0569af693305c83be39c1541f
+**Current milestone:** M7 Strands agent
+**Overall state:** IN_PROGRESS
 
 ## Milestones
 
@@ -15,8 +15,8 @@
 | M3 Schemas and fixtures | COMPLETE | Schemas validate; clean and broken robot artifacts regenerate byte-for-byte and independently reload | 444a99877a01694020209d22dab831660c84a47e | Completed 2026-08-21 |
 | M4 Inspector | COMPLETE | Broken fixture yields all 10 expected defects; clean has no false severe/auto-safe findings; deterministic CLI artifacts | 4f7434b6ba58127d38e35f793db8ed27fddd3331 | Completed 2026-08-21 |
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
-| M6 Deterministic CLI MVP | COMPLETE | One command produces the exact seven-file ZIP; 16 verification checks pass; second plan empty | This commit | Completed 2026-08-21; mandatory checkpoint 1 |
-| M7 Strands agent | NOT_STARTED |  |  | Mandatory checkpoint after completion |
+| M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | This commit | Completed and checkpoint-reviewed 2026-08-21 |
+| M7 Strands agent | IN_PROGRESS |  |  | Mandatory checkpoint after completion |
 | M8 Web product | NOT_STARTED |  |  |  |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | NOT_STARTED |  |  |  |
@@ -25,14 +25,18 @@
 
 ## Current gate
 
-Mandatory checkpoint 1: review the completed deterministic CLI before any Strands agent code is added.
+Complete the local Strands workflow with typed deterministic tools, structured plan selection, a
+real approval interrupt/resume, approve and reject paths, bounded correction, metrics, an exact
+deterministic package, offline unit tests, and an opt-in live integration test.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 23 passed, including approve, reject, blocked, tamper-failure, deterministic ZIP, and full CLI paths.
+- Tests: `uv run pytest` — 24 passed, including explicit rejection, schema/ZIP audit, and
+  byte-identical clean control.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
-- Demo command or URL: `uv run asset-shepherd run fixtures/broken_robot.glb --profile profiles/unreal_indie_robot.json --approvals examples/approve_normalization.json --output demo-output`.
+- Demo command or URL: see `docs/checkpoints/deterministic-core.md` for exact approved, rejected,
+  clean-control, package-audit, and Blender commands.
 - Generated artifacts: `repaired.glb`, `inspection.json`, `repair_plan.json`, `decisions.json`, `verification.json`, `provenance.json`, `report.md`, and `result.zip`.
 
 ## Blockers
@@ -41,4 +45,4 @@ None.
 
 ## Next action
 
-Stop at mandatory checkpoint 1. After review, begin M7 local Strands agent work.
+Commit the reviewed deterministic checkpoint, then implement M7 without beginning web or AWS work.

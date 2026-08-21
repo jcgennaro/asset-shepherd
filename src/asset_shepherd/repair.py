@@ -175,7 +175,10 @@ def apply_repairs(
         else:
             raise RepairInvariantError(f"Unregistered repair kind: {candidate.kind}")
         executed.append(candidate.id)
-    save_glb(gltf, output)
+    if executed:
+        save_glb(gltf, output)
+    else:
+        output.write_bytes(source_bytes)
     if sha256(source.read_bytes()).hexdigest() != source_hash:
         raise RepairInvariantError("Source changed during repair")
     output_hash = sha256(output.read_bytes()).hexdigest()
