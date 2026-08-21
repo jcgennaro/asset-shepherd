@@ -305,9 +305,11 @@ def _naming_facts(gltf: GLTF2, profile: ProjectProfile) -> NamingFacts:
         prefix="Mesh",
     )
     return NamingFacts(
+        node_names=tuple(node_names),
         missing_node_indices=missing_nodes,
         invalid_node_indices=invalid_nodes,
         duplicate_node_names=duplicate_nodes,
+        mesh_names=tuple(mesh_names),
         missing_mesh_indices=missing_meshes,
         invalid_mesh_indices=invalid_meshes,
         duplicate_mesh_names=duplicate_meshes,

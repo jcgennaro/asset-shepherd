@@ -348,6 +348,20 @@
           "title": "Invalid Node Indices",
           "type": "array"
         },
+        "mesh_names": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Mesh Names",
+          "type": "array"
+        },
         "missing_mesh_indices": {
           "items": {
             "type": "integer"
@@ -362,6 +376,20 @@
           "title": "Missing Node Indices",
           "type": "array"
         },
+        "node_names": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Node Names",
+          "type": "array"
+        },
         "proposed_replacements": {
           "additionalProperties": {
             "type": "string"
@@ -371,9 +399,11 @@
         }
       },
       "required": [
+        "node_names",
         "missing_node_indices",
         "invalid_node_indices",
         "duplicate_node_names",
+        "mesh_names",
         "missing_mesh_indices",
         "invalid_mesh_indices",
         "duplicate_mesh_names",

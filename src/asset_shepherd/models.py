@@ -242,9 +242,11 @@ class TransformFacts(ContractModel):
 class NamingFacts(ContractModel):
     """Measured naming defects and deterministic proposed replacements."""
 
+    node_names: tuple[str | None, ...]
     missing_node_indices: tuple[int, ...]
     invalid_node_indices: tuple[int, ...]
     duplicate_node_names: dict[str, tuple[int, ...]]
+    mesh_names: tuple[str | None, ...]
     missing_mesh_indices: tuple[int, ...]
     invalid_mesh_indices: tuple[int, ...]
     duplicate_mesh_names: dict[str, tuple[int, ...]]
