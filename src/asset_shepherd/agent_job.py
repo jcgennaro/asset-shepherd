@@ -28,6 +28,7 @@ from asset_shepherd.planner import plan_repairs
 from asset_shepherd.repair import RepairOutcome, apply_repairs, create_decisions
 from asset_shepherd.verification import verify_repair
 from asset_shepherd.workflow import (
+    build_blocked_verification,
     build_provenance,
     package_artifacts,
     render_final_report,
@@ -312,13 +313,68 @@ class AgentJob:
 
     def verify_and_package(self) -> tuple[VerificationResult, JobResult | None]:
         """Independently verify and finalize, allowing at most one pre-final retry."""
-        if (
-            self.inspection is None
-            or self.selected_plan is None
-            or self.decisions is None
-            or self.outcome is None
-            or self.provenance is None
-        ):
+        if self.inspection is None or self.selected_plan is None or self.started_at is None:
+            raise AgentWorkflowError("Inspection and a selected plan are required for verification")
+        if self.selected_plan.blocked:
+            if self.result is not None and self.last_verification is not None:
+                return self.last_verification, self.result
+            self.decisions = Decisions(plan_id=self.selected_plan.plan_id, records=())
+            self.provenance = build_provenance(
+                self.profile,
+                self.selected_plan,
+                self.decisions,
+                None,
+                started_at=self.started_at,
+                completed_at=self.clock(),
+            )
+            verification = build_blocked_verification(self.selected_plan)
+            self.last_verification = verification
+            _write_json(
+                self.output_dir / "decisions.json",
+                self.decisions.model_dump(mode="json"),
+            )
+            _write_json(
+                self.output_dir / "provenance.json",
+                self.provenance.model_dump(mode="json"),
+            )
+            _write_json(
+                self.output_dir / "verification.json",
+                verification.model_dump(mode="json"),
+            )
+            (self.output_dir / "report.md").write_text(
+                render_final_report(
+                    self.inspection,
+                    self.selected_plan,
+                    self.decisions,
+                    verification,
+                    None,
+                ),
+                encoding="utf-8",
+                newline="\n",
+            )
+            zip_path = package_artifacts(self.output_dir, verification)
+            artifact_names = tuple(
+                sorted(
+                    path.name
+                    for path in self.output_dir.iterdir()
+                    if path.is_file() and path.name != "candidate.glb"
+                )
+            )
+            self.result = JobResult(
+                job_id=f"job-{self.inspection.package.file_sha256[:16]}-agent-v1",
+                state=JobState.BLOCKED,
+                verification_state=verification.state,
+                ready_candidate=False,
+                artifact_names=artifact_names,
+                result_zip=zip_path.name,
+                message="Strands workflow blocked repair and returned safe diagnostics.",
+            )
+            _write_json(
+                self.output_dir / "job_result.json",
+                self.result.model_dump(mode="json"),
+            )
+            return verification, self.result
+        if self.decisions is None or self.outcome is None or self.provenance is None:
             raise AgentWorkflowError("Repair must complete before verification")
         if self.result is not None and self.last_verification is not None:
             return self.last_verification, self.result

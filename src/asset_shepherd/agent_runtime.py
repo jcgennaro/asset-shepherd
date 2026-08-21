@@ -132,6 +132,8 @@ class ScriptedWorkflowModel(Model):
                 "select_repair_candidates",
                 {"candidate_ids": [candidate.id for candidate in self.job.full_plan.candidates]},
             )
+        if self.job.selected_plan.blocked and self.job.result is None:
+            return "verify_and_package", {}
         if self.job.outcome is None:
             return "execute_selected_repairs", {}
         if self.job.result is None:

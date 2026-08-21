@@ -124,7 +124,8 @@ def build_provenance(
     )
 
 
-def _blocked_verification(plan: RepairPlan) -> VerificationResult:
+def build_blocked_verification(plan: RepairPlan) -> VerificationResult:
+    """Build deterministic diagnostics for a plan that cannot be repaired safely."""
     reason = "; ".join(plan.blocked_reasons) or "Repair plan is blocked"
     return VerificationResult(
         verification_id=f"verification-{plan.source_sha256[:16]}-blocked",
@@ -253,7 +254,7 @@ def run_workflow(
             started_at=started_at,
             completed_at=clock(),
         )
-        verification = _blocked_verification(plan)
+        verification = build_blocked_verification(plan)
         repaired_inspection = None
         job_state = JobState.BLOCKED
     else:

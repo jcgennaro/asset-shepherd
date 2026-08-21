@@ -4,6 +4,53 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D006 — Server-rendered local web product with in-process Strands sessions
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** M8
+
+**Context**
+
+M8 needs a coherent upload-to-download product that presents structured findings, preserves the
+native Strands approval interrupt across browser refreshes, renders before/after GLBs, and does not
+pull deterministic repair behavior into a browser-specific layer. The local milestone does not yet
+authorize durable AWS session infrastructure.
+
+**Options considered**
+
+- Build a separate JavaScript SPA and API, adding a Node toolchain and duplicated state model.
+- Use a server-rendered FastAPI/Jinja surface over the existing typed Python workflow, with a small
+  in-process registry and isolated ignored job directories.
+- Skip a local product and expose only JSON endpoints or the CLI.
+
+**Decision**
+
+Use FastAPI, Jinja, and Uvicorn for the local product. Keep one `AssetShepherdAgent` instance per
+opaque UUID job in a thread-safe in-process registry. Save uploads under a generated job directory,
+never under a browser filename; enforce the contracted `.glb`, magic-byte, and 50 MB boundaries;
+and expose only source, verified candidate, and result-ZIP routes. Use the real Strands loop with the
+zero-network scripted model by default so local review needs no credentials. Use a pinned official
+`<model-viewer>` browser component for interactive GLB previews without sending model files to an
+external service.
+
+**Evidence and consequences**
+
+Automated web tests cover approve/refresh/resume, clean no-approval completion twice from separate
+app starts, invalid upload rejection, inspection-only unsupported content, source preservation, and
+ZIP contents. Live Chrome review shows the broken robot before/after difference and Patchling's
+textured no-regression path at desktop and mobile widths with no console errors.
+
+The in-process registry survives browser refresh but not a server restart; this is stated in the UI
+and README. Durable sessions belong to M9 rather than being invented locally. The browser component
+and web fonts require ordinary internet access for their pinned static scripts/styles, but GLB data
+remains on the Asset Shepherd origin. A future deployment may self-host those static dependencies if
+release reliability requires it.
+
 ### D005 — Keep Patchling single-material and move PBR diversity to the corpus
 
 **Date:** 2026-08-21

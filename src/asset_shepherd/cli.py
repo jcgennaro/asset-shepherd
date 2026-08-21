@@ -67,12 +67,30 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use the zero-network scripted model harness instead of environment configuration",
     )
+    web_parser = subparsers.add_parser(
+        "web",
+        help="Run the local upload-to-download web product",
+    )
+    web_parser.add_argument("--host", default="127.0.0.1")
+    web_parser.add_argument("--port", type=int, default=8000)
+    web_parser.add_argument("--work-dir", type=Path, default=Path("build/web/jobs"))
     return parser
 
 
 def run_cli(arguments: list[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     args = build_parser().parse_args(arguments)
+    if args.command == "web":
+        import uvicorn
+
+        from asset_shepherd.web import create_app
+
+        uvicorn.run(
+            create_app(work_root=args.work_dir),
+            host=args.host,
+            port=args.port,
+        )
+        return 0
     try:
         profile = _load_profile(args.profile)
     except (OSError, ValidationError) as error:

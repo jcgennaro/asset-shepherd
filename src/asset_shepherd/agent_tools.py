@@ -77,7 +77,7 @@ class AssetShepherdTools:
 
     @tool(name="verify_and_package")
     def verify_and_package(self) -> dict[str, Any]:
-        """Reload, verify, and package the repaired candidate without model judgment."""
+        """Verify/package a repaired candidate, or package safe diagnostics for a blocked plan."""
         verification, result = self.job.verify_and_package()
         return {
             "verification": verification.model_dump(mode="json"),

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Asset Shepherd · Intake{% endblock %}
+{% block content %}
+  <section class="hero-shell">
+    <div class="hero-copy">
+      <p class="eyebrow">Autonomous 3D asset intake</p>
+      <h1>Hand off the repetitive checks.<br><em>Keep the consequential calls.</em></h1>
+      <p class="lede">
+        Asset Shepherd measures a static GLB, proposes only registered repairs, pauses before
+        scale or orientation changes, then independently verifies the output.
+      </p>
+      <div class="promise-row" aria-label="Workflow promises">
+        <div><b>01</b><span>Inspect facts</span></div>
+        <div><b>02</b><span>Approve intent</span></div>
+        <div><b>03</b><span>Verify output</span></div>
+      </div>
+    </div>
+
+    <section class="intake-card" aria-labelledby="intake-title">
+      <div class="card-heading">
+        <span class="mini-mark" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">New intake</p>
+          <h2 id="intake-title">Inspect one GLB</h2>
+        </div>
+      </div>
+
+      {% if error %}
+        <div class="alert danger" role="alert">
+          <strong>Intake stopped</strong>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
+
+      <form action="{{ url_for('create_job') }}" method="post" enctype="multipart/form-data" class="intake-form" data-busy-form>
+        <label class="field-label" for="profile_id">Project profile</label>
+        <div class="select-wrap">
+          <select id="profile_id" name="profile_id" required>
+            {% for profile in profiles %}
+              <option value="{{ profile.profile_id }}">
+                {{ profile.name }} — {{ profile.description }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <label class="drop-zone" for="asset">
+          <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
+          <span class="drop-icon" aria-hidden="true">↥</span>
+          <strong data-file-label>Choose an untouched GLB</strong>
+          <span>Static mesh · embedded resources · up to {{ max_upload_mb }} MB</span>
+        </label>
+
+        <button class="primary-button" type="submit" data-submit-button>
+          <span>Begin inspection</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      </form>
+
+      <p class="fine-print">
+        Your browser filename is never used as a filesystem path. The original is retained
+        byte-for-byte; all candidate work happens in an isolated local job directory.
+      </p>
+    </section>
+  </section>
+
+  <section class="workflow-band" aria-label="Asset Shepherd workflow">
+    <div>
+      <p class="eyebrow">The quiet loop</p>
+      <h2>One decision, seven traceable stages.</h2>
+    </div>
+    <ol>
+      <li><span>Inspect</span><small>Structure, bounds, transforms, resources</small></li>
+      <li><span>Plan</span><small>Registered actions with evidence</small></li>
+      <li><span>Approve</span><small>Only scale, upright, and grounding</small></li>
+      <li><span>Verify</span><small>Independent reload and second plan</small></li>
+    </ol>
+  </section>
+{% endblock %}

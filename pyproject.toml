@@ -7,12 +7,16 @@ requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
+    "fastapi>=0.141.1",
+    "jinja2>=3.1.6",
     "numpy>=2.5.2",
     "pillow>=12.3.0",
     "pydantic>=2.13.4",
     "pygltflib>=1.16.5",
+    "python-multipart>=0.0.32",
     "strands-agents>=1.53.0",
     "trimesh>=5.0.0",
+    "uvicorn>=0.52.4",
 ]
 
 [project.scripts]
@@ -24,6 +28,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "httpx2>=2.12.0",
     "jsonschema>=4.26.0",
     "pyright>=1.1.411",
     "pytest>=9.1.1",

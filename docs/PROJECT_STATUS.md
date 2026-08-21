@@ -1,9 +1,9 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** RW1 completion commit (this file is included)
-**Current milestone:** RW2 Minimum Asset Flock
-**Overall state:** IN_PROGRESS
+**Current commit:** M8 completion commit (this file is included)
+**Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup
+**Overall state:** HUMAN_ACTION_REQUIRED
 
 ## Milestones
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | NOT_STARTED |  |  |  |
+| M8 Web product | COMPLETE | FastAPI/Jinja local product; real Strands interrupt/resume; dual GLB preview; verification/download; browser and automated acceptance | M8 completion commit (this file is included) | D006 |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -36,15 +36,15 @@
 
 ## Current gate
 
-RW1 is complete. The registered Patchling raw GLB remains byte-identical; the canonical compact-asset
-profile requires only safe display-name repairs; verification passes; and Blender imports raw and
-repaired outputs with identical geometry and resources. Rights, Tripo settings, the workspace item
-reference, selection rationale, and visual adjudication are recorded. RW2 needs an untouched Shader
-Lantern export; M8 remains unblocked and can proceed while that human asset is generated.
+M8 is complete. One local command starts a coherent profile-select/upload/findings/approval/
+repair/verify/preview/download product over the real Strands loop. Refresh preserves an in-process
+pending interrupt, unsupported assets package safe diagnostics, and invalid uploads fail before a job
+is retained. RW2 still needs an untouched Shader Lantern export. M9 requires user-owned AWS profile,
+model access, region, and cost-control setup before any paid invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 40 passed and the opt-in live-provider test skipped.
+- Tests: `uv run pytest` — 45 passed and the opt-in live-provider test skipped.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
@@ -62,16 +62,25 @@ Lantern export; M8 remains unblocked and can proceed while that human asset is g
   disclosed and is not treated as an in-scope repair; D005 assigns richer PBR coverage to RW2.
 - The one-batch Shader Lantern card freezes the exact contracted prompt, 3-candidate request,
   untouched GLB/4K export settings, destination path, and transparency/emissive selection criteria.
+- Web acceptance: broken-fixture refresh/approve/resume/download; clean no-approval completion twice
+  from independent app starts; invalid upload rejection; unsupported inspection-only packaging;
+  exact ZIP audit; source preservation; trusted profile selection; 50 MB and GLB magic boundaries.
+- Chrome review: desktop and 390 × 844 responsive layouts passed; synthetic before/after difference
+  is immediately visible; Patchling textured raw/repaired previews match; no console warnings or
+  errors. The packaged wheel includes templates, CSS, JavaScript, and the local favicon.
 - Generated fixture evidence stays below ignored `build/validation/`; only reproducible scripts,
   schemas, templates, and typed records are committed.
 
 ## Blockers
 
-RW2 requires the user to generate and hand off an untouched Shader Lantern GLB. This does not block
-M8 local web-product work. Unreal comparison and a human-cleaned reference remain future RW4 work.
+RW2 requires the user to generate and hand off an untouched Shader Lantern GLB. M9 requires the user
+to configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock region/model
+access, and a budget alert before paid calls. Unreal comparison and a human-cleaned reference remain
+future RW4 work.
 
 ## Next action
 
 The user generates the Shader Lantern batch and places the selected untouched GLB at
-`validation/corpus/shader_lantern_01/raw/asset.glb`. Codex continues M8 while that handoff is
-pending. Preserve Patchling as the immutable registered baseline.
+`validation/corpus/shader_lantern_01/raw/asset.glb`. Before M9 paid-provider work, confirm the
+dedicated AWS profile, Bedrock model/region access, and budget alert. Preserve Patchling as the
+immutable registered baseline.
