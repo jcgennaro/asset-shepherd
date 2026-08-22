@@ -4,6 +4,36 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D024 — One-command Windows launcher protects the local OpenAI key
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 local semantic-intake ergonomics
+
+**Context**
+
+The user cannot reliably paste multiline PowerShell commands and should not need to place a raw API
+key in command text, shell history, a repository file, or a persistent environment variable.
+
+**Decision**
+
+Provide two repository scripts, each invoked with one line. `Save-OpenAIKey.ps1` reads the key through
+a hidden secure prompt and stores only Windows current-user protected ciphertext under local app
+data. `Start-AssetShepherd.ps1` unlocks it for the same Windows user, makes it available to the web
+process for the duration of the command, restores any prior process state in `finally`, and clears
+the temporary byte buffers. No key material or encrypted secret is written inside the repository.
+
+**Evidence and consequences**
+
+Both scripts pass PowerShell parser validation. Static acceptance requires hidden input,
+current-user data protection, an external local-app-data path, scoped environment injection, and
+cleanup. This is a local Windows development convenience, not the production secret mechanism;
+Bedrock deployment must use the approved hosted secret-management design.
+
 ### D023 — Provider-neutral semantic intake uses OpenAI Luna until Bedrock
 
 **Date:** 2026-08-22

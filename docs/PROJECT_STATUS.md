@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** D023 provider-neutral semantic intake (this file is included)
+**Current commit:** D024 one-command protected local key launcher (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 provider-neutral OpenAI semantic intake |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 semantic intake; D024 protected one-command local launcher |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -45,7 +45,7 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 81 passed and the opt-in live-provider test skipped. D019–D023 acceptance
+- Tests: `uv run pytest` — 83 passed and the opt-in live-provider test skipped. D019–D024 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -55,6 +55,10 @@ before any AWS invocation or resource creation.
   fields. The user can adjust and must confirm once. Both paths retain provider/model/evidence in
   `target_intake.json`; hosted adjustments survive restart and are exactly once. Mock transport
   covers the paid request contract; the live probe did not run because `OPENAI_API_KEY` was absent.
+- Local key handling: two one-line PowerShell entry points save the key through a hidden prompt as
+  Windows current-user protected ciphertext outside the repository, then unlock it only around the
+  web command and restore process state on exit. PowerShell parser and static security acceptance
+  pass; the scripts never contain or echo a key.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source

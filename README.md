@@ -33,8 +33,18 @@ distributable real-world demo input. Generated GLBs and ZIPs remain reproducible
 
 ```powershell
 uv sync
-$env:OPENAI_API_KEY = "your-key"
-uv run asset-shepherd web
+```
+
+Save the OpenAI key once. This is one command; the prompt hides the pasted value:
+
+```powershell
+.\scripts\Save-OpenAIKey.ps1
+```
+
+Start Asset Shepherd later with one command:
+
+```powershell
+.\scripts\Start-AssetShepherd.ps1
 ```
 
 Open `http://127.0.0.1:8000`. The flow starts with one question: what the user was trying to make.
@@ -43,6 +53,9 @@ use and plausible semantic scale from ordinary language. Only the description is
 stays local. The user adjusts or confirms that typed proposal before rules or upload are available.
 The frozen intake records provider/model provenance, and changing intent starts a new inspection.
 Use `uv run asset-shepherd web --offline-intake` for the explicit-text, zero-network fallback.
+The Windows launch scripts keep the encrypted development key under the current user's local app
+data, outside the repository. The launcher exposes it only to the running server process and removes
+it when that command ends.
 
 The versioned D019 reference is at `http://127.0.0.1:8000/workspace`. It starts with a short asset
 description plus the untouched GLB, performs profile-free objective preflight, uses the same
