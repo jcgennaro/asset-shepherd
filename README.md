@@ -36,32 +36,27 @@ uv sync
 uv run asset-shepherd web
 ```
 
-Open `http://127.0.0.1:8000`. A persistent left navigation pane keeps five presentation modes
-available:
+Open `http://127.0.0.1:8000`. The flow starts by asking what the user was trying to make, its
+intended use, and its real-world height. Asset Shepherd drafts one exact target story; the user must
+agree to it before rules or upload are available. The frozen, canonically hashed intent is stored
+with the job and in package provenance. Changing intent starts a new inspection.
 
-- `/stories/game-developer` asks whether the asset is ready for a game.
-- `/stories/artist` asks what will change in the artist's work.
-- `/stories/technical-artist` asks whether the asset meets project policy.
-- `/` helps a user choose among those three explanations.
-- `/stories/advanced` goes directly to the supported policy controls.
-
-Every route uses the same trusted profiles, bounded GLB upload, native Strands interrupt/resume,
-deterministic repair engine, interactive previews, independent verification, and contracted result
-ZIP. The workspace shows only one step at a time: **Rules -> Upload** during intake, then **Inspect
--> Decide -> Download** for the job. Each server-rendered state has one primary focus area; the seven
-named execution stages, policy parameters, finding evidence, checks, and metrics remain available
-through focused disclosures instead of competing with the current action. No
-model or network request is needed for the agent workflow; the default uses the zero-network
-scripted provider over the real Strands loop.
+The persistent left pane shows the shared **Describe -> Agree -> Inspect -> Decide -> Download**
+workflow. Intake presents **Rules -> Upload** one step at a time, and each job presents only its
+current Inspect, Decide, or Download view. The default local implementation uses a zero-network
+scripted provider over the real Strands loop. A future Bedrock conversation may conduct the same
+bounded intent agreement, but deterministic measurements, repairs, authorization, and verification
+remain authoritative.
 
 Repository profiles are immutable versioned policy presets. The web UI calls the two current
-choices **Human-scale static mesh** (1.7-1.9 m accepted) and **Compact static mesh** (0.9-1.5 m
-accepted); all other enforced rules are currently identical. Each preset keeps its concise summary
-and complete rule review collapsed. An advanced **Customize a copy** control permits only supported
-target-state and report-only budget overrides; safety policy and verification boundaries remain
-fixed. Upload freezes the resolved policy into the new job, and provenance records its base preset,
-explicit overrides, version, identifier, and canonical SHA-256. Changing rules starts a new
-inspection and job.
+choices **Human-scale static mesh** and **Compact static mesh**; all non-height rules are currently
+identical. The user's confirmed height controls the target, deriving a validated profile copy when
+it differs from a preset default. Each preset keeps its concise summary and complete rule review
+collapsed. An advanced **Customize a copy** control permits only supported target-state and
+report-only budget overrides; safety policy and verification boundaries remain fixed. Upload
+freezes the resolved policy into the new job, and provenance records its base preset, explicit
+overrides, version, identifier, and canonical SHA-256. Changing rules starts a new inspection and
+job.
 
 Browser refresh preserves the current job while the server process remains running. A server restart
 ends the in-memory approval session, while completed artifacts stay under `build/web/jobs/`. The 3D

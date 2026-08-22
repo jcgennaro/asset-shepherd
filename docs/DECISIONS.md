@@ -4,6 +4,67 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D018 — Confirmed asset intent replaces audience-mode selection
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8 / M9 preparation
+
+**Context**
+
+The three audience presentations helped explore product language but asked who the user was before
+capturing what they actually needed. Real-asset diagnosis also showed that intended height and a
+description of the desired asset are essential context: measurements alone cannot decide whether a
+99-meter lantern should be a prop, or whether a static character was intended to become playable.
+The user described the desired experience as working on an asset together in a Codex-like
+conversation, eventually using Bedrock rather than Codex.
+
+**Options considered**
+
+- Keep the role selector and add more questions to every audience route.
+- Let free text directly select repair operations or allow a model to decide target state.
+- Replace the selector with a bounded target-story dialogue, require explicit agreement, and feed
+  only confirmed structured fields to the deterministic workflow.
+
+**Decision**
+
+Make `/` ask what the user was trying to make, whether the target is a static asset, rig-ready
+character, or playable animated character, and its intended real-world height. Draft an exact
+first-person target story and require the user to agree before policy selection or upload.
+
+Freeze the confirmed record with a version, opaque ID, original description, target-use enum,
+height in centimeters, exact story, confirmation timestamp, and canonical SHA-256. Write
+`intent.json` beside the job inputs and embed the same record in `provenance.json`. The agreed height
+becomes the target-state profile parameter; if it differs from a preset default, derive a validated
+custom profile copy. Never expose or accept a raw transform through this flow. Changing intent or
+rules creates a new inspection/job.
+
+Treat the description as untrusted metadata, not executable instructions, repair authorization, or
+deterministic evidence. A later Bedrock/Strands conversation may ask follow-ups and construct the
+same schema, but the deterministic engine remains authoritative for measurements, repair planning,
+approval, mutation, verification, and readiness. Rigging, skinning, animation, material, texture,
+topology, and other unsupported repair domains remain out of scope.
+
+Retire the audience selector from the primary UI and redirect legacy `/stories/{role}` bookmarks to
+the new entry point. Preserve the two-column shell, one-visible-step attention budget, versioned
+policies, grouped normalization approval, and Inspect → Decide → Download job flow. This decision
+supersedes the role-navigation portions of D008, D010, and D014–D016 without invalidating their
+progressive-disclosure or layout evidence.
+
+**Evidence and consequences**
+
+Acceptance covers invalid-intent rejection before job creation, explicit agreement before upload,
+non-static scope disclosure, canonical hash validation and tamper rejection, frozen intent in job
+and package provenance, height-derived target policy, distinct jobs for intent or rule changes,
+legacy-route redirects, and the existing approved, clean, invalid, and inspection-only workflow
+paths. The current local path remains deterministic and zero-network. Adaptive Bedrock follow-ups,
+semantic comparison of a description to appearance, persistent conversations, and AWS deployment
+remain future work behind the existing M9 credential and cost-control checkpoint.
+
 ### D017 — Scale-oriented labels preserve immutable legacy profile identity
 
 **Date:** 2026-08-22

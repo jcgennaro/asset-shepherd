@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** M8 simplified presentation and scale-policy labels (this file is included)
+**Current commit:** M8 intent-first target agreement (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Two-column app frame with persistent five-mode navigation pane; large-type disclosure-first presentation; scale-oriented labels over immutable policies; single-visible-step Rules/Upload and Inspect/Decide/Download workspaces; shared Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, D013, D014, D015, D016, and D017; latest presentation correction included in current commit |
+| M8 Web product | COMPLETE | Intent-first target-story agreement; frozen intent and policy provenance; two-column app frame; large-type disclosure-first presentation; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018; D018 supersedes the primary role-selector modality; latest intent flow is included in current commit |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -45,8 +45,8 @@ before any paid invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 55 passed and the opt-in live-provider test skipped; story web gate —
-  14 passed.
+- Tests: `uv run pytest` — 60 passed and the opt-in live-provider test skipped; intent-first web
+  gate — 17 passed; intent canonicalization gate — 2 passed.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
@@ -66,47 +66,40 @@ before any paid invocation or resource creation.
   generated results ignored and preserves the registered SHA-256 as the reproducibility anchor.
 - The one-batch Shader Lantern card freezes the exact contracted prompt, 3-candidate request,
   untouched GLB/4K export settings, destination path, and transparency/emissive selection criteria.
-- Web acceptance: broken-fixture refresh/approve/resume/download; clean no-approval completion twice
-  from independent app starts; invalid upload rejection; unsupported inspection-only packaging;
-  exact ZIP audit; source preservation; trusted profile selection; 50 MB and GLB magic boundaries.
-- Persistent-mode browser evidence: the clarified frame aligns a dedicated logo cell over a
-  248–320 px desktop navigation pane and the dynamic title cell over the full workspace. Three
-  prominent audience tiles and two secondary guidance tiles remain visible with icons and
-  hover/focus hints. Desktop measurements show equal 96 px logo/title cells; the compact breakpoint
-  shows equal 72 px cells, a 76 px icon pane, one visible focus area, and no horizontal overflow.
-  Every page title remains `Asset Shepherd -- [style]`.
-- Density browser evidence: Help now renders one 112 px question and three 376 × 260 px choices in
-  a 1160 px workspace. Rules defaults to two large policy choices with collapsed summaries and
-  parameters. Inspect defaults to four core metrics and compact finding headings; descriptions,
-  observations, and rule provenance expand on demand. Compact Rules uses 32 px headings and 274 px
-  one-column cards with no horizontal overflow. All views retain one focus area.
-- Single-step web evidence: intake shows Rules or Upload, never both; each job response renders only
-  the selected Inspect, Decide, or Download step and exactly one `data-focus-area`. Pending approval
-  defaults to Decide, while completed and blocked jobs default to Download. Inspect retains source
-  preview and rule provenance, Decide retains exact interrupt authorization, and Download retains
-  verification, comparison, and the seven-file package. Parameterized acceptance runs the complete
-  approval workflow through the three audience styles and Advanced mode.
-- Intake clarification: the ambiguous `Project target` dropdown is replaced by two visible,
-  unselected validation-rule choices followed by a separately numbered GLB upload. Copy explicitly
-  says that the rules do not choose a model and that the upload is the actual model. All three story
-  routes pass the same workflow tests; desktop and phone-width review passed without overflow or
-  console errors.
-- Web design handoff: `docs/WEB_DESIGN_AND_FLOW.md` records the persistent five-mode information
-  architecture, single-visible-step workflow, every job state, one-area attention budget, visual
-  system, runtime boundaries, evidence, limitations, and ordered contracted next steps.
-- Versioned policy intake: both repository profiles remain immutable presets with concise policy
-  summaries and collapsed 20-parameter rule reviews. `Customize a copy` exposes only deterministically
-  enforced target-state and report-only budget fields; the server validates a resolved
-  `ProjectProfile`, freezes it per job, and records frozen/base IDs, explicit overrides, version, and
-  canonical SHA-256. Findings cite the exact active policy values, and changing rules creates a new
-  job/inspection. Fourteen web tests cover preset and custom paths without changing the role routes,
-  grouped approval, verification, source preservation, focus-area budget, or ZIP contract.
-- Policy naming: the web UI now presents the legacy `unreal-indie-robot-v1` and
-  `small-stylized-static-mesh-v1` presets as Human-scale and Compact static meshes. Their only
-  functional difference is the accepted height band; immutable profile bytes, IDs, hashes,
-  provenance, and every other enforced rule remain unchanged.
-- Distribution audit: `uv build --wheel` succeeded with the shared story workspace, mode-rail and
-  intake partials, job/chooser/base templates, CSS, JavaScript, and favicon.
+- Intent-first web acceptance: invalid descriptions, target uses, and heights fail before job
+  creation; policy and upload remain unavailable until explicit agreement; non-static intent shows
+  the rigging/skinning/animation boundary; former role routes redirect to the new entry point.
+- Frozen intent evidence: each agreed story records an opaque ID, exact description and target,
+  timestamp, schema version, and canonical SHA-256 in job `intent.json` and packaged provenance.
+  Canonical reproduction passes and tampering fails closed. A changed intent creates a new job.
+- Target-state derivation: the user supplies desired height, not a scale factor. A non-preset height
+  creates a validated profile copy with only `expected_height_cm.target` overridden. Advanced
+  policy copies remain schema-validated and changing any rule creates a separate inspection/job.
+- Existing web safety acceptance remains: broken-fixture refresh/approve/resume/download; clean
+  no-approval completion twice from independent app starts; invalid GLB rejection; unsupported
+  inspection-only packaging; exact ZIP audit; source preservation; trusted preset baseline; 50 MB
+  and GLB magic boundaries; finding-level rule provenance.
+- Single-step evidence: the persistent left pane now orients **Describe → Agree → Inspect → Decide
+  → Download**. Intake renders only Rules or Upload and every job response renders only its selected
+  Inspect, Decide, or Download panel. Every server-rendered state retains one `data-focus-area`.
+- Browser review at 1440 × 900 confirms that Describe, confirmation, and agreed intake use the full
+  workspace without horizontal overflow. The full agreed story appears at confirmation and becomes
+  a collapsed disclosure during intake so policy controls stay near the fold. At 390 × 844 the left
+  workflow rail remains visible, content uses one column, horizontal overflow is absent, and browser
+  diagnostics contain no warnings or errors.
+- Versioned policy intake remains intact: both repository profiles are immutable presets with
+  concise summaries and collapsed full-rule reviews. The agreed height overrides only their default
+  target when necessary; `Customize a copy` still exposes only enforced target-state and report-only
+  budget fields. Frozen/base IDs, explicit overrides, version, canonical hash, and finding rule
+  citations remain preserved.
+- Web design handoff: `docs/WEB_DESIGN_AND_FLOW.md` records the intent-first information
+  architecture, target-story contract, policy derivation, single-step workflow, Bedrock boundary,
+  evidence, and limitations. D018 supersedes the primary audience-selector modality while retaining
+  the established layout, disclosure, authorization, and deterministic safety decisions.
+- Distribution audit: `uv build --wheel` succeeded with the intent module, confirmation template,
+  workflow rail, updated intake/job templates, CSS, JavaScript, favicon, and existing deterministic
+  runtime assets included in the wheel. The checked-in public intent schema remains a repository
+  contract artifact alongside the other exported schemas.
 - Shader Lantern evidence: raw SHA-256
   `be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9`; 77,545 vertices;
   101,564 triangles; one material; three readable embedded 4096² base-color,
@@ -142,8 +135,9 @@ record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Share `docs/WEB_DESIGN_AND_FLOW.md` for product direction. Unless that review identifies a contracted
-web failure or changes milestone priority, continue RW2 by freezing the contracted one-batch Debug
-Beetle generation card and registering its untouched GLB when the user supplies it. Do not begin
-Cloudforge until the Debug Beetle batch is complete. Before M9 paid-provider work, confirm the
-dedicated AWS profile, Bedrock model/region access, and budget alert.
+Review the intent-first flow documented in `docs/WEB_DESIGN_AND_FLOW.md`. The local version now
+proves the future Bedrock conversation boundary without requiring a model call. The earliest corpus
+work remains RW2 registration of the untouched Debug Beetle GLB when the user supplies it; do not
+begin Cloudforge until that batch is complete. Before M9 paid-provider work, confirm the dedicated
+AWS profile, Bedrock model/region access, and budget alert. No paid invocation or AWS resource
+creation is authorized yet.

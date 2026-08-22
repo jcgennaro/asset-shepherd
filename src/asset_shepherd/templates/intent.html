@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="intent-confirmation" data-focus-area="confirm intent" aria-labelledby="confirm-title">
+    <header class="intent-heading">
+      <p class="section-label">Confirm before inspection</p>
+      <h2 id="confirm-title">Is this the job you want done?</h2>
+    </header>
+
+    <blockquote>{{ intent.draft_story }}</blockquote>
+
+    <dl class="intent-facts">
+      <div><dt>Target use</dt><dd>{{ target_use_label|capitalize }}</dd></div>
+      <div><dt>Intended height</dt><dd>{{ "%g"|format(intent.target_height_cm / 100) }} m</dd></div>
+      <div><dt>Repair authority</dt><dd>Still requires inspection and explicit approval</dd></div>
+    </dl>
+
+    {% if intent.target_use.value != "STATIC_GAME_ASSET" %}
+      <div class="intent-scope-note">
+        <strong>Current boundary</strong>
+        <span>Asset Shepherd can inspect and normalize the static GLB, but rigging, skinning, and animation remain an external repair handoff.</span>
+      </div>
+    {% endif %}
+
+    <div class="intent-confirm-actions">
+      <a class="secondary-button" href="{{ url_for('home') }}">← Rewrite it</a>
+      <form action="{{ url_for('confirm_intent', intent_id=intent.intent_id) }}" method="post" data-busy-form>
+        <button class="primary-button" type="submit" data-submit-button>Agree and continue <span aria-hidden="true">→</span></button>
+      </form>
+    </div>
+    <p class="fine-print">Agreement freezes this description and target state into job provenance. Changing it later starts a new inspection.</p>
+  </section>
+{% endblock %}

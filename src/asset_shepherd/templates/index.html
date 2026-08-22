@@ -1,31 +1,40 @@
 {% extends "base.html" %}
 {% block content %}
-  <section class="chooser-panel" data-focus-area="style chooser" aria-labelledby="choose-title">
-    <h2 id="choose-title">Which best describes you?</h2>
+  <section class="intent-panel" data-focus-area="describe intent" aria-labelledby="intent-title">
+    <header class="intent-heading">
+      <p class="section-label">Start with intent</p>
+      <h2 id="intent-title">What were you trying to make?</h2>
+      <p>Describe the result you wanted—not the repair operation.</p>
+    </header>
 
     {% if error %}
-      <div class="alert danger" role="alert">
-        <strong>That mode is unavailable</strong>
-        <span>{{ error }}</span>
-      </div>
+      <div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>
     {% endif %}
 
-    <nav class="style-choices" aria-label="Choose an Asset Shepherd style">
-      <a href="{{ url_for('story_home', story_slug='game-developer') }}" title="Is this asset ready for my game?">
-        <span class="choice-icon" aria-hidden="true">01</span>
-        <strong>Game developer</strong>
-        <b aria-hidden="true">→</b>
-      </a>
-      <a href="{{ url_for('story_home', story_slug='artist') }}" title="What will change in my work?">
-        <span class="choice-icon" aria-hidden="true">02</span>
-        <strong>3D artist</strong>
-        <b aria-hidden="true">→</b>
-      </a>
-      <a href="{{ url_for('story_home', story_slug='technical-artist') }}" title="Does this asset meet project policy?">
-        <span class="choice-icon" aria-hidden="true">03</span>
-        <strong>Technical artist</strong>
-        <b aria-hidden="true">→</b>
-      </a>
-    </nav>
+    <form action="{{ url_for('create_intent') }}" method="post" class="intent-form" data-busy-form>
+      <label class="intent-description">
+        <span>Your asset idea</span>
+        <textarea name="description" minlength="12" maxlength="600" rows="5" required autofocus placeholder="A sci-fi woman in an armored suit for a playable Unreal character, with metallic panels and orange emissive details.">{{ values.get('description', '') }}</textarea>
+      </label>
+
+      <div class="intent-targets">
+        <label>
+          <span>What should it become?</span>
+          <select name="target_use" required>
+            <option value="" disabled{% if not values.get('target_use') %} selected{% endif %}>Choose the intended use</option>
+            {% for value, label in target_uses %}
+              <option value="{{ value }}"{% if values.get('target_use') == value %} selected{% endif %}>{{ label|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>How tall should it be in-game?</span>
+          <span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" value="{{ values.get('target_height_m', '') }}" required><b>m</b></span>
+        </label>
+      </div>
+
+      <p class="intent-boundary">This describes the target. It does not authorize a transform, topology change, material edit, or rigging operation.</p>
+      <button class="primary-button" type="submit" data-submit-button>Draft my target story <span aria-hidden="true">→</span></button>
+    </form>
   </section>
 {% endblock %}

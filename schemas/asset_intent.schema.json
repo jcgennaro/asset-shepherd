@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "AssetTargetUse": {
+      "description": "User-confirmed destination for the uploaded asset.",
+      "enum": [
+        "STATIC_GAME_ASSET",
+        "RIG_READY_CHARACTER",
+        "PLAYABLE_CHARACTER"
+      ],
+      "title": "AssetTargetUse",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/asset_intent.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Immutable user-confirmed target story bound to one inspection job.",
+  "properties": {
+    "canonical_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Canonical Sha256",
+      "type": "string"
+    },
+    "confirmed_at": {
+      "format": "date-time",
+      "title": "Confirmed At",
+      "type": "string"
+    },
+    "confirmed_story": {
+      "maxLength": 1000,
+      "minLength": 20,
+      "title": "Confirmed Story",
+      "type": "string"
+    },
+    "intent_id": {
+      "pattern": "^[0-9a-f]{32}$",
+      "title": "Intent Id",
+      "type": "string"
+    },
+    "intent_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Intent Version",
+      "type": "integer"
+    },
+    "original_description": {
+      "maxLength": 600,
+      "minLength": 12,
+      "title": "Original Description",
+      "type": "string"
+    },
+    "target_height_cm": {
+      "exclusiveMinimum": 0.0,
+      "maximum": 100000.0,
+      "title": "Target Height Cm",
+      "type": "number"
+    },
+    "target_use": {
+      "$ref": "#/$defs/AssetTargetUse"
+    }
+  },
+  "required": [
+    "intent_id",
+    "original_description",
+    "target_use",
+    "target_height_cm",
+    "confirmed_story",
+    "confirmed_at",
+    "canonical_sha256"
+  ],
+  "title": "AssetIntentProvenance",
+  "type": "object"
+}

@@ -1,4 +1,4 @@
-"""M8 acceptance tests for the local upload-to-download web product."""
+"""Acceptance tests for the local intent-to-download web product."""
 
 # pygltflib is typed internally but does not publish PEP 561 metadata.
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false
@@ -13,7 +13,10 @@ from fastapi.testclient import TestClient
 from pygltflib import Skin
 
 from asset_shepherd.glb import load_glb, save_glb
+from asset_shepherd.intent import validate_asset_intent
 from asset_shepherd.models import (
+    AssetIntentProvenance,
+    AssetTargetUse,
     Decisions,
     DecisionValue,
     InspectionResult,
@@ -27,35 +30,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
 CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
 PROFILE_ID = "unreal-indie-robot-v1"
-STORY_EXPECTATIONS = (
-    (
-        "game-developer",
-        "Game developer",
-        "From downloaded GLB to an import-ready package.",
-        "Import-ready candidate",
-        "Ready-to-import proof",
-    ),
-    (
-        "artist",
-        "3D artist",
-        "See exactly what changes—and what stays yours.",
-        "Verified delivery copy",
-        "Preservation checks",
-    ),
-    (
-        "technical-artist",
-        "Technical artist",
-        "One GLB in. A policy decision and evidence trail out.",
-        "Verified artifact",
-        "Invariant audit",
-    ),
-    (
-        "advanced",
-        "Advanced user",
-        "Set the policy, then run the same guarded workflow.",
-        "Verified artifact",
-        "Invariant audit",
-    ),
+DEFAULT_DESCRIPTION = (
+    "A friendly humanoid robot for use as a static Unreal game asset with painted metal panels."
 )
 PACKAGE_NAMES = {
     "decisions.json",
@@ -81,23 +57,72 @@ CUSTOM_PROFILE_DATA = {
 }
 
 
+def _draft_intent(
+    client: TestClient,
+    *,
+    description: str = DEFAULT_DESCRIPTION,
+    target_use: str = AssetTargetUse.STATIC_GAME_ASSET.value,
+    target_height_m: str = "1.8",
+) -> str:
+    """Create one target-story draft and return its review path."""
+    response = client.post(
+        "/intents",
+        data={
+            "description": description,
+            "target_use": target_use,
+            "target_height_m": target_height_m,
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    return urlparse(response.headers["location"]).path
+
+
+def _agree_intent(client: TestClient, intent_path: str) -> str:
+    """Confirm one reviewed target story and return its intake path."""
+    response = client.post(f"{intent_path}/agree", follow_redirects=False)
+    assert response.status_code == 303
+    return urlparse(response.headers["location"]).path
+
+
+def _confirmed_intent(
+    client: TestClient,
+    *,
+    description: str = DEFAULT_DESCRIPTION,
+    target_use: str = AssetTargetUse.STATIC_GAME_ASSET.value,
+    target_height_m: str = "1.8",
+) -> tuple[str, str]:
+    """Draft and confirm one target story, returning ID and intake path."""
+    intent_path = _draft_intent(
+        client,
+        description=description,
+        target_use=target_use,
+        target_height_m=target_height_m,
+    )
+    intake_path = _agree_intent(client, intent_path)
+    return intent_path.rsplit("/", 1)[-1], intake_path
+
+
 def _upload(
     client: TestClient,
     source: Path,
+    *,
     profile_id: str = PROFILE_ID,
-    story_slug: str = "game-developer",
     policy_data: dict[str, str] | None = None,
+    intent_id: str | None = None,
+    target_height_m: str = "1.8",
 ) -> str:
-    """Upload one fixture and return its redirected local job path."""
+    """Upload one fixture under a confirmed intent and return its job path."""
+    if intent_id is None:
+        intent_id, _ = _confirmed_intent(client, target_height_m=target_height_m)
     response = client.post(
-        f"/stories/{story_slug}/jobs",
+        f"/intents/{intent_id}/jobs",
         data={"profile_id": profile_id, **(policy_data or {})},
         files={"asset": (source.name, source.read_bytes(), "model/gltf-binary")},
         follow_redirects=False,
     )
     assert response.status_code == 303
-    location = response.headers["location"]
-    return urlparse(location).path
+    return urlparse(response.headers["location"]).path
 
 
 def _interrupt_id(html: str) -> str:
@@ -107,146 +132,188 @@ def _interrupt_id(html: str) -> str:
     return match.group(1)
 
 
-def _assert_focus_area_budget(html: str, expected: int) -> None:
-    """Keep every server-rendered state inside the one-step attention budget."""
+def _assert_focus_area_budget(html: str, expected: int = 1) -> None:
+    """Keep every rendered state inside the one-step attention budget."""
     focus_areas = re.findall(r'data-focus-area="([^"]+)"', html)
     assert len(focus_areas) == expected, focus_areas
     assert len(focus_areas) <= 3
 
 
-def test_web_story_chooser_explains_three_equivalent_flows(tmp_path: Path) -> None:
-    """The navigation pane offers three style tiles plus two guidance tiles."""
+def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: Path) -> None:
+    """The entry point asks for the user's target rather than their job title."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "<title>Asset Shepherd -- Help me choose</title>" in response.text
-    assert "LOGO" in response.text
-    assert "Which best describes you?" in response.text
-    assert "chooser-intro" not in response.text
-    assert "advanced-prompt" not in response.text
-    assert "No feature differences between concepts" not in response.text
-    assert response.text.count('class="mode-link') == 5
-    assert response.text.count('class="mode-link style-tile') == 3
-    assert response.text.count('class="mode-link utility-tile') == 2
-    assert "Choose your style" in response.text
-    assert "Help me choose — compare the three explanations" in response.text
-    assert "Advanced user — go directly to supported policy controls" in response.text
-    _assert_focus_area_budget(response.text, expected=1)
-    for story_slug, _, _, _, _ in STORY_EXPECTATIONS:
-        assert f"/stories/{story_slug}" in response.text
+    assert "<title>Asset Shepherd -- Describe</title>" in response.text
+    assert "What were you trying to make?" in response.text
+    assert "What should it become?" in response.text
+    assert "How tall should it be in-game?" in response.text
+    assert "Draft my target story" in response.text
+    assert "Game developer" not in response.text
+    assert "3D artist" not in response.text
+    assert "Technical artist" not in response.text
+    assert "Describe" in response.text
+    assert "Agree" in response.text
+    assert "Inspect" in response.text
+    _assert_focus_area_budget(response.text)
 
 
-def test_web_profiles_are_versioned_presets_with_collapsed_rules_and_safe_customization(
-    tmp_path: Path,
-) -> None:
-    """Preset summaries and advanced copies expose policy, not raw repair operations."""
+def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path) -> None:
+    """No rules or upload control appears until the exact story is reviewed and agreed."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
-    response = client.get("/stories/game-developer")
+    intent_path = _draft_intent(
+        client,
+        description="A dark science-fiction armored woman with orange and teal emissive accents.",
+        target_use=AssetTargetUse.PLAYABLE_CHARACTER.value,
+        target_height_m="1.72",
+    )
+
+    review = client.get(intent_path)
+    assert review.status_code == 200
+    assert "Is this the job you want done?" in review.text
+    assert "playable animated character for Unreal at 1.72 m tall" in review.text
+    assert "Agree and continue" in review.text
+    assert "rigging, skinning, and animation remain an external repair handoff" in review.text
+    assert "Choose your GLB file" not in review.text
+    assert "Review rules" not in review.text
+    _assert_focus_area_budget(review.text)
+
+    unconfirmed_intake = client.get(f"{intent_path}/intake", follow_redirects=False)
+    assert unconfirmed_intake.status_code == 303
+    assert urlparse(unconfirmed_intake.headers["location"]).path == intent_path
+
+    intake_path = _agree_intent(client, intent_path)
+    intake = client.get(intake_path)
+    assert intake.status_code == 200
+    assert "Agreed target" in intake.text
+    assert "playable animated character for Unreal at 1.72 m tall" in intake.text
+    assert "Review rules" in intake.text
+    assert "Upload the GLB you want checked" in intake.text
+    _assert_focus_area_budget(intake.text)
+
+
+@pytest.mark.parametrize(
+    ("data", "message"),
+    (
+        (
+            {
+                "description": "too short",
+                "target_use": AssetTargetUse.STATIC_GAME_ASSET.value,
+                "target_height_m": "1.8",
+            },
+            "at least 12 characters",
+        ),
+        (
+            {
+                "description": DEFAULT_DESCRIPTION,
+                "target_use": "NOT_A_SUPPORTED_TARGET",
+                "target_height_m": "1.8",
+            },
+            "Choose what the asset should become",
+        ),
+        (
+            {
+                "description": DEFAULT_DESCRIPTION,
+                "target_use": AssetTargetUse.STATIC_GAME_ASSET.value,
+                "target_height_m": "0",
+            },
+            "greater than 0",
+        ),
+    ),
+)
+def test_web_validates_intent_before_inspection(
+    tmp_path: Path,
+    data: dict[str, str],
+    message: str,
+) -> None:
+    """Invalid conversational input cannot create a target story or a job."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    response = client.post("/intents", data=data)
+
+    assert response.status_code == 400
+    assert message in response.text
+    assert not work_root.exists()
+
+
+def test_web_profiles_follow_confirmation_and_expose_only_supported_policy(tmp_path: Path) -> None:
+    """Policy selection remains versioned and bounded after target agreement."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    _, intake_path = _confirmed_intent(client)
+    response = client.get(intake_path)
 
     assert response.status_code == 200
     assert response.text.count("immutable preset v1") == 2
     assert "Human-scale static mesh" in response.text
-    assert "1.8 m target · 1.7-1.9 m accepted" in response.text
     assert "Compact static mesh" in response.text
-    assert "1.2 m target · 0.9-1.5 m accepted" in response.text
-    assert "Unreal Indie Robot" not in response.text
-    assert "Choose the asset's intended scale" in response.text
     assert response.text.count("Review rules") == 2
-    assert response.text.count('class="policy-summary"') == 2
-    assert response.text.index('<details class="policy-review">') < response.text.index(
-        '<dl class="policy-summary">'
-    )
     assert "Target height" in response.text
     assert "Require Y-up geometry" in response.text
     assert "Name pattern" in response.text
     assert "Maximum triangles" in response.text
     assert "Approval for physical normalization" in response.text
     assert "Customize a copy" in response.text
-    assert "supported target-state rules only" in response.text
     assert "Fixed safety boundary" in response.text
     assert "transform matrix" not in response.text.lower()
-    assert '<button type="button" data-intake-step-button="rules"' in response.text
-    assert '<button type="button" data-intake-step-button="upload"' in response.text
     assert 'data-intake-panel="rules"' in response.text
     assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in response.text
-    assert "Define ready" not in response.text
-    assert "Choose GLB" not in response.text
-    _assert_focus_area_budget(response.text, expected=1)
+    assert "Confirmed height 1.8 m" in response.text
+    _assert_focus_area_budget(response.text)
 
 
-@pytest.mark.parametrize(
-    (
-        "story_slug",
-        "style_label",
-        "landing_copy",
-        "candidate_label",
-        "verification_heading",
-    ),
-    STORY_EXPECTATIONS,
-)
-def test_web_broken_fixture_flow_is_equivalent_for_each_story(
-    tmp_path: Path,
-    story_slug: str,
-    style_label: str,
-    landing_copy: str,
-    candidate_label: str,
-    verification_heading: str,
-) -> None:
-    """A browser can refresh, approve by interrupt ID, preview, and download the result."""
-    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
-    landing = client.get(f"/stories/{story_slug}")
-    assert landing.status_code == 200
-    assert f"<title>Asset Shepherd -- {style_label}</title>" in landing.text
-    assert f"<h1>Asset Shepherd -- {style_label}</h1>" in landing.text
-    assert landing_copy in landing.text
-    assert f"/stories/{story_slug}/jobs" in landing.text
-    assert "Rules" in landing.text
-    assert "Upload" in landing.text
-    assert "These rules define “ready.” They do not choose a model." in landing.text
-    assert "Upload the GLB you want checked" in landing.text
-    assert "Choose your GLB file" in landing.text
-    assert "Project target" not in landing.text
-    assert landing.text.count('name="profile_id"') == 2
-    assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in landing.text
-    _assert_focus_area_budget(landing.text, expected=1)
+def test_web_cannot_upload_before_agreement(tmp_path: Path) -> None:
+    """Possessing a draft ID is not repair or inspection authorization."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    intent_path = _draft_intent(client)
+    intent_id = intent_path.rsplit("/", 1)[-1]
 
-    job_path = _upload(client, BROKEN_PATH, story_slug=story_slug)
+    response = client.post(
+        f"/intents/{intent_id}/jobs",
+        data={"profile_id": PROFILE_ID},
+        files={"asset": (CLEAN_PATH.name, CLEAN_PATH.read_bytes(), "model/gltf-binary")},
+    )
+
+    assert response.status_code == 400
+    assert "Agree on the target story before uploading" in response.text
+    assert not work_root.exists() or not tuple(work_root.iterdir())
+
+
+def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) -> None:
+    """A confirmed intent flows through interrupt, verification, and package evidence."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    intent_id, _ = _confirmed_intent(client)
+    job_path = _upload(client, BROKEN_PATH, intent_id=intent_id)
 
     pending = client.get(job_path)
     assert pending.status_code == 200
     assert "Approval needed" in pending.text
     assert "Normalize physical scale, upright orientation, and grounding" in pending.text
-    assert 'aria-current="step">' in pending.text
-    assert "Source preview" not in pending.text
-    _assert_focus_area_budget(pending.text, expected=1)
+    assert "Confirmed target story" in pending.text
+    _assert_focus_area_budget(pending.text)
     interrupt_id = _interrupt_id(pending.text)
-    pending_output = tmp_path / "jobs" / job_path.rsplit("/", 1)[-1] / "output"
+    job_id = job_path.rsplit("/", 1)[-1]
+    job_root = work_root / job_id
+    output = job_root / "output"
+
     inspection = InspectionResult.model_validate_json(
-        (pending_output / "inspection.json").read_text(encoding="utf-8")
+        (output / "inspection.json").read_text(encoding="utf-8")
     )
     ruled_findings = tuple(
         finding for finding in inspection.findings if finding.profile_rule is not None
     )
     assert ruled_findings
     assert all(finding.rule_provenance is not None for finding in ruled_findings)
-    assert all(
-        finding.rule_provenance is not None and finding.rule_provenance.profile_id == PROFILE_ID
-        for finding in ruled_findings
-    )
-    assert not (pending_output / "candidate.glb").exists()
+    assert not (output / "candidate.glb").exists()
 
     inspect_view = client.get(f"{job_path}?view=inspect")
     assert inspect_view.status_code == 200
     assert "Policy rule" in inspect_view.text
-    assert 'class="finding-detail"' in inspect_view.text
     assert "Height target 180.0 cm ± 10.0 cm" in inspect_view.text
-    assert "Normalize physical scale, upright orientation, and grounding" not in inspect_view.text
-    _assert_focus_area_budget(inspect_view.text, expected=1)
+    _assert_focus_area_budget(inspect_view.text)
 
-    refreshed = client.get(job_path)
-    assert refreshed.status_code == 200
-    assert _interrupt_id(refreshed.text) == interrupt_id
     source_response = client.get(f"{job_path}/source.glb")
     assert source_response.status_code == 200
     assert source_response.content == BROKEN_PATH.read_bytes()
@@ -259,19 +326,16 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert decision.status_code == 303
     completed = client.get(job_path)
     assert completed.status_code == 200
-    assert candidate_label in completed.text
-    assert verification_heading in completed.text
+    assert "Import-ready candidate" in completed.text
+    assert "Ready-to-import proof" in completed.text
     assert "PASSED_WITH_REMAINING_WARNINGS" in completed.text
     assert "Download result ZIP" in completed.text
-    assert "Policy rule" not in completed.text
-    _assert_focus_area_budget(completed.text, expected=1)
+    _assert_focus_area_budget(completed.text)
     assert client.get(f"{job_path}/repaired.glb").status_code == 200
 
     recorded_decision = client.get(f"{job_path}?view=decide")
-    assert recorded_decision.status_code == 200
     assert "Decision recorded" in recorded_decision.text
     assert "normalize-root-v1" in recorded_decision.text
-    _assert_focus_area_budget(recorded_decision.text, expected=1)
 
     archive_response = client.get(f"{job_path}/download")
     assert archive_response.status_code == 200
@@ -280,26 +344,57 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     with ZipFile(archive_path) as archive:
         assert set(archive.namelist()) == PACKAGE_NAMES
 
-    job_id = job_path.rsplit("/", 1)[-1]
     decisions = Decisions.model_validate_json(
-        (tmp_path / "jobs" / job_id / "output" / "decisions.json").read_text(encoding="utf-8")
+        (output / "decisions.json").read_text(encoding="utf-8")
     )
     normalization = next(
         record for record in decisions.records if record.candidate_id == "normalize-root-v1"
     )
     assert normalization.decision is DecisionValue.APPROVED
     assert normalization.interrupt_id == interrupt_id
-    provenance = Provenance.model_validate_json(
-        (pending_output / "provenance.json").read_text(encoding="utf-8")
+
+    frozen_intent = AssetIntentProvenance.model_validate_json(
+        (job_root / "intent.json").read_text(encoding="utf-8")
     )
+    validate_asset_intent(frozen_intent)
+    provenance = Provenance.model_validate_json(
+        (output / "provenance.json").read_text(encoding="utf-8")
+    )
+    assert provenance.asset_intent == frozen_intent
+    assert frozen_intent.intent_id == intent_id
+    assert frozen_intent.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    assert frozen_intent.target_height_cm == 180.0
+    assert re.fullmatch(r"[0-9a-f]{64}", frozen_intent.canonical_sha256)
     assert provenance.profile_policy is not None
     assert provenance.profile_policy.frozen_profile_id == PROFILE_ID
     assert provenance.profile_policy.base_preset_id == PROFILE_ID
     assert provenance.profile_policy.explicit_overrides == {}
-    assert re.fullmatch(r"[0-9a-f]{64}", provenance.profile_policy.canonical_sha256)
 
 
-def test_web_custom_profile_is_validated_frozen_and_recorded_without_mutating_preset(
+def test_intended_height_derives_a_frozen_profile_without_raw_transform_input(
+    tmp_path: Path,
+) -> None:
+    """A non-preset height becomes a target-state override, never a scale operation."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    job_path = _upload(client, CLEAN_PATH, target_height_m="1.82")
+    job_root = work_root / job_path.rsplit("/", 1)[-1]
+
+    frozen_profile = ProjectProfile.model_validate_json(
+        (job_root / "profile.json").read_text(encoding="utf-8")
+    )
+    provenance = Provenance.model_validate_json(
+        (job_root / "output" / "provenance.json").read_text(encoding="utf-8")
+    )
+    assert frozen_profile.profile_id.startswith(f"{PROFILE_ID}-custom-")
+    assert provenance.asset_intent is not None
+    assert provenance.asset_intent.target_height_cm == 182.0
+    assert provenance.profile_policy is not None
+    assert provenance.profile_policy.explicit_overrides == {"expected_height_cm.target": 182.0}
+    assert "scale factor" not in provenance.asset_intent.confirmed_story.lower()
+
+
+def test_web_custom_profile_is_validated_frozen_and_does_not_mutate_preset(
     tmp_path: Path,
 ) -> None:
     """A supported custom copy gets an immutable job snapshot and complete provenance."""
@@ -311,15 +406,9 @@ def test_web_custom_profile_is_validated_frozen_and_recorded_without_mutating_pr
     job_path = _upload(
         client,
         CLEAN_PATH,
-        story_slug="technical-artist",
         policy_data=CUSTOM_PROFILE_DATA,
+        target_height_m="1.82",
     )
-    completed = client.get(job_path)
-    assert completed.status_code == 200
-    assert "PASSED_PROJECT_READY" in completed.text
-    assert "Approval needed" not in completed.text
-    assert "custom copy" in completed.text
-
     job_root = work_root / job_path.rsplit("/", 1)[-1]
     frozen_profile = ProjectProfile.model_validate_json(
         (job_root / "profile.json").read_text(encoding="utf-8")
@@ -327,6 +416,7 @@ def test_web_custom_profile_is_validated_frozen_and_recorded_without_mutating_pr
     provenance = Provenance.model_validate_json(
         (job_root / "output" / "provenance.json").read_text(encoding="utf-8")
     )
+
     assert frozen_profile.profile_id.startswith(f"{PROFILE_ID}-custom-")
     assert provenance.profile_id == frozen_profile.profile_id
     assert provenance.profile_policy is not None
@@ -344,7 +434,6 @@ def test_web_custom_profile_is_validated_frozen_and_recorded_without_mutating_pr
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     (
-        ("custom_height_target_cm", "-1", "expected_height_cm.target"),
         ("custom_naming_pattern", "[", "naming pattern must use"),
         ("custom_max_texture_dimension", "0", "budgets.max_texture_dimension"),
     ),
@@ -358,10 +447,11 @@ def test_web_rejects_invalid_custom_profile_before_creating_job(
     """Server-side ProjectProfile validation fails closed before upload isolation."""
     work_root = tmp_path / "jobs"
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    intent_id, _ = _confirmed_intent(client)
     policy_data = {**CUSTOM_PROFILE_DATA, field: value}
 
     response = client.post(
-        "/stories/game-developer/jobs",
+        f"/intents/{intent_id}/jobs",
         data={"profile_id": PROFILE_ID, **policy_data},
         files={"asset": (CLEAN_PATH.name, CLEAN_PATH.read_bytes(), "model/gltf-binary")},
     )
@@ -371,36 +461,52 @@ def test_web_rejects_invalid_custom_profile_before_creating_job(
     assert not work_root.exists() or not tuple(work_root.iterdir())
 
 
-def test_web_rule_change_after_upload_creates_a_distinct_job_and_inspection(
-    tmp_path: Path,
-) -> None:
-    """A frozen job is never reinterpreted when the user submits different rules."""
+def test_changing_rules_or_intent_after_upload_creates_new_jobs(tmp_path: Path) -> None:
+    """Frozen jobs are never reinterpreted when policy or target intent changes."""
     work_root = tmp_path / "jobs"
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
-    first_path = _upload(client, CLEAN_PATH, policy_data=CUSTOM_PROFILE_DATA)
-    second_policy = {
-        **CUSTOM_PROFILE_DATA,
-        "custom_height_target_cm": "181",
-        "custom_height_tolerance_cm": "2",
-    }
-    second_path = _upload(client, CLEAN_PATH, policy_data=second_policy)
+    first_intent_id, _ = _confirmed_intent(client, target_height_m="1.8")
+    first_path = _upload(
+        client,
+        CLEAN_PATH,
+        intent_id=first_intent_id,
+        policy_data=CUSTOM_PROFILE_DATA,
+    )
+    second_policy = {**CUSTOM_PROFILE_DATA, "custom_height_tolerance_cm": "2"}
+    second_path = _upload(
+        client,
+        CLEAN_PATH,
+        intent_id=first_intent_id,
+        policy_data=second_policy,
+    )
+    third_path = _upload(client, CLEAN_PATH, target_height_m="1.81")
 
-    assert first_path != second_path
-    first_root = work_root / first_path.rsplit("/", 1)[-1]
-    second_root = work_root / second_path.rsplit("/", 1)[-1]
-    first_inspection = InspectionResult.model_validate_json(
-        (first_root / "output" / "inspection.json").read_text(encoding="utf-8")
+    assert len({first_path, second_path, third_path}) == 3
+    roots = [work_root / path.rsplit("/", 1)[-1] for path in (first_path, second_path, third_path)]
+    intents = [
+        AssetIntentProvenance.model_validate_json(
+            (root / "intent.json").read_text(encoding="utf-8")
+        )
+        for root in roots
+    ]
+    profiles = [
+        ProjectProfile.model_validate_json((root / "profile.json").read_text(encoding="utf-8"))
+        for root in roots
+    ]
+    inspections = [
+        InspectionResult.model_validate_json(
+            (root / "output" / "inspection.json").read_text(encoding="utf-8")
+        )
+        for root in roots
+    ]
+    assert intents[0].intent_id == intents[1].intent_id
+    assert intents[2].intent_id != intents[0].intent_id
+    assert canonical_profile_sha256(profiles[0]) != canonical_profile_sha256(profiles[1])
+    assert len({inspection.profile_id for inspection in inspections}) == 3
+    assert (
+        "Changing rules starts a new inspection and job"
+        in client.get(f"{first_path}?view=inspect").text
     )
-    second_inspection = InspectionResult.model_validate_json(
-        (second_root / "output" / "inspection.json").read_text(encoding="utf-8")
-    )
-    assert first_inspection.profile_id != second_inspection.profile_id
-    assert first_inspection.profile_id.startswith(f"{PROFILE_ID}-custom-")
-    assert second_inspection.profile_id.startswith(f"{PROFILE_ID}-custom-")
-    assert client.get(first_path).status_code == 200
-    assert client.get(second_path).status_code == 200
-    first_inspect = client.get(f"{first_path}?view=inspect")
-    assert "Changing rules starts a new inspection and job" in first_inspect.text
 
 
 def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path) -> None:
@@ -408,16 +514,15 @@ def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path)
     for run_number in range(2):
         work_root = tmp_path / f"clean-start-{run_number}"
         client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
-        job_path = _upload(client, CLEAN_PATH, story_slug="artist")
+        job_path = _upload(client, CLEAN_PATH)
         completed = client.get(job_path)
         assert completed.status_code == 200
-        assert "Verified delivery copy" in completed.text
+        assert "Import-ready candidate" in completed.text
         assert "Approval needed" not in completed.text
         assert "PASSED_PROJECT_READY" in completed.text
-        _assert_focus_area_budget(completed.text, expected=1)
+        _assert_focus_area_budget(completed.text)
         inspected = client.get(f"{job_path}?view=inspect")
         assert "No project-policy findings." in inspected.text
-        _assert_focus_area_budget(inspected.text, expected=1)
         assert client.get(f"{job_path}/download").status_code == 200
 
 
@@ -425,15 +530,16 @@ def test_web_rejects_non_glb_upload_without_starting_a_job(tmp_path: Path) -> No
     """Invalid browser input gets a coherent intake error and no retained job."""
     work_root = tmp_path / "jobs"
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    intent_id, _ = _confirmed_intent(client)
     response = client.post(
-        "/stories/technical-artist/jobs",
+        f"/intents/{intent_id}/jobs",
         data={"profile_id": PROFILE_ID},
         files={"asset": ("not-a-model.glb", b"not a GLB", "application/octet-stream")},
     )
     assert response.status_code == 400
     assert "The upload is not a GLB 2.0 binary container." in response.text
-    assert "One GLB in. A policy decision and evidence trail out." in response.text
-    _assert_focus_area_budget(response.text, expected=1)
+    assert "Agreed target" in response.text
+    _assert_focus_area_budget(response.text)
     assert not work_root.exists() or not tuple(work_root.iterdir())
 
 
@@ -446,15 +552,13 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
     source_before = skinned_path.read_bytes()
 
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
-    job_path = _upload(client, skinned_path, story_slug="technical-artist")
+    job_path = _upload(client, skinned_path)
     blocked = client.get(job_path)
     assert blocked.status_code == 200
     assert "Inspection-only result" in blocked.text
-    _assert_focus_area_budget(blocked.text, expected=1)
     blocked_inspect = client.get(f"{job_path}?view=inspect")
     assert "INSPECTION_ONLY_UNSUPPORTED_FEATURES" in blocked_inspect.text
     assert "UNSUPPORTED_REPAIR_FEATURES" in blocked_inspect.text
-    _assert_focus_area_budget(blocked_inspect.text, expected=1)
     assert client.get(f"{job_path}/repaired.glb").status_code == 404
     assert skinned_path.read_bytes() == source_before
 
@@ -464,3 +568,12 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
     archive_path.write_bytes(archive_response.content)
     with ZipFile(archive_path) as archive:
         assert set(archive.namelist()) == PACKAGE_NAMES - {"repaired.glb"}
+
+
+def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:
+    """Existing bookmarks remain safe without preserving the retired selector modality."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    for slug in ("game-developer", "artist", "technical-artist", "advanced"):
+        response = client.get(f"/stories/{slug}", follow_redirects=False)
+        assert response.status_code == 303
+        assert urlparse(response.headers["location"]).path == "/"

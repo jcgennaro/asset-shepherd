@@ -2,8 +2,13 @@
 {% block content %}
   <section class="intake-workspace" data-focus-area="new inspection">
     <header class="mode-context">
-      <p class="section-label">{{ story.audience }}</p>
-      <h2 class="mode-question" title="{{ story.promise }}">{{ story.headline }}</h2>
+      <p class="section-label">Agreed target</p>
+      <h2 class="mode-question">Set the rules, then add your GLB.</h2>
+      <p class="intake-target-line">{{ target_use_label|capitalize }} · {{ "%g"|format(intent.target_height_cm / 100) }} m</p>
+      <details class="intake-intent-summary">
+        <summary>Review agreed story</summary>
+        <p>{{ intent.draft_story }}</p>
+      </details>
     </header>
     {% include "_intake_form.html" %}
   </section>

@@ -1,159 +1,140 @@
 # Asset Shepherd Web Design and Flow
 
-This document describes the local web product after the clarified two-column application-shell and
-single-step workspace redesign. It is a handoff snapshot, not a proposal for expanded scope.
+This is the current local web-product handoff. It documents the implemented intent-first flow and
+its safety boundary; it is not a proposal to expand repair scope.
 
 ## Product mental model
 
-Asset Shepherd is a guided intake workflow for one static GLB at a time:
+Asset Shepherd works with a user on one asset, but the conversation is not the repair authority:
 
 ```text
-Choose a presentation mode in the persistent left navigation pane
-  -> Rules: choose an immutable preset or customize a supported copy
-  -> Upload: select the actual GLB
-  -> Inspect: review source facts and policy findings
-  -> Decide: approve or reject one physical normalization, if needed
-  -> Download: review verification, compare, and retrieve the package
+Describe the intended asset and target state
+  -> Review and agree on one target story
+  -> Review project rules and upload the source GLB
+  -> Inspect deterministic findings
+  -> Approve or reject one grouped physical normalization, if proposed
+  -> Independently verify and download the evidence package
 ```
 
-The validation-rule choice and file upload are deliberately separate:
+The future hosted form of the first two steps is a bounded Strands conversation using Amazon
+Bedrock. It may ask follow-up questions, structure intent, and explain results. Measurements,
+candidate repairs, authorization, mutation, verification, and ready/not-ready status remain owned
+by the deterministic engine. The current local implementation uses ordinary validated form input
+and makes no model or network request.
 
-- **Validation rules** select the target size, conventions, and limits against which the asset is
-  judged. They do not select a model. Repository presets are immutable, and a custom copy is
-  validated and frozen before the job starts.
-- **GLB upload** selects the user's actual 3D model. Asset Shepherd works on a copied job artifact
-  and does not mutate the uploaded source file.
+## Why intent replaces the role selector
 
-## Design principles already implemented
+The former entry point asked whether someone was a game developer, 3D artist, or technical artist.
+Those routes changed labels but not behavior, and did not answer the important project questions:
+what the person meant to create, what it should be used for, and how large it should be.
 
-1. **Five persistent modes.** A dedicated left navigation pane gives the three audience styles
-   prominent full-width icon tiles. Help me choose and Advanced user remain visible as smaller
-   secondary tiles in the same pane. Hover and focus hints explain each icon.
-2. **One product, three audience explanations.** Every audience route uses the same profiles, inspection,
-   Strands interrupt, deterministic repair engine, verification, and output package. Only the
-   framing and labels change. Help is a chooser; Advanced is a direct policy-oriented presentation
-   of that same workflow.
-3. **One visible workflow step.** The workspace renders only Rules or Upload during intake and only
-   Inspect, Decide, or Download for a job. Evidence never competes with the current task.
-4. **Large type, low default density.** The workspace defaults to the current question, choice, or
-   finding title. Audience context uses hover hints; policy parameters, finding evidence, and upload
-   behavior use explicit disclosures.
-5. **One consequential decision.** Scale, upright orientation, and grounding are grouped into one
-   reversible physical-normalization approval. Safe display-name repairs remain separate.
-6. **Measured evidence over agent prose.** Visible facts and state come from deterministic job
-   data. The model cannot invent repairs or declare success.
-7. **Preserve the source and artistic content.** The product does not perform topology, UV,
-   material, texture, animation, or speculative artistic edits.
+The primary entry point now asks:
+
+- **What were you trying to make?** A 12–600 character plain-text description.
+- **What should it become?** Static game asset, rig-ready character, or playable animated
+  character.
+- **How tall should it be in-game?** A positive real-world height in meters.
+
+Asset Shepherd drafts one exact first-person target story. The user must review and agree to that
+story before seeing validation rules or an upload control. The description is target metadata, not
+instructions to run code, perform transforms, change materials, or authorize a repair.
+
+Non-static target uses are permitted because they truthfully capture intent. The confirmation page
+states that the current product can inspect and normalize the static GLB, while rigging, skinning,
+and animation remain external work. This does not add those repair domains.
 
 ## Information architecture
 
-| Route | Audience framing | Primary question |
+| Route | Purpose | Mutation or inspection? |
 |---|---|---|
-| `/` | Role chooser | Which best describes you? |
-| `/stories/game-developer` | Game developer | Is this asset ready to enter my game? |
-| `/stories/artist` | 3D artist | What changes, and what remains untouched? |
-| `/stories/technical-artist` | Technical artist | What does the versioned policy require? |
-| `/stories/advanced` | Advanced user | Which supported target rules should be frozen? |
-| `/jobs/{job_id}?view=inspect\|decide\|download` | Shared job workspace | What does this workflow step require? |
+| `/` | Describe the intended asset, use, and real-world height | No |
+| `/intents/{intent_id}` | Review the exact drafted target story | No |
+| `/intents/{intent_id}/intake` | Review rules and choose the source GLB after agreement | No until submit |
+| `/jobs/{job_id}?view=inspect` | Review measured facts, findings, and rule provenance | No |
+| `/jobs/{job_id}?view=decide` | Approve or reject the grouped normalization | Only approval can authorize it |
+| `/jobs/{job_id}?view=download` | Review verification and retrieve the result package | No |
 
-The three audience routes are functionally equivalent:
+Former `/stories/{role}` bookmarks redirect to `/`. Audience modes are no longer a primary product
+choice. Internally retained presentation labels do not affect policy or deterministic behavior.
 
-- **Game developer:** emphasizes import blockers, one physical decision, and an import-ready
-  candidate.
-- **3D artist:** emphasizes reviewability and preservation of geometry, materials, textures, and
-  the untouched source.
-- **Technical artist:** emphasizes versioned policy, bounded authorization, verification, and an
-  auditable evidence trail.
+The persistent left pane is now a compact workflow orientation rail: **Describe → Agree → Inspect
+→ Decide → Download**. The workspace still shows only one step at a time. The title reflects the
+current step, for example `Asset Shepherd -- Describe` or `Asset Shepherd -- Decide`.
 
-The persistent style pane is separate from the workspace workflow navigator. Intake exposes
-**Rules -> Upload**. A job exposes **Inspect -> Decide -> Download**. The full technical execution
-sequence remains available under structured detail as **Intake -> Inspect -> Plan -> Approve ->
-Repair -> Verify -> Package**.
+## Target-story contract
 
-## End-to-end flow and states
+Agreement creates an immutable `AssetIntentProvenance` record with:
 
-```mermaid
-flowchart TD
-    A[Choose presentation mode] --> B[Rules step]
-    B --> C[Upload one static GLB]
-    C --> D{Valid GLB and trusted profile?}
-    D -- No --> E[Show intake error; create no job]
-    D -- Yes --> F[Inspect and select bounded actions]
-    F --> G{Structurally eligible?}
-    G -- No --> H[Inspection-only result and diagnostics ZIP]
-    G -- Yes --> I{Physical approval required?}
-    I -- No --> L[Repair safe actions or preserve clean control]
-    I -- Yes --> J[Show one normalization decision]
-    J -- Approve --> K[Record approval and execute normalization]
-    J -- Reject --> M[Record rejection; do not execute normalization]
-    K --> L
-    M --> L
-    L --> N[Reload and independently verify]
-    N --> O{Verified candidate?}
-    O -- Yes --> P[Before/after preview and seven-file ZIP]
-    O -- No --> Q[Stopped or blocked; never label candidate ready]
-```
+- intent schema version;
+- opaque intent ID;
+- normalized original description;
+- supported target-use enum;
+- canonical target height in centimeters;
+- the exact agreed story;
+- confirmation timestamp;
+- canonical SHA-256 over all preceding fields.
 
-### Intake
+The job stores this record as `intent.json` and embeds the same record in `provenance.json`. The
+server validates its canonical hash before accepting an upload. Changing the description, use, or
+height requires a new intent and therefore a new inspection job. Reusing the same agreed intent
+with different project rules also creates a new job; existing evidence is never reinterpreted.
 
-The intake is one workspace focus area with a two-step navigator. Only the **Rules** panel is shown
-at first. No profile is selected by default. The user must explicitly choose one of the
-repository-owned versioned policy presets before the interface reveals the **Upload** panel. The
-current choice is intentionally framed as intended scale because that is the only rule difference:
+The intended height controls the profile target state. If it equals the selected immutable preset's
+target, that preset is frozen unchanged. Otherwise Asset Shepherd derives a validated custom copy
+with only `expected_height_cm.target` overridden. The user never enters a scale factor or transform
+matrix; the deterministic planner derives the minimal physical normalization, if one is warranted.
 
-- **Human-scale static mesh** — 1.8 m target; 1.7–1.9 m accepted.
-- **Compact static mesh** — 1.2 m target; 0.9–1.5 m accepted.
+## Rules and upload
 
-Both otherwise use the same static-mesh engine, orientation and grounding, naming, budgets,
-automatic safe renaming, and normalization-approval behavior. **Review rules** remains collapsed
-and contains the concise policy summary, every active `ProjectProfile` parameter, preset version,
-legacy immutable ID, and canonical hash.
+After agreement, intake exposes two visible workflow steps, one at a time:
 
-**Customize a copy** is a collapsed advanced control below the presets. It allows only supported
-target-state fields already enforced by the deterministic core: height/tolerance, Y-up and ground
-contact/tolerance, an engine-compatible naming pattern, and triangle/material/texture budgets. It
-does not expose transforms. Automatic safe-name handling, grouped physical approval, vertical
-inference, uniqueness policy, verification invariants, unsupported repair domains, engine/type,
-and source preservation remain fixed.
+1. **Rules.** Select an immutable repository preset, review its collapsed policy, or customize a
+   supported copy.
+2. **Upload.** Select the actual GLB to inspect.
 
-The user can return from Upload to Rules before submission. Upload accepts one GLB 2.0 static mesh
-up to 50 MB. The server checks the extension, GLB magic, size, and trusted profile identifier before
-creating an isolated job.
+The two current preset labels are presentation descriptions, not different repair products:
 
-The resolved profile is schema-validated, copied into the isolated job, and identified by a frozen
-profile ID and canonical SHA-256. A custom job additionally records the immutable base preset and
-only values that differ as explicit overrides. Rules cannot be edited in place after upload; the
-user returns to the intake and creates a new inspection/job.
+- **Human-scale static mesh** — legacy ID `unreal-indie-robot-v1`; 1.8 m default target.
+- **Compact static mesh** — legacy ID `small-stylized-static-mesh-v1`; 1.2 m default target.
 
-The human-readable scale labels are a presentation layer. The original
-`unreal-indie-robot-v1` and `small-stylized-static-mesh-v1` identifiers and profile bytes remain
-unchanged so prior results, hashes, validation evidence, and provenance stay reproducible.
+The agreed target height takes precedence over a preset's default height. All other active policy
+parameters remain visible under **Review rules**. **Customize a copy** exposes only fields already
+enforced by `ProjectProfile`: height tolerance, Y-up and ground-contact requirements and tolerance,
+naming pattern, and report-only triangle/material/texture budgets. The confirmed height is displayed
+but cannot be replaced by an advanced raw operation.
 
-### Pending approval
+Safety classes, grouped approval behavior, vertical inference, uniqueness guarantees, verification
+invariants, unsupported repair domains, engine/type, and source preservation are fixed. Repository
+presets remain byte-for-byte immutable. Each job receives a validated `profile.json` snapshot plus
+frozen/base identifiers, explicit overrides, version, and canonical hash in provenance.
 
-When a physical normalization needs authorization, the workspace opens **Decide** and shows only:
+Upload accepts one GLB 2.0 binary up to 50 MB. The server validates the filename extension, GLB
+magic, size, intent hash, and trusted base preset before creating an isolated job. The copied source
+is never mutated.
 
-- one decision card with the consequence and before/expected-after height;
-- **Approve** and **Reject** actions tied to the exact Strands interrupt;
-- a collapsed “Why this is proposed” section with component confidence and evidence;
+## Inspect, decide, verify, and package
 
-The source preview, all findings, and their rule provenance remain in **Inspect**, one explicit
-workflow step away. Approve and Reject remain tied to the exact Strands interrupt.
+### Inspect
 
-Approval executes only the selected registered action. Rejection is durable evidence: the
-normalization is not executed, unresolved physical findings remain explicit, and policy-safe name
-repairs may still be packaged.
+Inspect shows the untouched source preview, measured bounds, core counts, findings, and collapsed
+details. Every profile-caused finding cites the frozen rule parameter and profile identifier that
+caused it. Free text cannot create a finding or candidate action.
 
-### Completed, blocked, and error results
+### Decide
 
-- A verified result opens **Download** and shows the role-specific candidate label, verification
-  state, before/after 3D previews, and result ZIP download.
-- A structurally unsupported asset produces an inspection-only diagnostic package without
-  `repaired.glb` and is not called ready.
-- An execution or verification error stops safely and does not mark an output ready.
-- A clean compliant asset completes without an approval and without unnecessary content mutation.
+If the deterministic plan proposes scale/orientation/grounding normalization, Decide presents one
+grouped consequential action. Approve or Reject is bound to the exact Strands interrupt ID.
+Policy-safe display-name repairs remain separate. Rejection is preserved in decisions and
+provenance, the physical operation is not executed, and unresolved findings remain explicit.
 
-The successful ZIP contains exactly:
+### Verify and download
+
+The output is reloaded and independently checked. Only a verified candidate is called ready and
+served through the repaired-asset route. A structurally unsupported input receives an
+inspection-only package without `repaired.glb`. A clean input is packaged without unnecessary GLB
+reserialization or mutation.
+
+The successful ZIP still contains exactly:
 
 ```text
 repaired.glb
@@ -165,130 +146,64 @@ provenance.json
 report.md
 ```
 
-## Attention budget by page state
+`intent.json` and `profile.json` are job-input snapshots beside the output directory. The confirmed
+intent is already included in packaged `provenance.json`, so the seven-file package contract does
+not change.
 
-| Page or state | Primary focus areas | Count |
-|---|---|---:|
-| Help me choose | Style chooser workspace | 1 |
-| Any intake | Current Rules or Upload workspace step | 1 |
-| Inspect | Source preview and inspection evidence inside one step | 1 |
-| Decide | Pending or recorded authorization inside one step | 1 |
-| Download | Result, comparison, and collapsed verification inside one step | 1 |
+## Attention and visual system
 
-Inspect contains measured metrics, grouped findings, policy-rule provenance, and a collapsed
-seven-stage execution detail. Download contains the result and comparison plus collapsed
-verification checks, remaining warnings, and tool/interrupt/correction counts. Every policy-caused
-finding cites the frozen profile and exact active parameter value that triggered it.
+- One server-rendered focus area is visible in every state; the hard maximum remains three.
+- The two-column shell retains the placeholder `LOGO` cell, persistent left navigation, current-step
+  title, and full workspace.
+- Primary questions and actions use large type and available whitespace.
+- Policy parameters, finding evidence, the confirmed story on job pages, upload notes, and
+  verification details stay available through disclosures instead of competing with the next
+  action.
+- The dark workshop palette, responsive left rail, keyboard-visible controls, and reduced-motion
+  behavior remain.
+- Interactive previews use pinned `<model-viewer>` 4.3.1. The viewer is a browser dependency, not
+  repair or verification authority.
 
-## Visual system
+## Runtime boundaries and limitations
 
-- Dark charcoal/green “workshop” background with warm off-white text.
-- The application frame is a visible two-by-two grid: placeholder `LOGO` cell above the navigation
-  pane, title cell above the workspace, and aligned horizontal and vertical dividers.
-- The desktop navigation pane is 248–320 px wide. Its three audience tiles are primary; Help me
-  choose and Advanced user are smaller secondary tiles. At compact widths it becomes a 64–76 px
-  icon pane but stays on the left.
-- Role accents distinguish context without changing behavior: amber for game developers/help,
-  teal for artists, blue for technical artists, and violet for advanced mode.
-- The only page title is `Asset Shepherd -- [current style]` in the workspace header.
-- Content uses the full remaining workspace width, with one bordered workflow panel at a time.
-- The Help question scales to 112 px at the reviewed desktop size and its three choices fill a
-  1160 px row. Workflow headings scale to 54 px on desktop and 32 px on the compact breakpoint.
-- Default policy cards show only the preset name and target description; their concise summaries
-  and all 20 active parameters live under `Review rules`. Finding cards show code, class, and title;
-  explanation, observation, and rule provenance live under `Details`.
-- Desktop Rules uses two policy columns; inspection and approval use context-appropriate two-column
-  arrangements. Each becomes one column at narrow widths without moving the mode pane.
-- Motion is minimal, and reduced-motion preferences are honored.
-- Interactive GLB previews use pinned `<model-viewer>` 4.3.1 with camera controls, neutral
-  environment, and a slow rotation.
+- The local flow uses the real Strands loop with a scripted zero-network provider.
+- Draft intents and active approval sessions are in memory. Refresh works while the process is
+  running; restart requires a new target story and ends active sessions.
+- Job artifacts live below `build/web/jobs/{job_id}` and use opaque server-generated IDs.
+- The description is not semantically interpreted by the deterministic engine beyond its confirmed
+  structured fields. It cannot yet infer likely dimensions, ask adaptive follow-ups, or compare the
+  source appearance to the description.
+- A later Bedrock integration may improve that collaboration, but must emit this same bounded schema
+  and may not bypass deterministic inspection, explicit approval, or independent verification.
+- The current product remains static-GLB repair only. It does not add rigging, skinning, animation,
+  topology, UV, material, texture, transparency, emissive, or speculative artistic repair.
 
-## Runtime and trust boundaries
+## Current automated evidence
 
-- The default local workflow uses the real Strands loop with a scripted zero-network provider. It
-  does not require model credentials or a model/network request.
-- Uploaded files are copied below `build/web/jobs/{job_id}`. Completed artifacts remain there, but
-  active job state is in memory. The resolved `profile.json` beside the upload is a job snapshot;
-  repository presets are never edited.
-- Refreshing the page preserves the job while the local server is running. Restarting the server
-  ends the in-memory approval session.
-- Only a verified candidate is served from the repaired-asset route.
-- The 3D viewer component is fetched from Google's CDN, so preview rendering has an external browser
-  dependency even though the agent workflow itself is local.
+- Intent construction is reproducible and canonical; tampering invalidates its hash.
+- Invalid descriptions, target uses, and heights fail before a job exists.
+- Upload is unavailable before explicit agreement.
+- Confirmed intent and its hash are frozen in the job and copied into package provenance.
+- A non-preset height creates a target-state profile override without exposing a scale operation.
+- Changing intent or rules creates distinct jobs and inspections.
+- Preset, validated custom-policy, broken/approved, clean-control, invalid-upload, and unsupported
+  inspection-only paths remain covered.
+- The approved flow still packages the exact seven artifacts, preserves source bytes, cites rule
+  provenance, and requires the exact interrupt-bound decision.
+- Former role routes redirect to the intent entry point.
 
-## Current validation evidence
+## Next hosted step
 
-- Fourteen web acceptance tests cover the three role routes plus Advanced mode,
-  approve/resume/download, explicit Inspect/Decide/Download views, clean completion, invalid GLB
-  rejection, unsupported inspection-only packaging, source preservation, exact ZIP contents,
-  immutable presets, schema-validated custom copies, frozen policy provenance, rule citations,
-  new-job semantics, and the one-step focus-area budget.
-- Server-rendered acceptance proves that each job response contains exactly one workflow panel;
-  intake renders Rules initially and keeps Upload hidden until the client-side transition.
-- The persistent pane contains exactly three primary style tiles and two secondary guidance tiles,
-  all with native title text and visible hover/focus hints. Every route emits the exact dynamic
-  `Asset Shepherd -- [style]` title.
-- Live browser review completed the approved broken-fixture workflow from Decide through Download,
-  inspected all three job views, and rendered Help, Rules, Upload, Inspect, Decide, and Download at
-  desktop width. A narrow-width pass found and fixed one grid min-content overflow; the corrected
-  document has no horizontal overflow, keeps the navigation pane on the left, and contains one
-  focus area and one workflow panel. A second live review after the frame clarification measured
-  matching 96 px logo/title cells and a 320 px desktop navigation pane; the compact breakpoint
-  measured matching 72 px logo/title cells, a 76 px icon pane, and zero horizontal overflow. No
-  application console error or warning was observed.
-- The density pass measures a 1160 px Help chooser with three 376 × 260 px options and no visible
-  intro or advanced prompt. Rules has no open disclosures at startup and shows two 543 × 167 px
-  policy cards at desktop. Expanding `Review rules` reveals all 20 active parameters. Inspect shows
-  four core metrics and collapsed finding detail; expanding one finding restores its description,
-  observation, exact policy value, and frozen profile ID. Compact Help and Rules have no horizontal
-  overflow and retain one visible focus area.
+When the AWS milestone is authorized, the Bedrock/Strands conversational layer should conduct the
+same intake as a typed dialogue:
 
-## Known limitations
+```text
+user description
+  -> bounded follow-up questions
+  -> proposed AssetIntentProvenance fields
+  -> user confirms exact target story
+  -> deterministic workflow begins
+```
 
-- This is a local hackathon product, not a multi-user or durable hosted service.
-- Job state is not restored after a server restart.
-- Only static GLB input and two trusted profiles are exposed.
-- Custom copies are job-scoped; there is no reusable policy library or multi-user policy manager.
-- Unsupported rigs, animation, morph targets, and ambiguous structures are inspected and blocked,
-  not silently repaired.
-- Unreal/AWS deployment, identity, storage, and durable orchestration are not implemented.
-- The preview is evidence for human review, not a substitute for independent Blender/Unreal import
-  validation.
-
-## Next contracted steps
-
-This presentation change does not alter milestone priority. After this web pass is accepted, work
-should remain within the existing validation and deployment milestones:
-
-1. **Review this handoff and the Shader Lantern visual checkpoint.** Confirm that the current role
-   framing and rules/upload explanation are understandable enough to freeze while validation work
-   continues. Shader Lantern preserved its exported content, but the source GLB is opaque and
-   non-emissive; Tripo preview-only glass/glow must not be claimed as exported content.
-2. **Complete RW2 in order.** Freeze the one-batch Debug Beetle generation card, obtain and register
-   its untouched GLB and provenance, and complete its blind baseline. Do not begin Cloudforge
-   Workbench until that batch is complete.
-3. **Complete the minimum four-asset flock.** Repeat the contracted registration and blind baseline
-   for Cloudforge Workbench.
-4. **Run RW3 controlled variants.** Apply the six frozen realistic mutations across three registered
-   real assets and record detection, repair, verification, preservation, and evidence completeness.
-5. **Close the RW4 three-way gate.** Produce one human-cleaned Blender reference with an intervention
-   log and manual time, then compare raw, Asset Shepherd, and human arms independently in Blender and
-   the isolated Unreal project.
-6. **Unblock M9 before paid-provider work.** Install/configure the AWS CLI, confirm a dedicated
-   `asset-shepherd` profile, Bedrock region/model access, and a budget alert. No paid call or cloud
-   resource should be created before those user-owned controls exist.
-7. **Finish M10 evidence and claims.** Consolidate corpus metrics and the demo/failure story. Keep
-   public performance and quality claims prohibited until the validation gates pass.
-
-## Implementation map
-
-- Route behavior and shared story definitions: `src/asset_shepherd/web.py`
-- Canonical policy hashing and rule citations: `src/asset_shepherd/profile_policy.py`
-- Persistent navigation pane: `src/asset_shepherd/templates/_mode_rail.html`
-- Help chooser and shared audience workspace: `src/asset_shepherd/templates/index.html` and
-  `src/asset_shepherd/templates/story.html`
-- Rules/upload intake: `src/asset_shepherd/templates/_intake_form.html`
-- Job, approval, preview, result, and evidence states: `src/asset_shepherd/templates/job.html`
-- Visual system and responsive rules: `src/asset_shepherd/static/app.css`
-- Browser behavior: `src/asset_shepherd/static/app.js`
-- Web acceptance contract: `tests/test_web.py`
+That integration requires configured user-owned AWS credentials, selected model/region access, and
+cost controls. It must remain optional in tests and must not broaden repair authority.

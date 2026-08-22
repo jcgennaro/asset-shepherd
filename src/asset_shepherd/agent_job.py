@@ -10,6 +10,7 @@ from typing import Protocol
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     ApprovalCard,
+    AssetIntentProvenance,
     DecisionRecord,
     Decisions,
     DecisionSource,
@@ -79,6 +80,7 @@ class AgentJob:
     profile_path: Path
     output_dir: Path
     profile_policy: ProfilePolicyProvenance | None = None
+    asset_intent: AssetIntentProvenance | None = None
     clock: Callable[[], datetime] = _utc_now
     verification_function: VerificationFunction = verify_repair
     profile: ProjectProfile = field(init=False)
@@ -274,6 +276,7 @@ class AgentJob:
             started_at=self.started_at,
             completed_at=self.clock(),
             profile_policy=self.profile_policy,
+            asset_intent=self.asset_intent,
         )
         _write_json(
             self.output_dir / "decisions.json",
@@ -315,6 +318,7 @@ class AgentJob:
             started_at=self.started_at,
             completed_at=self.clock(),
             profile_policy=self.profile_policy,
+            asset_intent=self.asset_intent,
         )
         self.last_verification = None
         _write_json(
@@ -339,6 +343,7 @@ class AgentJob:
                 started_at=self.started_at,
                 completed_at=self.clock(),
                 profile_policy=self.profile_policy,
+                asset_intent=self.asset_intent,
             )
             verification = build_blocked_verification(self.selected_plan)
             self.last_verification = verification

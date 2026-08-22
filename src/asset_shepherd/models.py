@@ -43,6 +43,14 @@ class ActionClass(StrEnum):
     BLOCKED = "BLOCKED"
 
 
+class AssetTargetUse(StrEnum):
+    """User-confirmed destination for the uploaded asset."""
+
+    STATIC_GAME_ASSET = "STATIC_GAME_ASSET"
+    RIG_READY_CHARACTER = "RIG_READY_CHARACTER"
+    PLAYABLE_CHARACTER = "PLAYABLE_CHARACTER"
+
+
 class RepairEligibility(StrEnum):
     """Whether inspection may proceed to structural repair."""
 
@@ -486,6 +494,19 @@ class ProfilePolicyProvenance(ContractModel):
     canonical_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 
 
+class AssetIntentProvenance(ContractModel):
+    """Immutable user-confirmed target story bound to one inspection job."""
+
+    intent_version: Literal[1] = 1
+    intent_id: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
+    original_description: Annotated[str, Field(min_length=12, max_length=600)]
+    target_use: AssetTargetUse
+    target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)]
+    confirmed_story: Annotated[str, Field(min_length=20, max_length=1000)]
+    confirmed_at: datetime
+    canonical_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+
 class Provenance(ContractModel):
     """Source, authorization, software, and timing provenance."""
 
@@ -495,6 +516,7 @@ class Provenance(ContractModel):
     profile_id: str
     profile_version: Literal[1]
     profile_policy: ProfilePolicyProvenance | None = None
+    asset_intent: AssetIntentProvenance | None = None
     application_version: str
     commit_sha: str
     library_versions: dict[str, str]

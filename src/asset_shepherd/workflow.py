@@ -11,6 +11,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
+    AssetIntentProvenance,
     CheckStatus,
     Decisions,
     DecisionSource,
@@ -91,6 +92,7 @@ def build_provenance(
     started_at: datetime,
     completed_at: datetime,
     profile_policy: ProfilePolicyProvenance | None = None,
+    asset_intent: AssetIntentProvenance | None = None,
 ) -> Provenance:
     """Build provenance from the exact plan, decisions, and repair outcome."""
     candidates = {candidate.id: candidate for candidate in plan.candidates}
@@ -118,6 +120,7 @@ def build_provenance(
         profile_id=profile.profile_id,
         profile_version=profile.profile_version,
         profile_policy=profile_policy or build_profile_policy_provenance(profile),
+        asset_intent=asset_intent,
         application_version=application_version,
         commit_sha=_application_commit(),
         library_versions=_library_versions(),

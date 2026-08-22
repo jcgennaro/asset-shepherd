@@ -2,13 +2,19 @@
 {% block content %}
   <section class="job-workspace">
     <header class="job-context">
-      <a class="back-link" href="{{ url_for('story_home', story_slug=story.slug) }}">← New inspection</a>
+      <a class="back-link" href="{{ url_for('home') }}">← New inspection</a>
       <p title="Frozen policy {{ job.profile.profile_id }}">
         <strong>{{ job.original_filename }}</strong>
         <span>{{ job.profile.name }}</span>
       </p>
       <span class="state-pill {{ job.state_class }}"><i></i>{{ job.state_label }}</span>
     </header>
+
+    <details class="job-intent">
+      <summary>Confirmed target story</summary>
+      <p>{{ job.intent.confirmed_story }}</p>
+      <small><code>{{ job.intent.canonical_sha256[:12] }}</code> · changing intent starts a new job</small>
+    </details>
 
     <nav class="workflow-nav job-workflow-nav" aria-label="Inspection workflow">
       {% for step in workflow_steps %}
