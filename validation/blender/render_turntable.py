@@ -93,25 +93,29 @@ def main() -> None:
     ground.data.materials.append(ground_material)
 
     target = Vector((center.x, center.y, minimum.z + dimensions.z * 0.52))
+    # Blender area-light power is measured in watts. Scale it with the square of the
+    # framed asset span so physically equivalent assets at different represented sizes
+    # receive equivalent illumination from this proportional camera/light rig.
+    light_power_scale = span * span
     _add_area_light(
         "EvidenceKey",
         center + Vector((span * 1.8, -span * 2.0, span * 2.4)),
         target,
-        1100.0,
+        1100.0 * light_power_scale,
         span * 1.5,
     )
     _add_area_light(
         "EvidenceFill",
         center + Vector((-span * 2.0, -span * 0.8, span * 1.2)),
         target,
-        700.0,
+        700.0 * light_power_scale,
         span * 1.8,
     )
     _add_area_light(
         "EvidenceRim",
         center + Vector((0.0, span * 2.0, span * 2.0)),
         target,
-        900.0,
+        900.0 * light_power_scale,
         span * 1.2,
     )
 

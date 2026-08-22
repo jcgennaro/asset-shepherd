@@ -1,0 +1,186 @@
+{
+  "commandlet_log_directory": "../../../../../../Users/jcgen/Documents/asset-shepherd/validation/unreal/Saved/Logs/",
+  "comparison_arm_roles": {
+    "human_reference": "blender-re-export-control-not-human-cleaned",
+    "raw": "untouched source export",
+    "shepherd": "Asset Shepherd repaired candidate"
+  },
+  "comparisons": {
+    "human_reference": {
+      "destination": "/Game/Validation/Imports/shader_lantern_approved_01/human_reference",
+      "import_success": true,
+      "imported_object_paths": [
+        "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Materials/tripo_mat_d8dd79ae.tripo_mat_d8dd79ae",
+        "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/StaticMeshes/shepherd-reexport.shepherd-reexport",
+        "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Textures/stylized+lantern+3d+model_basecolor.stylized+lantern+3d+model_basecolor",
+        "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Textures/stylized+lantern+3d+model_normal.stylized+lantern+3d+model_normal",
+        "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Textures/stylized+lantern+3d+model_rm.stylized+lantern+3d+model_rm"
+      ],
+      "material_count": 1,
+      "objects": [
+        {
+          "class": "MaterialInstanceConstant",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Materials/tripo_mat_d8dd79ae.tripo_mat_d8dd79ae"
+        },
+        {
+          "bounds_extent_cm": [
+            33.62348556518555,
+            34.79823684692383,
+            60.0
+          ],
+          "bounds_origin_cm": [
+            0.0,
+            0.0,
+            60.0
+          ],
+          "class": "StaticMesh",
+          "material_slot_count": 1,
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/StaticMeshes/shepherd-reexport.shepherd-reexport",
+          "triangle_count_lod0": 8656,
+          "vertex_count_lod0": 11759
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Textures/stylized+lantern+3d+model_basecolor.stylized+lantern+3d+model_basecolor"
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Textures/stylized+lantern+3d+model_normal.stylized+lantern+3d+model_normal"
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/human_reference/shepherd-reexport/Textures/stylized+lantern+3d+model_rm.stylized+lantern+3d+model_rm"
+        }
+      ],
+      "run_isolated_destination": true,
+      "source": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\build\\validation\\shader-lantern-blender\\shepherd-reexport.glb",
+      "source_sha256": "05bb285ed2e9973b19853e4dc4047e0bb654184e8bf4cee974363b016c0d6496",
+      "static_mesh_count": 1,
+      "texture_count": 3
+    },
+    "raw": {
+      "destination": "/Game/Validation/Imports/shader_lantern_approved_01/raw",
+      "import_success": true,
+      "imported_object_paths": [
+        "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Materials/tripo_mat_d8dd79ae.tripo_mat_d8dd79ae",
+        "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/StaticMeshes/asset.asset",
+        "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Textures/stylized+lantern+3d+model_basecolor_jpg.stylized+lantern+3d+model_basecolor_jpg",
+        "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Textures/stylized+lantern+3d+model_normal_jpg.stylized+lantern+3d+model_normal_jpg",
+        "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Textures/stylized+lantern+3d+model_rm_png.stylized+lantern+3d+model_rm_png"
+      ],
+      "material_count": 1,
+      "objects": [
+        {
+          "class": "MaterialInstanceConstant",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Materials/tripo_mat_d8dd79ae.tripo_mat_d8dd79ae"
+        },
+        {
+          "bounds_extent_cm": [
+            2799.40478515625,
+            2897.21142578125,
+            4995.4453125
+          ],
+          "bounds_origin_cm": [
+            0.0,
+            0.0,
+            4995.4453125
+          ],
+          "class": "StaticMesh",
+          "material_slot_count": 1,
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/StaticMeshes/asset.asset",
+          "triangle_count_lod0": 8780,
+          "vertex_count_lod0": 11255
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Textures/stylized+lantern+3d+model_basecolor_jpg.stylized+lantern+3d+model_basecolor_jpg"
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Textures/stylized+lantern+3d+model_normal_jpg.stylized+lantern+3d+model_normal_jpg"
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/raw/asset/Textures/stylized+lantern+3d+model_rm_png.stylized+lantern+3d+model_rm_png"
+        }
+      ],
+      "run_isolated_destination": true,
+      "source": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\shader_lantern_01\\raw\\asset.glb",
+      "source_sha256": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
+      "static_mesh_count": 1,
+      "texture_count": 3
+    },
+    "shepherd": {
+      "destination": "/Game/Validation/Imports/shader_lantern_approved_01/shepherd",
+      "import_success": true,
+      "imported_object_paths": [
+        "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Materials/tripo_mat_d8dd79ae.tripo_mat_d8dd79ae",
+        "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/StaticMeshes/repaired.repaired",
+        "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Textures/stylized+lantern+3d+model_basecolor_jpg.stylized+lantern+3d+model_basecolor_jpg",
+        "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Textures/stylized+lantern+3d+model_normal_jpg.stylized+lantern+3d+model_normal_jpg",
+        "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Textures/stylized+lantern+3d+model_rm_png.stylized+lantern+3d+model_rm_png"
+      ],
+      "material_count": 1,
+      "objects": [
+        {
+          "class": "MaterialInstanceConstant",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Materials/tripo_mat_d8dd79ae.tripo_mat_d8dd79ae"
+        },
+        {
+          "bounds_extent_cm": [
+            33.62348556518555,
+            34.79823684692383,
+            60.0
+          ],
+          "bounds_origin_cm": [
+            0.0,
+            0.0,
+            60.0
+          ],
+          "class": "StaticMesh",
+          "material_slot_count": 1,
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/StaticMeshes/repaired.repaired",
+          "triangle_count_lod0": 8122,
+          "vertex_count_lod0": 10496
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Textures/stylized+lantern+3d+model_basecolor_jpg.stylized+lantern+3d+model_basecolor_jpg"
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Textures/stylized+lantern+3d+model_normal_jpg.stylized+lantern+3d+model_normal_jpg"
+        },
+        {
+          "class": "Texture2D",
+          "object_path": "/Game/Validation/Imports/shader_lantern_approved_01/shepherd/repaired/Textures/stylized+lantern+3d+model_rm_png.stylized+lantern+3d+model_rm_png"
+        }
+      ],
+      "run_isolated_destination": true,
+      "source": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\shader_lantern_01\\blind_asset_shepherd\\repaired.glb",
+      "source_sha256": "718722d6203dd0f0d62f86f42f0999e0d44c168f6f29767eee204d7d5631eebd",
+      "static_mesh_count": 1,
+      "texture_count": 3
+    }
+  },
+  "engine_version": "5.8.0-55116800+++UE5+Release-5.8",
+  "equivalent_import_settings": {
+    "automated": true,
+    "replace_existing": true,
+    "replace_existing_settings": true,
+    "save": true
+  },
+  "generated_at": "2026-08-22T01:27:05.958979Z",
+  "map": "/Game/Validation/AssetShepherdComparison",
+  "run_id": "shader_lantern_approved_01",
+  "schema_version": 1,
+  "observed_import_warnings": [
+    "raw and shepherd: Extension is not supported: FB_ngon_encoding"
+  ],
+  "standardized_screenshots": {
+    "raw": "screenshots/unreal/raw.png",
+    "shepherd": "screenshots/unreal/shepherd.png"
+  },
+  "visual_anomalies": "NONE_OBSERVED: matched front views preserve silhouette, material coverage, textures, colors, normals, opacity, and non-emissive behavior; foreground MAE 0.464/255",
+  "warning_error_evidence": "Unreal 5.8 commandlet completed with 0 errors and the same unsupported FB_ngon_encoding warning for raw and shepherd"
+}

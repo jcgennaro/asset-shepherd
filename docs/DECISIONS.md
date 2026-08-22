@@ -4,6 +4,51 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D011 — Approve Shader Lantern normalization and preserve its report-only warning
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** RW2 / M10
+
+**Context**
+
+Shader Lantern's frozen blind plan correctly stopped at a consequential physical-size decision. The
+raw export represented a 99.908905-meter object, while the user has now stated that the intended
+real-world height is 1.2 meters and approved `normalize-root-v1`. The same plan contains two safe
+display-name repairs and a 1,564-triangle budget overage that is explicitly report-only.
+
+**Options considered**
+
+- Reject or defer normalization despite the supplied intended height.
+- Execute the approved scale and safe display-name repairs while preserving all authored content.
+- Expand scope into topology reduction or attempt to recreate transparent/emissive effects visible
+  in the Tripo preview but absent from the exported GLB.
+
+**Decision**
+
+Execute the approved `0.0120109414×` uniform root normalization and both policy-safe display-name
+repairs. Preserve geometry, topology, materials, images, textures, and samplers exactly. Leave
+`TRIANGLE_BUDGET_EXCEEDED` unresolved and report-only. Treat the source export's opaque,
+non-emissive material state as a disclosed corpus limitation rather than inventing preview-only
+content. Use a Blender re-export as the third Unreal diagnostic arm and label it as a control, not a
+human-cleaned reference.
+
+**Evidence and consequences**
+
+Independent verification measures a grounded 1.2-meter candidate with unchanged 77,545 vertices,
+101,564 triangles, one material, and three textures; its second plan is empty and its only remaining
+warning is the triangle overage. Raw and repaired GLBs have byte-identical binary geometry and
+material/texture/image/sampler/accessor records. Blender 5.1.2 imports both with matching resources
+and near-zero rendered difference, successfully re-exports the repaired candidate, and Unreal 5.8
+imports raw, repaired, and the Blender control with zero errors. The isolated Unreal visual pass
+finds no appearance, texture, normal, opacity, or emissive-behavior regression. The full RW4
+three-way gate remains incomplete because no human-cleaned Lantern reference or manual-time record
+exists.
+
 ### D010 — Progressive disclosure limits every web state to three primary focus areas
 
 **Date:** 2026-08-21

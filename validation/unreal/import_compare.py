@@ -25,6 +25,11 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--raw", type=Path, required=True)
     parser.add_argument("--shepherd", type=Path, required=True)
     parser.add_argument("--human-reference", type=Path, required=True)
+    parser.add_argument(
+        "--human-reference-role",
+        default="human-cleaned reference",
+        help="Provenance label for the third comparison arm",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--run-id")
     return parser.parse_args(sys.argv[1:])
@@ -87,7 +92,16 @@ def _import_variant(variant: str, source: Path, run_id: str) -> dict[str, object
     task.replace_existing_settings = True
     task.save = True
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-    imported_paths = list(task.imported_object_paths)
+    imported_paths = sorted(
+        set(task.imported_object_paths)
+        | set(
+            unreal.EditorAssetLibrary.list_assets(
+                destination,
+                recursive=True,
+                include_folder=False,
+            )
+        )
+    )
     records = [_asset_record(path) for path in imported_paths]
     meshes = [unreal.load_asset(path) for path in imported_paths]
     meshes = [asset for asset in meshes if isinstance(asset, unreal.StaticMesh)]
@@ -148,6 +162,11 @@ def main() -> None:
             "replace_existing": True,
             "replace_existing_settings": True,
             "save": True,
+        },
+        "comparison_arm_roles": {
+            "raw": "untouched source export",
+            "shepherd": "Asset Shepherd repaired candidate",
+            "human_reference": args.human_reference_role,
         },
         "comparisons": comparisons,
         "commandlet_log_directory": unreal.Paths.project_log_dir(),

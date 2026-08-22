@@ -1,0 +1,28 @@
+{
+  "camera_label": "AssetShepherdComparisonCamera",
+  "engine_version": "5.8.0-55116800+++UE5+Release-5.8",
+  "generated_at": "2026-08-22T01:12:52.819573Z",
+  "map": "/Game/Validation/AssetShepherdComparison",
+  "pedestal_locations_cm": {
+    "HumanReferencePedestal": [
+      250.0,
+      0.0,
+      10.0
+    ],
+    "RawPedestal": [
+      -250.0,
+      0.0,
+      10.0
+    ],
+    "ShepherdPedestal": [
+      0.0,
+      0.0,
+      10.0
+    ]
+  },
+  "project": "C:/Users/jcgen/Documents/asset-shepherd/validation/unreal/AssetShepherdValidation.uproject",
+  "reused_existing_map": true,
+  "scale_reference_cm": 180.0,
+  "schema_version": 1,
+  "success": true
+}

@@ -1,0 +1,27 @@
+{
+  "plan_id": "plan-be2c9cab8d4e51f7-v1",
+  "records": [
+    {
+      "candidate_id": "rename-mesh-000",
+      "decided_at": "2026-08-22T01:03:19.506660Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    },
+    {
+      "candidate_id": "rename-node-001",
+      "decided_at": "2026-08-22T01:03:19.506660Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    },
+    {
+      "candidate_id": "normalize-root-v1",
+      "decided_at": "2026-08-22T01:03:19.506660Z",
+      "decision": "APPROVED",
+      "interrupt_id": null,
+      "source": "USER_APPROVAL_FILE"
+    }
+  ],
+  "schema_version": 1
+}

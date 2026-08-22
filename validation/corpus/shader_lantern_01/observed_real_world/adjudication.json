@@ -1,17 +1,58 @@
 {
   "asset_id": "shader_lantern_01",
-  "correctly_blocked_cases": [],
-  "demo_candidate": false,
+  "correctly_blocked_cases": [
+    "normalize-root-v1 remained blocked until the user supplied the intended 1.2-meter height and explicitly approved the exact reversible transform."
+  ],
+  "demo_candidate": true,
   "false_severe_findings": [],
-  "findings": [],
-  "human_reference_unreal_result": "",
+  "findings": [
+    {
+      "classification": "TRUE_POSITIVE",
+      "downstream_evidence": [
+        "blind_asset_shepherd/verification.json",
+        "observed_real_world/blender_raw.json",
+        "observed_real_world/blender_shepherd.json",
+        "observed_real_world/unreal_comparison.json"
+      ],
+      "finding_code": "HEIGHT_OUT_OF_RANGE",
+      "human_notes": "The raw export represented a 99.908905-meter object. The user stated a 1.2-meter intended height and approved normalize-root-v1; independent verification, Blender, and Unreal all measure the repaired candidate at 1.2 meters without geometry-resource mutation."
+    },
+    {
+      "classification": "TRUE_POSITIVE",
+      "downstream_evidence": [
+        "blind_asset_shepherd/verification.json",
+        "observed_real_world/blender_shepherd.json"
+      ],
+      "finding_code": "MESH_NAME_INVALID",
+      "human_notes": "The raw mesh display name was missing. The safe Mesh_000 repair made it valid and unique without changing mesh indices or content."
+    },
+    {
+      "classification": "TRUE_POSITIVE",
+      "downstream_evidence": [
+        "blind_asset_shepherd/verification.json",
+        "observed_real_world/blender_shepherd.json"
+      ],
+      "finding_code": "NODE_NAME_INVALID",
+      "human_notes": "The raw node display name violated the profile. The safe Node_001 repair made it valid and unique without changing hierarchy references or content."
+    },
+    {
+      "classification": "USEFUL_WARNING",
+      "downstream_evidence": [
+        "blind_asset_shepherd/verification.json",
+        "observed_real_world/blender_shepherd.json"
+      ],
+      "finding_code": "TRIANGLE_BUDGET_EXCEEDED",
+      "human_notes": "The 101,564-triangle asset exceeds the selected 100,000-triangle budget by 1,564. It remains an explicit report-only warning; no topology optimization was authorized or performed."
+    }
+  ],
+  "human_reference_unreal_result": "No human-cleaned Lantern reference exists. The third isolated arm is explicitly labeled as a Blender 5.1.2 re-export control; it imported at 1.2 meters with one mesh, one material, and three textures.",
   "manual_minutes_after_shepherd": null,
   "manual_minutes_raw_to_usable": null,
   "missed_required_repairs": [],
-  "product_version": "",
-  "raw_unreal_result": "",
+  "product_version": "e6b9046c86b96dc43f3f4e255f00e759f2d3d22e",
+  "raw_unreal_result": "Unreal 5.8 imported one static mesh, one material, and three textures at a represented 99.9089-meter height with zero errors and the same non-fatal unsupported FB_ngon_encoding warning as the Shepherd arm.",
   "schema_version": 1,
-  "shepherd_unreal_result": "",
+  "shepherd_unreal_result": "Unreal 5.8 imported one static mesh, one material, and three textures at the approved 1.2-meter grounded height. The isolated Unlit visual pass found no silhouette, color, material, texture, normal, opacity, or emissive-behavior regression and emitted zero errors.",
   "unsafe_automatic_repairs": [],
-  "visual_fidelity_assessment": ""
+  "visual_fidelity_assessment": "Blender 5.1.2 raw-versus-Shepherd turntables match at 0.055-0.082/255 full-frame MAE, and Blender re-export differs from Shepherd by only 0.00028-0.00033/255 MAE. Unreal's individually framed front views match at 0.464/255 raw-foreground MAE. Source and repaired GLBs have byte-identical binary geometry and material, texture, image, sampler, accessor, and buffer-view records; only approved display names and root scale differ. The source export is opaque and non-emissive, so this proves preservation of exported behavior but does not prove that preview-only glass or glow was present in the GLB."
 }

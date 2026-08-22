@@ -17,10 +17,11 @@ verification agent for game developers.
 
 The [validation workspace](validation/README.md) preserves immutable raw provenance, controlled
 mutation ground truth, Blender evidence, and an isolated Unreal comparison harness. Patchling
-Courier is registered as the current hero and preservation case. Shader Lantern is the next
-real-world corpus member. Its rights-confirmed 12.8 MB
-[raw GLB](validation/corpus/shader_lantern_01/raw/asset.glb) is registered and its blind inspection
-and plan are frozen at the required physical-scale approval; the exact evidence and current limits
+Courier is the current hero and preservation case. Shader Lantern is the second rights-confirmed
+real-world corpus member. Its approved workflow normalized the 12.8 MB
+[raw GLB](validation/corpus/shader_lantern_01/raw/asset.glb) to the intended 1.2-meter height, made
+two safe display-name repairs, independently preserved its exported geometry and PBR resources in
+Blender and Unreal, and left its triangle-budget warning unresolved. Exact evidence and limitations
 are in the
 [Shader Lantern checkpoint](validation/corpus/shader_lantern_01/checkpoint.md).
 The rights-confirmed 4.86 MB

@@ -63,8 +63,8 @@ def test_patchling_registration_is_typed_and_prompt_is_frozen() -> None:
     )
 
 
-def test_shader_lantern_registration_and_pending_blind_plan_are_frozen() -> None:
-    """The registered Lantern keeps its prompt, raw hash, and exact pending candidate."""
+def test_shader_lantern_registration_and_approved_result_are_frozen() -> None:
+    """The registered Lantern keeps its blind plan and approved verified outcome."""
     provenance = AssetProvenance.model_validate_json(
         (SHADER_LANTERN_ROOT / "provenance.json").read_text(encoding="utf-8")
     )
@@ -94,6 +94,25 @@ def test_shader_lantern_registration_and_pending_blind_plan_are_frozen() -> None
         "rename-mesh-000",
         "rename-node-001",
         "normalize-root-v1",
+    ]
+    decisions = json.loads(
+        (SHADER_LANTERN_ROOT / "blind_asset_shepherd" / "decisions.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert [record["decision"] for record in decisions["records"]] == [
+        "AUTO_AUTHORIZED",
+        "AUTO_AUTHORIZED",
+        "APPROVED",
+    ]
+    verification = json.loads(
+        (SHADER_LANTERN_ROOT / "blind_asset_shepherd" / "verification.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert verification["state"] == "PASSED_WITH_REMAINING_WARNINGS"
+    assert verification["remaining_warnings"] == [
+        "TRIANGLE_BUDGET_EXCEEDED: Triangle budget exceeded"
     ]
 
 
@@ -131,6 +150,10 @@ def test_unreal_harness_is_syntax_checked_and_isolated() -> None:
         "InterchangeEditor",
         "PythonScriptPlugin",
     }
+    engine_config = (unreal_root / "Config" / "DefaultEngine.ini").read_text(encoding="utf-8")
+    assert "DefaultGraphicsRHI=DefaultGraphicsRHI_DX12" in engine_config
+    assert "+D3D12TargetedShaderFormats=PCD3D_SM6" in engine_config
+    assert "SecurityToken" not in engine_config
 
 
 def test_report_renderer_marks_missing_evidence_without_inventing_claims() -> None:

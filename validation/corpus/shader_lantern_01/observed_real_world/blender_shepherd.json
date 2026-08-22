@@ -1,0 +1,90 @@
+{
+  "asset": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\shader_lantern_01\\blind_asset_shepherd\\repaired.glb",
+  "asset_sha256": "718722d6203dd0f0d62f86f42f0999e0d44c168f6f29767eee204d7d5631eebd",
+  "blender_version": "5.1.2",
+  "export_result": [
+    "FINISHED"
+  ],
+  "export_settings": {
+    "default_operator_settings": true,
+    "export_format": "GLB",
+    "operator": "bpy.ops.export_scene.gltf"
+  },
+  "generated_at": "2026-08-22T01:04:12.632504Z",
+  "image_count": 3,
+  "images": [
+    {
+      "available": true,
+      "external_path": "",
+      "height": 4096,
+      "name": "stylized+lantern+3d+model_basecolor.jpg",
+      "packed": true,
+      "source": "FILE",
+      "width": 4096
+    },
+    {
+      "available": true,
+      "external_path": "",
+      "height": 4096,
+      "name": "stylized+lantern+3d+model_normal.jpg",
+      "packed": true,
+      "source": "FILE",
+      "width": 4096
+    },
+    {
+      "available": true,
+      "external_path": "",
+      "height": 4096,
+      "name": "stylized+lantern+3d+model_rm.png",
+      "packed": true,
+      "source": "FILE",
+      "width": 4096
+    }
+  ],
+  "import_settings": {
+    "default_operator_settings": true,
+    "filepath": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\shader_lantern_01\\blind_asset_shepherd\\repaired.glb",
+    "operator": "bpy.ops.import_scene.gltf"
+  },
+  "import_success": true,
+  "material_count": 1,
+  "materials": [
+    "tripo_mat_d8dd79ae"
+  ],
+  "mesh_object_count": 1,
+  "missing_images": [],
+  "object_count": 3,
+  "operator_result": [
+    "FINISHED"
+  ],
+  "polygon_count": 101564,
+  "reexported_glb": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\build\\validation\\shader-lantern-blender\\shepherd-reexport.glb",
+  "reexported_glb_sha256": "05bb285ed2e9973b19853e4dc4047e0bb654184e8bf4cee974363b016c0d6496",
+  "saved_blend": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\build\\validation\\shader-lantern-blender\\shepherd.blend",
+  "scene_bounds": {
+    "dimensions_m": [
+      0.6724697351455688,
+      0.6959647536277771,
+      1.2000000476837158
+    ],
+    "max_m": [
+      0.3362348675727844,
+      0.34798237681388855,
+      1.2000000476837158
+    ],
+    "min_m": [
+      -0.3362348675727844,
+      -0.34798237681388855,
+      0.0
+    ]
+  },
+  "scene_unit_scale_length": 1.0,
+  "scene_unit_system": "METRIC",
+  "scene_up_axis": "Z",
+  "schema_version": 1,
+  "source_axis_conversion": "glTF +Y up converted by Blender importer",
+  "source_unchanged_verified": true,
+  "vertex_count": 77545,
+  "visual_anomalies": "REQUIRES_HUMAN_ADJUDICATION",
+  "warnings": []
+}

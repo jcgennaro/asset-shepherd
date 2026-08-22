@@ -1,0 +1,67 @@
+{
+  "application_version": "0.1.0",
+  "commit_sha": "e6b9046c86b96dc43f3f4e255f00e759f2d3d22e",
+  "completed_at": "2026-08-22T01:03:19.578904Z",
+  "decisions": [
+    {
+      "candidate_id": "rename-mesh-000",
+      "decided_at": "2026-08-22T01:03:19.506660Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    },
+    {
+      "candidate_id": "rename-node-001",
+      "decided_at": "2026-08-22T01:03:19.506660Z",
+      "decision": "AUTO_AUTHORIZED",
+      "interrupt_id": null,
+      "source": "POLICY"
+    },
+    {
+      "candidate_id": "normalize-root-v1",
+      "decided_at": "2026-08-22T01:03:19.506660Z",
+      "decision": "APPROVED",
+      "interrupt_id": null,
+      "source": "USER_APPROVAL_FILE"
+    }
+  ],
+  "executed_actions": [
+    {
+      "authorization": "AUTO_AUTHORIZED",
+      "candidate_id": "rename-mesh-000",
+      "finding_ids": [
+        "finding-mesh-name-invalid"
+      ],
+      "kind": "RENAME_MESH"
+    },
+    {
+      "authorization": "AUTO_AUTHORIZED",
+      "candidate_id": "rename-node-001",
+      "finding_ids": [
+        "finding-node-name-invalid"
+      ],
+      "kind": "RENAME_NODE"
+    },
+    {
+      "authorization": "APPROVED",
+      "candidate_id": "normalize-root-v1",
+      "finding_ids": [
+        "finding-height-out-of-range"
+      ],
+      "kind": "NORMALIZATION_TRANSFORM"
+    }
+  ],
+  "library_versions": {
+    "Pillow": "12.3.0",
+    "numpy": "2.5.2",
+    "pydantic": "2.13.4",
+    "pygltflib": "1.16.5",
+    "trimesh": "5.0.0"
+  },
+  "output_sha256": "718722d6203dd0f0d62f86f42f0999e0d44c168f6f29767eee204d7d5631eebd",
+  "profile_id": "small-stylized-static-mesh-v1",
+  "profile_version": 1,
+  "schema_version": 1,
+  "source_sha256": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
+  "started_at": "2026-08-22T01:03:19.456989Z"
+}

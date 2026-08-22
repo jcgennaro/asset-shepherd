@@ -1,0 +1,144 @@
+{
+  "checks": [
+    {
+      "actual": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
+      "code": "SOURCE_UNCHANGED",
+      "description": "The original source hash is unchanged and matches the plan.",
+      "expected": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
+      "status": "PASS"
+    },
+    {
+      "actual": "718722d6203dd0f0d62f86f42f0999e0d44c168f6f29767eee204d7d5631eebd",
+      "code": "OUTPUT_HASH_RECORDED",
+      "description": "The candidate hash matches repair outcome and provenance.",
+      "expected": "718722d6203dd0f0d62f86f42f0999e0d44c168f6f29767eee204d7d5631eebd",
+      "status": "PASS"
+    },
+    {
+      "actual": "valid GLB 2.0",
+      "code": "GLTF_VALIDATION",
+      "description": "The saved output parses as GLB 2.0 and passes selected structural validation.",
+      "expected": "valid GLB 2.0",
+      "status": "PASS"
+    },
+    {
+      "actual": true,
+      "code": "INDEPENDENT_REINSPECTION",
+      "description": "A fresh disk reload produced a complete deterministic inspection.",
+      "expected": true,
+      "status": "PASS"
+    },
+    {
+      "actual": 77545,
+      "code": "VERTEX_COUNT_PRESERVED",
+      "description": "Vertex Count Preserved",
+      "expected": 77545,
+      "status": "PASS"
+    },
+    {
+      "actual": 101564,
+      "code": "TRIANGLE_COUNT_PRESERVED",
+      "description": "Triangle Count Preserved",
+      "expected": 101564,
+      "status": "PASS"
+    },
+    {
+      "actual": 1,
+      "code": "MATERIAL_COUNT_PRESERVED",
+      "description": "Material Count Preserved",
+      "expected": 1,
+      "status": "PASS"
+    },
+    {
+      "actual": 3,
+      "code": "TEXTURE_COUNT_PRESERVED",
+      "description": "Texture Count Preserved",
+      "expected": 3,
+      "status": "PASS"
+    },
+    {
+      "actual": true,
+      "code": "NAMES_VALID_AND_UNIQUE",
+      "description": "All node and mesh names satisfy the profile and uniqueness rules.",
+      "expected": true,
+      "status": "PASS"
+    },
+    {
+      "actual": [
+        [
+          -0.3362348819343793,
+          0.0,
+          -0.3479823691931279
+        ],
+        [
+          0.3362348819343793,
+          1.2,
+          0.3479823691931279
+        ]
+      ],
+      "code": "INDEPENDENT_GEOMETRY_RELOAD",
+      "description": "Trimesh independently reloads the GLB and agrees on world bounds.",
+      "expected": [
+        [
+          -0.3362348819343793,
+          0.0,
+          -0.3479823691931279
+        ],
+        [
+          0.3362348819343793,
+          1.2,
+          0.3479823691931279
+        ]
+      ],
+      "status": "PASS"
+    },
+    {
+      "actual": 120.0,
+      "code": "APPROVED_SCALE_WITHIN_TOLERANCE",
+      "description": "Approved physical scale is within the project height tolerance.",
+      "expected": {
+        "target_cm": 120.0,
+        "tolerance_cm": 30.0
+      },
+      "status": "PASS"
+    },
+    {
+      "actual": [
+        "normalize-root-v1",
+        "rename-mesh-000",
+        "rename-node-001"
+      ],
+      "code": "EXECUTED_ACTIONS_IN_PROVENANCE",
+      "description": "Every executed repair action appears exactly in provenance.",
+      "expected": [
+        "normalize-root-v1",
+        "rename-mesh-000",
+        "rename-node-001"
+      ],
+      "status": "PASS"
+    },
+    {
+      "actual": [],
+      "code": "REJECTIONS_PRESERVED",
+      "description": "Rejected actions were not executed and remain rejected for this job.",
+      "expected": [],
+      "status": "PASS"
+    },
+    {
+      "actual": 0,
+      "code": "SECOND_PLAN_EMPTY",
+      "description": "A second version-1 planning pass proposes no non-rejected repairs.",
+      "expected": 0,
+      "status": "PASS"
+    }
+  ],
+  "output_sha256": "718722d6203dd0f0d62f86f42f0999e0d44c168f6f29767eee204d7d5631eebd",
+  "remaining_warnings": [
+    "TRIANGLE_BUDGET_EXCEEDED: Triangle budget exceeded"
+  ],
+  "schema_version": 1,
+  "second_plan_candidate_count": 0,
+  "source_sha256": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
+  "state": "PASSED_WITH_REMAINING_WARNINGS",
+  "verification_id": "verification-718722d6203dd0f0-v1"
+}

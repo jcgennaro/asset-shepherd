@@ -1,7 +1,8 @@
 # Generated Unreal state and binary evidence; recreate it with the checked-in scripts.
 Binaries/
 Build/
-Config/
+Config/*
+!Config/DefaultEngine.ini
 Content/
 DerivedDataCache/
 Intermediate/

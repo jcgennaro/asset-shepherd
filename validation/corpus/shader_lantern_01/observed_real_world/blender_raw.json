@@ -1,0 +1,79 @@
+{
+  "asset": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\shader_lantern_01\\raw\\asset.glb",
+  "asset_sha256": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
+  "blender_version": "5.1.2",
+  "generated_at": "2026-08-22T01:04:04.192222Z",
+  "image_count": 3,
+  "images": [
+    {
+      "available": true,
+      "external_path": "",
+      "height": 4096,
+      "name": "stylized+lantern+3d+model_basecolor.jpg",
+      "packed": true,
+      "source": "FILE",
+      "width": 4096
+    },
+    {
+      "available": true,
+      "external_path": "",
+      "height": 4096,
+      "name": "stylized+lantern+3d+model_normal.jpg",
+      "packed": true,
+      "source": "FILE",
+      "width": 4096
+    },
+    {
+      "available": true,
+      "external_path": "",
+      "height": 4096,
+      "name": "stylized+lantern+3d+model_rm.png",
+      "packed": true,
+      "source": "FILE",
+      "width": 4096
+    }
+  ],
+  "import_settings": {
+    "default_operator_settings": true,
+    "filepath": "C:\\Users\\jcgen\\Documents\\asset-shepherd\\validation\\corpus\\shader_lantern_01\\raw\\asset.glb",
+    "operator": "bpy.ops.import_scene.gltf"
+  },
+  "import_success": true,
+  "material_count": 1,
+  "materials": [
+    "tripo_mat_d8dd79ae"
+  ],
+  "mesh_object_count": 1,
+  "missing_images": [],
+  "object_count": 2,
+  "operator_result": [
+    "FINISHED"
+  ],
+  "polygon_count": 101564,
+  "scene_bounds": {
+    "dimensions_m": [
+      55.98809814453125,
+      57.94422912597656,
+      99.90890502929688
+    ],
+    "max_m": [
+      27.994049072265625,
+      28.97211456298828,
+      99.90890502929688
+    ],
+    "min_m": [
+      -27.994049072265625,
+      -28.97211456298828,
+      0.0
+    ]
+  },
+  "scene_unit_scale_length": 1.0,
+  "scene_unit_system": "METRIC",
+  "scene_up_axis": "Z",
+  "schema_version": 1,
+  "source_axis_conversion": "glTF +Y up converted by Blender importer",
+  "source_unchanged_verified": true,
+  "vertex_count": 77545,
+  "visual_anomalies": "REQUIRES_HUMAN_ADJUDICATION",
+  "warnings": []
+}
