@@ -12,6 +12,7 @@ verification agent for game developers.
 - [Real-world validation plan](docs/REAL_WORLD_VALIDATION_PLAN.md)
 - [Project status](docs/PROJECT_STATUS.md)
 - [Decision log](docs/DECISIONS.md)
+- [Web design and flow](docs/WEB_DESIGN_AND_FLOW.md)
 
 ## Real-world validation
 

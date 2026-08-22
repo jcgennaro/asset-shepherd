@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** M8 explicit validation-rules intake clarification (this file is included)
+**Current commit:** Web design and flow handoff (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -83,6 +83,11 @@ before any paid invocation or resource creation.
   says that the rules do not choose a model and that the upload is the actual model. All three story
   routes pass the same workflow tests; desktop and phone-width review passed without overflow or
   console errors.
+- Web design handoff: `docs/WEB_DESIGN_AND_FLOW.md` records the role-first information architecture,
+  shared inspect/decide/download behavior, every job state, three-area attention budget, visual
+  system, runtime boundaries, evidence, limitations, and the ordered decisions/next steps for
+  external product review. The role chooser and all three intake routes were rendered and rechecked
+  against the document.
 - Distribution audit: `uv build --wheel` succeeded and the wheel contains all three story templates,
   both shared partials, the job/chooser/base templates, CSS, JavaScript, and favicon.
 - Shader Lantern evidence: raw SHA-256
@@ -120,7 +125,8 @@ record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-After this mandatory visual checkpoint is reviewed, continue RW2 by freezing the contracted
-one-batch Debug Beetle generation card and registering its untouched GLB when the user supplies it.
-Do not begin Cloudforge until the Debug Beetle batch is complete. Before M9 paid-provider work,
-confirm the dedicated AWS profile, Bedrock model/region access, and budget alert.
+Share `docs/WEB_DESIGN_AND_FLOW.md` for product direction. Unless that review identifies a contracted
+web failure or changes milestone priority, continue RW2 by freezing the contracted one-batch Debug
+Beetle generation card and registering its untouched GLB when the user supplies it. Do not begin
+Cloudforge until the Debug Beetle batch is complete. Before M9 paid-provider work, confirm the
+dedicated AWS profile, Bedrock model/region access, and budget alert.
