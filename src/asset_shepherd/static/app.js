@@ -4,7 +4,7 @@ const fileLabel = document.querySelector("[data-file-label]");
 if (fileInput && fileLabel) {
   fileInput.addEventListener("change", () => {
     const selected = fileInput.files?.[0];
-    fileLabel.textContent = selected ? selected.name : "Choose an untouched GLB";
+    fileLabel.textContent = selected ? selected.name : "Choose your GLB file";
   });
 }
 

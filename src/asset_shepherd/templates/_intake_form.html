@@ -1,5 +1,6 @@
 <section class="intake-card" aria-labelledby="intake-title" data-focus-area="upload">
-  <h2 id="intake-title">Upload one GLB</h2>
+  <h2 id="intake-title">Choose rules, then upload</h2>
+  <p class="intake-summary">Both are required: the rules define “ready,” and the GLB is the model we check.</p>
 
   {% if error %}
     <div class="alert danger" role="alert">
@@ -9,22 +10,42 @@
   {% endif %}
 
   <form action="{{ url_for('create_story_job', story_slug=story.slug) }}" method="post" enctype="multipart/form-data" class="intake-form" data-busy-form>
-    <label class="field-label" for="profile_id">Project target</label>
-    <div class="select-wrap">
-      <select id="profile_id" name="profile_id" required>
+    <fieldset class="intake-step">
+      <legend class="step-heading">
+        <span class="step-number">1</span>
+        <span>
+          <strong>Choose validation rules</strong>
+          <small>This does not choose a model. Pick the target size and limits that fit your asset.</small>
+        </span>
+      </legend>
+      <div class="profile-options">
         {% for profile in profiles %}
-          <option value="{{ profile.profile_id }}">
-            {{ profile.name }} — {{ profile.description }}
-          </option>
+          <label class="profile-option">
+            <input type="radio" name="profile_id" value="{{ profile.profile_id }}" required>
+            <span>
+              <strong>{{ profile.name }}</strong>
+              <small>{{ profile.description }}</small>
+            </span>
+          </label>
         {% endfor %}
-      </select>
-    </div>
+      </div>
+    </fieldset>
 
-    <label class="drop-zone" for="asset">
-      <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
-      <strong data-file-label>Choose an untouched GLB</strong>
-      <span>Static mesh · up to {{ max_upload_mb }} MB</span>
-    </label>
+    <div class="intake-step">
+      <div class="step-heading" id="upload-step-label">
+        <span class="step-number">2</span>
+        <span>
+          <strong>Upload the GLB you want checked</strong>
+          <small>This is your actual 3D model. Its source file will not be changed.</small>
+        </span>
+      </div>
+
+      <label class="drop-zone" for="asset">
+        <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input aria-labelledby="upload-step-label">
+        <strong data-file-label>Choose your GLB file</strong>
+        <span>One static mesh · up to {{ max_upload_mb }} MB</span>
+      </label>
+    </div>
 
     <button class="primary-button" type="submit" data-submit-button>
       <span>{{ story.submit_label }}</span>
@@ -32,5 +53,5 @@
     </button>
   </form>
 
-  <p class="fine-print">Your original stays untouched. Local mode makes no model or network request.</p>
+  <p class="fine-print">Asset Shepherd checks the uploaded copy. Local mode makes no model or network request.</p>
 </section>

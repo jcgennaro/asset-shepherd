@@ -111,6 +111,13 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert "Inspect" in landing.text
     assert "Decide" in landing.text
     assert "Download" in landing.text
+    assert "Both are required" in landing.text
+    assert "Choose validation rules" in landing.text
+    assert "This does not choose a model" in landing.text
+    assert "Upload the GLB you want checked" in landing.text
+    assert "Choose your GLB file" in landing.text
+    assert "Project target" not in landing.text
+    assert landing.text.count('type="radio" name="profile_id"') == 2
     _assert_focus_area_budget(landing.text, expected=2)
 
     job_path = _upload(client, BROKEN_PATH, story_slug=story_slug)

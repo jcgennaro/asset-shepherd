@@ -4,6 +4,46 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D012 — Require an explicit validation-rule choice before GLB upload
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+The intake card presented a dropdown labeled `Project target` above the GLB upload. A first-time
+user reasonably could not tell whether the dropdown selected an example asset, replaced the upload,
+or configured the inspection. It also silently defaulted to the first profile, making an unintended
+1.8-meter character target possible for a prop such as Shader Lantern.
+
+**Options considered**
+
+- Keep the dropdown and add a short helper sentence.
+- Preselect a profile based on the user's story route or uploaded filename.
+- Show both trusted profiles directly, require an explicit choice, and separate rules from the
+  actual file as two numbered steps.
+
+**Decision**
+
+Replace the dropdown with two visible radio choices and no default. Label step 1 `Choose validation
+rules` and explicitly state that it does not choose a model. Label step 2 `Upload the GLB you want
+checked` and state that this is the actual 3D model. Keep both steps inside the single intake focus
+area and preserve the same trusted profile IDs, upload boundary, and workflow behavior.
+
+**Evidence and consequences**
+
+All three story routes render the same two-step intake and tests assert the explanation, two
+required profile choices, absence of the ambiguous label, and unchanged end-to-end workflow. Live
+desktop and phone-width review shows no horizontal overflow; selecting the small-stylized profile
+sets `small-stylized-static-mesh-v1`; and the console has no errors or warnings. Users must now make
+one deliberate rule choice before submission, trading a single click for protection against a
+silent, inappropriate scale target.
+
 ### D011 — Approve Shader Lantern normalization and preserve its report-only warning
 
 **Date:** 2026-08-21

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** Shader Lantern approved validation checkpoint (this file is included)
+**Current commit:** M8 explicit validation-rules intake clarification (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Role-first chooser; two-area intake; three-area decision/result states; shared real Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, and D010; progressive-disclosure refinement complete |
+| M8 Web product | COMPLETE | Role-first chooser; explicit rules-then-upload intake; three-area decision/result states; shared real Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, and D012; intake clarification included in current commit |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -78,6 +78,11 @@ before any paid invocation or resource creation.
   Desktop and 390 × 844 review passed with no horizontal overflow; the completed result keeps the
   download and before/after preview visible while technical evidence is collapsed. No application
   console errors or warnings were observed.
+- Intake clarification: the ambiguous `Project target` dropdown is replaced by two visible,
+  unselected validation-rule choices followed by a separately numbered GLB upload. Copy explicitly
+  says that the rules do not choose a model and that the upload is the actual model. All three story
+  routes pass the same workflow tests; desktop and phone-width review passed without overflow or
+  console errors.
 - Distribution audit: `uv build --wheel` succeeded and the wheel contains all three story templates,
   both shared partials, the job/chooser/base templates, CSS, JavaScript, and favicon.
 - Shader Lantern evidence: raw SHA-256

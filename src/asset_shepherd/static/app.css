@@ -273,53 +273,118 @@ select {
 }
 
 .intake-card h2 {
-  margin: 0 0 26px;
+  margin: 0 0 8px;
   font-size: 1.35rem;
   font-weight: 560;
   letter-spacing: -0.03em;
 }
 
+.intake-summary {
+  margin: 0 0 26px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .intake-form {
   display: grid;
-  gap: 15px;
+  gap: 24px;
 }
 
-.field-label {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 650;
+.intake-step {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-.select-wrap {
-  position: relative;
-}
-
-.select-wrap::after {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  color: var(--muted);
-  content: "⌄";
-  pointer-events: none;
-  transform: translateY(-55%);
-}
-
-select {
+.step-heading {
+  display: flex;
   width: 100%;
-  min-height: 52px;
-  padding: 0 42px 0 15px;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 0;
+  padding: 0;
+}
+
+.step-number {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.step-heading > span:last-child {
+  display: grid;
+  gap: 4px;
+}
+
+.step-heading strong {
+  font-size: 0.88rem;
+}
+
+.step-heading small,
+.profile-option small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 450;
+  line-height: 1.45;
+}
+
+.profile-options {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-option {
+  display: grid;
+  min-height: 58px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 10px 13px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  appearance: none;
-  color: var(--text);
   background: var(--bg);
   cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.profile-option:hover,
+.profile-option:focus-within,
+.profile-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.profile-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.profile-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.profile-option strong {
+  font-size: 0.82rem;
 }
 
 .drop-zone {
   position: relative;
   display: grid;
-  min-height: 128px;
+  min-height: 112px;
   place-content: center;
   gap: 7px;
   padding: 20px;
