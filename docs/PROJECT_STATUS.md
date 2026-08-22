@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** M8 intent-first target agreement (this file is included)
+**Current commit:** M8 intent-first target agreement and product inflection review (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -96,6 +96,11 @@ before any paid invocation or resource creation.
   architecture, target-story contract, policy derivation, single-step workflow, Bedrock boundary,
   evidence, and limitations. D018 supersedes the primary audience-selector modality while retaining
   the established layout, disclosure, authorization, and deterministic safety decisions.
+- Product inflection review: `docs/INFLECTION_POINT.md` is the single current-versus-envisioned
+  handoff. It preserves the existing form-led product as the executable baseline, defines the
+  proposed persistent Bedrock/Strands asset conversation, fixes the authority boundary, surfaces ten
+  pre-M9 decisions, and proposes a staged transition. Its envisioned model remains a review draft,
+  not authorization for AWS work or additional repair domains.
 - Distribution audit: `uv build --wheel` succeeded with the intent module, confirmation template,
   workflow rail, updated intake/job templates, CSS, JavaScript, favicon, and existing deterministic
   runtime assets included in the wheel. The checked-in public intent schema remains a repository
@@ -135,9 +140,8 @@ record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Review the intent-first flow documented in `docs/WEB_DESIGN_AND_FLOW.md`. The local version now
-proves the future Bedrock conversation boundary without requiring a model call. The earliest corpus
-work remains RW2 registration of the untouched Debug Beetle GLB when the user supplies it; do not
-begin Cloudforge until that batch is complete. Before M9 paid-provider work, confirm the dedicated
-AWS profile, Bedrock model/region access, and budget alert. No paid invocation or AWS resource
-creation is authorized yet.
+Review `docs/INFLECTION_POINT.md` with ChatGPT Pro and record the resulting product direction before
+beginning M9 implementation. The earliest corpus work remains RW2 registration of the untouched
+Debug Beetle GLB when the user supplies it; do not begin Cloudforge until that batch is complete.
+Before M9 paid-provider work, confirm the dedicated AWS profile, Bedrock model/region access, and
+budget alert. No paid invocation or AWS resource creation is authorized yet.
