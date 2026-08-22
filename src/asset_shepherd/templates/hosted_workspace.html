@@ -46,18 +46,18 @@
               <span>If my request needs rigging, animation, or unsupported structure, I accept a static-mesh or inspection-only handoff.</span>
             </label>
             <details class="hosted-advanced">
-              <summary>Advanced · customize supported rules</summary>
-              <p>Blank fields inherit the nearest trusted preset. Safety, source preservation, authorization classes, verification invariants, and repair domains remain fixed.</p>
+              <summary>Advanced · adjust supported rules</summary>
+              <p>Blank fields keep the agent proposal derived from your target and the versioned policy family. Safety, source preservation, authorization classes, verification invariants, and repair domains remain fixed.</p>
               <div class="hosted-advanced-grid">
-                <label><span>Height tolerance (cm)</span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" placeholder="Preset default"></label>
-                <label><span>Ground tolerance (cm)</span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" placeholder="Preset default"></label>
-                <label><span>Require Y-up</span><select name="custom_require_y_up"><option value="">Preset default</option><option value="true">Yes</option><option value="false">No</option></select></label>
-                <label><span>Require ground contact</span><select name="custom_require_ground_contact"><option value="">Preset default</option><option value="true">Yes</option><option value="false">No</option></select></label>
-                <label><span>Naming pattern</span><input type="text" name="custom_naming_pattern" maxlength="128" placeholder="Preset default"></label>
-                <label><span>Triangle budget</span><input type="number" name="custom_max_triangles" min="0" step="1" placeholder="Preset default"></label>
-                <label><span>Material budget</span><input type="number" name="custom_max_materials" min="0" step="1" placeholder="Preset default"></label>
-                <label><span>Texture budget</span><input type="number" name="custom_max_textures" min="0" step="1" placeholder="Preset default"></label>
-                <label><span>Max texture dimension</span><input type="number" name="custom_max_texture_dimension" min="1" step="1" placeholder="Preset default"></label>
+                <label><span>Height tolerance (cm)</span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" placeholder="Agent proposal"></label>
+                <label><span>Ground tolerance (cm)</span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" placeholder="Agent proposal"></label>
+                <label><span>Require Y-up</span><select name="custom_require_y_up"><option value="">Agent proposal</option><option value="true">Yes</option><option value="false">No</option></select></label>
+                <label><span>Require ground contact</span><select name="custom_require_ground_contact"><option value="">Agent proposal</option><option value="true">Yes</option><option value="false">No</option></select></label>
+                <label><span>Naming pattern</span><input type="text" name="custom_naming_pattern" maxlength="128" placeholder="Agent proposal"></label>
+                <label><span>Triangle budget</span><input type="number" name="custom_max_triangles" min="0" step="1" placeholder="Agent proposal"></label>
+                <label><span>Material budget</span><input type="number" name="custom_max_materials" min="0" step="1" placeholder="Agent proposal"></label>
+                <label><span>Texture budget</span><input type="number" name="custom_max_textures" min="0" step="1" placeholder="Agent proposal"></label>
+                <label><span>Max texture dimension</span><input type="number" name="custom_max_texture_dimension" min="1" step="1" placeholder="Agent proposal"></label>
               </div>
             </details>
             <button class="primary-button" type="submit" data-submit-button>Confirm target and inspect <span aria-hidden="true">→</span></button>
@@ -148,7 +148,9 @@
           <summary>Rules <span>{{ "frozen" if record.profile_policy else "not derived" }}</span></summary>
           {% if record.profile_policy %}
             <p><strong>{{ record.profile_name }}</strong><br><code>{{ record.profile_policy.canonical_sha256[:12] }}</code></p>
+            <p>Family <code>{{ record.profile_policy.policy_family_id }}</code>. Confirmed intent, bounded derivation, family defaults, and any explicit user adjustments are recorded per rule.</p>
             <dl>{% for label, value in policy_rules %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>
+            <details><summary>Rule sources</summary><dl>{% for path, source in record.profile_policy.rule_sources.items() %}<div><dt>{{ path }}</dt><dd>{{ source|replace('_', ' ')|lower }}</dd></div>{% endfor %}</dl></details>
           {% else %}<p>Rules are derived only after target confirmation.</p>{% endif %}
         </details>
         <details>

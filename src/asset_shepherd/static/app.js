@@ -8,7 +8,7 @@ if (fileInput && fileLabel) {
   });
 }
 
-const profileRadios = [...document.querySelectorAll('input[name="profile_id"]')];
+const policyProposal = document.querySelector("[data-policy-proposal]");
 const profileMode = document.querySelector("[data-profile-mode]");
 const customToggle = document.querySelector("[data-custom-toggle]");
 const customFields = document.querySelector("[data-custom-fields]");
@@ -16,44 +16,27 @@ const customStatus = document.querySelector("[data-custom-status]");
 const customInputs = [...document.querySelectorAll("[data-custom-field]")];
 const selectedPolicyLabel = document.querySelector("[data-selected-policy]");
 
-function selectedProfile() {
-  return profileRadios.find((radio) => radio.checked);
-}
-
-function populateCustomFields(profileRadio) {
-  const defaults = JSON.parse(profileRadio.dataset.profileDefaults || "{}");
+function populateCustomFields() {
+  const defaults = JSON.parse(policyProposal?.dataset.profileDefaults || "{}");
   for (const input of customInputs) {
     const key = input.dataset.customField;
     const value = defaults[key];
     input.value = typeof value === "boolean" ? String(value) : value;
   }
-  const profileName = profileRadio
-    .closest(".profile-option-shell")
-    ?.querySelector(".profile-option strong")?.textContent;
-  if (customStatus) {
-    customStatus.textContent = `Copy of ${profileName || "selected preset"}; preset remains unchanged.`;
-  }
 }
 
 function updateSelectedPolicyLabel() {
-  const profileRadio = selectedProfile();
   if (!selectedPolicyLabel) {
     return;
   }
-  if (!profileRadio) {
-    selectedPolicyLabel.textContent = "No preset selected";
-    return;
-  }
-  const profileName = profileRadio
-    .closest(".profile-option-shell")
-    ?.querySelector(".profile-option strong")?.textContent;
-  const suffix = customToggle?.checked ? " — customized copy" : " — immutable preset";
-  selectedPolicyLabel.textContent = `${profileName || "Selected policy"}${suffix}`;
+  selectedPolicyLabel.textContent = customToggle?.checked
+    ? "Agent-resolved rules — adjusted"
+    : "Agent-resolved rules";
 }
 
 function setCustomMode(enabled) {
   if (profileMode) {
-    profileMode.value = enabled ? "custom" : "preset";
+    profileMode.value = enabled ? "custom" : "resolved";
   }
   if (customFields) {
     customFields.hidden = !enabled;
@@ -62,31 +45,21 @@ function setCustomMode(enabled) {
     input.disabled = !enabled;
     input.required = enabled;
   }
+  if (customStatus) {
+    customStatus.textContent = enabled
+      ? "Your supported adjustments will be validated and frozen."
+      : "Agent proposal remains active.";
+  }
   updateSelectedPolicyLabel();
 }
 
-for (const radio of profileRadios) {
-  radio.addEventListener("change", () => {
-    populateCustomFields(radio);
-    if (customToggle) {
-      customToggle.checked = false;
-    }
-    setCustomMode(false);
-    updateSelectedPolicyLabel();
-  });
-}
-
 customToggle?.addEventListener("change", () => {
-  const profileRadio = selectedProfile();
-  if (!profileRadio) {
-    customToggle.checked = false;
-    setCustomMode(false);
-    profileRadios[0]?.focus();
-    return;
-  }
-  populateCustomFields(profileRadio);
+  populateCustomFields();
   setCustomMode(customToggle.checked);
 });
+
+populateCustomFields();
+setCustomMode(false);
 
 const intakeWorkflow = document.querySelector("[data-intake-workflow]");
 
@@ -96,14 +69,6 @@ if (intakeWorkflow) {
   const validationMessage = intakeWorkflow.querySelector("[data-step-validation]");
 
   function validateRules() {
-    const profileRadio = selectedProfile();
-    if (!profileRadio) {
-      if (validationMessage) {
-        validationMessage.textContent = "Choose one validation policy before uploading.";
-      }
-      profileRadios[0]?.focus();
-      return false;
-    }
     for (const input of customInputs) {
       if (!input.disabled && !input.checkValidity()) {
         input.reportValidity();

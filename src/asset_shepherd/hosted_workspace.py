@@ -34,7 +34,7 @@ from asset_shepherd.models import (
     ProjectProfile,
     RepairEligibility,
 )
-from asset_shepherd.profile_policy import build_profile_policy_provenance
+from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 MAX_EVENTS = 64
@@ -203,10 +203,10 @@ def _canonical_sha256(value: Mapping[str, JsonValue]) -> str:
 class HostedWorkspaceStore:
     """Filesystem-backed D019 state with restart-safe Strands reconstruction."""
 
-    def __init__(self, work_root: Path, profiles: tuple[ProjectProfile, ...]) -> None:
-        """Bind durable workspaces to trusted immutable repository profiles."""
+    def __init__(self, work_root: Path, family: ProjectProfile) -> None:
+        """Bind durable workspaces to one trusted parameterized policy family."""
         self.work_root = work_root.resolve(strict=False)
-        self.profiles = profiles
+        self.family = family
         self._lock = RLock()
 
     def _record_path(self, workspace_id: str) -> Path:
@@ -314,9 +314,12 @@ class HostedWorkspaceStore:
         if raw is None or not raw.strip():
             return None
         try:
-            return float(raw)
+            value = float(raw)
         except ValueError as error:
             raise HostedWorkspaceError(f"{label} must be a number.") from error
+        if not math.isfinite(value):
+            raise HostedWorkspaceError(f"{label} must be finite.")
+        return value
 
     @staticmethod
     def _custom_int(values: Mapping[str, str | None], key: str, label: str) -> int | None:
@@ -337,33 +340,15 @@ class HostedWorkspaceStore:
             raise HostedWorkspaceError(f"{label} must be yes or no.")
         return raw == "true"
 
-    @staticmethod
-    def _set_profile_value(values: dict[str, object], path: str, value: JsonValue) -> None:
-        section_name, field_name = path.split(".", maxsplit=1)
-        section = values.get(section_name)
-        if not isinstance(section, dict):
-            raise HostedWorkspaceError("The trusted preset has an invalid policy structure.")
-        section[field_name] = value
-
     def _derive_profile(
         self,
+        description: str,
+        target_use: AssetTargetUse,
         target_height_cm: float,
         custom_values: Mapping[str, str | None] | None = None,
-    ) -> tuple[ProjectProfile, ProfilePolicyProvenance, str]:
-        if not self.profiles:
-            raise HostedWorkspaceError("No trusted project policy is available.")
-        base = min(
-            self.profiles,
-            key=lambda profile: abs(profile.expected_height_cm.target - target_height_cm),
-        )
+    ) -> PolicyResolution:
+        """Resolve confirmed intent through the one family plus supported user edits."""
         overrides: dict[str, JsonValue] = {}
-        if not math.isclose(
-            base.expected_height_cm.target,
-            target_height_cm,
-            rel_tol=0.0,
-            abs_tol=1e-9,
-        ):
-            overrides["expected_height_cm.target"] = target_height_cm
         values = custom_values or {}
         supported: tuple[tuple[str, JsonValue | None], ...] = (
             (
@@ -407,62 +392,22 @@ class HostedWorkspaceStore:
                 ),
             ),
         )
-        base_supported: dict[str, JsonValue] = {
-            "expected_height_cm.tolerance": base.expected_height_cm.tolerance,
-            "orientation.require_y_up_geometry": base.orientation.require_y_up_geometry,
-            "orientation.require_ground_contact": base.orientation.require_ground_contact,
-            "orientation.ground_tolerance_cm": base.orientation.ground_tolerance_cm,
-            "budgets.max_triangles": base.budgets.max_triangles,
-            "budgets.max_materials": base.budgets.max_materials,
-            "budgets.max_textures": base.budgets.max_textures,
-            "budgets.max_texture_dimension": base.budgets.max_texture_dimension,
-        }
         for path, value in supported:
-            if value is None:
-                continue
-            if base_supported[path] != value:
+            if value is not None:
                 overrides[path] = value
         naming_pattern = values.get("custom_naming_pattern")
         if naming_pattern is not None and naming_pattern.strip():
-            naming_pattern = naming_pattern.strip()
-            if len(naming_pattern) > 128:
-                raise HostedWorkspaceError("The naming pattern must be at most 128 characters.")
-            try:
-                compiled = re.compile(naming_pattern)
-            except re.error as error:
-                raise HostedWorkspaceError(f"The naming pattern is invalid: {error}.") from error
-            if any(compiled.fullmatch(name) is None for name in ("Node_000", "Mesh_000")):
-                raise HostedWorkspaceError(
-                    "The naming pattern must allow deterministic names such as "
-                    "Node_000 and Mesh_000."
-                )
-            if naming_pattern != base.naming.pattern:
-                overrides["naming.pattern"] = naming_pattern
-        if not overrides:
-            policy = build_profile_policy_provenance(
-                base,
-                base_preset_id=base.profile_id,
-                explicit_overrides={},
-            )
-            return base, policy, base.name
-        signature = _canonical_sha256(
-            {"base_preset_id": base.profile_id, "explicit_overrides": overrides}
-        )
-        resolved = base.model_dump(mode="python")
-        for path, value in overrides.items():
-            self._set_profile_value(resolved, path, value)
-        resolved["profile_id"] = f"{base.profile_id}-custom-{signature[:12]}"
-        resolved["name"] = f"Derived project policy ({target_height_cm / 100:g} m)"
+            overrides["naming.pattern"] = naming_pattern.strip()
         try:
-            profile = ProjectProfile.model_validate(resolved)
+            return resolve_policy_family(
+                self.family,
+                description=description,
+                target_use=target_use,
+                target_height_cm=target_height_cm,
+                user_overrides=overrides,
+            )
         except ValueError as error:
-            raise HostedWorkspaceError(f"The customized policy is invalid: {error}") from error
-        policy = build_profile_policy_provenance(
-            profile,
-            base_preset_id=base.profile_id,
-            explicit_overrides=overrides,
-        )
-        return profile, policy, profile.name
+            raise HostedWorkspaceError(f"The resolved policy is invalid: {error}") from error
 
     def _target_contract(
         self,
@@ -542,10 +487,15 @@ class HostedWorkspaceStore:
                 target_height_cm,
                 accept_supported_goal,
             )
-            profile, policy, profile_name = self._derive_profile(
+            resolution = self._derive_profile(
+                workspace.record.private_description,
+                target_use,
                 target_height_cm,
                 custom_values,
             )
+            profile = resolution.profile
+            policy = resolution.provenance
+            profile_name = resolution.display_name
             intent = build_asset_intent(
                 workspace.record.private_description,
                 target_use,
@@ -564,19 +514,25 @@ class HostedWorkspaceStore:
                     "processed_commands": processed,
                 }
             )
+            rule_sources_json: dict[str, JsonValue] = {
+                path: source for path, source in policy.rule_sources.items()
+            }
+            event_payload: dict[str, JsonValue] = {
+                "requested_use": target.requested_use.value,
+                "supported_job_goal": target.supported_job_goal.value,
+                "support_status": target.support_status.value,
+                "target_height_cm": target.target_height_cm,
+                "frozen_profile_id": policy.frozen_profile_id,
+                "base_preset_id": policy.base_preset_id,
+                "policy_family_id": policy.policy_family_id,
+                "explicit_overrides": policy.explicit_overrides,
+                "rule_sources": rule_sources_json,
+            }
             workspace.record = self._append_event(
                 workspace.record,
                 "TARGET_CONFIRMED",
                 evidence_refs=(target.canonical_sha256, policy.canonical_sha256),
-                payload={
-                    "requested_use": target.requested_use.value,
-                    "supported_job_goal": target.supported_job_goal.value,
-                    "support_status": target.support_status.value,
-                    "target_height_cm": target.target_height_cm,
-                    "frozen_profile_id": policy.frozen_profile_id,
-                    "base_preset_id": policy.base_preset_id,
-                    "explicit_overrides": policy.explicit_overrides,
-                },
+                payload=event_payload,
             )
             self._persist(workspace)
             runtime = build_scripted_agent(

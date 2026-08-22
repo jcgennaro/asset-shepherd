@@ -8,6 +8,7 @@ from pydantic import JsonValue
 
 from asset_shepherd.models import (
     FindingRuleProvenance,
+    PolicyRuleSource,
     ProfilePolicyProvenance,
     ProjectProfile,
 )
@@ -48,13 +49,17 @@ def build_profile_policy_provenance(
     profile: ProjectProfile,
     *,
     base_preset_id: str | None = None,
+    policy_family_id: str | None = None,
     explicit_overrides: dict[str, JsonValue] | None = None,
+    rule_sources: dict[str, PolicyRuleSource] | None = None,
 ) -> ProfilePolicyProvenance:
     """Freeze policy identity and derivation metadata for provenance."""
     return ProfilePolicyProvenance(
         frozen_profile_id=profile.profile_id,
         base_preset_id=base_preset_id or profile.profile_id,
+        policy_family_id=policy_family_id,
         explicit_overrides=dict(explicit_overrides or {}),
+        rule_sources=dict(rule_sources or {}),
         profile_version=profile.profile_version,
         canonical_sha256=canonical_profile_sha256(profile),
     )
@@ -69,6 +74,8 @@ def validate_profile_policy_provenance(
         raise ValueError("Frozen policy identifier does not match the resolved profile")
     if policy.profile_version != profile.profile_version:
         raise ValueError("Frozen policy version does not match the resolved profile")
+    if policy.policy_family_id is not None and policy.base_preset_id != policy.policy_family_id:
+        raise ValueError("Policy family identifier must match the legacy base policy identifier")
     if policy.canonical_sha256 != canonical_profile_sha256(profile):
         raise ValueError("Frozen policy hash does not match the resolved profile")
 

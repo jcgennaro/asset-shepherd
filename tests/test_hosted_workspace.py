@@ -20,13 +20,15 @@ CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
 DESCRIPTION = "A friendly humanoid robot intended as a static game asset."
 
 
-def _profiles() -> tuple[ProjectProfile, ...]:
-    return tuple(
-        ProjectProfile.model_validate_json(path.read_text(encoding="utf-8"))
-        for path in (
-            PROJECT_ROOT / "profiles" / "unreal_indie_robot.json",
-            PROJECT_ROOT / "validation" / "profiles" / "small_stylized_static_mesh.json",
-        )
+def _family() -> ProjectProfile:
+    return ProjectProfile.model_validate_json(
+        (
+            PROJECT_ROOT
+            / "src"
+            / "asset_shepherd"
+            / "data"
+            / "unreal_static_game_asset_family.json"
+        ).read_text(encoding="utf-8")
     )
 
 
@@ -36,7 +38,7 @@ def _create(store: HostedWorkspaceStore, source: Path = BROKEN_PATH) -> HostedWo
 
 def test_preflight_measures_source_without_policy_findings_or_plan(tmp_path: Path) -> None:
     """Early upload yields profile-free facts and no policy-bound workflow artifacts."""
-    workspace = _create(HostedWorkspaceStore(tmp_path / "hosted", _profiles()))
+    workspace = _create(HostedWorkspaceStore(tmp_path / "hosted", _family()))
 
     assert workspace.record.phase is WorkspacePhase.TARGET_CONFIRMATION
     assert workspace.record.target is None
@@ -55,7 +57,7 @@ def test_pending_interrupt_survives_restart_and_duplicate_resume_is_exactly_once
 ) -> None:
     """A native pending interrupt restores and one command cannot duplicate mutation."""
     root = tmp_path / "hosted"
-    store = HostedWorkspaceStore(root, _profiles())
+    store = HostedWorkspaceStore(root, _family())
     workspace = _create(store)
     workspace = store.confirm_target(
         workspace,
@@ -68,7 +70,7 @@ def test_pending_interrupt_survives_restart_and_duplicate_resume_is_exactly_once
     assert interrupt_id is not None
     assert workspace.record.phase is WorkspacePhase.APPROVAL
 
-    restarted_store = HostedWorkspaceStore(root, _profiles())
+    restarted_store = HostedWorkspaceStore(root, _family())
     restarted = restarted_store.get(workspace.record.workspace_id)
     assert restarted is not None
     assert restarted.waiting_for_approval
@@ -99,7 +101,7 @@ def test_pending_interrupt_survives_restart_and_duplicate_resume_is_exactly_once
     assert (duplicate.output_dir / "repaired.glb").read_bytes() == repaired_before
     assert (duplicate.output_dir / "result.zip").read_bytes() == result_before
 
-    restarted_again = HostedWorkspaceStore(root, _profiles()).get(workspace.record.workspace_id)
+    restarted_again = HostedWorkspaceStore(root, _family()).get(workspace.record.workspace_id)
     assert restarted_again is not None
     assert restarted_again.record.phase is WorkspacePhase.COMPLETE
     assert restarted_again.ready_candidate
@@ -110,7 +112,7 @@ def test_unsupported_intent_requires_narrow_goal_and_clean_control_needs_no_appr
 ) -> None:
     """Unsupported goals require agreement while a compliant GLB remains mutation-free."""
     root = tmp_path / "hosted"
-    store = HostedWorkspaceStore(root, _profiles())
+    store = HostedWorkspaceStore(root, _family())
     workspace = _create(store, CLEAN_PATH)
 
     with pytest.raises(HostedWorkspaceError, match="Accept the narrower"):
@@ -143,9 +145,9 @@ def test_unsupported_intent_requires_narrow_goal_and_clean_control_needs_no_appr
 
 def test_advanced_supported_rules_are_schema_validated_and_frozen(tmp_path: Path) -> None:
     """Advanced input can change enforced targets but cannot bypass ProjectProfile validation."""
-    store = HostedWorkspaceStore(tmp_path / "hosted", _profiles())
+    store = HostedWorkspaceStore(tmp_path / "hosted", _family())
     invalid = _create(store, CLEAN_PATH)
-    with pytest.raises(HostedWorkspaceError, match="customized policy is invalid"):
+    with pytest.raises(HostedWorkspaceError, match="resolved policy is invalid"):
         store.confirm_target(
             invalid,
             target_use_value=AssetTargetUse.STATIC_GAME_ASSET.value,
@@ -175,4 +177,7 @@ def test_advanced_supported_rules_are_schema_validated_and_frozen(tmp_path: Path
         "budgets.max_materials": 3,
         "expected_height_cm.target": 182.0,
         "expected_height_cm.tolerance": 2.0,
+        "orientation.ground_tolerance_cm": 0.91,
     }
+    assert policy.policy_family_id == "unreal-static-game-asset-family-v1"
+    assert policy.rule_sources["budgets.max_materials"] == "USER_OVERRIDE"

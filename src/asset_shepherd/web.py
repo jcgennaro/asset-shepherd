@@ -4,20 +4,18 @@ from __future__ import annotations
 
 import json
 import math
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from hashlib import sha256
 from pathlib import Path
 from threading import RLock
-from typing import Annotated, BinaryIO, cast
+from typing import Annotated, BinaryIO
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import JsonValue, ValidationError
+from pydantic import JsonValue
 from strands.agent import AgentResult
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
@@ -48,25 +46,13 @@ from asset_shepherd.models import (
     Severity,
     VerificationState,
 )
-from asset_shepherd.profile_policy import (
-    build_profile_policy_provenance,
-    canonical_profile_sha256,
-)
+from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
+from asset_shepherd.profile_policy import canonical_profile_sha256
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
 _DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
-_PROFILE_PRESENTATION = {
-    "unreal-indie-robot-v1": (
-        "Human-scale static mesh",
-        "1.8 m target · 1.7-1.9 m accepted",
-    ),
-    "small-stylized-static-mesh-v1": (
-        "Compact static mesh",
-        "1.2 m target · 0.9-1.5 m accepted",
-    ),
-}
 
 
 class UploadValidationError(ValueError):
@@ -74,15 +60,20 @@ class UploadValidationError(ValueError):
 
 
 @dataclass(frozen=True)
-class ProfileOption:
-    """One trusted, validated profile selectable by its stable identifier."""
+class PolicyFamilyOption:
+    """The one trusted parameterized family used to resolve new web jobs."""
 
-    profile_id: str
-    name: str
-    description: str
+    family_id: str
     path: Path
     profile: ProjectProfile
     canonical_sha256: str
+
+
+@dataclass(frozen=True)
+class PolicyProposalView:
+    """Intent-derived policy proposal formatted for review before upload."""
+
+    resolution: PolicyResolution
     summary: tuple[tuple[str, str], ...]
     review_rules: tuple[tuple[str, str], ...]
     form_defaults: dict[str, JsonValue]
@@ -176,7 +167,6 @@ def _profile_review_rules(
 
 def _profile_form_defaults(profile: ProjectProfile) -> dict[str, JsonValue]:
     return {
-        "custom_height_target_cm": profile.expected_height_cm.target,
         "custom_height_tolerance_cm": profile.expected_height_cm.tolerance,
         "custom_require_y_up": profile.orientation.require_y_up_geometry,
         "custom_require_ground_contact": profile.orientation.require_ground_contact,
@@ -222,50 +212,10 @@ def _custom_bool(values: Mapping[str, str | None], key: str, label: str) -> bool
     return text == "true"
 
 
-def _set_profile_value(profile_data: dict[str, object], path: str, value: JsonValue) -> None:
-    section_name, field_name = path.split(".", maxsplit=1)
-    section = profile_data.get(section_name)
-    if not isinstance(section, dict):
-        raise UploadValidationError("The selected preset has an invalid policy structure.")
-    section[field_name] = value
-
-
-def _custom_profile(
-    base: ProfileOption,
-    values: Mapping[str, str | None],
-    *,
-    target_height_cm: float | None = None,
-) -> tuple[ProjectProfile, ProfilePolicyProvenance]:
-    """Validate supported target-state overrides and freeze a custom policy copy."""
+def _custom_overrides(values: Mapping[str, str | None]) -> dict[str, JsonValue]:
+    """Parse the complete advanced form into supported ProjectProfile values."""
     naming_pattern = _required_custom_value(values, "custom_naming_pattern")
-    if len(naming_pattern) > 128:
-        raise UploadValidationError("The naming pattern must be at most 128 characters.")
-    if (
-        re.fullmatch(
-            r"\^\[[A-Za-z0-9_-]+\]\[[A-Za-z0-9_-]+\]\*\$",
-            naming_pattern,
-        )
-        is None
-    ):
-        raise UploadValidationError(
-            "The naming pattern must use two anchored character classes, such as "
-            "^[A-Z][A-Za-z0-9_]*$."
-        )
-    try:
-        naming_rule = re.compile(naming_pattern)
-    except re.error as error:
-        raise UploadValidationError(f"The naming pattern is invalid: {error}.") from error
-    if any(naming_rule.fullmatch(name) is None for name in ("Node_000", "Mesh_000")):
-        raise UploadValidationError(
-            "The naming pattern must allow deterministic names such as Node_000 and Mesh_000."
-        )
-
-    candidate_values: dict[str, JsonValue] = {
-        "expected_height_cm.target": (
-            target_height_cm
-            if target_height_cm is not None
-            else _custom_float(values, "custom_height_target_cm", "Target height")
-        ),
+    return {
         "expected_height_cm.tolerance": _custom_float(
             values, "custom_height_tolerance_cm", "Height tolerance"
         ),
@@ -286,75 +236,6 @@ def _custom_profile(
             values, "custom_max_texture_dimension", "Texture-dimension budget"
         ),
     }
-    base_values = base.profile.model_dump(mode="json")
-    explicit_overrides = {
-        path: value
-        for path, value in candidate_values.items()
-        if _nested_profile_value(base_values, path) != value
-    }
-    if not explicit_overrides:
-        raise UploadValidationError(
-            "Change at least one supported rule, or use the immutable preset as-is."
-        )
-
-    signature_payload = json.dumps(
-        {"base_preset_id": base.profile_id, "explicit_overrides": explicit_overrides},
-        allow_nan=False,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    ).encode("utf-8")
-    frozen_id = f"{base.profile_id}-custom-{sha256(signature_payload).hexdigest()[:12]}"
-    resolved_data = base.profile.model_dump(mode="python")
-    for path, value in explicit_overrides.items():
-        _set_profile_value(resolved_data, path, value)
-    resolved_data["profile_id"] = frozen_id
-    resolved_data["name"] = f"{base.name} — custom copy"
-    try:
-        profile = ProjectProfile.model_validate(resolved_data)
-    except ValidationError as error:
-        first_error = error.errors(include_url=False)[0]
-        location = ".".join(str(part) for part in first_error["loc"])
-        raise UploadValidationError(
-            f"Custom policy is invalid at {location}: {first_error['msg']}."
-        ) from error
-    policy = build_profile_policy_provenance(
-        profile,
-        base_preset_id=base.profile_id,
-        explicit_overrides=explicit_overrides,
-    )
-    return profile, policy
-
-
-def _intent_profile(
-    base: ProfileOption,
-    target_height_cm: float,
-) -> tuple[ProjectProfile, ProfilePolicyProvenance]:
-    """Bind an agreed per-asset height to an immutable preset or derived copy."""
-    if math.isclose(
-        base.profile.expected_height_cm.target,
-        target_height_cm,
-        rel_tol=0.0,
-        abs_tol=1e-9,
-    ):
-        return base.profile, build_profile_policy_provenance(
-            base.profile,
-            base_preset_id=base.profile_id,
-            explicit_overrides={},
-        )
-    values = {
-        key: str(value).lower() if isinstance(value, bool) else str(value)
-        for key, value in base.form_defaults.items()
-    }
-    return _custom_profile(base, values, target_height_cm=target_height_cm)
-
-
-def _nested_profile_value(profile_data: Mapping[str, object], path: str) -> object:
-    section_name, field_name = path.split(".", maxsplit=1)
-    section = profile_data.get(section_name)
-    if not isinstance(section, dict):
-        raise UploadValidationError("The selected preset has an invalid policy structure.")
-    return cast(dict[str, object], section).get(field_name)
 
 
 def _rule_explanation(finding: Finding) -> str | None:
@@ -640,7 +521,11 @@ ADVANCED_STORY = StoryDefinition(
     ),
     landing_template="story.html",
     steps=(
-        JourneyStep("01", "Set policy", "Choose a preset or customize its supported target state."),
+        JourneyStep(
+            "01",
+            "Review policy",
+            "Review the intent-derived family proposal or adjust supported target state.",
+        ),
         JourneyStep("02", "Upload source", "Bind one untouched GLB to the frozen policy copy."),
         JourneyStep("03", "Inspect", "Review deterministic facts and policy provenance."),
         JourneyStep("04", "Authorize", "Approve or reject the one grouped physical change."),
@@ -769,34 +654,43 @@ class WebJob:
         return tuple(stages)
 
 
-def discover_profiles(project_root: Path) -> tuple[ProfileOption, ...]:
-    """Load only repository-owned versioned profiles offered by the web UI."""
-    profile_paths = (
-        project_root / "profiles" / "unreal_indie_robot.json",
-        project_root / "validation" / "profiles" / "small_stylized_static_mesh.json",
+def discover_policy_family(project_root: Path) -> PolicyFamilyOption:
+    """Load the repository-owned parameterized family for new conversational jobs."""
+    source_path = (
+        project_root / "src" / "asset_shepherd" / "data" / "unreal_static_game_asset_family.json"
     )
-    options: list[ProfileOption] = []
-    for path in profile_paths:
-        profile = ProjectProfile.model_validate_json(path.read_text(encoding="utf-8"))
-        canonical_sha256 = canonical_profile_sha256(profile)
-        display_name, description = _PROFILE_PRESENTATION.get(
-            profile.profile_id,
-            (profile.name, profile.asset_type),
-        )
-        options.append(
-            ProfileOption(
-                profile_id=profile.profile_id,
-                name=display_name,
-                description=description,
-                path=path.resolve(strict=True),
-                profile=profile,
-                canonical_sha256=canonical_sha256,
-                summary=_profile_summary(profile),
-                review_rules=_profile_review_rules(profile, canonical_sha256),
-                form_defaults=_profile_form_defaults(profile),
-            )
-        )
-    return tuple(options)
+    path = (
+        source_path
+        if source_path.is_file()
+        else _PACKAGE_ROOT / "data" / "unreal_static_game_asset_family.json"
+    )
+    profile = ProjectProfile.model_validate_json(path.read_text(encoding="utf-8"))
+    return PolicyFamilyOption(
+        family_id=profile.profile_id,
+        path=path.resolve(strict=True),
+        profile=profile,
+        canonical_sha256=canonical_profile_sha256(profile),
+    )
+
+
+def _policy_proposal(family: PolicyFamilyOption, intent: WebIntent) -> PolicyProposalView:
+    """Resolve and format the current agreed intent without requesting duplicate input."""
+    resolution = resolve_policy_family(
+        family.profile,
+        description=intent.original_description,
+        target_use=intent.target_use,
+        target_height_cm=intent.target_height_cm,
+    )
+    complete_summary = _profile_summary(resolution.profile)
+    return PolicyProposalView(
+        resolution=resolution,
+        summary=(complete_summary[0], complete_summary[1], complete_summary[4]),
+        review_rules=_profile_review_rules(
+            resolution.profile,
+            resolution.provenance.canonical_sha256,
+        ),
+        form_defaults=_profile_form_defaults(resolution.profile),
+    )
 
 
 def _copy_validated_upload(stream: BinaryIO, destination: Path) -> None:
@@ -827,10 +721,10 @@ def _public_workflow_error(error: Exception) -> str:
 class WebJobStore:
     """Thread-safe in-process job registry with isolated filesystem workspaces."""
 
-    def __init__(self, work_root: Path, profiles: tuple[ProfileOption, ...]) -> None:
+    def __init__(self, work_root: Path, family: PolicyFamilyOption) -> None:
         """Create a registry rooted in an ignored, caller-controlled directory."""
         self.work_root = work_root.resolve(strict=False)
-        self.profiles = {profile.profile_id: profile for profile in profiles}
+        self.family = family
         self._intents: dict[str, WebIntent] = {}
         self._jobs: dict[str, WebJob] = {}
         self._lock = RLock()
@@ -885,34 +779,37 @@ class WebJobStore:
         original_filename: str,
         story: StoryDefinition,
         intent: AssetIntentProvenance,
-        profile_id: str,
         stream: BinaryIO,
         *,
-        profile_mode: str = "preset",
+        profile_mode: str = "resolved",
         custom_values: Mapping[str, str | None] | None = None,
     ) -> WebJob:
         """Validate, isolate, start, and retain one browser-submitted job."""
         if Path(original_filename).suffix.lower() != ".glb":
             raise UploadValidationError("Choose exactly one file with a .glb extension.")
-        base_profile = self.profiles.get(profile_id)
-        if base_profile is None:
-            raise UploadValidationError("Choose one of the available project profiles.")
         validate_asset_intent(intent)
-        if profile_mode == "preset":
-            resolved_profile, policy_provenance = _intent_profile(
-                base_profile,
-                intent.target_height_cm,
-            )
+        if profile_mode == "resolved":
+            user_overrides = None
         elif profile_mode == "custom":
             if custom_values is None:
                 raise UploadValidationError("Complete the custom policy before uploading.")
-            resolved_profile, policy_provenance = _custom_profile(
-                base_profile,
-                custom_values,
-                target_height_cm=intent.target_height_cm,
-            )
+            user_overrides = _custom_overrides(custom_values)
         else:
-            raise UploadValidationError("Choose the preset or a validated custom copy.")
+            raise UploadValidationError(
+                "Use the proposed rules or a validated advanced adjustment."
+            )
+        try:
+            resolution = resolve_policy_family(
+                self.family.profile,
+                description=intent.original_description,
+                target_use=intent.target_use,
+                target_height_cm=intent.target_height_cm,
+                user_overrides=user_overrides,
+            )
+        except ValueError as error:
+            raise UploadValidationError(str(error)) from error
+        resolved_profile = resolution.profile
+        policy_provenance = resolution.provenance
         job_id = uuid4().hex
         job_root = self.work_root / job_id
         job_root.mkdir(parents=True, exist_ok=False)
@@ -941,14 +838,7 @@ class WebJobStore:
             raise
         frozen_profile = FrozenProfile(
             profile_id=resolved_profile.profile_id,
-            name=(
-                resolved_profile.name
-                if policy_provenance.explicit_overrides
-                else _PROFILE_PRESENTATION.get(
-                    resolved_profile.profile_id,
-                    (resolved_profile.name, resolved_profile.asset_type),
-                )[0]
-            ),
+            name=resolution.display_name,
             path=profile_path,
             policy_provenance=policy_provenance,
         )
@@ -1103,11 +993,11 @@ def create_app(
     work_root: Path = _DEFAULT_WORK_ROOT,
 ) -> FastAPI:
     """Create a local Asset Shepherd web application and isolated job store."""
-    profiles = discover_profiles(project_root.resolve(strict=True))
-    store = WebJobStore(work_root, profiles)
+    family = discover_policy_family(project_root.resolve(strict=True))
+    store = WebJobStore(work_root, family)
     hosted_store = HostedWorkspaceStore(
         work_root / "hosted",
-        tuple(option.profile for option in profiles),
+        family.profile,
     )
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     app = FastAPI(
@@ -1241,7 +1131,7 @@ def create_app(
             request=request,
             name=story.landing_template,
             context={
-                "profiles": profiles,
+                "policy_proposal": _policy_proposal(family, intent),
                 "stories": STORIES,
                 "story": story,
                 "intent": intent,
@@ -1344,10 +1234,8 @@ def create_app(
     def create_intent_job(
         request: Request,
         intent_id: str,
-        profile_id: Annotated[str, Form()],
         asset: Annotated[UploadFile, File()],
-        profile_mode: Annotated[str, Form()] = "preset",
-        custom_height_target_cm: Annotated[str | None, Form()] = None,
+        profile_mode: Annotated[str, Form()] = "resolved",
         custom_height_tolerance_cm: Annotated[str | None, Form()] = None,
         custom_require_y_up: Annotated[str | None, Form()] = None,
         custom_require_ground_contact: Annotated[str | None, Form()] = None,
@@ -1365,7 +1253,6 @@ def create_app(
             if intent_draft.confirmed is None:
                 raise UploadValidationError("Agree on the target story before uploading a GLB.")
             custom_values = {
-                "custom_height_target_cm": custom_height_target_cm,
                 "custom_height_tolerance_cm": custom_height_tolerance_cm,
                 "custom_require_y_up": custom_require_y_up,
                 "custom_require_ground_contact": custom_require_ground_contact,
@@ -1380,7 +1267,6 @@ def create_app(
                 filename,
                 DEFAULT_STORY,
                 intent_draft.confirmed,
-                profile_id,
                 asset.file,
                 profile_mode=profile_mode,
                 custom_values=custom_values,

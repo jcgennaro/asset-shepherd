@@ -29,7 +29,7 @@ from asset_shepherd.web import create_app
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
 CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
-PROFILE_ID = "unreal-indie-robot-v1"
+FAMILY_ID = "unreal-static-game-asset-family-v1"
 DEFAULT_DESCRIPTION = (
     "A friendly humanoid robot for use as a static Unreal game asset with painted metal panels."
 )
@@ -44,7 +44,6 @@ PACKAGE_NAMES = {
 }
 CUSTOM_PROFILE_DATA = {
     "profile_mode": "custom",
-    "custom_height_target_cm": "182",
     "custom_height_tolerance_cm": "1",
     "custom_require_y_up": "true",
     "custom_require_ground_contact": "true",
@@ -107,7 +106,6 @@ def _upload(
     client: TestClient,
     source: Path,
     *,
-    profile_id: str = PROFILE_ID,
     policy_data: dict[str, str] | None = None,
     intent_id: str | None = None,
     target_height_m: str = "1.8",
@@ -117,7 +115,7 @@ def _upload(
         intent_id, _ = _confirmed_intent(client, target_height_m=target_height_m)
     response = client.post(
         f"/intents/{intent_id}/jobs",
-        data={"profile_id": profile_id, **(policy_data or {})},
+        data=policy_data or {},
         files={"asset": (source.name, source.read_bytes(), "model/gltf-binary")},
         follow_redirects=False,
     )
@@ -188,7 +186,7 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     assert intake.status_code == 200
     assert "Agreed target" in intake.text
     assert "playable animated character for Unreal at 1.72 m tall" in intake.text
-    assert "Review rules" in intake.text
+    assert "Review the rules I derived" in intake.text
     assert "Upload the GLB you want checked" in intake.text
     _assert_focus_area_budget(intake.text)
 
@@ -237,28 +235,35 @@ def test_web_validates_intent_before_inspection(
     assert not work_root.exists()
 
 
-def test_web_profiles_follow_confirmation_and_expose_only_supported_policy(tmp_path: Path) -> None:
-    """Policy selection remains versioned and bounded after target agreement."""
+def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_height(
+    tmp_path: Path,
+) -> None:
+    """Agreed intent yields one reviewable family proposal with no baseline selection."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     _, intake_path = _confirmed_intent(client)
     response = client.get(intake_path)
 
     assert response.status_code == 200
-    assert response.text.count("immutable preset v1") == 2
-    assert "Human-scale static mesh" in response.text
-    assert "Compact static mesh" in response.text
-    assert response.text.count("Review rules") == 2
+    assert "Choose a policy baseline" not in response.text
+    assert "Human-scale static mesh" not in response.text
+    assert "Compact static mesh" not in response.text
+    assert 'name="profile_id"' not in response.text
+    assert "Agent-resolved rules · 1.8 m target" in response.text
+    assert "Review all active rules" in response.text
+    assert "Why these rules?" in response.text
+    assert "This is the height already confirmed in the target story." in response.text
     assert "Target height" in response.text
     assert "Require Y-up geometry" in response.text
     assert "Name pattern" in response.text
     assert "Maximum triangles" in response.text
     assert "Approval for physical normalization" in response.text
-    assert "Customize a copy" in response.text
+    assert "Adjust supported rules" in response.text
     assert "Fixed safety boundary" in response.text
     assert "transform matrix" not in response.text.lower()
     assert 'data-intake-panel="rules"' in response.text
     assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in response.text
-    assert "Confirmed height 1.8 m" in response.text
+    assert "Confirmed target 1.8 m" in response.text
+    assert response.text.count('name="target_height_m"') == 0
     _assert_focus_area_budget(response.text)
 
 
@@ -271,7 +276,7 @@ def test_web_cannot_upload_before_agreement(tmp_path: Path) -> None:
 
     response = client.post(
         f"/intents/{intent_id}/jobs",
-        data={"profile_id": PROFILE_ID},
+        data={},
         files={"asset": (CLEAN_PATH.name, CLEAN_PATH.read_bytes(), "model/gltf-binary")},
     )
 
@@ -311,7 +316,7 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     inspect_view = client.get(f"{job_path}?view=inspect")
     assert inspect_view.status_code == 200
     assert "Policy rule" in inspect_view.text
-    assert "Height target 180.0 cm ± 10.0 cm" in inspect_view.text
+    assert "Height target 180.0 cm ± 9.0 cm" in inspect_view.text
     _assert_focus_area_budget(inspect_view.text)
 
     source_response = client.get(f"{job_path}/source.glb")
@@ -366,15 +371,23 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert frozen_intent.target_height_cm == 180.0
     assert re.fullmatch(r"[0-9a-f]{64}", frozen_intent.canonical_sha256)
     assert provenance.profile_policy is not None
-    assert provenance.profile_policy.frozen_profile_id == PROFILE_ID
-    assert provenance.profile_policy.base_preset_id == PROFILE_ID
-    assert provenance.profile_policy.explicit_overrides == {}
+    assert provenance.profile_policy.frozen_profile_id.startswith(f"{FAMILY_ID}-resolved-")
+    assert provenance.profile_policy.base_preset_id == FAMILY_ID
+    assert provenance.profile_policy.policy_family_id == FAMILY_ID
+    assert provenance.profile_policy.explicit_overrides == {
+        "expected_height_cm.target": 180.0,
+        "expected_height_cm.tolerance": 9.0,
+        "orientation.ground_tolerance_cm": 0.9,
+    }
+    assert provenance.profile_policy.rule_sources["expected_height_cm.target"] == (
+        "CONFIRMED_INTENT"
+    )
 
 
 def test_intended_height_derives_a_frozen_profile_without_raw_transform_input(
     tmp_path: Path,
 ) -> None:
-    """A non-preset height becomes a target-state override, never a scale operation."""
+    """Confirmed height resolves the family without exposing a scale operation."""
     work_root = tmp_path / "jobs"
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
     job_path = _upload(client, CLEAN_PATH, target_height_m="1.82")
@@ -386,11 +399,15 @@ def test_intended_height_derives_a_frozen_profile_without_raw_transform_input(
     provenance = Provenance.model_validate_json(
         (job_root / "output" / "provenance.json").read_text(encoding="utf-8")
     )
-    assert frozen_profile.profile_id.startswith(f"{PROFILE_ID}-custom-")
+    assert frozen_profile.profile_id.startswith(f"{FAMILY_ID}-resolved-")
     assert provenance.asset_intent is not None
     assert provenance.asset_intent.target_height_cm == 182.0
     assert provenance.profile_policy is not None
-    assert provenance.profile_policy.explicit_overrides == {"expected_height_cm.target": 182.0}
+    assert provenance.profile_policy.explicit_overrides == {
+        "expected_height_cm.target": 182.0,
+        "expected_height_cm.tolerance": 9.1,
+        "orientation.ground_tolerance_cm": 0.91,
+    }
     assert "scale factor" not in provenance.asset_intent.confirmed_story.lower()
 
 
@@ -398,8 +415,12 @@ def test_web_custom_profile_is_validated_frozen_and_does_not_mutate_preset(
     tmp_path: Path,
 ) -> None:
     """A supported custom copy gets an immutable job snapshot and complete provenance."""
-    preset_path = PROJECT_ROOT / "profiles" / "unreal_indie_robot.json"
-    preset_before = preset_path.read_bytes()
+    preset_paths = (
+        PROJECT_ROOT / "profiles" / "unreal_indie_robot.json",
+        PROJECT_ROOT / "validation" / "profiles" / "small_stylized_static_mesh.json",
+        PROJECT_ROOT / "src" / "asset_shepherd" / "data" / "unreal_static_game_asset_family.json",
+    )
+    policy_bytes_before = {path: path.read_bytes() for path in preset_paths}
     work_root = tmp_path / "jobs"
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
 
@@ -417,24 +438,29 @@ def test_web_custom_profile_is_validated_frozen_and_does_not_mutate_preset(
         (job_root / "output" / "provenance.json").read_text(encoding="utf-8")
     )
 
-    assert frozen_profile.profile_id.startswith(f"{PROFILE_ID}-custom-")
+    assert frozen_profile.profile_id.startswith(f"{FAMILY_ID}-resolved-")
     assert provenance.profile_id == frozen_profile.profile_id
     assert provenance.profile_policy is not None
     assert provenance.profile_policy.frozen_profile_id == frozen_profile.profile_id
-    assert provenance.profile_policy.base_preset_id == PROFILE_ID
+    assert provenance.profile_policy.base_preset_id == FAMILY_ID
+    assert provenance.profile_policy.policy_family_id == FAMILY_ID
     assert provenance.profile_policy.profile_version == 1
     assert provenance.profile_policy.explicit_overrides == {
         "expected_height_cm.target": 182.0,
         "expected_height_cm.tolerance": 1.0,
+        "orientation.ground_tolerance_cm": 1.0,
     }
+    assert provenance.profile_policy.rule_sources["expected_height_cm.tolerance"] == (
+        "USER_OVERRIDE"
+    )
     assert provenance.profile_policy.canonical_sha256 == canonical_profile_sha256(frozen_profile)
-    assert preset_path.read_bytes() == preset_before
+    assert {path: path.read_bytes() for path in preset_paths} == policy_bytes_before
 
 
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     (
-        ("custom_naming_pattern", "[", "naming pattern must use"),
+        ("custom_naming_pattern", "[", "naming pattern is invalid"),
         ("custom_max_texture_dimension", "0", "budgets.max_texture_dimension"),
     ),
 )
@@ -452,7 +478,7 @@ def test_web_rejects_invalid_custom_profile_before_creating_job(
 
     response = client.post(
         f"/intents/{intent_id}/jobs",
-        data={"profile_id": PROFILE_ID, **policy_data},
+        data=policy_data,
         files={"asset": (CLEAN_PATH.name, CLEAN_PATH.read_bytes(), "model/gltf-binary")},
     )
 
@@ -533,7 +559,7 @@ def test_web_rejects_non_glb_upload_without_starting_a_job(tmp_path: Path) -> No
     intent_id, _ = _confirmed_intent(client)
     response = client.post(
         f"/intents/{intent_id}/jobs",
-        data={"profile_id": PROFILE_ID},
+        data={},
         files={"asset": ("not-a-model.glb", b"not a GLB", "application/octet-stream")},
     )
     assert response.status_code == 400

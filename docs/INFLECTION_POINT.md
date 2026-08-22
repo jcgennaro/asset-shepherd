@@ -1,10 +1,10 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** Direction accepted in D019; local D020 reference implemented; live Bedrock pending
+**Status:** D019 direction and D021 policy-family correction implemented locally; live Bedrock pending
 
 **Date:** 2026-08-22
 
-**Current implementation:** D020 local hosted reference (this commit)
+**Current implementation:** D020 durable hosted reference with D021 family resolution
 
 **Controlling specifications:** `PROJECT_CONTRACT.md` and `REAL_WORLD_VALIDATION_PLAN.md`
 
@@ -43,8 +43,8 @@ scripted zero-network provider.
 ```text
 Describe intended asset, use, and real-world height
   -> Review and agree to an exact target story
-  -> Select a versioned policy baseline
-  -> Review rules or customize supported fields
+  -> Review the agent-resolved policy
+  -> Optionally adjust supported fields
   -> Upload one GLB
   -> Inspect deterministic findings
   -> Approve or reject grouped physical normalization, when proposed
@@ -87,9 +87,11 @@ report.md
 
 ### Current policy and intent records
 
-Repository profiles are immutable versioned presets. A supported custom copy is schema-validated
-and frozen per job with its base preset ID, explicit overrides, version, and canonical hash.
-Findings cite the exact policy rule that caused them. Changing rules creates a new inspection/job.
+New conversational jobs use one immutable, versioned parameterized policy family. A resolved job
+copy is schema-validated and frozen with its family and resolved identifiers, explicit differences,
+per-rule sources, version, and canonical hash. Historical presets remain immutable for CLI and
+evidence reproduction. Findings cite the exact policy rule that caused them. Changing rules creates
+a new inspection/job.
 
 The newly added `AssetIntentProvenance` record freezes:
 
@@ -248,7 +250,7 @@ structured evidence; it should not expose an arbitrary terminal to the model.
 |---|---|---|---|
 | Entry | Three-field intent form | Adaptive but bounded dialogue | Changes |
 | Intent | User confirms generated story | User confirms agent-proposed typed target | Same boundary |
-| Policy | User selects preset baseline and optional copy | Agent recommends or derives policy; advanced review remains | Needs decision |
+| Policy | Agent resolves one versioned family from confirmed intent | Adaptive agent proposal using the same typed family; advanced review remains | Same boundary |
 | Upload | After intent agreement | During the same job conversation, after enough target context | Changes presentation |
 | Inspection | Deterministic and immediate | Deterministic tool call explained conversationally | Invariant |
 | Findings | Structured cards and disclosures | Structured evidence plus conversational explanation | Invariant facts |
@@ -266,10 +268,9 @@ These questions should be answered before M9 implementation begins.
 1. **Conversation depth:** Should the first Bedrock release conduct only intent intake and
    explanation, or own the entire job conversation through download while deterministic tools keep
    execution authority?
-2. **Policy selection:** Once the user supplies an intended height, the two current presets differ
-   mostly in their default height band. Should the agent automatically select/derive the nearest
-   policy and leave full rule choice under Advanced, rather than asking ordinary users to make a
-   second scale-like choice?
+2. **Policy resolution:** How should the agent fill supported family parameters from confirmed
+   intent without repeating target questions, inventing project budgets, or allowing current source
+   defects to weaken the desired target?
 3. **Target agreement timing:** Must intent be frozen before upload, or should the agent accept the
    source earlier and use deterministic inspection to ask better target questions before the user
    confirms the job definition?
@@ -377,7 +378,7 @@ acceptance harness, comparison baseline, and deployment fallback.
 | Question | Reviewed direction |
 |---|---|
 | Conversation depth | Keep the agent present from intake through download and evidence-grounded follow-up, without expanding its authority. |
-| Policy selection | Ordinary users confirm a derived target and read-only rules summary; the system selects the nearest trusted baseline and freezes a schema-valid job copy. Advanced users retain supported rule customization. |
+| Policy selection | D021 supersedes nearest-baseline selection. Ordinary users review a schema-valid job policy resolved from one trusted family and their confirmed intent. Advanced users retain supported rule customization. |
 | Target timing | Accept the GLB before final target agreement and run objective, measurement-only preflight. Do not create policy-relative findings, a registered plan, approval interrupt, readiness result, or mutation until typed target confirmation. |
 | Unsupported intent | Preserve the original request, but require acceptance of a narrower supported goal such as `static_mesh_for_external_rigging`. Otherwise return inspection-only diagnostics. Never claim that the result is playable. |
 | Description semantics | Use description text to choose questions. Compare it with appearance-related facts only when deterministic material or texture metadata supports the statement. Classify each property as supported, contradicted, or not evaluated. |
@@ -424,10 +425,9 @@ Explicitly defer:
 1. **D012 and D018 ordering.** They require rule and target agreement before upload. The reviewed
    hosted flow permits upload and measurement-only preflight first. This is safe only if no
    policy-relative finding, plan, approval, repair, or readiness state exists before confirmation.
-2. **Profile-selection language.** The project contract currently says the user selects a profile
-   in the UI or supplies JSON. The reviewed ordinary-user flow confirms a frozen derived policy
-   rather than choosing a named baseline. The resolved profile still must be schema-valid,
-   versioned, hashed, and inspectable.
+2. **Profile-selection language.** D021 resolves this conflict: new conversational jobs use one
+   parameterized family and confirm a frozen derived policy rather than choosing a named baseline.
+   The resolved profile remains schema-valid, versioned, hashed, and inspectable.
 3. **D018 packaged description.** The current package freezes the exact original description and
    story. The review recommends packaged structured intent plus a canonical hash, with raw text
    retained privately for a short period or included only by explicit choice.
@@ -489,6 +489,8 @@ D019 records the approved direction and requires implementation to:
 D019 supersedes D012 and the ordering portion of D018 for the hosted M9 path. D020 implements the
 local `/workspace` reference with objective preflight, typed confirmation, derived frozen policy,
 visible Job Contract, native interrupt persistence, structured evidence questions, and duplicate
-resume protection while keeping the M8 form-led baseline intact. The live Bedrock conversation,
+resume protection while keeping the M8 form-led baseline intact. D021 replaces the nearest-preset
+mechanism in both paths with one versioned parameterized family, intent-derived target values,
+per-rule sources, and bounded advanced edits without changing repair authority. The live Bedrock conversation,
 remote concurrency/storage, deployment, observability, access, retention cleanup, and cost proof
 remain required for the M9 gate. No AWS activity or paid model invocation is authorized yet.

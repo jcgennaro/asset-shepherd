@@ -10,6 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, m
 NonNegativeInt = Annotated[int, Field(ge=0)]
 PositiveInt = Annotated[int, Field(gt=0)]
 UnitConfidence = Annotated[float, Field(ge=0.0, le=1.0)]
+PolicyRuleSource = Literal[
+    "CONFIRMED_INTENT",
+    "DERIVED_INTENT",
+    "FAMILY_DEFAULT",
+    "USER_OVERRIDE",
+]
 Vector3 = tuple[float, float, float]
 Matrix4 = tuple[
     tuple[float, float, float, float],
@@ -517,7 +523,9 @@ class ProfilePolicyProvenance(ContractModel):
 
     frozen_profile_id: str
     base_preset_id: str
+    policy_family_id: str | None = None
     explicit_overrides: dict[str, JsonValue]
+    rule_sources: dict[str, PolicyRuleSource] = Field(default_factory=dict)
     profile_version: Literal[1]
     canonical_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 

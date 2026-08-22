@@ -832,6 +832,50 @@ a {
   box-shadow: 0 0 0 1px var(--accent);
 }
 
+.policy-proposal-card {
+  max-width: 900px;
+  margin-inline: auto;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+.policy-proposal-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+}
+
+.policy-proposal-heading > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--surface);
+  background: var(--accent);
+}
+
+.policy-proposal-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.policy-proposal-heading strong {
+  font-size: 1.18rem;
+}
+
+.policy-proposal-heading small,
+.policy-reasons dt small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.policy-reasons .policy-rule-list div {
+  grid-template-columns: minmax(150px, 0.4fr) minmax(0, 1fr);
+}
+
 .profile-option {
   display: flex;
   min-height: 108px;

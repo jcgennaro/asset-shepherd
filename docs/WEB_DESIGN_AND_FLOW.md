@@ -10,7 +10,7 @@ Asset Shepherd works with a user on one asset, but the conversation is not the r
 ```text
 Describe the intended asset and target state
   -> Review and agree on one target story
-  -> Review project rules and upload the source GLB
+  -> Review agent-resolved project rules and upload the source GLB
   -> Inspect deterministic findings
   -> Approve or reject one grouped physical normalization, if proposed
   -> Independently verify and download the evidence package
@@ -79,37 +79,38 @@ server validates its canonical hash before accepting an upload. Changing the des
 height requires a new intent and therefore a new inspection job. Reusing the same agreed intent
 with different project rules also creates a new job; existing evidence is never reinterpreted.
 
-The intended height controls the profile target state. If it equals the selected immutable preset's
-target, that preset is frozen unchanged. Otherwise Asset Shepherd derives a validated custom copy
-with only `expected_height_cm.target` overridden. The user never enters a scale factor or transform
-matrix; the deterministic planner derives the minimal physical normalization, if one is warranted.
+The intended height already frozen in the target story controls the profile target state and is not
+requested again. Asset Shepherd resolves a complete validated profile from one versioned Unreal
+static-game-asset family. Target height comes directly from confirmed intent; height and grounding
+tolerances are bounded proportions of intended height; explicit standing, hanging, or hovering
+language may influence ground-contact policy; and genuinely unspecified values retain family
+defaults. The user never enters a scale factor or transform matrix; the deterministic planner
+derives the minimal physical normalization, if one is warranted.
 
 ## Rules and upload
 
 After agreement, intake exposes two visible workflow steps, one at a time:
 
-1. **Rules.** Select an immutable repository preset, review its collapsed policy, or customize a
-   supported copy.
+1. **Rules.** Review the complete intent-derived proposal or adjust supported advanced values.
 2. **Upload.** Select the actual GLB to inspect.
 
-The two current preset labels are presentation descriptions, not different repair products:
-
-- **Human-scale static mesh** — legacy ID `unreal-indie-robot-v1`; 1.8 m default target.
-- **Compact static mesh** — legacy ID `small-stylized-static-mesh-v1`; 1.2 m default target.
-
-The agreed target height takes precedence over a preset's default height. All other active policy
-parameters remain visible under **Review rules**. **Customize a copy** exposes only fields already
-enforced by `ProjectProfile`: height tolerance, Y-up and ground-contact requirements and tolerance,
-naming pattern, and report-only triangle/material/texture budgets. The confirmed height is displayed
-but cannot be replaced by an advanced raw operation.
+New jobs use the immutable `unreal-static-game-asset-family-v1` parameter family. The historical
+`unreal-indie-robot-v1` and `small-stylized-static-mesh-v1` profiles remain immutable CLI, fixture,
+and evidence inputs, but are no longer product choices. All active parameters remain visible under
+**Review all active rules**, and **Why these rules?** identifies confirmed intent, bounded intent
+derivation, family defaults, and explicit user adjustments. **Adjust supported rules** exposes only
+fields already enforced by `ProjectProfile`: height tolerance, Y-up and ground-contact requirements
+and tolerance, naming pattern, and report-only triangle/material/texture budgets. The confirmed
+height is displayed but is not requested again or replaceable by a raw operation.
 
 Safety classes, grouped approval behavior, vertical inference, uniqueness guarantees, verification
 invariants, unsupported repair domains, engine/type, and source preservation are fixed. Repository
-presets remain byte-for-byte immutable. Each job receives a validated `profile.json` snapshot plus
-frozen/base identifiers, explicit overrides, version, and canonical hash in provenance.
+profiles and the family remain byte-for-byte immutable. Each job receives a validated
+`profile.json` snapshot plus frozen/family identifiers, explicit differences, per-rule sources,
+version, and canonical hash in provenance. The legacy `base_preset_id` field mirrors the family ID.
 
 Upload accepts one GLB 2.0 binary up to 50 MB. The server validates the filename extension, GLB
-magic, size, intent hash, and trusted base preset before creating an isolated job. The copied source
+magic, size, intent hash, and trusted policy family before creating an isolated job. The copied source
 is never mutated.
 
 ## Inspect, decide, verify, and package
@@ -170,9 +171,9 @@ not change.
 - Draft intents and active approval sessions are in memory. Refresh works while the process is
   running; restart requires a new target story and ends active sessions.
 - Job artifacts live below `build/web/jobs/{job_id}` and use opaque server-generated IDs.
-- The description is not semantically interpreted by the deterministic engine beyond its confirmed
-  structured fields. It cannot yet infer likely dimensions, ask adaptive follow-ups, or compare the
-  source appearance to the description.
+- The local resolver semantically recognizes only a bounded set of explicit support-state language
+  such as standing, hanging, or hovering. It does not infer appearance, project budgets, artistic
+  intent, likely dimensions, or unsupported repair goals from prose.
 - A later Bedrock integration may improve that collaboration, but must emit this same bounded schema
   and may not bypass deterministic inspection, explicit approval, or independent verification.
 - The current product remains static-GLB repair only. It does not add rigging, skinning, animation,
@@ -184,10 +185,11 @@ not change.
 - Invalid descriptions, target uses, and heights fail before a job exists.
 - Upload is unavailable before explicit agreement.
 - Confirmed intent and its hash are frozen in the job and copied into package provenance.
-- A non-preset height creates a target-state profile override without exposing a scale operation.
+- Confirmed height and bounded grounding language resolve one family without baseline selection or
+  duplicate target entry, and without exposing a scale operation.
 - Changing intent or rules creates distinct jobs and inspections.
-- Preset, validated custom-policy, broken/approved, clean-control, invalid-upload, and unsupported
-  inspection-only paths remain covered.
+- Family resolution, validated advanced-policy, broken/approved, clean-control, invalid-upload, and
+  unsupported inspection-only paths remain covered; historical profiles stay byte-identical.
 - The approved flow still packages the exact seven artifacts, preserves source bytes, cites rule
   provenance, and requires the exact interrupt-bound decision.
 - Former role routes redirect to the intent entry point.

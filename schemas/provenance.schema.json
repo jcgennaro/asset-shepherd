@@ -186,10 +186,35 @@
           "title": "Frozen Profile Id",
           "type": "string"
         },
+        "policy_family_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Family Id"
+        },
         "profile_version": {
           "const": 1,
           "title": "Profile Version",
           "type": "integer"
+        },
+        "rule_sources": {
+          "additionalProperties": {
+            "enum": [
+              "CONFIRMED_INTENT",
+              "DERIVED_INTENT",
+              "FAMILY_DEFAULT",
+              "USER_OVERRIDE"
+            ],
+            "type": "string"
+          },
+          "title": "Rule Sources",
+          "type": "object"
         }
       },
       "required": [

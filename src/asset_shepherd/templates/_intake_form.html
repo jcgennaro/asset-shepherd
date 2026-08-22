@@ -23,61 +23,63 @@
   </nav>
 
   <section id="intake-rules" class="intake-panel" data-intake-panel="rules" aria-labelledby="rules-title">
-    <header class="panel-heading" title="These rules define “ready.” They do not choose a model.">
+    <header class="panel-heading" title="These rules define ready. They do not choose or alter the source model.">
       <div>
         <p class="section-label">Step 1 of 2</p>
-        <h2 id="rules-title">Choose a policy baseline</h2>
+        <h2 id="rules-title">Review the rules I derived</h2>
       </div>
     </header>
 
-    <input type="hidden" name="profile_mode" value="preset" data-profile-mode>
-    <div class="profile-options">
-      {% for profile in profiles %}
-        <article class="profile-option-shell">
-          <label class="profile-option">
-            <input
-              type="radio"
-              name="profile_id"
-              value="{{ profile.profile_id }}"
-              data-profile-defaults='{{ profile.form_defaults | tojson }}'
-              required>
-            <span>
-              <strong>{{ profile.name }}</strong>
-              <small>{{ profile.description }} · immutable preset v{{ profile.profile.profile_version }}</small>
-            </span>
-          </label>
-          <details class="policy-review">
-            <summary>Review rules</summary>
-            <dl class="policy-summary">
-              {% for label, value in profile.summary %}
-                <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
-              {% endfor %}
-            </dl>
-            <dl class="policy-rule-list">
-              {% for label, value in profile.review_rules %}
-                <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
-              {% endfor %}
-            </dl>
-          </details>
-        </article>
-      {% endfor %}
-    </div>
+    <input type="hidden" name="profile_mode" value="resolved" data-profile-mode>
+    <article
+      class="profile-option-shell policy-proposal-card"
+      data-policy-proposal
+      data-profile-defaults='{{ policy_proposal.form_defaults | tojson }}'>
+      <header class="policy-proposal-heading">
+        <span aria-hidden="true">✦</span>
+        <div>
+          <strong>{{ policy_proposal.resolution.display_name }}</strong>
+          <small>Resolved from your agreed story using policy family v{{ policy_proposal.resolution.family.profile_version }}</small>
+        </div>
+      </header>
+      <dl class="policy-summary">
+        {% for label, value in policy_proposal.summary %}
+          <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+        {% endfor %}
+      </dl>
+      <details class="policy-review">
+        <summary>Review all active rules</summary>
+        <dl class="policy-rule-list">
+          {% for label, value in policy_proposal.review_rules %}
+            <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+          {% endfor %}
+        </dl>
+      </details>
+      <details class="policy-review policy-reasons">
+        <summary>Why these rules?</summary>
+        <dl class="policy-rule-list">
+          {% for rule in policy_proposal.resolution.rules %}
+            <div>
+              <dt>{{ rule.label }} <small>{{ rule.source|replace('_', ' ')|lower }}</small></dt>
+              <dd>{{ rule.rationale }}</dd>
+            </div>
+          {% endfor %}
+        </dl>
+      </details>
+    </article>
 
     <details class="custom-policy" data-custom-policy title="Advanced · supported target-state rules only">
-      <summary>
-        <span><strong>Customize a copy</strong></span>
-      </summary>
+      <summary><span><strong>Adjust supported rules</strong></span></summary>
       <div class="custom-policy-body">
-        <p>Choose a preset above, then adjust only rules the deterministic inspector enforces. The preset stays unchanged.</p>
+        <p>The proposed values are prefilled. Adjust only rules the deterministic inspector already enforces.</p>
         <label class="custom-policy-toggle">
           <input type="checkbox" data-custom-toggle>
-          <span><strong>Use a customized copy</strong><small data-custom-status>Select a preset first.</small></span>
+          <span><strong>Use my adjustments</strong><small data-custom-status>Agent proposal remains active.</small></span>
         </label>
         <div class="custom-policy-fields" data-custom-fields hidden>
           <fieldset>
             <legend>Target dimensions</legend>
-            <label>Height target <span><strong>{{ "%g"|format(intent.target_height_cm) }}</strong> cm</span></label>
-            <input type="hidden" name="custom_height_target_cm" value="{{ intent.target_height_cm }}">
+            <label>Confirmed height <span><strong>{{ "%g"|format(intent.target_height_cm / 100) }}</strong> m</span></label>
             <label>Height tolerance <span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" data-custom-field="custom_height_tolerance_cm" disabled> cm</span></label>
           </fieldset>
           <fieldset>
@@ -124,8 +126,8 @@
     </header>
 
     <div class="selected-policy-line">
-      <span>Confirmed height {{ "%g"|format(intent.target_height_cm / 100) }} m · active rules</span>
-      <strong data-selected-policy>No preset selected</strong>
+      <span>Confirmed target {{ "%g"|format(intent.target_height_cm / 100) }} m</span>
+      <strong data-selected-policy>Agent-resolved rules</strong>
     </div>
 
     <label class="drop-zone" for="asset">
@@ -143,7 +145,7 @@
     </div>
     <details class="upload-notes">
       <summary>Upload details</summary>
-      <p class="fine-print">Rules freeze on upload. Changing them creates a new inspection and job. Local mode makes no model or network request.</p>
+      <p class="fine-print">The resolved rules freeze on upload. Changing target intent or rules creates a new inspection and job. Local mode makes no model or network request.</p>
     </details>
   </section>
 </form>

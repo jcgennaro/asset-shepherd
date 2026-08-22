@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** D020 local hosted conversation/durability reference (this file is included)
+**Current commit:** D021 parameterized policy-family correction (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -17,8 +17,8 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Intent-first target-story agreement; frozen intent and policy provenance; two-column app frame; large-type disclosure-first presentation; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018; D018 supersedes the primary role-selector modality; latest intent flow is included in current commit |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 local `/workspace` reference passes preflight, typed-target, durability, exactly-once, and package acceptance |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; no paid call or resource is authorized |
+| M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021 removes user-visible scale baselines without changing acceptance behavior |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace` reference plus D021 family resolver pass preflight, typed-target, durability, exactly-once, and package acceptance |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; no paid call or resource is authorized |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -45,7 +45,7 @@ before any paid invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 65 passed and the opt-in live-provider test skipped. New D019 acceptance
+- Tests: `uv run pytest` — 68 passed and the opt-in live-provider test skipped. D019/D021 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -74,12 +74,15 @@ before any paid invocation or resource creation.
 - Frozen intent evidence: each agreed story records an opaque ID, exact description and target,
   timestamp, schema version, and canonical SHA-256 in job `intent.json` and packaged provenance.
   Canonical reproduction passes and tampering fails closed. A changed intent creates a new job.
-- Target-state derivation: the user supplies desired height, not a scale factor. A non-preset height
-  creates a validated profile copy with only `expected_height_cm.target` overridden. Advanced
-  policy copies remain schema-validated and changing any rule creates a separate inspection/job.
+- Target-state derivation: the user supplies desired height once, not a scale factor or baseline.
+  D021 resolves one versioned policy family into a validated job profile. Height comes from the
+  confirmed story; bounded height/ground tolerances scale with intended height; explicit
+  standing/hanging/hovering language may set grounding; and unspecified rules retain family
+  defaults. Advanced values remain schema-validated and changing intent or any rule creates a
+  separate inspection/job.
 - Existing web safety acceptance remains: broken-fixture refresh/approve/resume/download; clean
   no-approval completion twice from independent app starts; invalid GLB rejection; unsupported
-  inspection-only packaging; exact ZIP audit; source preservation; trusted preset baseline; 50 MB
+  inspection-only packaging; exact ZIP audit; source preservation; trusted family baseline; 50 MB
   and GLB magic boundaries; finding-level rule provenance.
 - Single-step evidence: the persistent left pane now orients **Describe → Agree → Inspect → Decide
   → Download**. Intake renders only Rules or Upload and every job response renders only its selected
@@ -89,11 +92,12 @@ before any paid invocation or resource creation.
   a collapsed disclosure during intake so policy controls stay near the fold. At 390 × 844 the left
   workflow rail remains visible, content uses one column, horizontal overflow is absent, and browser
   diagnostics contain no warnings or errors.
-- Versioned policy intake remains intact: both repository profiles are immutable presets with
-  concise summaries and collapsed full-rule reviews. The agreed height overrides only their default
-  target when necessary; `Customize a copy` still exposes only enforced target-state and report-only
-  budget fields. Frozen/base IDs, explicit overrides, version, canonical hash, and finding rule
-  citations remain preserved.
+- Versioned policy intake remains intact: historical repository profiles stay byte-for-byte
+  immutable for CLI and evidence reproduction, while new conversational jobs use the immutable
+  `unreal-static-game-asset-family-v1` family. `Review all active rules` and `Why these rules?`
+  expose the agent proposal progressively; `Adjust supported rules` exposes only enforced
+  target-state and report-only budget fields. Frozen/family IDs, explicit differences, per-rule
+  sources, version, canonical hash, and finding rule citations remain preserved.
 - Web design handoff: `docs/WEB_DESIGN_AND_FLOW.md` records the intent-first information
   architecture, target-story contract, policy derivation, single-step workflow, Bedrock boundary,
   evidence, and limitations. D018 supersedes the primary audience-selector modality while retaining
@@ -109,12 +113,13 @@ before any paid invocation or resource creation.
   D019. Contract version 1.1 now controls objective preflight, visible Job Contract, derived frozen
   policies, exact structured authorization, durable resume, and minimized hosted conversation
   provenance without authorizing AWS work or additional repair domains.
-- D020 local hosted reference: `/workspace` now presents one conversation beside a persistent Job
+- D020/D021 local hosted reference: `/workspace` presents one conversation beside a persistent Job
   Contract. Profile-free `PreflightResult` records source identity, structure, bounds, transforms,
   counts, eligibility, and declared material metadata before any policy finding or plan exists.
   Target confirmation separates original intent, requested use, supported job goal, support status,
-  and external handoff; derives the nearest trusted preset; validates supported advanced overrides;
-  and freezes policy identity, base, overrides, version, and canonical hash.
+  and external handoff; resolves the one trusted family from confirmed intent; validates supported
+  advanced overrides; and freezes policy identity, family, explicit differences, rule sources,
+  version, and canonical hash.
 - Durable-resume evidence: private atomic workspace state, structured event/tool ledger, command
   idempotency records, retention/deletion status, deterministic runtime state, and Strands native
   snapshots reconstruct the exact pending interrupt in a new store and a new FastAPI application.
@@ -125,10 +130,15 @@ before any paid invocation or resource creation.
   model previews render after verification; browser diagnostics contain no warnings or errors. The
   Chrome extension needs its optional file-URL permission for browser-driven fixture selection,
   while server upload and route acceptance pass independently.
-- Distribution audit: `uv build --wheel` succeeded with the intent module, confirmation template,
-  workflow rail, updated intake/job templates, CSS, JavaScript, favicon, and existing deterministic
-  runtime assets included in the wheel. The checked-in public intent schema remains a repository
-  contract artifact alongside the other exported schemas.
+- D021 browser acceptance: a 1.2 m hanging-lantern story renders one concise agent-resolved proposal,
+  correctly removes ground contact, keeps complete rules/reasons/advanced values collapsed, shows
+  confirmed height without a second input, prefills bounded advanced values, and advances to upload
+  with no named baseline, raw transform, browser warning, or error.
+- Distribution audit: `uv build --wheel` succeeded with the intent and policy-resolution modules,
+  canonical policy-family JSON, confirmation and intake templates, workflow rail, CSS, JavaScript,
+  favicon, and existing deterministic runtime assets included in the wheel. The checked-in public
+  intent and updated provenance schemas remain repository contract artifacts alongside the other
+  exported schemas.
 - Shader Lantern evidence: raw SHA-256
   `be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9`; 77,545 vertices;
   101,564 triangles; one material; three readable embedded 4096² base-color,

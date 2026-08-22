@@ -5,9 +5,10 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.1
+**Document version:** 1.2
 **Controlling status:** Approved project contract once committed by the user  
-**Approved amendment:** D019 conversation-led hosted workspace, 2026-08-22
+**Approved amendments:** D019 conversation-led hosted workspace and D021 parameterized policy
+family, 2026-08-22
 
 ---
 
@@ -175,8 +176,8 @@ The hackathon MVP accepts:
 - Maximum hosted file size: 50 MB.
 - Static mesh content.
 - Embedded materials and images are allowed.
-- One resolved project profile selected, supplied as JSON, or derived from a trusted immutable
-  preset and explicitly confirmed in the hosted UI.
+- One resolved project profile supplied as JSON for deterministic tooling or derived for a new web
+  job from the trusted versioned policy family and explicitly confirmed in the hosted UI.
 
 A file containing skins, animations, or morph targets may be inspected, but the MVP must refuse structural repair and explain why.
 
@@ -276,12 +277,15 @@ and deterministically available material or texture metadata. This state must be
 source facts with no agreed target. It must not create policy-relative findings, a registered plan,
 an approval interrupt, a mutation, or a readiness result.
 
-Ordinary users confirm a schema-valid job-scoped policy derived from the nearest trusted immutable
-preset and explicit target overrides. They do not need to choose a named scale baseline. The full
-resolved rules remain visible and frozen with identifier, base preset, overrides, version, and
-canonical hash. Advanced users retain only the supported `ProjectProfile` copy fields already
-enforced by the deterministic engine. Changing confirmed intent or rules creates a new inspection
-and job.
+Ordinary users confirm a schema-valid job-scoped policy resolved from one trusted, immutable,
+versioned parameterized family. They do not choose a named scale baseline or re-enter target state
+already present in the confirmed intent. The resolver may use confirmed intent to choose supported
+target-state parameters, uses family defaults when project-specific information is absent, and may
+use objective preflight only to inform questions or evidence--never to loosen target rules until the
+current asset passes. The full resolved rules remain visible and frozen with identifier, policy
+family identifier, explicit differences from the family, per-rule source, version, and canonical
+hash. Advanced users retain only the supported `ProjectProfile` fields already enforced by the
+deterministic engine. Changing confirmed intent or rules creates a new inspection and job.
 
 Original intent must be distinct from the supported job goal. Unsupported playable-character,
 rigging, skinning, or animation intent may be preserved as context only when the user explicitly
@@ -1182,7 +1186,7 @@ And:
 
 **Work:**
 
-- Build profile selection.
+- Build resolved-policy review and bounded advanced adjustment.
 - Add GLB upload.
 - Show stages and structured findings.
 - Render before/after GLB previews.
@@ -1208,8 +1212,8 @@ And:
 
 - Add the D019 conversation-led workspace over the existing typed intent, profile, finding, plan,
   decision, verification, and package schemas.
-- Implement objective preflight before target confirmation, a visible Job Contract, and derived
-  frozen policy confirmation for ordinary users.
+- Implement objective preflight before target confirmation, a visible Job Contract, and frozen
+  policy-family resolution for ordinary users.
 - Persist source identity, structured state, deterministic tool results, the exact pending
   interrupt, decisions, idempotency keys, output references, bounded conversation state, retention,
   and deletion status.

@@ -56,15 +56,16 @@ conversation and evidence questions without a network request. A future Bedrock 
 the questions adaptive, but deterministic measurements, repairs, authorization, and verification
 remain authoritative.
 
-Repository profiles are immutable versioned policy presets. The web UI calls the two current
-choices **Human-scale static mesh** and **Compact static mesh**; all non-height rules are currently
-identical. The user's confirmed height controls the target, deriving a validated profile copy when
-it differs from a preset default. Each preset keeps its concise summary and complete rule review
-collapsed. An advanced **Customize a copy** control permits only supported target-state and
-report-only budget overrides; safety policy and verification boundaries remain fixed. Upload
-freezes the resolved policy into the new job, and provenance records its base preset, explicit
-overrides, version, identifier, and canonical SHA-256. Changing rules starts a new inspection and
-job.
+New conversational jobs use one immutable, versioned **Unreal Static Game Asset Policy Family**.
+Asset Shepherd proposes the complete job policy from the already-confirmed target story, including
+its height, bounded tolerances, and explicit standing/hanging/hovering intent; unspecified project
+rules retain conservative family defaults. Users no longer select a named scale preset or re-enter
+height. **Review all active rules** and **Why these rules?** keep the proposal inspectable, while
+advanced adjustment remains limited to supported target-state and report-only budget fields.
+Upload freezes the resolved policy, and provenance records its family and resolved identifiers,
+explicit differences, per-rule sources, version, and canonical SHA-256. Historical repository
+profiles remain immutable for CLI reproduction and existing evidence. Changing rules starts a new
+inspection and job.
 
 The M8 form routes preserve jobs only while the process runs. The D019 `/workspace` path persists
 structured state and the native Strands interrupt so refresh, application restart, and agent-runtime

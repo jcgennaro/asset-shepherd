@@ -4,6 +4,58 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D021 — One parameterized policy family replaces user-visible scale baselines
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8/M9 policy-resolution correction
+
+**Context**
+
+The intent flow already asks the user what the asset should become and freezes intended real-world
+height. Asking the same user to choose between `Human-scale static mesh` and `Compact static mesh`
+made them reverse-engineer an implementation detail, while asking for height again contradicted the
+confirmed target story. Selecting the nearest preset also discarded useful semantic information in
+the description, such as whether an asset is meant to stand, hang, or hover.
+
+**Decision**
+
+Use one immutable, versioned `Unreal Static Game Asset Policy Family` as the parameter source for
+new form-led and hosted conversational jobs. The agent proposes a complete job-specific
+`ProjectProfile` from confirmed typed intent and bounded semantic derivation. Target height comes
+from the already-confirmed story; tolerance scales with intended height; explicit supported
+grounding language may set ground-contact policy; and unspecified naming, resource budgets,
+orientation, authorization, and safety values retain family defaults. A source asset's observed
+defects may inform questions and evidence but may not relax the target policy to make that source
+pass.
+
+Show the proposed rules before inspection, keep complete active parameters and their sources
+inspectable, and permit advanced edits only for the existing supported `ProjectProfile` fields.
+Validate and freeze the result server-side with a resolved identifier, family identifier, explicit
+differences from the family, per-rule source, version, and canonical hash. The legacy
+`base_preset_id` provenance field mirrors the family identifier for schema compatibility. Changing
+intent or any supported adjustment creates a new job. Never expose raw transforms or make safety
+classes, source preservation, unsupported repair domains, verification invariants, or
+authorization behavior editable.
+
+Historical repository presets remain byte-for-byte immutable and valid for reproducible CLI,
+fixtures, and old evidence. They are no longer choices for new conversational jobs. This decision
+supersedes only the user-visible preset-selection and nearest-preset portions of D013, D019, and
+D020; their safety, durability, Job Contract, and deterministic workflow decisions remain active.
+
+**Evidence and consequences**
+
+Acceptance covers removal of named baseline controls and duplicate height entry, intent-derived
+height/tolerances, suspended versus grounded descriptions, family-default fallback, server-side
+advanced validation, immutable historical policy bytes, family/resolved provenance, per-rule
+source citations, distinct jobs after rule or intent changes, and unchanged inspect through package
+behavior. This decision adds no repair operation, appearance inference, paid model call, AWS
+activity, or editable safety boundary.
+
 ### D020 — Durable local hosted reference uses structured workspace state and Strands snapshots
 
 **Date:** 2026-08-22
