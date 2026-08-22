@@ -4,6 +4,53 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D020 — Durable local hosted reference uses structured workspace state and Strands snapshots
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex, implementing approved D019
+
+**Milestone:** M9
+
+**Context**
+
+D019 requires the exact approval interrupt and deterministic job to survive browser, application,
+and agent-runtime restart without expanding the repair engine or depending on paid infrastructure
+during local development. The existing M8 web registry retained Python objects only, while the
+deterministic artifacts already contained most stage outputs.
+
+**Decision**
+
+Implement a versioned filesystem-backed hosted reference path at `/workspace`. Persist one private
+atomic `workspace.json`, profile-free `preflight.json`, the frozen profile and intent, structured
+event ledger, command idempotency records, retention/deletion status, and artifact references inside
+each isolated workspace. Store the Strands agent's native session snapshot separately with its
+exact interrupt state. Reconstruct `AgentJob` from private runtime state plus validated contracted
+artifacts after restart. Keep the M8 form-led routes and outputs unchanged.
+
+Before target confirmation, allow only `PreflightResult`: source identity, glTF structure, bounds,
+transform facts, supported-feature counts, resource counts, and declared material metadata. Derive
+the closest immutable preset by target height, apply explicit supported overrides, validate the
+result as `ProjectProfile`, and freeze its provenance. Treat ordinary dialogue as non-authorizing;
+only the exact structured interrupt response may resume repair. Store bounded evidence categories
+and references rather than raw questions, routine response prose, hidden prompts, or chain of
+thought in hosted provenance.
+
+This local storage shape is a reference and test harness, not the final remote concurrency model.
+An AWS deployment must replace local atomic-file coordination with an appropriate isolated durable
+store and retain the same schemas, idempotency semantics, privacy boundary, and acceptance tests.
+
+**Evidence and consequences**
+
+Automated acceptance covers profile-free preflight, schema-valid advanced rules, narrowed-goal
+agreement, clean no-mutation control, native interrupt restoration in a new store/application,
+structured chat non-authorization, duplicate decision replay, verification, and exact ZIP output.
+The rendered browser path was checked through preflight, approval, and completion with the source
+and candidate previews visible and no console warnings or errors. This decision authorizes no AWS
+activity, paid invocation, new repair operation, or public release.
+
 ### D019 — Conversation-led hosted workspace with typed target and objective preflight
 
 **Date:** 2026-08-22

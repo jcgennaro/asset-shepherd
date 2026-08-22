@@ -22,6 +22,11 @@ from strands.agent import AgentResult
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
 from asset_shepherd.agent_runtime import AssetShepherdAgent, build_scripted_agent
+from asset_shepherd.hosted_workspace import (
+    HostedWorkspace,
+    HostedWorkspaceError,
+    HostedWorkspaceStore,
+)
 from asset_shepherd.intent import (
     TARGET_USE_LABELS,
     build_asset_intent,
@@ -1100,6 +1105,10 @@ def create_app(
     """Create a local Asset Shepherd web application and isolated job store."""
     profiles = discover_profiles(project_root.resolve(strict=True))
     store = WebJobStore(work_root, profiles)
+    hosted_store = HostedWorkspaceStore(
+        work_root / "hosted",
+        tuple(option.profile for option in profiles),
+    )
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     app = FastAPI(
         title="Asset Shepherd",
@@ -1127,6 +1136,85 @@ def create_app(
                 ),
                 "active_mode": "describe",
                 "active_style": "Describe",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def render_hosted_home(
+        request: Request,
+        error: str | None = None,
+        status_code: int = 200,
+        description: str = "",
+    ) -> Response:
+        """Render the versioned D019 conversation-led entry point."""
+        return templates.TemplateResponse(
+            request=request,
+            name="hosted_home.html",
+            context={
+                "error": error,
+                "description": description,
+                "active_mode": "conversation",
+                "active_style": "Conversation",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def render_hosted_workspace(
+        request: Request,
+        workspace: HostedWorkspace,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        """Render conversation and structured Job Contract from durable state."""
+        runtime_job = workspace.runtime.job if workspace.runtime is not None else None
+        inspection = runtime_job.inspection if runtime_job is not None else None
+        finding_groups: list[tuple[str, tuple[Finding, ...]]] = []
+        if inspection is not None:
+            for severity in (
+                Severity.BLOCKER,
+                Severity.ERROR,
+                Severity.WARNING,
+                Severity.INFO,
+            ):
+                findings = tuple(
+                    finding for finding in inspection.findings if finding.severity is severity
+                )
+                if findings:
+                    finding_groups.append((severity.value, findings))
+        policy_rules: tuple[tuple[str, str], ...] = ()
+        if runtime_job is not None and workspace.record.profile_policy is not None:
+            policy_rules = _profile_review_rules(
+                runtime_job.profile,
+                workspace.record.profile_policy.canonical_sha256,
+            )
+        approval_card = None
+        if runtime_job is not None and runtime_job.pending_interrupt_id is not None:
+            approval_card = runtime_job.approval_card()
+        return templates.TemplateResponse(
+            request=request,
+            name="hosted_workspace.html",
+            context={
+                "workspace": workspace,
+                "record": workspace.record,
+                "preflight": workspace.record.preflight,
+                "job": runtime_job,
+                "inspection": inspection,
+                "plan": runtime_job.selected_plan if runtime_job is not None else None,
+                "verification": (
+                    runtime_job.last_verification if runtime_job is not None else None
+                ),
+                "approval_card": approval_card,
+                "finding_groups": tuple(finding_groups),
+                "policy_rules": policy_rules,
+                "target_uses": tuple(
+                    (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
+                ),
+                "command_id": uuid4().hex,
+                "error": error,
+                "active_mode": "conversation",
+                "active_style": "Conversation",
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -1394,6 +1482,184 @@ def create_app(
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
+    def hosted_home(request: Request) -> Response:
+        """Start a new conversation-led asset workspace."""
+        return render_hosted_home(request)
+
+    def create_hosted_workspace(
+        request: Request,
+        description: Annotated[str, Form()],
+        asset: Annotated[UploadFile, File()],
+    ) -> Response:
+        """Accept minimal context and run objective preflight only."""
+        filename = asset.filename or ""
+        try:
+            workspace = hosted_store.create(description, filename, asset.file)
+        except (HostedWorkspaceError, ValueError) as error:
+            return render_hosted_home(
+                request,
+                str(error),
+                status_code=400,
+                description=description,
+            )
+        finally:
+            asset.file.close()
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace.record.workspace_id),
+            status_code=303,
+        )
+
+    def require_hosted_workspace(workspace_id: str) -> HostedWorkspace:
+        """Load only a valid durable workspace beneath the hosted root."""
+        workspace = hosted_store.get(workspace_id)
+        if workspace is None:
+            raise HostedWorkspaceError("This asset workspace is unavailable.")
+        return workspace
+
+    def hosted_workspace_page(request: Request, workspace_id: str) -> Response:
+        """Resume one durable conversation and Job Contract."""
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+        except HostedWorkspaceError as error:
+            return render_hosted_home(request, str(error), status_code=404)
+        return render_hosted_workspace(request, workspace)
+
+    def confirm_hosted_target(
+        request: Request,
+        workspace_id: str,
+        target_use: Annotated[str, Form()],
+        target_height_m: Annotated[str, Form()],
+        command_id: Annotated[str, Form()],
+        accept_supported_goal: Annotated[str | None, Form()] = None,
+        custom_height_tolerance_cm: Annotated[str | None, Form()] = None,
+        custom_require_y_up: Annotated[str | None, Form()] = None,
+        custom_require_ground_contact: Annotated[str | None, Form()] = None,
+        custom_ground_tolerance_cm: Annotated[str | None, Form()] = None,
+        custom_naming_pattern: Annotated[str | None, Form()] = None,
+        custom_max_triangles: Annotated[str | None, Form()] = None,
+        custom_max_materials: Annotated[str | None, Form()] = None,
+        custom_max_textures: Annotated[str | None, Form()] = None,
+        custom_max_texture_dimension: Annotated[str | None, Form()] = None,
+    ) -> Response:
+        """Freeze the typed target and derived policy before policy inspection."""
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            hosted_store.confirm_target(
+                workspace,
+                target_use_value=target_use,
+                target_height_m=target_height_m,
+                accept_supported_goal=accept_supported_goal == "true",
+                command_id=command_id,
+                custom_values={
+                    "custom_height_tolerance_cm": custom_height_tolerance_cm,
+                    "custom_require_y_up": custom_require_y_up,
+                    "custom_require_ground_contact": custom_require_ground_contact,
+                    "custom_ground_tolerance_cm": custom_ground_tolerance_cm,
+                    "custom_naming_pattern": custom_naming_pattern,
+                    "custom_max_triangles": custom_max_triangles,
+                    "custom_max_materials": custom_max_materials,
+                    "custom_max_textures": custom_max_textures,
+                    "custom_max_texture_dimension": custom_max_texture_dimension,
+                },
+            )
+        except HostedWorkspaceError as error:
+            try:
+                workspace = require_hosted_workspace(workspace_id)
+            except HostedWorkspaceError:
+                return render_hosted_home(request, str(error), status_code=404)
+            return render_hosted_workspace(request, workspace, str(error), status_code=400)
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            status_code=303,
+        )
+
+    def decide_hosted_workspace(
+        request: Request,
+        workspace_id: str,
+        interrupt_id: Annotated[str, Form()],
+        decision: Annotated[str, Form()],
+        command_id: Annotated[str, Form()],
+    ) -> Response:
+        """Bind a structured decision to the exact durable Strands interrupt."""
+        workspace: HostedWorkspace | None = None
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            if decision not in {"approve", "reject"}:
+                raise HostedWorkspaceError("Choose approve or reject for this repair.")
+            hosted_store.decide(
+                workspace,
+                interrupt_id=interrupt_id,
+                approved=decision == "approve",
+                command_id=command_id,
+            )
+        except (HostedWorkspaceError, AgentWorkflowError) as error:
+            if workspace is None:
+                return render_hosted_home(request, str(error), status_code=404)
+            return render_hosted_workspace(request, workspace, str(error), status_code=409)
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            status_code=303,
+        )
+
+    def ask_hosted_workspace(
+        request: Request,
+        workspace_id: str,
+        category: Annotated[str, Form()],
+    ) -> Response:
+        """Answer one bounded question strictly from recorded job evidence."""
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            if category not in {"measurements", "materials", "authorization", "result"}:
+                raise HostedWorkspaceError("Choose one of the supported evidence questions.")
+            hosted_store.answer_evidence_question(workspace, category)
+        except HostedWorkspaceError as error:
+            return render_hosted_home(request, str(error), status_code=404)
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            status_code=303,
+        )
+
+    def hosted_source_asset(workspace_id: str) -> Response:
+        """Serve one immutable hosted source GLB."""
+        workspace = hosted_store.get(workspace_id)
+        if workspace is None:
+            return Response(status_code=404)
+        return FileResponse(
+            workspace.source_path,
+            media_type="model/gltf-binary",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
+    def hosted_repaired_asset(workspace_id: str) -> Response:
+        """Serve only a verified hosted candidate."""
+        workspace = hosted_store.get(workspace_id)
+        if workspace is None or not workspace.ready_candidate:
+            return Response(status_code=404)
+        return FileResponse(
+            workspace.output_dir / "repaired.glb",
+            media_type="model/gltf-binary",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
+    def download_hosted_result(workspace_id: str) -> Response:
+        """Serve the contracted package from a completed durable workspace."""
+        workspace = hosted_store.get(workspace_id)
+        result_zip = workspace.output_dir / "result.zip" if workspace is not None else None
+        if (
+            workspace is None
+            or workspace.runtime is None
+            or workspace.runtime.job.result is None
+            or result_zip is None
+            or not result_zip.is_file()
+        ):
+            return Response(status_code=404)
+        return FileResponse(
+            result_zip,
+            media_type="application/zip",
+            filename=f"asset-shepherd-{workspace_id[:8]}.zip",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
     app.add_api_route("/", home, methods=["GET"], response_class=HTMLResponse, name="home")
     app.add_api_route(
         "/intents",
@@ -1465,6 +1731,62 @@ def create_app(
         download_result,
         methods=["GET"],
         name="download_result",
+    )
+    app.add_api_route(
+        "/workspace",
+        hosted_home,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="hosted_home",
+    )
+    app.add_api_route(
+        "/workspace",
+        create_hosted_workspace,
+        methods=["POST"],
+        name="create_hosted_workspace",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}",
+        hosted_workspace_page,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="hosted_workspace_page",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/target",
+        confirm_hosted_target,
+        methods=["POST"],
+        name="confirm_hosted_target",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/decision",
+        decide_hosted_workspace,
+        methods=["POST"],
+        name="decide_hosted_workspace",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/ask",
+        ask_hosted_workspace,
+        methods=["POST"],
+        name="ask_hosted_workspace",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/source.glb",
+        hosted_source_asset,
+        methods=["GET"],
+        name="hosted_source_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/repaired.glb",
+        hosted_repaired_asset,
+        methods=["GET"],
+        name="hosted_repaired_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/download",
+        download_hosted_result,
+        methods=["GET"],
+        name="download_hosted_result",
     )
     return app
 

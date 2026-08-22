@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** D019 conversation-led hosted direction accepted (this file is included)
+**Current commit:** D020 local hosted conversation/durability reference (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; frozen intent and policy provenance; two-column app frame; large-type disclosure-first presentation; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018; D018 supersedes the primary role-selector modality; latest intent flow is included in current commit |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; contract v1.1 defines conversation, typed confirmation, durability, and unchanged AWS gate |  | No paid call or resource is authorized; mandatory checkpoint after completion |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 local `/workspace` reference passes preflight, typed-target, durability, exactly-once, and package acceptance |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; no paid call or resource is authorized |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -45,8 +45,10 @@ before any paid invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 60 passed and the opt-in live-provider test skipped; intent-first web
-  gate — 17 passed; intent canonicalization gate — 2 passed.
+- Tests: `uv run pytest` — 65 passed and the opt-in live-provider test skipped. New D019 acceptance
+  covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
+  control, application/runtime restart at approval, chat non-authorization, duplicate decision
+  replay, verification, and exact ZIP output.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
@@ -107,6 +109,22 @@ before any paid invocation or resource creation.
   D019. Contract version 1.1 now controls objective preflight, visible Job Contract, derived frozen
   policies, exact structured authorization, durable resume, and minimized hosted conversation
   provenance without authorizing AWS work or additional repair domains.
+- D020 local hosted reference: `/workspace` now presents one conversation beside a persistent Job
+  Contract. Profile-free `PreflightResult` records source identity, structure, bounds, transforms,
+  counts, eligibility, and declared material metadata before any policy finding or plan exists.
+  Target confirmation separates original intent, requested use, supported job goal, support status,
+  and external handoff; derives the nearest trusted preset; validates supported advanced overrides;
+  and freezes policy identity, base, overrides, version, and canonical hash.
+- Durable-resume evidence: private atomic workspace state, structured event/tool ledger, command
+  idempotency records, retention/deletion status, deterministic runtime state, and Strands native
+  snapshots reconstruct the exact pending interrupt in a new store and a new FastAPI application.
+  Replaying the same decision command leaves repaired GLB and result ZIP bytes unchanged. Chat
+  evidence questions cannot clear the interrupt.
+- Rendered browser acceptance: start, preflight, approval, and completion retain two primary work
+  areas (conversation and Job Contract); policy/finding detail stays collapsed; source and candidate
+  model previews render after verification; browser diagnostics contain no warnings or errors. The
+  Chrome extension needs its optional file-URL permission for browser-driven fixture selection,
+  while server upload and route acceptance pass independently.
 - Distribution audit: `uv build --wheel` succeeded with the intent module, confirmation template,
   workflow rail, updated intake/job templates, CSS, JavaScript, favicon, and existing deterministic
   runtime assets included in the wheel. The checked-in public intent schema remains a repository
@@ -146,10 +164,9 @@ record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Implement the unblocked local D019 slice over the existing schemas and deterministic pipeline:
-objective preflight, typed target confirmation, visible Job Contract, evidence-grounded
-conversation, and restart-safe exactly-once job state. Preserve the M8 form-led path as the reference
-and keep the full offline gate passing. The earliest corpus work remains RW2 registration of the
-untouched Debug Beetle GLB when the user supplies it; do not begin Cloudforge until that batch is
-complete. Before M9 paid-provider work, confirm the dedicated AWS profile, Bedrock model/region
-access, and budget alert. No paid invocation or AWS resource creation is authorized yet.
+The unblocked local D019/D020 slice is complete. The next M9 step crosses the existing human/AWS
+boundary: install or confirm AWS CLI, configure the dedicated `asset-shepherd` profile, select and
+verify a tool-capable Bedrock model/region, and create a budget alert before any paid invocation or
+resource. The earliest corpus work remains RW2 registration of the untouched Debug Beetle GLB when
+the user supplies it; do not begin Cloudforge until that batch is complete. No paid invocation or
+AWS resource creation is authorized yet.

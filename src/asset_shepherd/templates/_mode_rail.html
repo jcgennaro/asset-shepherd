@@ -1,8 +1,25 @@
 <aside class="mode-rail" aria-label="Asset Shepherd workflow">
-  <a class="rail-logo" href="{{ url_for('home') }}" aria-label="Asset Shepherd home">
+  <a class="rail-logo" href="{{ url_for('hosted_home') if active_mode == 'conversation' else url_for('home') }}" aria-label="Asset Shepherd home">
     <span>LOGO</span>
   </a>
 
+  {% if active_mode == 'conversation' %}
+  <nav class="mode-nav intent-rail" aria-label="Conversation-led workflow">
+    <p class="rail-group-label">Durable workspace</p>
+    <a class="mode-link active" href="#workspace" title="Conversation and the visible Job Contract">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 3V5Z"/></svg>
+      <span class="mode-label">Workspace</span>
+    </a>
+    <a class="mode-link utility-tile" href="{{ url_for('hosted_home') }}" title="Start a new durable asset workspace">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="mode-label">New asset</span>
+    </a>
+    <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Open the M8 form-led comparison workflow">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5zM8 9h8M8 13h8"/></svg>
+      <span class="mode-label">Form reference</span>
+    </a>
+  </nav>
+  {% else %}
   <nav class="mode-nav intent-rail" aria-label="Intent-first workflow">
     <p class="rail-group-label">One shared workflow</p>
     <ol>
@@ -17,4 +34,5 @@
       <span class="mode-label">New asset</span>
     </a>
   </nav>
+  {% endif %}
 </aside>

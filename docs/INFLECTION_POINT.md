@@ -1,10 +1,10 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** Direction accepted in D019; M9 implementation pending
+**Status:** Direction accepted in D019; local D020 reference implemented; live Bedrock pending
 
 **Date:** 2026-08-22
 
-**Current implementation:** `main` at `adda928feea80b2db5c9c4196ef4b5cc171e7d6f`
+**Current implementation:** D020 local hosted reference (this commit)
 
 **Controlling specifications:** `PROJECT_CONTRACT.md` and `REAL_WORLD_VALIDATION_PLAN.md`
 
@@ -486,6 +486,9 @@ D019 records the approved direction and requires implementation to:
 - treats conversation/durability as bounded additions to M9 without weakening its existing AWS,
   deployment, cost, and access gate.
 
-D019 supersedes D012 and the ordering portion of D018 for the hosted M9 path. The M8 form-led
-behavior remains the executable reference until the versioned M9 implementation passes its gate.
-No AWS activity or paid model invocation is authorized yet.
+D019 supersedes D012 and the ordering portion of D018 for the hosted M9 path. D020 implements the
+local `/workspace` reference with objective preflight, typed confirmation, derived frozen policy,
+visible Job Contract, native interrupt persistence, structured evidence questions, and duplicate
+resume protection while keeping the M8 form-led baseline intact. The live Bedrock conversation,
+remote concurrency/storage, deployment, observability, access, retention cleanup, and cost proof
+remain required for the M9 gate. No AWS activity or paid model invocation is authorized yet.

@@ -32,10 +32,12 @@ from asset_shepherd.models import (
     FindingEvidence,
     GeometryFacts,
     InspectionResult,
+    MaterialFact,
     NamingFacts,
     NodeHierarchyFact,
     NodeTransformFact,
     PackageFacts,
+    PreflightResult,
     ProjectProfile,
     RepairEligibility,
     ResourceFacts,
@@ -47,6 +49,44 @@ from asset_shepherd.profile_policy import finding_rule_provenance
 
 SUPPORTED_REQUIRED_EXTENSIONS: Final[frozenset[str]] = frozenset()
 _IDENTITY: Final = np.eye(4, dtype=np.float64)
+
+
+def _material_facts(gltf: GLTF2) -> tuple[MaterialFact, ...]:
+    """Return only glTF-declared material values, without appearance inference."""
+    facts: list[MaterialFact] = []
+    for index, material in enumerate(gltf.materials):
+        pbr = material.pbrMetallicRoughness
+        base_color = tuple(
+            float(value)
+            for value in (
+                pbr.baseColorFactor if pbr is not None and pbr.baseColorFactor else [1, 1, 1, 1]
+            )
+        )
+        emissive = tuple(float(value) for value in (material.emissiveFactor or [0, 0, 0]))
+        facts.append(
+            MaterialFact(
+                material_index=index,
+                name=material.name,
+                alpha_mode=material.alphaMode or "OPAQUE",
+                alpha_cutoff=(
+                    float(material.alphaCutoff) if material.alphaCutoff is not None else None
+                ),
+                double_sided=bool(material.doubleSided),
+                base_color_factor=cast(tuple[float, float, float, float], base_color),
+                metallic_factor=(
+                    float(pbr.metallicFactor)
+                    if pbr is not None and pbr.metallicFactor is not None
+                    else 1.0
+                ),
+                roughness_factor=(
+                    float(pbr.roughnessFactor)
+                    if pbr is not None and pbr.roughnessFactor is not None
+                    else 1.0
+                ),
+                emissive_factor=cast(tuple[float, float, float], emissive),
+            )
+        )
+    return tuple(facts)
 
 
 def _bounds_model(minimum: np.ndarray, maximum: np.ndarray) -> Bounds3D:
@@ -812,6 +852,78 @@ def _inspection_findings(
                 )
             )
     return findings, eligibility
+
+
+def preflight_asset(path: Path) -> PreflightResult:
+    """Measure profile-free source facts without findings, planning, or mutation."""
+    try:
+        source_bytes = path.read_bytes()
+    except OSError as error:
+        source_bytes = b""
+        read_error: Exception | None = error
+    else:
+        read_error = None
+    source_hash = sha256(source_bytes).hexdigest()
+    preflight_id = f"preflight-{source_hash[:16]}-v1"
+    try:
+        if read_error is not None:
+            raise GlbError(f"Could not read source file: {read_error}")
+        gltf = load_glb(path)
+        validate_loaded_glb(gltf)
+        bounds = world_bounds(gltf)
+        counts = geometry_counts(gltf)
+        bounds_model = _bounds_model(bounds.minimum, bounds.maximum)
+        dominant_axis = ("X", "Y", "Z")[int(np.argmax(bounds.dimensions))]
+        minimum_y = float(bounds.minimum[1])
+        epsilon = 1e-9
+        if minimum_y < -epsilon:
+            ground = "EXTENDS_BELOW"
+        elif minimum_y > epsilon:
+            ground = "FLOATS_ABOVE"
+        elif minimum_y < 0:
+            ground = "INTERSECTS"
+        else:
+            ground = "GROUNDED"
+        geometry = GeometryFacts(
+            vertex_count=counts.vertices,
+            triangle_count=counts.triangles,
+            bounds=bounds_model,
+            dominant_dimension_axis=dominant_axis,
+            ground_relationship=ground,
+        )
+        package = _package_facts(gltf, file_sha256=source_hash, byte_size=len(source_bytes))
+        unsupported_structure = bool(
+            package.skin_count
+            or package.animation_count
+            or package.has_morph_targets
+            or (set(package.extensions_required) - SUPPORTED_REQUIRED_EXTENSIONS)
+        )
+        eligibility = (
+            RepairEligibility.INSPECTION_ONLY_UNSUPPORTED_FEATURES
+            if unsupported_structure
+            else RepairEligibility.ELIGIBLE_STATIC_MESH
+        )
+        return PreflightResult(
+            preflight_id=preflight_id,
+            source_filename=path.name,
+            package=package,
+            geometry=geometry,
+            transforms=_transform_facts(gltf),
+            materials=_material_facts(gltf),
+            structural_eligibility=eligibility,
+            parse_error=None,
+        )
+    except (GlbError, OSError, ValueError, IndexError, TypeError) as error:
+        return PreflightResult(
+            preflight_id=preflight_id,
+            source_filename=path.name,
+            package=_empty_package_facts(source_hash, len(source_bytes)),
+            geometry=None,
+            transforms=None,
+            materials=(),
+            structural_eligibility=RepairEligibility.INVALID_OR_UNREADABLE,
+            parse_error=str(error),
+        )
 
 
 def inspect_asset(path: Path, profile: ProjectProfile) -> InspectionResult:

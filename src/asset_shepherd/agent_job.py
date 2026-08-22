@@ -14,6 +14,7 @@ from asset_shepherd.models import (
     DecisionRecord,
     Decisions,
     DecisionSource,
+    DecisionValue,
     InspectionResult,
     JobResult,
     JobState,
@@ -113,6 +114,118 @@ class AgentJob:
             self.profile_policy = build_profile_policy_provenance(self.profile)
         else:
             validate_profile_policy_provenance(self.profile, self.profile_policy)
+        self._restore_runtime_state()
+
+    @property
+    def runtime_state_path(self) -> Path:
+        """Return private resumable state kept outside the contracted artifact directory."""
+        return self.output_dir.parent / "runtime_state.json"
+
+    def _persist_runtime_state(self) -> None:
+        """Atomically persist the minimum deterministic state needed after a restart."""
+        state = {
+            "schema_version": 1,
+            "source_sha256": (
+                self.inspection.package.file_sha256 if self.inspection is not None else None
+            ),
+            "started_at": self.started_at.isoformat() if self.started_at is not None else None,
+            "pending_interrupt_id": self.pending_interrupt_id,
+            "correction_attempts": self.correction_attempts,
+            "phase": (
+                "complete"
+                if self.result is not None
+                else "verified"
+                if self.last_verification is not None
+                else "executed"
+                if self.outcome is not None
+                else "planned"
+                if self.selected_plan is not None
+                else "inspected"
+                if self.inspection is not None
+                else "created"
+            ),
+        }
+        path = self.runtime_state_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        _write_json(temporary, state)
+        temporary.replace(path)
+
+    def _restore_runtime_state(self) -> None:
+        """Restore typed deterministic state from private state and contracted artifacts."""
+        state_path = self.runtime_state_path
+        if not state_path.is_file():
+            return
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        if state.get("schema_version") != 1:
+            raise AgentWorkflowError("Unsupported agent runtime-state version")
+        started_at = state.get("started_at")
+        if started_at is not None:
+            self.started_at = datetime.fromisoformat(str(started_at))
+        pending_interrupt_id = state.get("pending_interrupt_id")
+        self.pending_interrupt_id = (
+            str(pending_interrupt_id) if pending_interrupt_id is not None else None
+        )
+        self.correction_attempts = int(state.get("correction_attempts", 0))
+        inspection_path = self.output_dir / "inspection.json"
+        plan_path = self.output_dir / "repair_plan.json"
+        decisions_path = self.output_dir / "decisions.json"
+        provenance_path = self.output_dir / "provenance.json"
+        verification_path = self.output_dir / "verification.json"
+        result_path = self.output_dir / "job_result.json"
+        if inspection_path.is_file():
+            self.inspection = InspectionResult.model_validate_json(
+                inspection_path.read_text(encoding="utf-8")
+            )
+            expected_hash = state.get("source_sha256")
+            if expected_hash is not None and self.inspection.package.file_sha256 != expected_hash:
+                raise AgentWorkflowError("Persisted source identity does not match inspection")
+        if plan_path.is_file():
+            self.selected_plan = RepairPlan.model_validate_json(
+                plan_path.read_text(encoding="utf-8")
+            )
+            self.full_plan = self.selected_plan
+            self.selection = PlanSelection(
+                plan_id=self.selected_plan.plan_id,
+                candidate_ids=tuple(candidate.id for candidate in self.selected_plan.candidates),
+            )
+        if decisions_path.is_file():
+            self.decisions = Decisions.model_validate_json(
+                decisions_path.read_text(encoding="utf-8")
+            )
+        if provenance_path.is_file():
+            self.provenance = Provenance.model_validate_json(
+                provenance_path.read_text(encoding="utf-8")
+            )
+        if self.decisions is not None and self.provenance is not None:
+            rejected = tuple(
+                record.candidate_id
+                for record in self.decisions.records
+                if record.decision is DecisionValue.REJECTED
+            )
+            executed = tuple(action.candidate_id for action in self.provenance.executed_actions)
+            candidate = self.output_dir / "candidate.glb"
+            repaired = self.output_dir / "repaired.glb"
+            if self.provenance.output_sha256 is not None and (
+                candidate.is_file() or repaired.is_file()
+            ):
+                self.outcome = RepairOutcome(
+                    source_sha256=self.provenance.source_sha256,
+                    output_sha256=self.provenance.output_sha256,
+                    executed_action_ids=executed,
+                    rejected_action_ids=rejected,
+                )
+        if verification_path.is_file():
+            self.last_verification = VerificationResult.model_validate_json(
+                verification_path.read_text(encoding="utf-8")
+            )
+        if result_path.is_file():
+            self.result = JobResult.model_validate_json(result_path.read_text(encoding="utf-8"))
+
+    def set_pending_interrupt(self, interrupt_id: str | None) -> None:
+        """Persist the exact native interrupt identity or its durable resolution."""
+        self.pending_interrupt_id = interrupt_id
+        self._persist_runtime_state()
 
     @property
     def candidate_path(self) -> Path:
@@ -137,6 +250,7 @@ class AgentJob:
         inspection_path = self.output_dir / "inspection.json"
         self._require_output_path(inspection_path)
         _write_json(inspection_path, self.inspection.model_dump(mode="json"))
+        self._persist_runtime_state()
         return self.inspection
 
     def list_candidates(self) -> RepairPlan:
@@ -197,6 +311,7 @@ class AgentJob:
             self.output_dir / "repair_plan.json",
             self.selected_plan.model_dump(mode="json"),
         )
+        self._persist_runtime_state()
         return self.selection
 
     def approval_card(self) -> ApprovalCard | None:
@@ -286,6 +401,7 @@ class AgentJob:
             self.output_dir / "provenance.json",
             self.provenance.model_dump(mode="json"),
         )
+        self._persist_runtime_state()
         return self.outcome
 
     def retry_once(self) -> RepairOutcome:
@@ -325,6 +441,7 @@ class AgentJob:
             self.output_dir / "provenance.json",
             self.provenance.model_dump(mode="json"),
         )
+        self._persist_runtime_state()
         return self.outcome
 
     def verify_and_package(self) -> tuple[VerificationResult, JobResult | None]:
@@ -391,6 +508,7 @@ class AgentJob:
                 self.output_dir / "job_result.json",
                 self.result.model_dump(mode="json"),
             )
+            self._persist_runtime_state()
             return verification, self.result
         if self.decisions is None or self.outcome is None or self.provenance is None:
             raise AgentWorkflowError("Repair must complete before verification")
@@ -424,6 +542,7 @@ class AgentJob:
             newline="\n",
         )
         if verification.state is VerificationState.FAILED and self.correction_attempts == 0:
+            self._persist_runtime_state()
             return verification, None
 
         ready = verification.state in {
@@ -467,4 +586,5 @@ class AgentJob:
             self.output_dir / "job_result.json",
             self.result.model_dump(mode="json"),
         )
+        self._persist_runtime_state()
         return verification, self.result

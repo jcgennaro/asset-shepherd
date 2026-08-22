@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="hosted-workspace" data-focus-area="asset conversation">
+    <header class="hosted-context">
+      <a class="back-link" href="{{ url_for('hosted_home') }}">← New asset</a>
+      <p><strong>{{ record.original_filename }}</strong><span>{{ record.phase|replace('_', ' ')|title }}</span></p>
+      <code>{{ record.workspace_id[:12] }}</code>
+    </header>
+
+    {% if error %}
+      <div class="alert danger" role="alert"><strong>Could not continue</strong><span>{{ error }}</span></div>
+    {% elif record.error %}
+      <div class="alert danger" role="alert"><strong>Stopped safely</strong><span>{{ record.error }}</span></div>
+    {% endif %}
+
+    <div class="hosted-columns">
+      <main class="conversation-pane" aria-labelledby="conversation-heading">
+        <header>
+          <p class="section-label">Asset conversation</p>
+          <h2 id="conversation-heading">
+            {% if record.phase.value == 'TARGET_CONFIRMATION' %}I measured the source. What should it become?
+            {% elif record.phase.value == 'APPROVAL' %}One physical change needs your decision.
+            {% elif record.phase.value == 'COMPLETE' %}The verified package is ready.
+            {% elif record.phase.value == 'BLOCKED' %}The inspection-only package is ready.
+            {% else %}The workflow stopped safely.{% endif %}
+          </h2>
+        </header>
+
+        {% if record.phase.value == 'TARGET_CONFIRMATION' %}
+          <article class="conversation-message shepherd">
+            <p><strong>Measured, target not yet agreed.</strong> I found a {{ preflight.package.asset_version }} GLB with
+              {{ "{:,}".format(preflight.geometry.triangle_count) if preflight.geometry else "unknown" }} triangles,
+              {{ preflight.package.material_count }} materials, and {{ preflight.package.texture_count }} textures.</p>
+            <small>No policy findings, repair plan, approval, mutation, or readiness result exists yet.</small>
+          </article>
+          <form action="{{ url_for('confirm_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-card" data-busy-form>
+            <input type="hidden" name="command_id" value="{{ command_id }}">
+            <label><span>Intended use</span>
+              <select name="target_use" required>
+                {% for value, label in target_uses %}<option value="{{ value }}">{{ label|capitalize }}</option>{% endfor %}
+              </select>
+            </label>
+            <label><span>Real-world height</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
+            <label class="supported-goal-check">
+              <input type="checkbox" name="accept_supported_goal" value="true">
+              <span>If my request needs rigging, animation, or unsupported structure, I accept a static-mesh or inspection-only handoff.</span>
+            </label>
+            <details class="hosted-advanced">
+              <summary>Advanced · customize supported rules</summary>
+              <p>Blank fields inherit the nearest trusted preset. Safety, source preservation, authorization classes, verification invariants, and repair domains remain fixed.</p>
+              <div class="hosted-advanced-grid">
+                <label><span>Height tolerance (cm)</span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" placeholder="Preset default"></label>
+                <label><span>Ground tolerance (cm)</span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" placeholder="Preset default"></label>
+                <label><span>Require Y-up</span><select name="custom_require_y_up"><option value="">Preset default</option><option value="true">Yes</option><option value="false">No</option></select></label>
+                <label><span>Require ground contact</span><select name="custom_require_ground_contact"><option value="">Preset default</option><option value="true">Yes</option><option value="false">No</option></select></label>
+                <label><span>Naming pattern</span><input type="text" name="custom_naming_pattern" maxlength="128" placeholder="Preset default"></label>
+                <label><span>Triangle budget</span><input type="number" name="custom_max_triangles" min="0" step="1" placeholder="Preset default"></label>
+                <label><span>Material budget</span><input type="number" name="custom_max_materials" min="0" step="1" placeholder="Preset default"></label>
+                <label><span>Texture budget</span><input type="number" name="custom_max_textures" min="0" step="1" placeholder="Preset default"></label>
+                <label><span>Max texture dimension</span><input type="number" name="custom_max_texture_dimension" min="1" step="1" placeholder="Preset default"></label>
+              </div>
+            </details>
+            <button class="primary-button" type="submit" data-submit-button>Confirm target and inspect <span aria-hidden="true">→</span></button>
+          </form>
+        {% elif approval_card and record.pending_interrupt_id %}
+          <article class="conversation-message shepherd">
+            <p><strong>{{ approval_card.title }}</strong></p>
+            <p>{{ approval_card.consequence_summary }}</p>
+            <dl class="conversation-metrics">
+              <div><dt>Before</dt><dd>{{ "%.3f"|format(approval_card.before_bounds.dimensions_m|max) }} m</dd></div>
+              <div><dt>Target height</dt><dd>{{ "%.3f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m</dd></div>
+            </dl>
+            <details><summary>Why it was proposed</summary>
+              {% for component in approval_card.components %}<p><strong>{{ component.component }}</strong> · {{ component.evidence }}</p>{% endfor %}
+            </details>
+          </article>
+          <form action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form>
+            <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
+            <input type="hidden" name="command_id" value="{{ command_id }}">
+            <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
+            <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve exact plan <span aria-hidden="true">→</span></button>
+          </form>
+          <p class="fine-print">Typing approval language cannot authorize this action. Only these interrupt-bound controls can.</p>
+        {% elif job and job.result %}
+          <article class="conversation-message shepherd">
+            <p><strong>{{ verification.state if verification else record.phase }}</strong></p>
+            <p>{% if workspace.ready_candidate %}Independent verification passed. The package contains the verified candidate and contracted evidence.{% else %}No candidate was marked project-ready. The diagnostics and preserved decision are packaged.{% endif %}</p>
+          </article>
+          <a class="download-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">
+            <span><small>Contracted evidence package</small><strong>Download result ZIP</strong></span><b aria-hidden="true">↓</b>
+          </a>
+          <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
+            <article class="preview-card"><div class="preview-label"><strong>Source</strong><span>Untouched</span></div>
+              <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Untouched source asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+            </article>
+            {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
+              <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+            </article>{% endif %}
+          </div>
+        {% endif %}
+
+        {% if record.last_answer %}
+          <article class="conversation-message evidence-answer">
+            <strong>{{ record.last_answer.title }}</strong>
+            {% for statement in record.last_answer.statements %}<p>{{ statement }}</p>{% endfor %}
+            <small>Evidence: {{ record.last_answer.evidence_refs|join(', ') }}</small>
+          </article>
+        {% endif %}
+        <form action="{{ url_for('ask_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="evidence-question">
+          <label><span>Ask from recorded evidence</span>
+            <select name="category">
+              <option value="measurements">What did you measure?</option>
+              <option value="materials">What material metadata is declared?</option>
+              <option value="authorization">What can authorize a repair?</option>
+              <option value="result">What is the current result?</option>
+            </select>
+          </label>
+          <button class="secondary-button" type="submit">Ask</button>
+        </form>
+      </main>
+
+      <aside class="job-contract" aria-labelledby="contract-heading">
+        <header><p class="section-label">Persistent structured state</p><h2 id="contract-heading">Job Contract</h2></header>
+        <details open>
+          <summary>Source <span>{{ "measured" if preflight.package.parse_success else "invalid" }}</span></summary>
+          <dl>
+            <div><dt>SHA-256</dt><dd><code>{{ preflight.package.file_sha256[:12] }}</code></dd></div>
+            {% if preflight.geometry %}<div><dt>Bounds</dt><dd>{{ "%.3f"|format(preflight.geometry.bounds.dimensions_m[0]) }} × {{ "%.3f"|format(preflight.geometry.bounds.dimensions_m[1]) }} × {{ "%.3f"|format(preflight.geometry.bounds.dimensions_m[2]) }} m</dd></div>{% endif %}
+            {% if preflight.geometry %}<div><dt>Orientation</dt><dd>{{ preflight.geometry.dominant_dimension_axis }} dominant · {{ preflight.geometry.ground_relationship }}</dd></div>{% endif %}
+            <div><dt>Resources</dt><dd>{{ "{:,}".format(preflight.geometry.triangle_count) if preflight.geometry else "—" }} triangles · {{ preflight.package.material_count }} materials · {{ preflight.package.texture_count }} textures</dd></div>
+            <div><dt>Features</dt><dd>{{ preflight.package.skin_count }} skins · {{ preflight.package.animation_count }} animations · {{ "morph targets" if preflight.package.has_morph_targets else "no morph targets" }}</dd></div>
+            <div><dt>Structure</dt><dd>{{ preflight.structural_eligibility }}</dd></div>
+            <div><dt>Appearance</dt><dd>NOT_EVALUATED · declared metadata only</dd></div>
+          </dl>
+        </details>
+        <details {% if record.target %}open{% endif %}>
+          <summary>Target <span>{{ "frozen" if record.target else "not agreed" }}</span></summary>
+          {% if record.target %}<dl>
+            <div><dt>Original intent</dt><dd>{{ record.target.original_intent }}</dd></div>
+            <div><dt>Requested</dt><dd>{{ record.target.requested_use }}</dd></div>
+            <div><dt>Supported goal</dt><dd>{{ record.target.supported_job_goal }}</dd></div>
+            <div><dt>Height</dt><dd>{{ "%g"|format(record.target.target_height_cm / 100) }} m</dd></div>
+            <div><dt>Support</dt><dd>{{ record.target.support_status }}</dd></div>
+            {% if record.target.external_handoffs %}<div><dt>Handoff</dt><dd>{{ record.target.external_handoffs|join(' ') }}</dd></div>{% endif %}
+          </dl>{% else %}<p>Waiting for typed confirmation.</p>{% endif %}
+        </details>
+        <details>
+          <summary>Rules <span>{{ "frozen" if record.profile_policy else "not derived" }}</span></summary>
+          {% if record.profile_policy %}
+            <p><strong>{{ record.profile_name }}</strong><br><code>{{ record.profile_policy.canonical_sha256[:12] }}</code></p>
+            <dl>{% for label, value in policy_rules %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}</dl>
+          {% else %}<p>Rules are derived only after target confirmation.</p>{% endif %}
+        </details>
+        <details>
+          <summary>Findings and plan <span>{{ inspection.findings|length if inspection else "pending" }}</span></summary>
+          {% if finding_groups %}{% for severity, findings in finding_groups %}{% for finding in findings %}
+            <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></p>
+          {% endfor %}{% endfor %}{% elif inspection %}<p>No policy findings.</p>{% else %}<p>No inspection exists before confirmation.</p>{% endif %}
+          {% if plan %}<p>{{ plan.candidates|length }} registered candidate(s); {{ plan.approval_action_ids|length }} require approval.</p>{% endif %}
+        </details>
+        <details>
+          <summary>Decision, verification, package <span>{{ record.phase|replace('_', ' ')|lower }}</span></summary>
+          <dl>
+            <div><dt>Interrupt</dt><dd>{{ record.pending_interrupt_id[:12] if record.pending_interrupt_id else "none" }}</dd></div>
+            <div><dt>Verification</dt><dd>{{ verification.state if verification else "pending" }}</dd></div>
+            <div><dt>Package</dt><dd>{{ "ready" if job and job.result else "pending" }}</dd></div>
+          </dl>
+        </details>
+        <p class="contract-retention">Private workspace state expires {{ record.retention_expires_at.strftime('%Y-%m-%d') }} · no raw transcript is packaged.</p>
+      </aside>
+    </div>
+  </section>
+{% endblock %}

@@ -7,6 +7,7 @@ import json
 from collections.abc import AsyncGenerator, AsyncIterable, Mapping
 from dataclasses import dataclass
 from os import environ
+from pathlib import Path
 from time import perf_counter
 from typing import Any, TypeVar, cast
 
@@ -14,6 +15,8 @@ from pydantic import BaseModel
 from strands import Agent
 from strands.agent import AgentResult
 from strands.models import BedrockModel, Model
+from strands.session import SessionManager, SnapshotSessionManager
+from strands.storage import LocalFileStorage
 from strands.types.agent import AgentInput
 from strands.types.content import Messages, SystemContentBlock
 from strands.types.streaming import StreamEvent
@@ -207,6 +210,7 @@ class AssetShepherdAgent:
         *,
         provider: str,
         model_id: str,
+        session_manager: SessionManager | None = None,
     ) -> None:
         """Create one primary agent with only the Asset Shepherd tool boundary."""
         self.job = job
@@ -222,9 +226,10 @@ class AssetShepherdAgent:
             agent_id=f"asset-shepherd-{job.source.stem}",
             name="Asset Shepherd",
             description="Inspect, safely repair, verify, and package one static GLB.",
+            session_manager=session_manager,
         )
         self._invocation_duration_seconds = 0.0
-        self._interrupt_count = 0
+        self._interrupt_count = 1 if job.pending_interrupt_id is not None else 0
         self._latest_result: AgentResult | None = None
 
     def _invoke(self, prompt: AgentInput) -> AgentResult:
@@ -242,7 +247,7 @@ class AssetShepherdAgent:
             raise AgentWorkflowError("Expected exactly one Strands approval interrupt")
         interrupt = interrupts[0]
         _validate_approval_card(interrupt.reason)
-        self.job.pending_interrupt_id = interrupt.id
+        self.job.set_pending_interrupt(interrupt.id)
         self._interrupt_count += 1
 
     def start(self) -> AgentResult:
@@ -264,14 +269,18 @@ class AssetShepherdAgent:
             )
         latest = self._latest_result
         if latest is None:
-            raise AgentWorkflowError("The pending interrupt has no originating agent result")
-        card = _validate_approval_card(
-            next(
-                interrupt.reason
-                for interrupt in latest.interrupts or ()
-                if interrupt.id == interrupt_id
+            restored_card = self.job.approval_card()
+            if restored_card is None:
+                raise AgentWorkflowError("The pending interrupt has no approval card")
+            card = restored_card
+        else:
+            card = _validate_approval_card(
+                next(
+                    interrupt.reason
+                    for interrupt in latest.interrupts or ()
+                    if interrupt.id == interrupt_id
+                )
             )
-        )
         response = ApprovalResponse(candidate_id=card.candidate_id, approved=approved)
         result = self._invoke(
             [
@@ -286,7 +295,7 @@ class AssetShepherdAgent:
         if result.stop_reason == "interrupt":
             self._capture_interrupt(result)
         else:
-            self.job.pending_interrupt_id = None
+            self.job.set_pending_interrupt(None)
         return result
 
     def complete(self, result: AgentResult | None = None) -> AgentWorkflowResult:
@@ -362,12 +371,27 @@ def build_live_agent(job: AgentJob) -> AssetShepherdAgent:
     )
 
 
-def build_scripted_agent(job: AgentJob) -> AssetShepherdAgent:
+def build_scripted_agent(
+    job: AgentJob,
+    *,
+    session_id: str | None = None,
+    session_root: Path | None = None,
+) -> AssetShepherdAgent:
     """Build the zero-network harness over the real Strands agent runtime."""
     model = ScriptedWorkflowModel(job)
+    session_manager: SessionManager | None = None
+    if session_id is not None:
+        if session_root is None:
+            raise AgentWorkflowError("A persistent session requires an isolated storage root")
+        session_manager = SnapshotSessionManager(
+            session_id,
+            storage=LocalFileStorage(str(session_root.resolve(strict=False))),
+            save_latest_on="invocation",
+        )
     return AssetShepherdAgent(
         job,
         model,
         provider="scripted",
         model_id="asset-shepherd-scripted-v1",
+        session_manager=session_manager,
     )

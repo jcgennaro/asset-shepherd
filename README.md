@@ -41,11 +41,19 @@ intended use, and its real-world height. Asset Shepherd drafts one exact target 
 agree to it before rules or upload are available. The frozen, canonically hashed intent is stored
 with the job and in package provenance. Changing intent starts a new inspection.
 
+The versioned D019 reference is at `http://127.0.0.1:8000/workspace`. It starts with a short asset
+description plus the untouched GLB, performs profile-free objective preflight, and then asks the
+user to confirm a typed target. A persistent Job Contract shows measured source facts, the derived
+frozen policy, findings, registered plan, exact decision, verification, and package state beside the
+conversation. Ordinary users never choose a named scale preset. Advanced customization is limited
+to fields already enforced by `ProjectProfile`; safety and repair boundaries remain fixed.
+
 The persistent left pane shows the shared **Describe -> Agree -> Inspect -> Decide -> Download**
 workflow. Intake presents **Rules -> Upload** one step at a time, and each job presents only its
 current Inspect, Decide, or Download view. The default local implementation uses a zero-network
-scripted provider over the real Strands loop. A future Bedrock conversation may conduct the same
-bounded intent agreement, but deterministic measurements, repairs, authorization, and verification
+scripted provider over the real Strands loop. The `/workspace` path provides the bounded
+conversation and evidence questions without a network request. A future Bedrock provider will make
+the questions adaptive, but deterministic measurements, repairs, authorization, and verification
 remain authoritative.
 
 Repository profiles are immutable versioned policy presets. The web UI calls the two current
@@ -58,10 +66,12 @@ freezes the resolved policy into the new job, and provenance records its base pr
 overrides, version, identifier, and canonical SHA-256. Changing rules starts a new inspection and
 job.
 
-Browser refresh preserves the current job while the server process remains running. A server restart
-ends the in-memory approval session, while completed artifacts stay under `build/web/jobs/`. The 3D
-preview uses the pinned official `<model-viewer>` browser component; GLB files remain served from the
-local Asset Shepherd origin.
+The M8 form routes preserve jobs only while the process runs. The D019 `/workspace` path persists
+structured state and the native Strands interrupt so refresh, application restart, and agent-runtime
+restart resume the exact job without duplicate mutation or packaging. Local private workspace state
+has a seven-day retention marker; production cleanup remains part of the AWS gate. The 3D preview
+uses the pinned official `<model-viewer>` browser component; GLB files remain served from the local
+Asset Shepherd origin.
 
 ## Deterministic CLI demo
 

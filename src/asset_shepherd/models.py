@@ -283,6 +283,34 @@ class ResourceFacts(ContractModel):
     budget_violations: tuple[str, ...]
 
 
+class MaterialFact(ContractModel):
+    """Objective glTF material metadata available without visual interpretation."""
+
+    material_index: NonNegativeInt
+    name: str | None
+    alpha_mode: str
+    alpha_cutoff: float | None
+    double_sided: bool
+    base_color_factor: tuple[float, float, float, float]
+    metallic_factor: float
+    roughness_factor: float
+    emissive_factor: Vector3
+
+
+class PreflightResult(ContractModel):
+    """Profile-free measurements allowed before a user agrees to a target."""
+
+    schema_version: Literal[1] = 1
+    preflight_id: str
+    source_filename: str
+    package: PackageFacts
+    geometry: GeometryFacts | None
+    transforms: TransformFacts | None
+    materials: tuple[MaterialFact, ...]
+    structural_eligibility: RepairEligibility
+    parse_error: str | None
+
+
 class FindingEvidence(ContractModel):
     """Structured distinction between measurement and inference."""
 
