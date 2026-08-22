@@ -36,14 +36,16 @@ uv sync
 uv run asset-shepherd web
 ```
 
-Open `http://127.0.0.1:8000`. The flow starts by asking what the user was trying to make, its
-intended use, and its real-world height. Asset Shepherd drafts one exact target story; the user must
-agree to it before rules or upload are available. The frozen, canonically hashed intent is stored
-with the job and in package provenance. Changing intent starts a new inspection.
+Open `http://127.0.0.1:8000`. The flow starts with one question: what the user was trying to make.
+Asset Shepherd extracts intended use and real-world height when the description states them, asks
+only for missing or conflicting required information, and then drafts one exact target story. The
+user must agree to it before rules or upload are available. The typed intake snapshot and frozen,
+canonically hashed intent are stored with the job. Changing intent starts a new inspection.
 
 The versioned D019 reference is at `http://127.0.0.1:8000/workspace`. It starts with a short asset
-description plus the untouched GLB, performs profile-free objective preflight, and then asks the
-user to confirm a typed target. A persistent Job Contract shows measured source facts, the derived
+description plus the untouched GLB, performs profile-free objective preflight, asks only for any
+missing intended use or height, and then asks the user to confirm the complete typed target. A
+persistent Job Contract shows measured source facts, the derived
 frozen policy, findings, registered plan, exact decision, verification, and package state beside the
 conversation. Ordinary users never choose a named scale preset. Advanced customization is limited
 to fields already enforced by `ProjectProfile`; safety and repair boundaries remain fixed.

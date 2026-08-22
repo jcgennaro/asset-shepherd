@@ -24,6 +24,7 @@ from asset_shepherd.models import (
     Provenance,
 )
 from asset_shepherd.profile_policy import canonical_profile_sha256
+from asset_shepherd.target_intake import TargetIntakeContract
 from asset_shepherd.web import create_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -54,6 +55,11 @@ CUSTOM_PROFILE_DATA = {
     "custom_max_textures": "16",
     "custom_max_texture_dimension": "4096",
 }
+_USE_DESCRIPTION = {
+    AssetTargetUse.STATIC_GAME_ASSET.value: "a static environment prop",
+    AssetTargetUse.RIG_READY_CHARACTER.value: "a rig-ready character",
+    AssetTargetUse.PLAYABLE_CHARACTER.value: "a playable character",
+}
 
 
 def _draft_intent(
@@ -64,13 +70,13 @@ def _draft_intent(
     target_height_m: str = "1.8",
 ) -> str:
     """Create one target-story draft and return its review path."""
+    complete_description = (
+        f"{description} Intended result: {_USE_DESCRIPTION[target_use]} at "
+        f"{target_height_m} m tall."
+    )
     response = client.post(
         "/intents",
-        data={
-            "description": description,
-            "target_use": target_use,
-            "target_height_m": target_height_m,
-        },
+        data={"description": complete_description},
         follow_redirects=False,
     )
     assert response.status_code == 303
@@ -145,9 +151,10 @@ def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: 
     assert response.status_code == 200
     assert "<title>Asset Shepherd -- Describe</title>" in response.text
     assert "What were you trying to make?" in response.text
-    assert "What should it become?" in response.text
-    assert "How tall should it be in-game?" in response.text
-    assert "Draft my target story" in response.text
+    assert 'name="target_use"' not in response.text
+    assert 'name="target_height_m"' not in response.text
+    assert "ask only for required information that is still missing" in response.text
+    assert "Understand my target" in response.text
     assert "Game developer" not in response.text
     assert "3D artist" not in response.text
     assert "Technical artist" not in response.text
@@ -191,48 +198,52 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     _assert_focus_area_budget(intake.text)
 
 
-@pytest.mark.parametrize(
-    ("data", "message"),
-    (
-        (
-            {
-                "description": "too short",
-                "target_use": AssetTargetUse.STATIC_GAME_ASSET.value,
-                "target_height_m": "1.8",
-            },
-            "at least 12 characters",
-        ),
-        (
-            {
-                "description": DEFAULT_DESCRIPTION,
-                "target_use": "NOT_A_SUPPORTED_TARGET",
-                "target_height_m": "1.8",
-            },
-            "Choose what the asset should become",
-        ),
-        (
-            {
-                "description": DEFAULT_DESCRIPTION,
-                "target_use": AssetTargetUse.STATIC_GAME_ASSET.value,
-                "target_height_m": "0",
-            },
-            "greater than 0",
-        ),
-    ),
-)
-def test_web_validates_intent_before_inspection(
-    tmp_path: Path,
-    data: dict[str, str],
-    message: str,
-) -> None:
+def test_web_validates_description_before_target_drafting(tmp_path: Path) -> None:
     """Invalid conversational input cannot create a target story or a job."""
     work_root = tmp_path / "jobs"
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
-    response = client.post("/intents", data=data)
+    response = client.post("/intents", data={"description": "too short"})
 
     assert response.status_code == 400
-    assert message in response.text
+    assert "at least 12 characters" in response.text
     assert not work_root.exists()
+
+
+def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: Path) -> None:
+    """Explicit use survives extraction while one absent height becomes the only question."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    created = client.post(
+        "/intents",
+        data={"description": "A hanging lantern used as a static environment prop in my game."},
+        follow_redirects=False,
+    )
+    assert created.status_code == 303
+    intent_path = urlparse(created.headers["location"]).path
+
+    clarification = client.get(intent_path)
+    assert clarification.status_code == 200
+    assert "I need 1 quick answer." in clarification.text
+    assert "Static game asset" in clarification.text
+    assert "What real-world height should it have?" in clarification.text
+    assert "What should this asset become?" not in clarification.text
+    assert "Agree and continue" not in clarification.text
+
+    invalid = client.post(
+        f"{intent_path}/clarify",
+        data={"target_height_m": "0"},
+    )
+    assert invalid.status_code == 400
+    assert "greater than 0" in invalid.text
+
+    completed = client.post(
+        f"{intent_path}/clarify",
+        data={"target_height_m": "1.2"},
+        follow_redirects=False,
+    )
+    assert completed.status_code == 303
+    review = client.get(intent_path)
+    assert "Is this the job you want done?" in review.text
+    assert "static game asset for Unreal at 1.2 m tall" in review.text
 
 
 def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_height(
@@ -361,6 +372,12 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     frozen_intent = AssetIntentProvenance.model_validate_json(
         (job_root / "intent.json").read_text(encoding="utf-8")
     )
+    target_intake = TargetIntakeContract.model_validate_json(
+        (job_root / "target_intake.json").read_text(encoding="utf-8")
+    )
+    assert target_intake.ready_for_confirmation
+    assert target_intake.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    assert target_intake.target_height_cm == 180.0
     validate_asset_intent(frozen_intent)
     provenance = Provenance.model_validate_json(
         (output / "provenance.json").read_text(encoding="utf-8")

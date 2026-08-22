@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="intent-confirmation" data-focus-area="clarify intent" aria-labelledby="clarify-title">
+    <header class="intent-heading">
+      <p class="section-label">Only the missing information</p>
+      <h2 id="clarify-title">I need {{ intent.target.missing_fields|length }} quick {{ "answer" if intent.target.missing_fields|length == 1 else "answers" }}.</h2>
+      <p>I will not inspect or plan a repair until the minimum target contract is complete and you confirm it.</p>
+    </header>
+
+    {% if error %}
+      <div class="alert danger" role="alert"><strong>Target still incomplete</strong><span>{{ error }}</span></div>
+    {% endif %}
+
+    <div class="clarification-known">
+      <strong>Already understood</strong>
+      {% if intent.target.target_use %}<span>Use · {{ target_use_label|capitalize }}</span>{% endif %}
+      {% if intent.target.target_height_cm %}<span>Height · {{ "%g"|format(intent.target.target_height_cm / 100) }} m</span>{% endif %}
+      {% if not intent.target.target_use and not intent.target.target_height_cm %}<span>Your asset description is preserved.</span>{% endif %}
+    </div>
+
+    <form action="{{ url_for('clarify_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form clarification-form" data-busy-form>
+      {% if "target_use" in intent.target.missing_fields %}
+        <label>
+          <span>What should this asset become?</span>
+          <select name="target_use" required>
+            <option value="" disabled selected>Choose the intended use</option>
+            {% for value, label in target_uses %}<option value="{{ value }}">{{ label|capitalize }}</option>{% endfor %}
+          </select>
+        </label>
+      {% endif %}
+      {% if "target_height_cm" in intent.target.missing_fields %}
+        <label>
+          <span>What real-world height should it have?</span>
+          <span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span>
+        </label>
+      {% endif %}
+      <div class="intent-confirm-actions">
+        <a class="secondary-button" href="{{ url_for('home') }}">← Rewrite description</a>
+        <button class="primary-button" type="submit" data-submit-button>Complete target proposal <span aria-hidden="true">→</span></button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

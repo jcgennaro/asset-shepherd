@@ -5,10 +5,10 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.2
+**Document version:** 1.3
 **Controlling status:** Approved project contract once committed by the user  
-**Approved amendments:** D019 conversation-led hosted workspace and D021 parameterized policy
-family, 2026-08-22
+**Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
+and D022 minimum target-intake contract, 2026-08-22
 
 ---
 
@@ -276,6 +276,18 @@ represented dimensions, orientation and grounding facts, supported-feature count
 and deterministically available material or texture metadata. This state must be labeled as measured
 source facts with no agreed target. It must not create policy-relative findings, a registered plan,
 an approval interrupt, a mutation, or a readiness result.
+
+Before offering target confirmation, the agent must satisfy the versioned minimum target-intake
+contract. It requires a normalized asset description, one supported intended-use value, and a
+positive intended real-world target height. Every populated target field must retain concise source
+evidence and confidence of at least 0.8; a missing, ambiguous, conflicting, or lower-confidence
+required field remains explicitly
+missing. The agent should derive values already supported by the user's words and ask only for the
+missing or unresolved fields. It must never substitute the measured source dimensions for intended
+dimensions. Grounding, naming, tolerances, and resource budgets are resolved-policy parameters, not
+mandatory intake questions. The user still confirms the complete typed target once before any
+policy-relative inspection. The local zero-network extractor and a future Bedrock model must emit
+the same public schema; model prose alone is not target state.
 
 Ordinary users confirm a schema-valid job-scoped policy resolved from one trusted, immutable,
 versioned parameterized family. They do not choose a named scale baseline or re-enter target state

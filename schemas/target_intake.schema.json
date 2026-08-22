@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "AssetTargetUse": {
+      "description": "User-confirmed destination for the uploaded asset.",
+      "enum": [
+        "STATIC_GAME_ASSET",
+        "RIG_READY_CHARACTER",
+        "PLAYABLE_CHARACTER"
+      ],
+      "title": "AssetTargetUse",
+      "type": "string"
+    },
+    "TargetEvidenceSource": {
+      "description": "Auditable source of one proposed target field.",
+      "enum": [
+        "EXPLICIT_USER_TEXT",
+        "USER_CLARIFICATION"
+      ],
+      "title": "TargetEvidenceSource",
+      "type": "string"
+    },
+    "TargetFieldEvidence": {
+      "additionalProperties": false,
+      "description": "Concise evidence supporting one populated target field.",
+      "properties": {
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.8,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Evidence",
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "target_use",
+            "target_height_cm"
+          ],
+          "title": "Field",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/TargetEvidenceSource"
+        }
+      },
+      "required": [
+        "field",
+        "source",
+        "confidence",
+        "evidence"
+      ],
+      "title": "TargetFieldEvidence",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/target_intake.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Minimum typed state required before Asset Shepherd may offer target confirmation.",
+  "properties": {
+    "description": {
+      "maxLength": 600,
+      "minLength": 12,
+      "title": "Description",
+      "type": "string"
+    },
+    "evidence": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/TargetFieldEvidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "missing_fields": {
+      "items": {
+        "enum": [
+          "target_use",
+          "target_height_cm"
+        ],
+        "type": "string"
+      },
+      "title": "Missing Fields",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "target_height_cm": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0.0,
+          "maximum": 100000.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Height Cm"
+    },
+    "target_use": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssetTargetUse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "description",
+    "missing_fields"
+  ],
+  "title": "TargetIntakeContract",
+  "type": "object"
+}

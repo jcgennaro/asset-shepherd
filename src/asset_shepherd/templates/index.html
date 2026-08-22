@@ -15,27 +15,11 @@
     <form action="{{ url_for('create_intent') }}" method="post" class="intent-form" data-busy-form>
       <label class="intent-description">
         <span>Your asset idea</span>
-        <textarea name="description" minlength="12" maxlength="600" rows="5" required autofocus placeholder="A sci-fi woman in an armored suit for a playable Unreal character, with metallic panels and orange emissive details.">{{ values.get('description', '') }}</textarea>
+        <textarea name="description" minlength="12" maxlength="600" rows="6" required autofocus placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.">{{ values.get('description', '') }}</textarea>
       </label>
 
-      <div class="intent-targets">
-        <label>
-          <span>What should it become?</span>
-          <select name="target_use" required>
-            <option value="" disabled{% if not values.get('target_use') %} selected{% endif %}>Choose the intended use</option>
-            {% for value, label in target_uses %}
-              <option value="{{ value }}"{% if values.get('target_use') == value %} selected{% endif %}>{{ label|capitalize }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>
-          <span>How tall should it be in-game?</span>
-          <span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" value="{{ values.get('target_height_m', '') }}" required><b>m</b></span>
-        </label>
-      </div>
-
-      <p class="intent-boundary">This describes the target. It does not authorize a transform, topology change, material edit, or rigging operation.</p>
-      <button class="primary-button" type="submit" data-submit-button>Draft my target story <span aria-hidden="true">→</span></button>
+      <p class="intent-boundary">Include intended use and real-world size if you know them. Asset Shepherd will extract what is explicit and ask only for required information that is still missing. This does not authorize a repair.</p>
+      <button class="primary-button" type="submit" data-submit-button>Understand my target <span aria-hidden="true">→</span></button>
     </form>
   </section>
 {% endblock %}

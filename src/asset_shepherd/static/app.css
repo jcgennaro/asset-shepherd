@@ -534,6 +534,33 @@ a {
   justify-self: end;
 }
 
+.clarification-known {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.clarification-known strong,
+.clarification-known span {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.clarification-known strong {
+  color: var(--muted);
+}
+
+.clarification-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.clarification-form .intent-confirm-actions {
+  grid-column: 1 / -1;
+}
+
 .intent-confirmation blockquote {
   margin: 34px 0 24px;
   padding: clamp(24px, 4vw, 42px);
@@ -2286,6 +2313,20 @@ model-viewer {
 .target-card .primary-button {
   grid-column: 1 / -1;
   justify-self: end;
+}
+
+.target-understood {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.target-proposal,
+.target-card > .fine-print {
+  grid-column: 1 / -1;
 }
 
 .hosted-advanced {

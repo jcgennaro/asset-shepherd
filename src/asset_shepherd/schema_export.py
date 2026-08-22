@@ -24,6 +24,7 @@ from asset_shepherd.models import (
     RepairPlan,
     VerificationResult,
 )
+from asset_shepherd.target_intake import TargetIntakeContract
 
 SCHEMA_MODELS: Final[dict[str, type[BaseModel]]] = {
     "agent_metrics.schema.json": AgentMetrics,
@@ -40,6 +41,7 @@ SCHEMA_MODELS: Final[dict[str, type[BaseModel]]] = {
     "profile.schema.json": ProjectProfile,
     "provenance.schema.json": Provenance,
     "repair_plan.schema.json": RepairPlan,
+    "target_intake.schema.json": TargetIntakeContract,
     "verification.schema.json": VerificationResult,
 }
 

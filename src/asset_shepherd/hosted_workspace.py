@@ -22,7 +22,6 @@ from asset_shepherd.inspector import preflight_asset
 from asset_shepherd.intent import (
     build_asset_intent,
     normalize_intent_description,
-    target_height_cm_from_meters,
 )
 from asset_shepherd.models import (
     AgentWorkflowResult,
@@ -35,6 +34,11 @@ from asset_shepherd.models import (
     RepairEligibility,
 )
 from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
+from asset_shepherd.target_intake import (
+    TargetIntakeContract,
+    clarify_target_intake,
+    draft_target_intake,
+)
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 MAX_EVENTS = 64
@@ -116,6 +120,7 @@ class HostedWorkspaceRecord(ContractModel):
     original_filename: str
     private_description: str = Field(min_length=12, max_length=600)
     preflight: PreflightResult
+    target_draft: TargetIntakeContract | None = None
     target: TargetContract | None = None
     intent: AssetIntentProvenance | None = None
     profile_policy: ProfilePolicyProvenance | None = None
@@ -269,6 +274,11 @@ class HostedWorkspaceStore:
             _copy_validated_upload(stream, source_path)
             preflight = preflight_asset(source_path)
             _write_json_atomic(root / "preflight.json", preflight.model_dump(mode="json"))
+            target_draft = draft_target_intake(normalized)
+            _write_json_atomic(
+                root / "target_intake.json",
+                target_draft.model_dump(mode="json"),
+            )
             now = datetime.now(UTC)
             record = HostedWorkspaceRecord(
                 workspace_id=workspace_id,
@@ -283,6 +293,7 @@ class HostedWorkspaceStore:
                 original_filename=Path(original_filename).name,
                 private_description=normalized,
                 preflight=preflight,
+                target_draft=target_draft,
                 error=(
                     None
                     if preflight.package.parse_success
@@ -304,6 +315,7 @@ class HostedWorkspaceStore:
         except Exception:
             source_path.unlink(missing_ok=True)
             (root / "preflight.json").unlink(missing_ok=True)
+            (root / "target_intake.json").unlink(missing_ok=True)
             (root / "workspace.json").unlink(missing_ok=True)
             root.rmdir()
             raise
@@ -409,6 +421,49 @@ class HostedWorkspaceStore:
         except ValueError as error:
             raise HostedWorkspaceError(f"The resolved policy is invalid: {error}") from error
 
+    def clarify_target(
+        self,
+        workspace: HostedWorkspace,
+        *,
+        target_use_value: str | None,
+        target_height_m: str | None,
+        command_id: str,
+    ) -> HostedWorkspace:
+        """Persist answers only for required target fields missing from the extracted contract."""
+        if _COMMAND_ID.fullmatch(command_id) is None:
+            raise HostedWorkspaceError("The clarification command identifier is invalid.")
+        with self._lock:
+            if command_id in workspace.record.processed_commands:
+                return workspace
+            if workspace.record.phase is not WorkspacePhase.TARGET_CONFIRMATION:
+                raise HostedWorkspaceError("This workspace target is already frozen.")
+            if workspace.record.target_draft is None:
+                raise HostedWorkspaceError("The minimum target contract is unavailable.")
+            completed_fields: list[JsonValue] = list(workspace.record.target_draft.missing_fields)
+            try:
+                target_draft = clarify_target_intake(
+                    workspace.record.target_draft,
+                    target_use_value=target_use_value,
+                    target_height_m=target_height_m,
+                )
+            except ValueError as error:
+                raise HostedWorkspaceError(str(error)) from error
+            processed = {**workspace.record.processed_commands, command_id: "TARGET_CLARIFIED"}
+            workspace.record = workspace.record.model_copy(
+                update={"target_draft": target_draft, "processed_commands": processed}
+            )
+            workspace.record = self._append_event(
+                workspace.record,
+                "TARGET_CLARIFIED",
+                payload={"completed_fields": completed_fields},
+            )
+            _write_json_atomic(
+                workspace.root / "target_intake.json",
+                target_draft.model_dump(mode="json"),
+            )
+            self._persist(workspace)
+            return workspace
+
     def _target_contract(
         self,
         record: HostedWorkspaceRecord,
@@ -459,8 +514,6 @@ class HostedWorkspaceStore:
         self,
         workspace: HostedWorkspace,
         *,
-        target_use_value: str,
-        target_height_m: str,
         accept_supported_goal: bool,
         command_id: str,
         custom_values: Mapping[str, str | None] | None = None,
@@ -473,14 +526,15 @@ class HostedWorkspaceStore:
                 return workspace
             if workspace.record.phase is not WorkspacePhase.TARGET_CONFIRMATION:
                 raise HostedWorkspaceError("This workspace target is already frozen.")
-            try:
-                target_use = AssetTargetUse(target_use_value)
-            except ValueError as error:
-                raise HostedWorkspaceError("Choose what the asset should become.") from error
-            try:
-                target_height_cm = target_height_cm_from_meters(target_height_m)
-            except ValueError as error:
-                raise HostedWorkspaceError(str(error)) from error
+            target_draft = workspace.record.target_draft
+            if target_draft is None or not target_draft.ready_for_confirmation:
+                raise HostedWorkspaceError(
+                    "Answer the remaining target questions before confirming this job."
+                )
+            target_use = target_draft.target_use
+            target_height_cm = target_draft.target_height_cm
+            if target_use is None or target_height_cm is None:
+                raise HostedWorkspaceError("The minimum target contract is incomplete.")
             target = self._target_contract(
                 workspace.record,
                 target_use,

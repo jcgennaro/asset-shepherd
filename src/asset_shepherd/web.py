@@ -29,8 +29,6 @@ from asset_shepherd.intent import (
     TARGET_USE_LABELS,
     build_asset_intent,
     craft_confirmed_story,
-    normalize_intent_description,
-    target_height_cm_from_meters,
     validate_asset_intent,
 )
 from asset_shepherd.models import (
@@ -48,6 +46,11 @@ from asset_shepherd.models import (
 )
 from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
 from asset_shepherd.profile_policy import canonical_profile_sha256
+from asset_shepherd.target_intake import (
+    TargetIntakeContract,
+    clarify_target_intake,
+    draft_target_intake,
+)
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -542,11 +545,41 @@ class WebIntent:
     """One in-memory draft that must be explicitly confirmed before upload."""
 
     intent_id: str
-    original_description: str
-    target_use: AssetTargetUse
-    target_height_cm: float
-    draft_story: str
+    target: TargetIntakeContract
     confirmed: AssetIntentProvenance | None = None
+
+    @property
+    def original_description(self) -> str:
+        """Return the normalized user description."""
+        return self.target.description
+
+    @property
+    def ready_for_confirmation(self) -> bool:
+        """Return whether the minimum target contract is complete."""
+        return self.target.ready_for_confirmation
+
+    @property
+    def target_use(self) -> AssetTargetUse:
+        """Return the complete intended use or fail before confirmation."""
+        if self.target.target_use is None:
+            raise UploadValidationError("The target use still needs clarification.")
+        return self.target.target_use
+
+    @property
+    def target_height_cm(self) -> float:
+        """Return the complete intended height or fail before confirmation."""
+        if self.target.target_height_cm is None:
+            raise UploadValidationError("The target height still needs clarification.")
+        return self.target.target_height_cm
+
+    @property
+    def draft_story(self) -> str:
+        """Build the reviewable story only from a complete minimum contract."""
+        return craft_confirmed_story(
+            self.original_description,
+            self.target_use,
+            self.target_height_cm,
+        )
 
 
 @dataclass
@@ -732,30 +765,38 @@ class WebJobStore:
     def create_intent(
         self,
         description: str,
-        target_use_value: str,
-        target_height_m: str,
     ) -> WebIntent:
-        """Validate and retain one unconfirmed target story draft."""
-        normalized = normalize_intent_description(description)
-        try:
-            target_use = AssetTargetUse(target_use_value)
-        except ValueError as error:
-            raise UploadValidationError("Choose what the asset should become.") from error
-        try:
-            target_height_cm = target_height_cm_from_meters(target_height_m)
-        except ValueError as error:
-            raise UploadValidationError(str(error)) from error
+        """Extract and retain one minimum-information target contract."""
+        target = draft_target_intake(description)
         intent_id = uuid4().hex
         intent = WebIntent(
             intent_id=intent_id,
-            original_description=normalized,
-            target_use=target_use,
-            target_height_cm=target_height_cm,
-            draft_story=craft_confirmed_story(normalized, target_use, target_height_cm),
+            target=target,
         )
         with self._lock:
             self._intents[intent_id] = intent
         return intent
+
+    def clarify_intent(
+        self,
+        intent: WebIntent,
+        *,
+        target_use_value: str | None,
+        target_height_m: str | None,
+    ) -> WebIntent:
+        """Fill only fields that the minimum target contract could not extract."""
+        with self._lock:
+            if intent.confirmed is not None:
+                raise UploadValidationError("This target story is already confirmed.")
+            try:
+                intent.target = clarify_target_intake(
+                    intent.target,
+                    target_use_value=target_use_value,
+                    target_height_m=target_height_m,
+                )
+            except ValueError as error:
+                raise UploadValidationError(str(error)) from error
+            return intent
 
     def get_intent(self, intent_id: str) -> WebIntent | None:
         """Return a known intent draft without accepting caller-controlled paths."""
@@ -765,6 +806,10 @@ class WebJobStore:
     def confirm_intent(self, intent: WebIntent) -> AssetIntentProvenance:
         """Freeze the exact reviewed story once; repeated confirmation is idempotent."""
         with self._lock:
+            if not intent.ready_for_confirmation:
+                raise UploadValidationError(
+                    "Answer the remaining target questions before confirming this story."
+                )
             if intent.confirmed is None:
                 intent.confirmed = build_asset_intent(
                     intent.original_description,
@@ -779,6 +824,7 @@ class WebJobStore:
         original_filename: str,
         story: StoryDefinition,
         intent: AssetIntentProvenance,
+        target_intake: TargetIntakeContract,
         stream: BinaryIO,
         *,
         profile_mode: str = "resolved",
@@ -788,6 +834,15 @@ class WebJobStore:
         if Path(original_filename).suffix.lower() != ".glb":
             raise UploadValidationError("Choose exactly one file with a .glb extension.")
         validate_asset_intent(intent)
+        if (
+            not target_intake.ready_for_confirmation
+            or target_intake.description != intent.original_description
+            or target_intake.target_use is not intent.target_use
+            or target_intake.target_height_cm != intent.target_height_cm
+        ):
+            raise UploadValidationError(
+                "The minimum target contract does not match the agreed story."
+            )
         if profile_mode == "resolved":
             user_overrides = None
         elif profile_mode == "custom":
@@ -816,6 +871,7 @@ class WebJobStore:
         source_path = job_root / "source.glb"
         profile_path = job_root / "profile.json"
         intent_path = job_root / "intent.json"
+        target_intake_path = job_root / "target_intake.json"
         try:
             _copy_validated_upload(stream, source_path)
             profile_payload = json.dumps(
@@ -830,10 +886,21 @@ class WebJobStore:
             )
             intent_payload = json.dumps(intent.model_dump(mode="json"), indent=2, sort_keys=True)
             intent_path.write_text(f"{intent_payload}\n", encoding="utf-8", newline="\n")
+            target_intake_payload = json.dumps(
+                target_intake.model_dump(mode="json"),
+                indent=2,
+                sort_keys=True,
+            )
+            target_intake_path.write_text(
+                f"{target_intake_payload}\n",
+                encoding="utf-8",
+                newline="\n",
+            )
         except Exception:
             source_path.unlink(missing_ok=True)
             profile_path.unlink(missing_ok=True)
             intent_path.unlink(missing_ok=True)
+            target_intake_path.unlink(missing_ok=True)
             job_root.rmdir()
             raise
         frozen_profile = FrozenProfile(
@@ -1021,9 +1088,6 @@ def create_app(
             context={
                 "error": error,
                 "values": values or {},
-                "target_uses": tuple(
-                    (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
-                ),
                 "active_mode": "describe",
                 "active_style": "Describe",
             },
@@ -1098,6 +1162,13 @@ def create_app(
                 "approval_card": approval_card,
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,
+                "target_draft": workspace.record.target_draft,
+                "target_use_label": (
+                    TARGET_USE_LABELS[workspace.record.target_draft.target_use]
+                    if workspace.record.target_draft is not None
+                    and workspace.record.target_draft.target_use is not None
+                    else None
+                ),
                 "target_uses": tuple(
                     (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
                 ),
@@ -1118,6 +1189,35 @@ def create_app(
                 "This intent draft is unavailable. Start again and describe the asset."
             )
         return intent
+
+    def render_intent_clarification(
+        request: Request,
+        intent: WebIntent,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        """Ask only for required target fields absent from the typed intake contract."""
+        target_use_label = (
+            TARGET_USE_LABELS[intent.target.target_use]
+            if intent.target.target_use is not None
+            else None
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="intent_clarify.html",
+            context={
+                "intent": intent,
+                "target_use_label": target_use_label,
+                "target_uses": tuple(
+                    (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
+                ),
+                "error": error,
+                "active_mode": "confirm",
+                "active_style": "Clarify",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
 
     def render_story_home(
         request: Request,
@@ -1161,17 +1261,11 @@ def create_app(
     def create_intent(
         request: Request,
         description: Annotated[str, Form()],
-        target_use: Annotated[str, Form()],
-        target_height_m: Annotated[str, Form()],
     ) -> Response:
-        """Create a bounded draft story without starting an inspection."""
-        values = {
-            "description": description,
-            "target_use": target_use,
-            "target_height_m": target_height_m,
-        }
+        """Extract a bounded target draft without starting an inspection."""
+        values = {"description": description}
         try:
-            intent = store.create_intent(description, target_use, target_height_m)
+            intent = store.create_intent(description)
         except (UploadValidationError, ValueError) as error:
             return render_intent_home(request, str(error), status_code=400, values=values)
         return RedirectResponse(
@@ -1185,6 +1279,8 @@ def create_app(
             intent = require_intent(intent_id)
         except UploadValidationError as error:
             return render_intent_home(request, str(error), status_code=404)
+        if not intent.ready_for_confirmation:
+            return render_intent_clarification(request, intent)
         return templates.TemplateResponse(
             request=request,
             name="intent.html",
@@ -1197,13 +1293,40 @@ def create_app(
             headers={"Cache-Control": "no-store"},
         )
 
+    def clarify_intent(
+        request: Request,
+        intent_id: str,
+        target_use: Annotated[str | None, Form()] = None,
+        target_height_m: Annotated[str | None, Form()] = None,
+    ) -> Response:
+        """Complete only missing minimum target fields and return to proposal review."""
+        try:
+            intent = require_intent(intent_id)
+            store.clarify_intent(
+                intent,
+                target_use_value=target_use,
+                target_height_m=target_height_m,
+            )
+        except UploadValidationError as error:
+            intent = store.get_intent(intent_id)
+            if intent is None:
+                return render_intent_home(request, str(error), status_code=404)
+            return render_intent_clarification(request, intent, str(error), status_code=400)
+        return RedirectResponse(
+            request.url_for("intent_review", intent_id=intent_id),
+            status_code=303,
+        )
+
     def confirm_intent(request: Request, intent_id: str) -> Response:
         """Freeze the reviewed target story before exposing upload controls."""
         try:
             intent = require_intent(intent_id)
             store.confirm_intent(intent)
         except (UploadValidationError, ValueError) as error:
-            return render_intent_home(request, str(error), status_code=404)
+            intent = store.get_intent(intent_id)
+            if intent is None:
+                return render_intent_home(request, str(error), status_code=404)
+            return render_intent_clarification(request, intent, str(error), status_code=400)
         return RedirectResponse(
             request.url_for("intent_intake", intent_id=intent.intent_id),
             status_code=303,
@@ -1267,6 +1390,7 @@ def create_app(
                 filename,
                 DEFAULT_STORY,
                 intent_draft.confirmed,
+                intent_draft.target,
                 asset.file,
                 profile_mode=profile_mode,
                 custom_values=custom_values,
@@ -1410,11 +1534,36 @@ def create_app(
             return render_hosted_home(request, str(error), status_code=404)
         return render_hosted_workspace(request, workspace)
 
+    def clarify_hosted_target(
+        request: Request,
+        workspace_id: str,
+        command_id: Annotated[str, Form()],
+        target_use: Annotated[str | None, Form()] = None,
+        target_height_m: Annotated[str | None, Form()] = None,
+    ) -> Response:
+        """Answer only target fields missing from the durable minimum contract."""
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            hosted_store.clarify_target(
+                workspace,
+                target_use_value=target_use,
+                target_height_m=target_height_m,
+                command_id=command_id,
+            )
+        except HostedWorkspaceError as error:
+            try:
+                workspace = require_hosted_workspace(workspace_id)
+            except HostedWorkspaceError:
+                return render_hosted_home(request, str(error), status_code=404)
+            return render_hosted_workspace(request, workspace, str(error), status_code=400)
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            status_code=303,
+        )
+
     def confirm_hosted_target(
         request: Request,
         workspace_id: str,
-        target_use: Annotated[str, Form()],
-        target_height_m: Annotated[str, Form()],
         command_id: Annotated[str, Form()],
         accept_supported_goal: Annotated[str | None, Form()] = None,
         custom_height_tolerance_cm: Annotated[str | None, Form()] = None,
@@ -1432,8 +1581,6 @@ def create_app(
             workspace = require_hosted_workspace(workspace_id)
             hosted_store.confirm_target(
                 workspace,
-                target_use_value=target_use,
-                target_height_m=target_height_m,
                 accept_supported_goal=accept_supported_goal == "true",
                 command_id=command_id,
                 custom_values={
@@ -1561,6 +1708,12 @@ def create_app(
         name="intent_review",
     )
     app.add_api_route(
+        "/intents/{intent_id}/clarify",
+        clarify_intent,
+        methods=["POST"],
+        name="clarify_intent",
+    )
+    app.add_api_route(
         "/intents/{intent_id}/agree",
         confirm_intent,
         methods=["POST"],
@@ -1643,6 +1796,12 @@ def create_app(
         confirm_hosted_target,
         methods=["POST"],
         name="confirm_hosted_target",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/target/clarify",
+        clarify_hosted_target,
+        methods=["POST"],
+        name="clarify_hosted_target",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/decision",

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** D021 parameterized policy-family correction (this file is included)
+**Current commit:** D022 minimum target-intake contract (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -17,8 +17,8 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021 removes user-visible scale baselines without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace` reference plus D021 family resolver pass preflight, typed-target, durability, exactly-once, and package acceptance |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; no paid call or resource is authorized |
+| M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace` reference plus D021 family resolver and D022 minimum target contract pass preflight, typed-target, durability, exactly-once, and package acceptance |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; no paid call or resource is authorized |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -45,10 +45,15 @@ before any paid invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 68 passed and the opt-in live-provider test skipped. D019/D021 acceptance
+- Tests: `uv run pytest` — 74 passed and the opt-in live-provider test skipped. D019–D022 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
+- Minimum target contract: ordinary intake now begins with one description. Explicit supported use
+  and measurement phrases become typed proposals with evidence; only absent or conflicting use and
+  height fields are asked; invalid or inconsistent drafts fail closed; and one final confirmation
+  remains mandatory. Both web paths persist `target_intake.json`; the hosted clarification and its
+  evidence survive application restart without repeating the answer or starting inspection early.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
@@ -110,10 +115,10 @@ before any paid invocation or resource creation.
   recorded outcome calls for objective preflight before target confirmation, a visible structured
   Job Contract, derived frozen policy for ordinary users, exact non-chat authorization, durable
   resume, structured provenance, and the unchanged repair pipeline. The direction is accepted in
-  D019. Contract version 1.1 now controls objective preflight, visible Job Contract, derived frozen
-  policies, exact structured authorization, durable resume, and minimized hosted conversation
-  provenance without authorizing AWS work or additional repair domains.
-- D020/D021 local hosted reference: `/workspace` presents one conversation beside a persistent Job
+  D019. Contract version 1.3 now controls objective preflight, visible Job Contract, minimum target
+  intake, derived frozen policies, exact structured authorization, durable resume, and minimized
+  hosted conversation provenance without authorizing AWS work or additional repair domains.
+- D020–D022 local hosted reference: `/workspace` presents one conversation beside a persistent Job
   Contract. Profile-free `PreflightResult` records source identity, structure, bounds, transforms,
   counts, eligibility, and declared material metadata before any policy finding or plan exists.
   Target confirmation separates original intent, requested use, supported job goal, support status,
@@ -134,11 +139,15 @@ before any paid invocation or resource creation.
   correctly removes ground contact, keeps complete rules/reasons/advanced values collapsed, shows
   confirmed height without a second input, prefills bounded advanced values, and advances to upload
   with no named baseline, raw transform, browser warning, or error.
-- Distribution audit: `uv build --wheel` succeeded with the intent and policy-resolution modules,
-  canonical policy-family JSON, confirmation and intake templates, workflow rail, CSS, JavaScript,
-  favicon, and existing deterministic runtime assets included in the wheel. The checked-in public
-  intent and updated provenance schemas remain repository contract artifacts alongside the other
-  exported schemas.
+- D022 browser acceptance: initial intake renders only the description; a static-lantern description
+  without size renders only the height question; the 1.2 m answer advances to an exact read-only
+  confirmation. Desktop and compact views keep one focus area, no horizontal overflow, and no
+  browser warning or error.
+- Distribution audit: `uv build --wheel` succeeded with target-intake, intent, and policy-resolution
+  modules, canonical policy-family JSON, clarification/confirmation/intake templates, workflow rail,
+  CSS, JavaScript, favicon, and existing deterministic runtime assets included in the wheel. The
+  checked-in public target-intake, intent, and provenance schemas remain repository contract
+  artifacts alongside the other exported schemas.
 - Shader Lantern evidence: raw SHA-256
   `be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9`; 77,545 vertices;
   101,564 triangles; one material; three readable embedded 4096² base-color,

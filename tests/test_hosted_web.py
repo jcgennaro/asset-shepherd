@@ -11,7 +11,7 @@ from asset_shepherd.web import create_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
-DESCRIPTION = "A friendly humanoid robot intended as a static game asset."
+DESCRIPTION = "A friendly humanoid robot intended as a 1.8 m static game asset."
 PACKAGE_NAMES = {
     "decisions.json",
     "inspection.json",
@@ -67,8 +67,6 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     confirmed = client.post(
         f"{workspace_path}/target",
         data={
-            "target_use": "STATIC_GAME_ASSET",
-            "target_height_m": "1.8",
             "command_id": command_id,
         },
         follow_redirects=False,
@@ -127,3 +125,33 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
         follow_redirects=False,
     )
     assert duplicate.status_code == 303
+
+
+def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -> None:
+    """The hosted conversation clarifies one absent field before offering confirmation."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    created = client.post(
+        "/workspace",
+        data={"description": "A friendly robot intended as a static game asset."},
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+    workspace_path = urlparse(created.headers["location"]).path
+
+    clarification = client.get(workspace_path)
+    assert "One quick answer before I can propose the target." in clarification.text
+    assert 'name="target_height_m"' in clarification.text
+    assert 'name="target_use"' not in clarification.text
+    command_id = _hidden(clarification.text, "command_id")
+
+    answered = client.post(
+        f"{workspace_path}/target/clarify",
+        data={"target_height_m": "1.8", "command_id": command_id},
+        follow_redirects=False,
+    )
+    assert answered.status_code == 303
+    proposal = client.get(workspace_path)
+    assert "I have enough information. Is this target right?" in proposal.text
+    assert "Static game asset" in proposal.text
+    assert "1.8 m" in proposal.text
+    assert 'name="target_height_m"' not in proposal.text

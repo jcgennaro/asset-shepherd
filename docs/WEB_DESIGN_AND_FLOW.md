@@ -28,12 +28,11 @@ The former entry point asked whether someone was a game developer, 3D artist, or
 Those routes changed labels but not behavior, and did not answer the important project questions:
 what the person meant to create, what it should be used for, and how large it should be.
 
-The primary entry point now asks:
-
-- **What were you trying to make?** A 12–600 character plain-text description.
-- **What should it become?** Static game asset, rig-ready character, or playable animated
-  character.
-- **How tall should it be in-game?** A positive real-world height in meters.
+The primary entry point now asks one question: **What were you trying to make?** It accepts a
+12–600 character plain-text description. A typed intake pass extracts supported intended-use and
+real-world-height values when they are explicitly present. A clarification view then asks only for
+an unresolved use, unresolved height, or both. It never shows a field whose value is already
+supported by the description.
 
 Asset Shepherd drafts one exact first-person target story. The user must review and agree to that
 story before seeing validation rules or an upload control. The description is target metadata, not
@@ -47,8 +46,8 @@ and animation remain external work. This does not add those repair domains.
 
 | Route | Purpose | Mutation or inspection? |
 |---|---|---|
-| `/` | Describe the intended asset, use, and real-world height | No |
-| `/intents/{intent_id}` | Review the exact drafted target story | No |
+| `/` | Describe the intended asset in one prompt | No |
+| `/intents/{intent_id}` | Answer only missing target fields, then review the exact story | No |
 | `/intents/{intent_id}/intake` | Review rules and choose the source GLB after agreement | No until submit |
 | `/jobs/{job_id}?view=inspect` | Review measured facts, findings, and rule provenance | No |
 | `/jobs/{job_id}?view=decide` | Approve or reject the grouped normalization | Only approval can authorize it |
@@ -62,6 +61,20 @@ The persistent left pane is now a compact workflow orientation rail: **Describe 
 current step, for example `Asset Shepherd -- Describe` or `Asset Shepherd -- Decide`.
 
 ## Target-story contract
+
+Before a target story exists, the public version-1 `TargetIntakeContract` requires:
+
+- the normalized description;
+- one supported intended-use enum;
+- a positive intended real-world height in centimeters;
+- one evidence record, source, and confidence of at least 0.8 for every populated target field; and
+- an exact list of fields that remain missing.
+
+The local zero-network implementation extracts only explicit supported phrases. Conflicting use or
+measurement phrases remain missing rather than being guessed. Structured clarification fills only
+missing fields. Measured GLB bounds can inform evidence and questions but can never stand in for the
+intended height. The draft is stored as `target_intake.json`; it is not repair authorization. A
+future Bedrock model must emit and validate the same schema before the product offers confirmation.
 
 Agreement creates an immutable `AssetIntentProvenance` record with:
 
@@ -171,7 +184,8 @@ not change.
 - Draft intents and active approval sessions are in memory. Refresh works while the process is
   running; restart requires a new target story and ends active sessions.
 - Job artifacts live below `build/web/jobs/{job_id}` and use opaque server-generated IDs.
-- The local resolver semantically recognizes only a bounded set of explicit support-state language
+- The local target extractor and resolver recognize only a bounded set of explicit use,
+  measurement, and support-state language
   such as standing, hanging, or hovering. It does not infer appearance, project budgets, artistic
   intent, likely dimensions, or unsupported repair goals from prose.
 - A later Bedrock integration may improve that collaboration, but must emit this same bounded schema
@@ -182,7 +196,10 @@ not change.
 ## Current automated evidence
 
 - Intent construction is reproducible and canonical; tampering invalidates its hash.
-- Invalid descriptions, target uses, and heights fail before a job exists.
+- Invalid descriptions, target uses, heights, and inconsistent target-intake records fail before a
+  job exists.
+- Explicit description values are preserved with evidence; clarification asks only for missing or
+  conflicting required fields and survives hosted restart.
 - Upload is unavailable before explicit agreement.
 - Confirmed intent and its hash are frozen in the job and copied into package provenance.
 - Confirmed height and bounded grounding language resolve one family without baseline selection or
@@ -201,7 +218,8 @@ same intake as a typed dialogue:
 
 ```text
 user description
-  -> bounded follow-up questions
+  -> validated minimum target-intake contract
+  -> follow-up questions only for missing required fields
   -> proposed AssetIntentProvenance fields
   -> user confirms exact target story
   -> deterministic workflow begins

@@ -17,7 +17,7 @@ from asset_shepherd.models import AssetTargetUse, ProjectProfile
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
 CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
-DESCRIPTION = "A friendly humanoid robot intended as a static game asset."
+DESCRIPTION = "A friendly humanoid robot intended as a 1.8 m static game asset."
 
 
 def _family() -> ProjectProfile:
@@ -32,8 +32,12 @@ def _family() -> ProjectProfile:
     )
 
 
-def _create(store: HostedWorkspaceStore, source: Path = BROKEN_PATH) -> HostedWorkspace:
-    return store.create(DESCRIPTION, source.name, BytesIO(source.read_bytes()))
+def _create(
+    store: HostedWorkspaceStore,
+    source: Path = BROKEN_PATH,
+    description: str = DESCRIPTION,
+) -> HostedWorkspace:
+    return store.create(description, source.name, BytesIO(source.read_bytes()))
 
 
 def test_preflight_measures_source_without_policy_findings_or_plan(tmp_path: Path) -> None:
@@ -61,8 +65,6 @@ def test_pending_interrupt_survives_restart_and_duplicate_resume_is_exactly_once
     workspace = _create(store)
     workspace = store.confirm_target(
         workspace,
-        target_use_value=AssetTargetUse.STATIC_GAME_ASSET.value,
-        target_height_m="1.8",
         accept_supported_goal=False,
         command_id="1" * 32,
     )
@@ -113,21 +115,21 @@ def test_unsupported_intent_requires_narrow_goal_and_clean_control_needs_no_appr
     """Unsupported goals require agreement while a compliant GLB remains mutation-free."""
     root = tmp_path / "hosted"
     store = HostedWorkspaceStore(root, _family())
-    workspace = _create(store, CLEAN_PATH)
+    workspace = _create(
+        store,
+        CLEAN_PATH,
+        "A friendly 1.8 m playable character for a game.",
+    )
 
     with pytest.raises(HostedWorkspaceError, match="Accept the narrower"):
         store.confirm_target(
             workspace,
-            target_use_value=AssetTargetUse.PLAYABLE_CHARACTER.value,
-            target_height_m="1.8",
             accept_supported_goal=False,
             command_id="3" * 32,
         )
 
     workspace = store.confirm_target(
         workspace,
-        target_use_value=AssetTargetUse.PLAYABLE_CHARACTER.value,
-        target_height_m="1.8",
         accept_supported_goal=True,
         command_id="4" * 32,
     )
@@ -150,8 +152,6 @@ def test_advanced_supported_rules_are_schema_validated_and_frozen(tmp_path: Path
     with pytest.raises(HostedWorkspaceError, match="resolved policy is invalid"):
         store.confirm_target(
             invalid,
-            target_use_value=AssetTargetUse.STATIC_GAME_ASSET.value,
-            target_height_m="1.8",
             accept_supported_goal=False,
             command_id="5" * 32,
             custom_values={"custom_height_tolerance_cm": "-1"},
@@ -159,11 +159,13 @@ def test_advanced_supported_rules_are_schema_validated_and_frozen(tmp_path: Path
     assert invalid.record.target is None
     assert not (invalid.root / "profile.json").exists()
 
-    workspace = _create(store, CLEAN_PATH)
+    workspace = _create(
+        store,
+        CLEAN_PATH,
+        "A friendly humanoid robot intended as a 1.82 m static game asset.",
+    )
     completed = store.confirm_target(
         workspace,
-        target_use_value=AssetTargetUse.STATIC_GAME_ASSET.value,
-        target_height_m="1.82",
         accept_supported_goal=False,
         command_id="6" * 32,
         custom_values={
@@ -181,3 +183,43 @@ def test_advanced_supported_rules_are_schema_validated_and_frozen(tmp_path: Path
     }
     assert policy.policy_family_id == "unreal-static-game-asset-family-v1"
     assert policy.rule_sources["budgets.max_materials"] == "USER_OVERRIDE"
+
+
+def test_missing_target_answer_is_durable_and_confirmation_never_reasks_it(
+    tmp_path: Path,
+) -> None:
+    """Only absent fields are clarified, persisted, and consumed by final confirmation."""
+    root = tmp_path / "hosted"
+    store = HostedWorkspaceStore(root, _family())
+    workspace = _create(
+        store,
+        CLEAN_PATH,
+        "A friendly humanoid robot intended as a static game asset.",
+    )
+    draft = workspace.record.target_draft
+    assert draft is not None
+    assert draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    assert draft.target_height_cm is None
+    assert draft.missing_fields == ("target_height_cm",)
+
+    clarified = store.clarify_target(
+        workspace,
+        target_use_value=None,
+        target_height_m="1.8",
+        command_id="7" * 32,
+    )
+    restarted = HostedWorkspaceStore(root, _family()).get(clarified.record.workspace_id)
+    assert restarted is not None
+    completed_draft = restarted.record.target_draft
+    assert completed_draft is not None
+    assert completed_draft.ready_for_confirmation
+    assert completed_draft.target_height_cm == 180.0
+    assert completed_draft.evidence[-1].source.value == "USER_CLARIFICATION"
+
+    completed = store.confirm_target(
+        restarted,
+        accept_supported_goal=False,
+        command_id="8" * 32,
+    )
+    assert completed.record.target is not None
+    assert completed.record.target.target_height_cm == 180.0

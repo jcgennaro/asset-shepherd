@@ -1,10 +1,10 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** D019 direction and D021 policy-family correction implemented locally; live Bedrock pending
+**Status:** D019 direction plus D021 policy and D022 intake corrections implemented locally; live Bedrock pending
 
 **Date:** 2026-08-22
 
-**Current implementation:** D020 durable hosted reference with D021 family resolution
+**Current implementation:** D020 durable hosted reference with D021 family resolution and D022 minimum target contract
 
 **Controlling specifications:** `PROJECT_CONTRACT.md` and `REAL_WORLD_VALIDATION_PLAN.md`
 
@@ -41,7 +41,8 @@ scripted zero-network provider.
 ### Current user flow
 
 ```text
-Describe intended asset, use, and real-world height
+Describe the intended asset in one prompt
+  -> Answer only target fields the description did not resolve
   -> Review and agree to an exact target story
   -> Review the agent-resolved policy
   -> Optionally adjust supported fields
@@ -105,6 +106,13 @@ The agreed height becomes the profile target state. Users do not enter matrices,
 translations, or scale factors. The planner derives a minimal repair from measured facts and the
 frozen target.
 
+Before that agreement, `TargetIntakeContract` is the model-facing minimum-information boundary. It
+requires description, supported intended use, and positive real-world height, with evidence and
+confidence for every populated field and an exact missing-field list. The local offline extractor
+uses explicit prose; a future Bedrock model must emit the same validated schema. Only missing or
+conflicting fields are asked, measured source size never becomes intended size, and the completed
+target still receives one explicit confirmation.
+
 ### Current trust boundary
 
 The current system already enforces the boundary the envisioned product needs:
@@ -125,7 +133,7 @@ approval, or declare an output ready.
 
 ### Current evidence
 
-- 60 offline tests pass; one opt-in live-provider test is skipped.
+- 74 offline tests pass; one opt-in live-provider test is skipped.
 - Ruff, formatting, Pyright, uv lock validation, and wheel build pass.
 - Approved, rejected, clean-control, invalid-upload, and unsupported inspection-only paths are
   covered.
@@ -248,7 +256,7 @@ structured evidence; it should not expose an arbitrary terminal to the model.
 
 | Area | Current product | Envisioned model | Invariant? |
 |---|---|---|---|
-| Entry | Three-field intent form | Adaptive but bounded dialogue | Changes |
+| Entry | One description plus missing-field clarification | Adaptive but schema-bounded dialogue | Changes |
 | Intent | User confirms generated story | User confirms agent-proposed typed target | Same boundary |
 | Policy | Agent resolves one versioned family from confirmed intent | Adaptive agent proposal using the same typed family; advanced review remains | Same boundary |
 | Upload | After intent agreement | During the same job conversation, after enough target context | Changes presentation |
@@ -491,6 +499,8 @@ local `/workspace` reference with objective preflight, typed confirmation, deriv
 visible Job Contract, native interrupt persistence, structured evidence questions, and duplicate
 resume protection while keeping the M8 form-led baseline intact. D021 replaces the nearest-preset
 mechanism in both paths with one versioned parameterized family, intent-derived target values,
-per-rule sources, and bounded advanced edits without changing repair authority. The live Bedrock conversation,
+per-rule sources, and bounded advanced edits without changing repair authority. D022 defines the
+minimum typed information the agent must possess, requires evidence, and limits clarification to
+missing use or height before final confirmation. The live Bedrock conversation,
 remote concurrency/storage, deployment, observability, access, retention cleanup, and cost proof
 remain required for the M9 gate. No AWS activity or paid model invocation is authorized yet.

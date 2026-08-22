@@ -18,7 +18,8 @@
         <header>
           <p class="section-label">Asset conversation</p>
           <h2 id="conversation-heading">
-            {% if record.phase.value == 'TARGET_CONFIRMATION' %}I measured the source. What should it become?
+            {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I have enough information. Is this target right?
+            {% elif record.phase.value == 'TARGET_CONFIRMATION' %}{% if target_draft and target_draft.missing_fields|length == 1 %}One quick answer{% else %}{{ target_draft.missing_fields|length if target_draft else 1 }} quick answers{% endif %} before I can propose the target.
             {% elif record.phase.value == 'APPROVAL' %}One physical change needs your decision.
             {% elif record.phase.value == 'COMPLETE' %}The verified package is ready.
             {% elif record.phase.value == 'BLOCKED' %}The inspection-only package is ready.
@@ -33,35 +34,47 @@
               {{ preflight.package.material_count }} materials, and {{ preflight.package.texture_count }} textures.</p>
             <small>No policy findings, repair plan, approval, mutation, or readiness result exists yet.</small>
           </article>
-          <form action="{{ url_for('confirm_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-card" data-busy-form>
-            <input type="hidden" name="command_id" value="{{ command_id }}">
-            <label><span>Intended use</span>
-              <select name="target_use" required>
-                {% for value, label in target_uses %}<option value="{{ value }}">{{ label|capitalize }}</option>{% endfor %}
-              </select>
-            </label>
-            <label><span>Real-world height</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
-            <label class="supported-goal-check">
-              <input type="checkbox" name="accept_supported_goal" value="true">
-              <span>If my request needs rigging, animation, or unsupported structure, I accept a static-mesh or inspection-only handoff.</span>
-            </label>
-            <details class="hosted-advanced">
-              <summary>Advanced · adjust supported rules</summary>
-              <p>Blank fields keep the agent proposal derived from your target and the versioned policy family. Safety, source preservation, authorization classes, verification invariants, and repair domains remain fixed.</p>
-              <div class="hosted-advanced-grid">
-                <label><span>Height tolerance (cm)</span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" placeholder="Agent proposal"></label>
-                <label><span>Ground tolerance (cm)</span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" placeholder="Agent proposal"></label>
-                <label><span>Require Y-up</span><select name="custom_require_y_up"><option value="">Agent proposal</option><option value="true">Yes</option><option value="false">No</option></select></label>
-                <label><span>Require ground contact</span><select name="custom_require_ground_contact"><option value="">Agent proposal</option><option value="true">Yes</option><option value="false">No</option></select></label>
-                <label><span>Naming pattern</span><input type="text" name="custom_naming_pattern" maxlength="128" placeholder="Agent proposal"></label>
-                <label><span>Triangle budget</span><input type="number" name="custom_max_triangles" min="0" step="1" placeholder="Agent proposal"></label>
-                <label><span>Material budget</span><input type="number" name="custom_max_materials" min="0" step="1" placeholder="Agent proposal"></label>
-                <label><span>Texture budget</span><input type="number" name="custom_max_textures" min="0" step="1" placeholder="Agent proposal"></label>
-                <label><span>Max texture dimension</span><input type="number" name="custom_max_texture_dimension" min="1" step="1" placeholder="Agent proposal"></label>
-              </div>
-            </details>
-            <button class="primary-button" type="submit" data-submit-button>Confirm target and inspect <span aria-hidden="true">→</span></button>
-          </form>
+          {% if target_draft and not target_draft.ready_for_confirmation %}
+            <form action="{{ url_for('clarify_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-card" data-busy-form>
+              <input type="hidden" name="command_id" value="{{ command_id }}">
+              {% if target_draft.target_use %}<p class="target-understood"><strong>Already understood</strong><span>{{ target_use_label|capitalize }}</span></p>{% endif %}
+              {% if target_draft.target_height_cm %}<p class="target-understood"><strong>Already understood</strong><span>{{ "%g"|format(target_draft.target_height_cm / 100) }} m tall</span></p>{% endif %}
+              {% if "target_use" in target_draft.missing_fields %}<label><span>What should this asset become?</span>
+                <select name="target_use" required><option value="" disabled selected>Choose the intended use</option>{% for value, label in target_uses %}<option value="{{ value }}">{{ label|capitalize }}</option>{% endfor %}</select>
+              </label>{% endif %}
+              {% if "target_height_cm" in target_draft.missing_fields %}<label><span>What real-world height should it have?</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>{% endif %}
+              <button class="primary-button" type="submit" data-submit-button>Complete target proposal <span aria-hidden="true">→</span></button>
+            </form>
+          {% elif target_draft %}
+            <form action="{{ url_for('confirm_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-card" data-busy-form>
+              <input type="hidden" name="command_id" value="{{ command_id }}">
+              <dl class="conversation-metrics target-proposal">
+                <div><dt>Intended use</dt><dd>{{ target_use_label|capitalize }}</dd></div>
+                <div><dt>Real-world height</dt><dd>{{ "%g"|format(target_draft.target_height_cm / 100) }} m</dd></div>
+              </dl>
+              <p class="fine-print">These values came from your description and any clarification answers. Confirm them once before policy inspection.</p>
+              <label class="supported-goal-check">
+                <input type="checkbox" name="accept_supported_goal" value="true">
+                <span>If my request needs rigging, animation, or unsupported structure, I accept a static-mesh or inspection-only handoff.</span>
+              </label>
+              <details class="hosted-advanced">
+                <summary>Advanced · adjust supported rules</summary>
+                <p>Blank fields keep the agent proposal derived from your target and the versioned policy family. Safety, source preservation, authorization classes, verification invariants, and repair domains remain fixed.</p>
+                <div class="hosted-advanced-grid">
+                  <label><span>Height tolerance (cm)</span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" placeholder="Agent proposal"></label>
+                  <label><span>Ground tolerance (cm)</span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" placeholder="Agent proposal"></label>
+                  <label><span>Require Y-up</span><select name="custom_require_y_up"><option value="">Agent proposal</option><option value="true">Yes</option><option value="false">No</option></select></label>
+                  <label><span>Require ground contact</span><select name="custom_require_ground_contact"><option value="">Agent proposal</option><option value="true">Yes</option><option value="false">No</option></select></label>
+                  <label><span>Naming pattern</span><input type="text" name="custom_naming_pattern" maxlength="128" placeholder="Agent proposal"></label>
+                  <label><span>Triangle budget</span><input type="number" name="custom_max_triangles" min="0" step="1" placeholder="Agent proposal"></label>
+                  <label><span>Material budget</span><input type="number" name="custom_max_materials" min="0" step="1" placeholder="Agent proposal"></label>
+                  <label><span>Texture budget</span><input type="number" name="custom_max_textures" min="0" step="1" placeholder="Agent proposal"></label>
+                  <label><span>Max texture dimension</span><input type="number" name="custom_max_texture_dimension" min="1" step="1" placeholder="Agent proposal"></label>
+                </div>
+              </details>
+              <button class="primary-button" type="submit" data-submit-button>Confirm target and inspect <span aria-hidden="true">→</span></button>
+            </form>
+          {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}
           <article class="conversation-message shepherd">
             <p><strong>{{ approval_card.title }}</strong></p>
@@ -142,7 +155,11 @@
             <div><dt>Height</dt><dd>{{ "%g"|format(record.target.target_height_cm / 100) }} m</dd></div>
             <div><dt>Support</dt><dd>{{ record.target.support_status }}</dd></div>
             {% if record.target.external_handoffs %}<div><dt>Handoff</dt><dd>{{ record.target.external_handoffs|join(' ') }}</dd></div>{% endif %}
-          </dl>{% else %}<p>Waiting for typed confirmation.</p>{% endif %}
+          </dl>{% elif target_draft %}<dl>
+            <div><dt>Use</dt><dd>{{ target_use_label|capitalize if target_use_label else "needs clarification" }}</dd></div>
+            <div><dt>Height</dt><dd>{{ ("%g"|format(target_draft.target_height_cm / 100)) ~ " m" if target_draft.target_height_cm else "needs clarification" }}</dd></div>
+            <div><dt>Minimum contract</dt><dd>{{ "complete; awaiting confirmation" if target_draft.ready_for_confirmation else (target_draft.missing_fields|join(", ")) }}</dd></div>
+          </dl>{% else %}<p>Waiting for typed target extraction.</p>{% endif %}
         </details>
         <details>
           <summary>Rules <span>{{ "frozen" if record.profile_policy else "not derived" }}</span></summary>

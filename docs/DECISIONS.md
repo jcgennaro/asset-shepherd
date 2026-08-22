@@ -4,6 +4,52 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D022 — Minimum target-intake contract asks only for unresolved required information
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8/M9 conversational intake correction
+
+**Context**
+
+The intent flow should feel like an agent understanding what the user is trying to make, not a
+fixed questionnaire that repeats information already present in the description. At the same time,
+the deterministic policy resolver cannot safely derive a physical normalization without an exact
+intended size, and source measurements describe what the file currently represents rather than what
+the user intended.
+
+**Decision**
+
+Define a strict, versioned `TargetIntakeContract` as the boundary before target confirmation. Its
+minimum required information is a normalized description, one supported intended-use enum, and a
+positive intended real-world target height. Each populated target field requires concise evidence,
+source, and confidence of at least 0.8; absent, ambiguous, conflicting, or lower-confidence values
+are represented as explicit
+`missing_fields`. Ask only for those fields. Never ask the user to repeat an already-supported
+answer, never infer intended height from measured source bounds, and never treat conversation text
+as repair authorization.
+
+The ordinary entry form therefore asks only what the user was trying to make. The local
+zero-network reference extracts explicit supported use and measurement phrases, displays only the
+unresolved questions, and requires one final confirmation of the complete target. The durable
+hosted path writes `target_intake.json`, persists clarification evidence and exactly-once command
+state, and consumes the completed draft without re-requesting its values. A future Bedrock model
+must produce the same validated schema. Grounding, tolerances, naming, and budgets remain policy
+resolution concerns and do not enlarge the minimum questionnaire.
+
+**Evidence and consequences**
+
+Acceptance covers complete extraction, missing-height-only and missing-use-only clarification,
+conflicting use language, invalid values, schema inconsistency, final-confirmation gating,
+job-snapshot persistence, hosted application restart, and the unchanged approved deterministic
+workflow. This decision adds no model call, repair operation, appearance inference, AWS activity,
+or editable safety rule. It refines D018–D021 intake without weakening their confirmation, policy,
+authorization, or verification boundaries.
+
 ### D021 — One parameterized policy family replaces user-visible scale baselines
 
 **Date:** 2026-08-22
