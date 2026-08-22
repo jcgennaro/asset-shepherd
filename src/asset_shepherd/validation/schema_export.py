@@ -11,12 +11,14 @@ from asset_shepherd.validation.models import (
     Adjudication,
     AssetProvenance,
     MutationManifest,
+    RenderComparison,
 )
 
 VALIDATION_SCHEMA_MODELS: Final[dict[str, type[BaseModel]]] = {
     "adjudication.schema.json": Adjudication,
     "asset_provenance.schema.json": AssetProvenance,
     "mutation_manifest.schema.json": MutationManifest,
+    "render_comparison.schema.json": RenderComparison,
 }
 
 

@@ -2,6 +2,7 @@
 
 import json
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -9,8 +10,10 @@ import pytest
 from jsonschema.validators import validator_for
 
 from asset_shepherd.cli import run_cli
+from asset_shepherd.glb import load_glb, save_glb
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
+    CheckBasis,
     Decisions,
     DecisionValue,
     JobState,
@@ -21,7 +24,7 @@ from asset_shepherd.models import (
     VerificationState,
 )
 from asset_shepherd.planner import plan_repairs
-from asset_shepherd.repair import apply_repairs, create_decisions
+from asset_shepherd.repair import RepairOutcome, apply_repairs, create_decisions
 from asset_shepherd.verification import verify_repair
 from asset_shepherd.workflow import build_provenance, run_workflow
 
@@ -107,6 +110,34 @@ def test_full_approved_workflow_verifies_and_packages_every_artifact(tmp_path: P
         (first_output / "decisions.json").read_text(encoding="utf-8")
     )
     assert all(check.status.value == "PASS" for check in verification.checks)
+    policy_check_codes = {
+        "NAMES_VALID_AND_UNIQUE",
+        "APPROVED_SCALE_WITHIN_TOLERANCE",
+        "APPROVED_ORIENTATION_Y_UP",
+        "APPROVED_GROUNDING_WITHIN_TOLERANCE",
+        "SECOND_PLAN_EMPTY",
+    }
+    assert {
+        check.code
+        for check in verification.checks
+        if check.basis is CheckBasis.FROZEN_PROJECT_POLICY
+    } == policy_check_codes
+    assert all(
+        check.basis is CheckBasis.UNIVERSAL_INVARIANT
+        for check in verification.checks
+        if check.code not in policy_check_codes and not check.code.startswith("KHRONOS_")
+    )
+    khronos_bases = {
+        check.code: check.basis
+        for check in verification.checks
+        if check.code.startswith("KHRONOS_")
+    }
+    if khronos_bases:
+        assert khronos_bases == {
+            "KHRONOS_VALIDATOR_EXECUTED": CheckBasis.EXTERNAL_CONSUMER_EVIDENCE,
+            "KHRONOS_ERRORS_NOT_INTRODUCED": CheckBasis.UNIVERSAL_INVARIANT,
+            "KHRONOS_OUTPUT_CONFORMANCE": CheckBasis.OBJECTIVE_SOURCE_DIAGNOSTIC,
+        }
     assert verification.second_plan_candidate_count == 0
     assert verification.output_sha256 == provenance.output_sha256
     assert len(provenance.executed_actions) == len(plan.candidates) == 10
@@ -255,6 +286,56 @@ def test_tampered_candidate_fails_verification(tmp_path: Path) -> None:
     )
     assert verification.state is VerificationState.FAILED
     assert any(check.status.value == "FAIL" for check in verification.checks)
+
+
+def test_semantic_material_mutation_fails_deep_preservation_check(tmp_path: Path) -> None:
+    """A parseable post-repair material change cannot pass on count checks alone."""
+    profile = _profile()
+    original = inspect_asset(BROKEN_PATH, profile)
+    plan = plan_repairs(original, profile)
+    decisions = create_decisions(
+        plan,
+        {"normalize-root-v1": True},
+        decided_at=FIXED_TIME,
+    )
+    candidate = tmp_path / "candidate.glb"
+    initial_outcome = apply_repairs(BROKEN_PATH, candidate, plan, decisions)
+    modified = load_glb(candidate)
+    modified.materials[0].doubleSided = not bool(modified.materials[0].doubleSided)
+    save_glb(modified, candidate)
+    modified_hash = sha256(candidate.read_bytes()).hexdigest()
+    outcome = RepairOutcome(
+        source_sha256=initial_outcome.source_sha256,
+        output_sha256=modified_hash,
+        executed_action_ids=initial_outcome.executed_action_ids,
+        rejected_action_ids=initial_outcome.rejected_action_ids,
+    )
+    provenance = build_provenance(
+        profile,
+        plan,
+        decisions,
+        outcome,
+        started_at=FIXED_TIME,
+        completed_at=FIXED_TIME,
+    )
+
+    verification = verify_repair(
+        BROKEN_PATH,
+        candidate,
+        profile,
+        original,
+        plan,
+        decisions,
+        outcome,
+        provenance,
+    )
+
+    material_check = next(
+        check for check in verification.checks if check.code == "MATERIAL_DEFINITIONS_PRESERVED"
+    )
+    assert material_check.status.value == "FAIL"
+    assert material_check.basis is CheckBasis.UNIVERSAL_INVARIANT
+    assert verification.state is VerificationState.FAILED
 
 
 def test_run_cli_executes_documented_demo_command_shape(tmp_path: Path) -> None:

@@ -199,7 +199,8 @@ def render_final_report(
         lines.append("- No repair actions were eligible.")
     lines.extend(("", "## Verification checks", ""))
     lines.extend(
-        f"- `{check.code}`: {check.status} — {check.description}" for check in verification.checks
+        f"- `{check.code}`: {check.status} — {check.description} (basis: {check.basis})"
+        for check in verification.checks
     )
     lines.extend(("", "## Remaining warnings", ""))
     if verification.remaining_warnings:

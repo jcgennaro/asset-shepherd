@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "RenderPairMetrics": {
+      "additionalProperties": false,
+      "description": "Deterministic pixel-distance evidence for one equally framed render pair.",
+      "properties": {
+        "alpha_mae_channel_units": {
+          "minimum": 0.0,
+          "title": "Alpha Mae Channel Units",
+          "type": "number"
+        },
+        "changed_pixel_fraction": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Changed Pixel Fraction",
+          "type": "number"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "mae_channel_units": {
+          "minimum": 0.0,
+          "title": "Mae Channel Units",
+          "type": "number"
+        },
+        "maximum_channel_delta": {
+          "maximum": 255.0,
+          "minimum": 0.0,
+          "title": "Maximum Channel Delta",
+          "type": "number"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "rmse_channel_units": {
+          "minimum": 0.0,
+          "title": "Rmse Channel Units",
+          "type": "number"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "width",
+        "height",
+        "mae_channel_units",
+        "rmse_channel_units",
+        "maximum_channel_delta",
+        "alpha_mae_channel_units",
+        "changed_pixel_fraction"
+      ],
+      "title": "RenderPairMetrics",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/validation/v1/render_comparison.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "External-consumer render comparison without a semantic appearance claim.",
+  "properties": {
+    "candidate_directory": {
+      "title": "Candidate Directory",
+      "type": "string"
+    },
+    "interpretation": {
+      "const": "EXTERNAL_CONSUMER_EVIDENCE",
+      "default": "EXTERNAL_CONSUMER_EVIDENCE",
+      "title": "Interpretation",
+      "type": "string"
+    },
+    "maximum_mae_channel_units": {
+      "minimum": 0.0,
+      "title": "Maximum Mae Channel Units",
+      "type": "number"
+    },
+    "pairs": {
+      "items": {
+        "$ref": "#/$defs/RenderPairMetrics"
+      },
+      "title": "Pairs",
+      "type": "array"
+    },
+    "passed_configured_threshold": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Passed Configured Threshold"
+    },
+    "reference_directory": {
+      "title": "Reference Directory",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "threshold_mae_channel_units": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Threshold Mae Channel Units"
+    }
+  },
+  "required": [
+    "reference_directory",
+    "candidate_directory",
+    "threshold_mae_channel_units",
+    "pairs",
+    "maximum_mae_channel_units",
+    "passed_configured_threshold"
+  ],
+  "title": "RenderComparison",
+  "type": "object"
+}

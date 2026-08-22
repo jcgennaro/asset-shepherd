@@ -181,7 +181,7 @@
         <details>
           <summary>Findings and plan <span>{{ inspection.findings|length if inspection else "pending" }}</span></summary>
           {% if finding_groups %}{% for severity, findings in finding_groups %}{% for finding in findings %}
-            <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></p>
+            <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }} · {{ finding.basis|replace('_', ' ')|lower }}</span></p>
           {% endfor %}{% endfor %}{% elif inspection %}<p>No policy findings.</p>{% else %}<p>No inspection exists before confirmation.</p>{% endif %}
           {% if plan %}<p>{{ plan.candidates|length }} registered candidate(s); {{ plan.approval_action_ids|length }} require approval.</p>{% endif %}
         </details>

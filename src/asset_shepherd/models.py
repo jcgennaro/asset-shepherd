@@ -49,6 +49,15 @@ class ActionClass(StrEnum):
     BLOCKED = "BLOCKED"
 
 
+class CheckBasis(StrEnum):
+    """Authority behind a finding or verification assertion."""
+
+    UNIVERSAL_INVARIANT = "UNIVERSAL_INVARIANT"
+    FROZEN_PROJECT_POLICY = "FROZEN_PROJECT_POLICY"
+    OBJECTIVE_SOURCE_DIAGNOSTIC = "OBJECTIVE_SOURCE_DIAGNOSTIC"
+    EXTERNAL_CONSUMER_EVIDENCE = "EXTERNAL_CONSUMER_EVIDENCE"
+
+
 class AssetTargetUse(StrEnum):
     """User-confirmed destination for the uploaded asset."""
 
@@ -303,6 +312,44 @@ class MaterialFact(ContractModel):
     emissive_factor: Vector3
 
 
+class PrimitiveAttributeDiagnostics(ContractModel):
+    """Objective attribute and topology diagnostics for one mesh primitive."""
+
+    mesh_index: NonNegativeInt
+    primitive_index: NonNegativeInt
+    position_count: NonNegativeInt
+    index_count: NonNegativeInt
+    has_normals: bool
+    has_tangents: bool
+    has_texcoord_0: bool
+    attribute_count_mismatches: tuple[str, ...]
+    non_finite_position_count: NonNegativeInt
+    non_finite_normal_count: NonNegativeInt
+    non_unit_normal_count: NonNegativeInt
+    non_finite_tangent_count: NonNegativeInt
+    invalid_tangent_handedness_count: NonNegativeInt
+    non_finite_texcoord_0_count: NonNegativeInt
+    out_of_range_index_count: NonNegativeInt
+    degenerate_triangle_count: NonNegativeInt
+
+
+class SourceDiagnostics(ContractModel):
+    """Profile-free diagnostic facts that are informative but not user-authored policy."""
+
+    primitives: tuple[PrimitiveAttributeDiagnostics, ...]
+    empty_leaf_node_indices: tuple[int, ...]
+    unreachable_node_indices: tuple[int, ...]
+    unused_mesh_indices: tuple[int, ...]
+    unused_material_indices: tuple[int, ...]
+    unused_texture_indices: tuple[int, ...]
+    unused_image_indices: tuple[int, ...]
+    unused_sampler_indices: tuple[int, ...]
+    duplicate_material_groups: tuple[tuple[int, ...], ...]
+    duplicate_texture_groups: tuple[tuple[int, ...], ...]
+    root_world_origins_m: tuple[Vector3, ...]
+    bounds_ground_center_m: Vector3
+
+
 class PreflightResult(ContractModel):
     """Profile-free measurements allowed before a user agrees to a target."""
 
@@ -315,6 +362,7 @@ class PreflightResult(ContractModel):
     materials: tuple[MaterialFact, ...]
     structural_eligibility: RepairEligibility
     parse_error: str | None
+    diagnostics: SourceDiagnostics | None = None
 
 
 class FindingEvidence(ContractModel):
@@ -333,6 +381,7 @@ class FindingRuleProvenance(ContractModel):
     profile_id: str
     profile_version: Literal[1]
     parameters: dict[str, JsonValue]
+    sources: dict[str, PolicyRuleSource] = Field(default_factory=dict)
 
 
 class Finding(ContractModel):
@@ -345,6 +394,7 @@ class Finding(ContractModel):
     description: str
     severity: Severity
     action_class: ActionClass
+    basis: CheckBasis = CheckBasis.OBJECTIVE_SOURCE_DIAGNOSTIC
     confidence: UnitConfidence
     affected_components: tuple[str, ...]
     evidence: tuple[FindingEvidence, ...]
@@ -368,6 +418,7 @@ class InspectionResult(ContractModel):
     resources: ResourceFacts | None
     repair_eligibility: RepairEligibility
     findings: tuple[Finding, ...]
+    diagnostics: SourceDiagnostics | None = None
 
 
 class RenamePayload(ContractModel):
@@ -492,6 +543,7 @@ class VerificationCheck(ContractModel):
     code: str
     status: CheckStatus
     description: str
+    basis: CheckBasis = CheckBasis.UNIVERSAL_INVARIANT
     expected: JsonValue = None
     actual: JsonValue = None
 

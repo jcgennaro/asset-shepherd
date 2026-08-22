@@ -7,6 +7,7 @@ from typing import Final
 
 from pydantic import BaseModel
 
+from asset_shepherd.khronos import KhronosValidationResult
 from asset_shepherd.models import (
     AgentMetrics,
     AgentWorkflowResult,
@@ -37,6 +38,7 @@ SCHEMA_MODELS: Final[dict[str, type[BaseModel]]] = {
     "fixture_manifest.schema.json": FixtureManifest,
     "inspection.schema.json": InspectionResult,
     "job_result.schema.json": JobResult,
+    "khronos_validation.schema.json": KhronosValidationResult,
     "plan_selection.schema.json": PlanSelection,
     "profile.schema.json": ProjectProfile,
     "provenance.schema.json": Provenance,

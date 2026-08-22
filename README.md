@@ -13,6 +13,12 @@ verification agent for game developers.
 - [Project status](docs/PROJECT_STATUS.md)
 - [Decision log](docs/DECISIONS.md)
 - [Web design and flow](docs/WEB_DESIGN_AND_FLOW.md)
+- [Checks and authority](docs/CHECKS_AND_AUTHORITY.md)
+
+The checks document distinguishes LLM/user-derived target policy from universal safety invariants,
+objective source diagnostics, and independent Khronos/Blender/Unreal evidence. Model conclusions
+can shape the frozen desired target only after user confirmation; they cannot waive file validity,
+authorization, source preservation, or verification.
 
 ## Real-world validation
 

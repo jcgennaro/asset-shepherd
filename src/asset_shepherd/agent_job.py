@@ -246,7 +246,7 @@ class AgentJob:
             return self.inspection
         self.output_dir.mkdir(parents=True, exist_ok=False)
         self.started_at = self.clock()
-        self.inspection = inspect_asset(self.source, self.profile)
+        self.inspection = inspect_asset(self.source, self.profile, policy=self.profile_policy)
         inspection_path = self.output_dir / "inspection.json"
         self._require_output_path(inspection_path)
         _write_json(inspection_path, self.inspection.model_dump(mode="json"))
@@ -525,7 +525,11 @@ class AgentJob:
             self.provenance,
         )
         self.last_verification = verification
-        repaired_inspection = inspect_asset(self.candidate_path, self.profile)
+        repaired_inspection = inspect_asset(
+            self.candidate_path,
+            self.profile,
+            policy=self.profile_policy,
+        )
         _write_json(
             self.output_dir / "verification.json",
             verification.model_dump(mode="json"),

@@ -46,6 +46,13 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the deterministic CLI argument parser."""
     parser = argparse.ArgumentParser(prog="asset-shepherd", description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+    validate_parser = subparsers.add_parser(
+        "validate",
+        help="Run the official Khronos glTF Validator",
+    )
+    validate_parser.add_argument("source", type=Path)
+    validate_parser.add_argument("--output", type=Path, required=True)
+    validate_parser.add_argument("--validator", type=Path)
     inspect_parser = subparsers.add_parser("inspect", help="Inspect one GLB deterministically")
     _add_job_arguments(inspect_parser)
     plan_parser = subparsers.add_parser("plan", help="Inspect and generate repair candidates")
@@ -109,6 +116,20 @@ def run_cli(arguments: list[str] | None = None) -> int:
             port=args.port,
         )
         return 0
+    if args.command == "validate":
+        from asset_shepherd.khronos import (
+            KhronosValidatorError,
+            KhronosValidatorUnavailable,
+            validate_with_khronos,
+        )
+
+        try:
+            validation = validate_with_khronos(args.source, executable=args.validator)
+        except (OSError, KhronosValidatorError, KhronosValidatorUnavailable) as error:
+            build_parser().error(f"Official glTF validation failed: {error}")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(args.output, validation.model_dump(mode="json"))
+        return 0 if validation.passed else 5
     try:
         profile = _load_profile(args.profile)
     except (OSError, ValidationError) as error:

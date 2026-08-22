@@ -11,6 +11,7 @@ from asset_shepherd.models import ActionClass, ContractModel
 AssetId = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
 Sha256OrEmpty = Annotated[str, Field(pattern=r"^(?:[0-9a-f]{64})?$")]
 NonNegativeMinutes = Annotated[float, Field(ge=0.0)]
+UnitFraction = Annotated[float, Field(ge=0.0, le=1.0)]
 
 
 class AssetProvenance(ContractModel):
@@ -131,3 +132,29 @@ class Adjudication(ContractModel):
     manual_minutes_after_shepherd: NonNegativeMinutes | None
     visual_fidelity_assessment: str
     demo_candidate: bool
+
+
+class RenderPairMetrics(ContractModel):
+    """Deterministic pixel-distance evidence for one equally framed render pair."""
+
+    name: str
+    width: Annotated[int, Field(gt=0)]
+    height: Annotated[int, Field(gt=0)]
+    mae_channel_units: Annotated[float, Field(ge=0.0)]
+    rmse_channel_units: Annotated[float, Field(ge=0.0)]
+    maximum_channel_delta: Annotated[float, Field(ge=0.0, le=255.0)]
+    alpha_mae_channel_units: Annotated[float, Field(ge=0.0)]
+    changed_pixel_fraction: UnitFraction
+
+
+class RenderComparison(ContractModel):
+    """External-consumer render comparison without a semantic appearance claim."""
+
+    schema_version: Literal[1] = 1
+    reference_directory: str
+    candidate_directory: str
+    threshold_mae_channel_units: Annotated[float, Field(ge=0.0)] | None
+    pairs: tuple[RenderPairMetrics, ...]
+    maximum_mae_channel_units: Annotated[float, Field(ge=0.0)]
+    passed_configured_threshold: bool | None
+    interpretation: Literal["EXTERNAL_CONSUMER_EVIDENCE"] = "EXTERNAL_CONSUMER_EVIDENCE"

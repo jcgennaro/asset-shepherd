@@ -1,5 +1,16 @@
 {
   "$defs": {
+    "CheckBasis": {
+      "description": "Authority behind a finding or verification assertion.",
+      "enum": [
+        "UNIVERSAL_INVARIANT",
+        "FROZEN_PROJECT_POLICY",
+        "OBJECTIVE_SOURCE_DIAGNOSTIC",
+        "EXTERNAL_CONSUMER_EVIDENCE"
+      ],
+      "title": "CheckBasis",
+      "type": "string"
+    },
     "CheckStatus": {
       "description": "Deterministic verification-check state.",
       "enum": [
@@ -19,6 +30,10 @@
         "actual": {
           "$ref": "#/$defs/JsonValue",
           "default": null
+        },
+        "basis": {
+          "$ref": "#/$defs/CheckBasis",
+          "default": "UNIVERSAL_INVARIANT"
         },
         "code": {
           "title": "Code",

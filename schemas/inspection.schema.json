@@ -129,6 +129,17 @@
       "title": "Bounds3D",
       "type": "object"
     },
+    "CheckBasis": {
+      "description": "Authority behind a finding or verification assertion.",
+      "enum": [
+        "UNIVERSAL_INVARIANT",
+        "FROZEN_PROJECT_POLICY",
+        "OBJECTIVE_SOURCE_DIAGNOSTIC",
+        "EXTERNAL_CONSUMER_EVIDENCE"
+      ],
+      "title": "CheckBasis",
+      "type": "string"
+    },
     "Finding": {
       "additionalProperties": false,
       "description": "One evidence-backed inspection finding.",
@@ -142,6 +153,10 @@
           },
           "title": "Affected Components",
           "type": "array"
+        },
+        "basis": {
+          "$ref": "#/$defs/CheckBasis",
+          "default": "OBJECTIVE_SOURCE_DIAGNOSTIC"
         },
         "candidate_repairs": {
           "items": {
@@ -292,6 +307,19 @@
           "const": 1,
           "title": "Profile Version",
           "type": "integer"
+        },
+        "sources": {
+          "additionalProperties": {
+            "enum": [
+              "CONFIRMED_INTENT",
+              "DERIVED_INTENT",
+              "FAMILY_DEFAULT",
+              "USER_OVERRIDE"
+            ],
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "object"
         }
       },
       "required": [
@@ -731,6 +759,111 @@
       "title": "PackageFacts",
       "type": "object"
     },
+    "PrimitiveAttributeDiagnostics": {
+      "additionalProperties": false,
+      "description": "Objective attribute and topology diagnostics for one mesh primitive.",
+      "properties": {
+        "attribute_count_mismatches": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Attribute Count Mismatches",
+          "type": "array"
+        },
+        "degenerate_triangle_count": {
+          "minimum": 0,
+          "title": "Degenerate Triangle Count",
+          "type": "integer"
+        },
+        "has_normals": {
+          "title": "Has Normals",
+          "type": "boolean"
+        },
+        "has_tangents": {
+          "title": "Has Tangents",
+          "type": "boolean"
+        },
+        "has_texcoord_0": {
+          "title": "Has Texcoord 0",
+          "type": "boolean"
+        },
+        "index_count": {
+          "minimum": 0,
+          "title": "Index Count",
+          "type": "integer"
+        },
+        "invalid_tangent_handedness_count": {
+          "minimum": 0,
+          "title": "Invalid Tangent Handedness Count",
+          "type": "integer"
+        },
+        "mesh_index": {
+          "minimum": 0,
+          "title": "Mesh Index",
+          "type": "integer"
+        },
+        "non_finite_normal_count": {
+          "minimum": 0,
+          "title": "Non Finite Normal Count",
+          "type": "integer"
+        },
+        "non_finite_position_count": {
+          "minimum": 0,
+          "title": "Non Finite Position Count",
+          "type": "integer"
+        },
+        "non_finite_tangent_count": {
+          "minimum": 0,
+          "title": "Non Finite Tangent Count",
+          "type": "integer"
+        },
+        "non_finite_texcoord_0_count": {
+          "minimum": 0,
+          "title": "Non Finite Texcoord 0 Count",
+          "type": "integer"
+        },
+        "non_unit_normal_count": {
+          "minimum": 0,
+          "title": "Non Unit Normal Count",
+          "type": "integer"
+        },
+        "out_of_range_index_count": {
+          "minimum": 0,
+          "title": "Out Of Range Index Count",
+          "type": "integer"
+        },
+        "position_count": {
+          "minimum": 0,
+          "title": "Position Count",
+          "type": "integer"
+        },
+        "primitive_index": {
+          "minimum": 0,
+          "title": "Primitive Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mesh_index",
+        "primitive_index",
+        "position_count",
+        "index_count",
+        "has_normals",
+        "has_tangents",
+        "has_texcoord_0",
+        "attribute_count_mismatches",
+        "non_finite_position_count",
+        "non_finite_normal_count",
+        "non_unit_normal_count",
+        "non_finite_tangent_count",
+        "invalid_tangent_handedness_count",
+        "non_finite_texcoord_0_count",
+        "out_of_range_index_count",
+        "degenerate_triangle_count"
+      ],
+      "title": "PrimitiveAttributeDiagnostics",
+      "type": "object"
+    },
     "RepairEligibility": {
       "description": "Whether inspection may proceed to structural repair.",
       "enum": [
@@ -795,6 +928,141 @@
       ],
       "title": "Severity",
       "type": "string"
+    },
+    "SourceDiagnostics": {
+      "additionalProperties": false,
+      "description": "Profile-free diagnostic facts that are informative but not user-authored policy.",
+      "properties": {
+        "bounds_ground_center_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bounds Ground Center M",
+          "type": "array"
+        },
+        "duplicate_material_groups": {
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "title": "Duplicate Material Groups",
+          "type": "array"
+        },
+        "duplicate_texture_groups": {
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "title": "Duplicate Texture Groups",
+          "type": "array"
+        },
+        "empty_leaf_node_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Empty Leaf Node Indices",
+          "type": "array"
+        },
+        "primitives": {
+          "items": {
+            "$ref": "#/$defs/PrimitiveAttributeDiagnostics"
+          },
+          "title": "Primitives",
+          "type": "array"
+        },
+        "root_world_origins_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Root World Origins M",
+          "type": "array"
+        },
+        "unreachable_node_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unreachable Node Indices",
+          "type": "array"
+        },
+        "unused_image_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unused Image Indices",
+          "type": "array"
+        },
+        "unused_material_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unused Material Indices",
+          "type": "array"
+        },
+        "unused_mesh_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unused Mesh Indices",
+          "type": "array"
+        },
+        "unused_sampler_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unused Sampler Indices",
+          "type": "array"
+        },
+        "unused_texture_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unused Texture Indices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "primitives",
+        "empty_leaf_node_indices",
+        "unreachable_node_indices",
+        "unused_mesh_indices",
+        "unused_material_indices",
+        "unused_texture_indices",
+        "unused_image_indices",
+        "unused_sampler_indices",
+        "duplicate_material_groups",
+        "duplicate_texture_groups",
+        "root_world_origins_m",
+        "bounds_ground_center_m"
+      ],
+      "title": "SourceDiagnostics",
+      "type": "object"
     },
     "TextureFact": {
       "additionalProperties": false,
@@ -933,6 +1201,17 @@
   "additionalProperties": false,
   "description": "Complete deterministic inspection output.",
   "properties": {
+    "diagnostics": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceDiagnostics"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "findings": {
       "items": {
         "$ref": "#/$defs/Finding"

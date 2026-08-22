@@ -3,6 +3,7 @@
 # pygltflib is typed internally but does not publish PEP 561 metadata.
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false
 
+import json
 import re
 from base64 import b64decode
 from collections import defaultdict
@@ -13,13 +14,16 @@ from typing import Final, cast
 from urllib.parse import unquote_to_bytes
 
 import numpy as np
+import numpy.typing as npt
 from PIL import Image as PillowImage
 from pydantic import JsonValue
-from pygltflib import GLTF2, Node
+from pygltflib import FLOAT, GLTF2, TRIANGLE_FAN, TRIANGLE_STRIP, TRIANGLES, Node
 
 from asset_shepherd.glb import (
     GlbError,
+    accessor_array,
     geometry_counts,
+    iter_world_matrices,
     load_glb,
     node_local_matrix,
     validate_loaded_glb,
@@ -28,6 +32,7 @@ from asset_shepherd.glb import (
 from asset_shepherd.models import (
     ActionClass,
     Bounds3D,
+    CheckBasis,
     Finding,
     FindingEvidence,
     GeometryFacts,
@@ -38,10 +43,13 @@ from asset_shepherd.models import (
     NodeTransformFact,
     PackageFacts,
     PreflightResult,
+    PrimitiveAttributeDiagnostics,
+    ProfilePolicyProvenance,
     ProjectProfile,
     RepairEligibility,
     ResourceFacts,
     Severity,
+    SourceDiagnostics,
     TextureFact,
     TransformFacts,
 )
@@ -441,6 +449,270 @@ def _resource_facts(gltf: GLTF2, profile: ProjectProfile) -> ResourceFacts:
     )
 
 
+def _attribute_accessor_index(attributes: object, name: str) -> int | None:
+    value = getattr(attributes, name, None)
+    return value if isinstance(value, int) else None
+
+
+def _non_finite_count(values: np.ndarray) -> int:
+    if not np.issubdtype(values.dtype, np.floating):
+        return 0
+    return int(np.count_nonzero(~np.isfinite(values)))
+
+
+def _primitive_diagnostics(
+    gltf: GLTF2,
+    mesh_index: int,
+    primitive_index: int,
+) -> PrimitiveAttributeDiagnostics:
+    primitive = gltf.meshes[mesh_index].primitives[primitive_index]
+    position_index = _attribute_accessor_index(primitive.attributes, "POSITION")
+    if position_index is None:
+        raise GlbError("Mesh primitive has no POSITION accessor")
+    positions = accessor_array(gltf, position_index)
+    position_count = len(positions)
+    normal_index = _attribute_accessor_index(primitive.attributes, "NORMAL")
+    tangent_index = _attribute_accessor_index(primitive.attributes, "TANGENT")
+    texcoord_index = _attribute_accessor_index(primitive.attributes, "TEXCOORD_0")
+
+    mismatches: list[str] = []
+
+    def attribute_values(accessor_index: int | None, semantic: str) -> np.ndarray | None:
+        if accessor_index is None:
+            return None
+        values = accessor_array(gltf, accessor_index)
+        if len(values) != position_count:
+            mismatches.append(
+                f"{semantic} count {len(values)} does not match POSITION count {position_count}"
+            )
+        return values
+
+    normals = attribute_values(normal_index, "NORMAL")
+    tangents = attribute_values(tangent_index, "TANGENT")
+    texcoords = attribute_values(texcoord_index, "TEXCOORD_0")
+
+    indices: npt.NDArray[np.int64]
+    if primitive.indices is None:
+        indices = np.arange(position_count, dtype=np.int64)
+    else:
+        indices = np.asarray(
+            accessor_array(gltf, primitive.indices),
+            dtype=np.int64,
+        ).reshape(-1)
+    out_of_range = (indices < 0) | (indices >= position_count)
+
+    mode = primitive.mode if primitive.mode is not None else TRIANGLES
+    if mode == TRIANGLES:
+        usable = len(indices) - (len(indices) % 3)
+        triangles = indices[:usable].reshape((-1, 3))
+    elif mode == TRIANGLE_STRIP and len(indices) >= 3:
+        triangles = np.column_stack((indices[:-2], indices[1:-1], indices[2:]))
+    elif mode == TRIANGLE_FAN and len(indices) >= 3:
+        triangles = np.column_stack(
+            (
+                np.full(len(indices) - 2, indices[0], dtype=indices.dtype),
+                indices[1:-1],
+                indices[2:],
+            )
+        )
+    else:
+        triangles = np.empty((0, 3), dtype=np.int64)
+    repeated_indices = (
+        (triangles[:, 0] == triangles[:, 1])
+        | (triangles[:, 1] == triangles[:, 2])
+        | (triangles[:, 0] == triangles[:, 2])
+    )
+    degenerate = repeated_indices.copy()
+    valid_triangles = ~np.any(
+        (triangles < 0) | (triangles >= position_count),
+        axis=1,
+    )
+    valid_non_repeated = valid_triangles & ~repeated_indices
+    if np.any(valid_non_repeated):
+        triangle_positions = positions[triangles[valid_non_repeated], :3].astype(
+            np.float64,
+            copy=False,
+        )
+        finite_triangles = np.isfinite(triangle_positions).all(axis=(1, 2))
+        twice_area = np.full(len(triangle_positions), np.inf, dtype=np.float64)
+        finite_positions = triangle_positions[finite_triangles]
+        twice_area[finite_triangles] = np.linalg.norm(
+            np.cross(
+                finite_positions[:, 1] - finite_positions[:, 0],
+                finite_positions[:, 2] - finite_positions[:, 0],
+            ),
+            axis=1,
+        )
+        finite_source_positions = positions[np.isfinite(positions).all(axis=1), :3]
+        if len(finite_source_positions):
+            extent = np.ptp(finite_source_positions.astype(np.float64, copy=False), axis=0)
+            scale_squared = max(float(np.dot(extent, extent)), 1.0)
+        else:
+            scale_squared = 1.0
+        area_tolerance = np.finfo(np.float64).eps * scale_squared * 64.0
+        area_degenerate = twice_area <= area_tolerance
+        degenerate[np.flatnonzero(valid_non_repeated)] = area_degenerate
+
+    non_unit_normals = 0
+    normal_accessor = gltf.accessors[normal_index] if normal_index is not None else None
+    if (
+        normals is not None
+        and normal_accessor is not None
+        and normal_accessor.componentType == FLOAT
+    ):
+        finite_rows = np.isfinite(normals).all(axis=1)
+        lengths = np.linalg.norm(normals[finite_rows, :3], axis=1)
+        non_unit_normals = int(np.count_nonzero(~np.isclose(lengths, 1.0, atol=1e-3)))
+
+    invalid_handedness = 0
+    if tangents is not None and tangents.shape[1] >= 4:
+        finite_w = tangents[:, 3][np.isfinite(tangents[:, 3])]
+        invalid_handedness = int(np.count_nonzero(~np.isclose(np.abs(finite_w), 1.0, atol=1e-6)))
+
+    return PrimitiveAttributeDiagnostics(
+        mesh_index=mesh_index,
+        primitive_index=primitive_index,
+        position_count=position_count,
+        index_count=len(indices),
+        has_normals=normals is not None,
+        has_tangents=tangents is not None,
+        has_texcoord_0=texcoords is not None,
+        attribute_count_mismatches=tuple(mismatches),
+        non_finite_position_count=_non_finite_count(positions),
+        non_finite_normal_count=0 if normals is None else _non_finite_count(normals),
+        non_unit_normal_count=non_unit_normals,
+        non_finite_tangent_count=0 if tangents is None else _non_finite_count(tangents),
+        invalid_tangent_handedness_count=invalid_handedness,
+        non_finite_texcoord_0_count=0 if texcoords is None else _non_finite_count(texcoords),
+        out_of_range_index_count=int(np.count_nonzero(out_of_range)),
+        degenerate_triangle_count=int(np.count_nonzero(degenerate)),
+    )
+
+
+def _canonical_resource_key(value: object) -> str:
+    if isinstance(value, dict):
+        mapping = cast(dict[str, object], value)
+        value = {key: item for key, item in mapping.items() if key != "name"}
+    return json.dumps(value, allow_nan=False, separators=(",", ":"), sort_keys=True)
+
+
+def _duplicate_groups(values: list[object]) -> tuple[tuple[int, ...], ...]:
+    grouped: defaultdict[str, list[int]] = defaultdict(list)
+    for index, value in enumerate(values):
+        grouped[_canonical_resource_key(value)].append(index)
+    return tuple(tuple(indices) for _, indices in sorted(grouped.items()) if len(indices) > 1)
+
+
+def _material_texture_indices(material: object) -> set[int]:
+    indices: set[int] = set()
+
+    def walk(value: object, parent_key: str | None = None) -> None:
+        if isinstance(value, dict):
+            mapping = cast(dict[str, object], value)
+            index = mapping.get("index")
+            if (
+                parent_key is not None
+                and "texture" in parent_key.lower()
+                and isinstance(index, int)
+            ):
+                indices.add(index)
+            for key, child in mapping.items():
+                walk(child, key)
+        elif isinstance(value, list):
+            for child in cast(list[object], value):
+                walk(child, parent_key)
+
+    walk(material)
+    return indices
+
+
+def _source_diagnostics(gltf: GLTF2, geometry: GeometryFacts) -> SourceDiagnostics:
+    primitives = tuple(
+        _primitive_diagnostics(gltf, mesh_index, primitive_index)
+        for mesh_index, mesh in enumerate(gltf.meshes)
+        for primitive_index, _ in enumerate(mesh.primitives)
+    )
+    reachable_nodes = {node_index for node_index, _ in iter_world_matrices(gltf)}
+    used_meshes: set[int] = set()
+    for node_index in reachable_nodes:
+        mesh_index = gltf.nodes[node_index].mesh
+        if mesh_index is not None:
+            used_meshes.add(mesh_index)
+    used_materials: set[int] = set()
+    for mesh_index in used_meshes:
+        for primitive in gltf.meshes[mesh_index].primitives:
+            material_index = primitive.material
+            if material_index is not None:
+                used_materials.add(material_index)
+    document = cast(dict[str, object], json.loads(gltf.to_json()))
+    materials_value = document.get("materials", [])
+    material_dicts = cast(list[object], materials_value)
+    used_textures: set[int] = set()
+    for material_index in used_materials:
+        used_textures.update(_material_texture_indices(material_dicts[material_index]))
+    used_images = {
+        gltf.textures[index].source
+        for index in used_textures
+        if 0 <= index < len(gltf.textures) and isinstance(gltf.textures[index].source, int)
+    }
+    used_samplers = {
+        gltf.textures[index].sampler
+        for index in used_textures
+        if 0 <= index < len(gltf.textures) and isinstance(gltf.textures[index].sampler, int)
+    }
+    empty_leaf_nodes = tuple(
+        index
+        for index, node in enumerate(gltf.nodes)
+        if not node.children and node.mesh is None and node.camera is None and node.skin is None
+    )
+    roots = set(_transform_facts(gltf).root_nodes)
+    root_origins = tuple(
+        (float(world[0, 3]), float(world[1, 3]), float(world[2, 3]))
+        for node_index, world in iter_world_matrices(gltf)
+        if node_index in roots
+    )
+    bounds = geometry.bounds
+    ground_center = (
+        (bounds.minimum_m[0] + bounds.maximum_m[0]) / 2.0,
+        bounds.minimum_m[1],
+        (bounds.minimum_m[2] + bounds.maximum_m[2]) / 2.0,
+    )
+    texture_dicts = cast(list[object], document.get("textures", []))
+    return SourceDiagnostics(
+        primitives=primitives,
+        empty_leaf_node_indices=empty_leaf_nodes,
+        unreachable_node_indices=tuple(sorted(set(range(len(gltf.nodes))) - reachable_nodes)),
+        unused_mesh_indices=tuple(sorted(set(range(len(gltf.meshes))) - used_meshes)),
+        unused_material_indices=tuple(sorted(set(range(len(gltf.materials))) - used_materials)),
+        unused_texture_indices=tuple(sorted(set(range(len(gltf.textures))) - used_textures)),
+        unused_image_indices=tuple(sorted(set(range(len(gltf.images))) - used_images)),
+        unused_sampler_indices=tuple(sorted(set(range(len(gltf.samplers))) - used_samplers)),
+        duplicate_material_groups=_duplicate_groups(material_dicts),
+        duplicate_texture_groups=_duplicate_groups(texture_dicts),
+        root_world_origins_m=root_origins,
+        bounds_ground_center_m=ground_center,
+    )
+
+
+def _blocking_geometry_diagnostics(diagnostics: SourceDiagnostics) -> tuple[str, ...]:
+    problems: list[str] = []
+    for primitive in diagnostics.primitives:
+        prefix = f"mesh:{primitive.mesh_index}/primitive:{primitive.primitive_index}"
+        if primitive.attribute_count_mismatches:
+            problems.extend(f"{prefix} {detail}" for detail in primitive.attribute_count_mismatches)
+        counters = (
+            ("non-finite positions", primitive.non_finite_position_count),
+            ("non-finite normals", primitive.non_finite_normal_count),
+            ("non-unit normals", primitive.non_unit_normal_count),
+            ("non-finite tangents", primitive.non_finite_tangent_count),
+            ("invalid tangent handedness", primitive.invalid_tangent_handedness_count),
+            ("non-finite UVs", primitive.non_finite_texcoord_0_count),
+            ("out-of-range indices", primitive.out_of_range_index_count),
+        )
+        problems.extend(f"{prefix} has {count} {label}" for label, count in counters if count)
+    return tuple(problems)
+
+
 def _finding(
     *,
     code: str,
@@ -455,6 +727,8 @@ def _finding(
     profile_rule: str | None,
     candidates: tuple[str, ...] = (),
     profile: ProjectProfile | None = None,
+    policy: ProfilePolicyProvenance | None = None,
+    basis: CheckBasis | None = None,
 ) -> Finding:
     return Finding(
         id=f"finding-{code.lower().replace('_', '-')}",
@@ -464,18 +738,29 @@ def _finding(
         description=description,
         severity=severity,
         action_class=action_class,
+        basis=(
+            basis
+            if basis is not None
+            else CheckBasis.FROZEN_PROJECT_POLICY
+            if profile_rule is not None
+            else CheckBasis.OBJECTIVE_SOURCE_DIAGNOSTIC
+        ),
         confidence=confidence,
         affected_components=affected,
         evidence=evidence,
         profile_rule=profile_rule,
         rule_provenance=(
-            finding_rule_provenance(profile, profile_rule) if profile is not None else None
+            finding_rule_provenance(profile, profile_rule, policy) if profile is not None else None
         ),
         candidate_repairs=candidates,
     )
 
 
-def _naming_findings(naming: NamingFacts, profile: ProjectProfile) -> list[Finding]:
+def _naming_findings(
+    naming: NamingFacts,
+    profile: ProjectProfile,
+    policy: ProfilePolicyProvenance | None,
+) -> list[Finding]:
     findings: list[Finding] = []
     categories = (
         (
@@ -563,6 +848,7 @@ def _naming_findings(naming: NamingFacts, profile: ProjectProfile) -> list[Findi
                 profile_rule=profile_rule,
                 candidates=candidate_ids,
                 profile=profile,
+                policy=policy,
             )
         )
     return findings
@@ -575,6 +861,8 @@ def _inspection_findings(
     transforms: TransformFacts,
     naming: NamingFacts,
     resources: ResourceFacts,
+    diagnostics: SourceDiagnostics,
+    policy: ProfilePolicyProvenance | None,
 ) -> tuple[list[Finding], RepairEligibility]:
     findings: list[Finding] = []
     unsupported_features: list[str] = []
@@ -605,6 +893,67 @@ def _inspection_findings(
                         observation="; ".join(unsupported_features),
                         inference="Version-1 repair cannot prove these semantics remain intact.",
                     ),
+                ),
+                profile_rule=None,
+                basis=CheckBasis.UNIVERSAL_INVARIANT,
+            )
+        )
+
+    malformed_geometry = _blocking_geometry_diagnostics(diagnostics)
+    if malformed_geometry:
+        eligibility = RepairEligibility.INSPECTION_ONLY_UNSUPPORTED_FEATURES
+        findings.append(
+            _finding(
+                code="MALFORMED_GEOMETRY_ATTRIBUTES",
+                domain="geometry",
+                title="Geometry attributes violate universal validity rules",
+                description=(
+                    "The asset remains inspectable, but repair is blocked because attribute or "
+                    "index integrity cannot be proven."
+                ),
+                severity=Severity.BLOCKER,
+                action_class=ActionClass.BLOCKED,
+                confidence=1.0,
+                affected=tuple(
+                    sorted({problem.partition(" ")[0] for problem in malformed_geometry})
+                ),
+                evidence=tuple(
+                    FindingEvidence(observation=problem) for problem in malformed_geometry
+                ),
+                profile_rule=None,
+                basis=CheckBasis.UNIVERSAL_INVARIANT,
+            )
+        )
+
+    degenerate_primitives = tuple(
+        primitive for primitive in diagnostics.primitives if primitive.degenerate_triangle_count
+    )
+    if degenerate_primitives:
+        findings.append(
+            _finding(
+                code="DEGENERATE_TRIANGLES_DETECTED",
+                domain="geometry",
+                title="Degenerate triangle indices detected",
+                description=(
+                    "Degenerate triangles are objective source diagnostics; version 1 does not "
+                    "alter topology."
+                ),
+                severity=Severity.WARNING,
+                action_class=ActionClass.REPORT_ONLY,
+                confidence=1.0,
+                affected=tuple(
+                    f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
+                    for item in degenerate_primitives
+                ),
+                evidence=tuple(
+                    FindingEvidence(
+                        observation=(
+                            f"Mesh {item.mesh_index} primitive {item.primitive_index} contains "
+                            f"{item.degenerate_triangle_count} degenerate indexed triangles."
+                        ),
+                        observed_value=item.degenerate_triangle_count,
+                    )
+                    for item in degenerate_primitives
                 ),
                 profile_rule=None,
             )
@@ -640,6 +989,7 @@ def _inspection_findings(
                 profile_rule="expected_height_cm",
                 candidates=("normalize-root-v1",),
                 profile=profile,
+                policy=policy,
             )
         )
     if profile.orientation.require_y_up_geometry and geometry.dominant_dimension_axis != "Y":
@@ -670,6 +1020,7 @@ def _inspection_findings(
                 profile_rule="orientation.require_y_up_geometry",
                 candidates=("normalize-root-v1",),
                 profile=profile,
+                policy=policy,
             )
         )
     if profile.orientation.require_ground_contact and geometry.ground_relationship != "GROUNDED":
@@ -698,10 +1049,11 @@ def _inspection_findings(
                 profile_rule="orientation.require_ground_contact",
                 candidates=("normalize-root-v1",),
                 profile=profile,
+                policy=policy,
             )
         )
 
-    findings.extend(_naming_findings(naming, profile))
+    findings.extend(_naming_findings(naming, profile, policy))
     if geometry.triangle_count > profile.budgets.max_triangles:
         findings.append(
             _finding(
@@ -722,6 +1074,7 @@ def _inspection_findings(
                 ),
                 profile_rule="budgets.max_triangles",
                 profile=profile,
+                policy=policy,
             )
         )
     budget_findings = (
@@ -762,6 +1115,7 @@ def _inspection_findings(
                 ),
                 profile_rule=f"budgets.max_{resource_name}s",
                 profile=profile,
+                policy=policy,
             )
         )
     oversized_images = [
@@ -792,6 +1146,7 @@ def _inspection_findings(
                 ),
                 profile_rule="budgets.max_texture_dimension",
                 profile=profile,
+                policy=policy,
             )
         )
     unreadable_images = [
@@ -891,12 +1246,14 @@ def preflight_asset(path: Path) -> PreflightResult:
             dominant_dimension_axis=dominant_axis,
             ground_relationship=ground,
         )
+        diagnostics = _source_diagnostics(gltf, geometry)
         package = _package_facts(gltf, file_sha256=source_hash, byte_size=len(source_bytes))
         unsupported_structure = bool(
             package.skin_count
             or package.animation_count
             or package.has_morph_targets
             or (set(package.extensions_required) - SUPPORTED_REQUIRED_EXTENSIONS)
+            or _blocking_geometry_diagnostics(diagnostics)
         )
         eligibility = (
             RepairEligibility.INSPECTION_ONLY_UNSUPPORTED_FEATURES
@@ -912,6 +1269,7 @@ def preflight_asset(path: Path) -> PreflightResult:
             materials=_material_facts(gltf),
             structural_eligibility=eligibility,
             parse_error=None,
+            diagnostics=diagnostics,
         )
     except (GlbError, OSError, ValueError, IndexError, TypeError) as error:
         return PreflightResult(
@@ -923,10 +1281,16 @@ def preflight_asset(path: Path) -> PreflightResult:
             materials=(),
             structural_eligibility=RepairEligibility.INVALID_OR_UNREADABLE,
             parse_error=str(error),
+            diagnostics=None,
         )
 
 
-def inspect_asset(path: Path, profile: ProjectProfile) -> InspectionResult:
+def inspect_asset(
+    path: Path,
+    profile: ProjectProfile,
+    *,
+    policy: ProfilePolicyProvenance | None = None,
+) -> InspectionResult:
     """Inspect a GLB deterministically without executing or fetching asset content."""
     try:
         source_bytes = path.read_bytes()
@@ -963,6 +1327,7 @@ def inspect_asset(path: Path, profile: ProjectProfile) -> InspectionResult:
             dominant_dimension_axis=dominant_axis,
             ground_relationship=ground,
         )
+        diagnostics = _source_diagnostics(gltf, geometry)
         transforms = _transform_facts(gltf)
         naming = _naming_facts(gltf, profile)
         resources = _resource_facts(gltf, profile)
@@ -973,6 +1338,8 @@ def inspect_asset(path: Path, profile: ProjectProfile) -> InspectionResult:
             transforms,
             naming,
             resources,
+            diagnostics,
+            policy,
         )
         return InspectionResult(
             inspection_id=inspection_id,
@@ -990,6 +1357,7 @@ def inspect_asset(path: Path, profile: ProjectProfile) -> InspectionResult:
             resources=resources,
             repair_eligibility=eligibility,
             findings=tuple(sorted(findings, key=lambda finding: finding.code)),
+            diagnostics=diagnostics,
         )
     except (GlbError, OSError, ValueError, IndexError, TypeError) as error:
         finding = _finding(
@@ -1003,6 +1371,7 @@ def inspect_asset(path: Path, profile: ProjectProfile) -> InspectionResult:
             affected=(path.name,),
             evidence=(FindingEvidence(observation=str(error)),),
             profile_rule=None,
+            basis=CheckBasis.UNIVERSAL_INVARIANT,
         )
         return InspectionResult(
             inspection_id=inspection_id,
@@ -1016,6 +1385,7 @@ def inspect_asset(path: Path, profile: ProjectProfile) -> InspectionResult:
             resources=None,
             repair_eligibility=RepairEligibility.INVALID_OR_UNREADABLE,
             findings=(finding,),
+            diagnostics=None,
         )
 
 
@@ -1038,13 +1408,40 @@ def render_inspection_report(inspection: InspectionResult) -> str:
                 f"{inspection.geometry.triangle_count} triangles",
             )
         )
+    if inspection.diagnostics is not None:
+        primitives = inspection.diagnostics.primitives
+        lines.extend(
+            (
+                "",
+                "## Objective diagnostics",
+                "",
+                f"- Primitive attributes: {sum(item.has_normals for item in primitives)}/"
+                f"{len(primitives)} normals, {sum(item.has_tangents for item in primitives)}/"
+                f"{len(primitives)} tangents, {sum(item.has_texcoord_0 for item in primitives)}/"
+                f"{len(primitives)} primary UV sets",
+                f"- Empty leaf nodes: {list(inspection.diagnostics.empty_leaf_node_indices)}",
+                f"- Unused resources: {len(inspection.diagnostics.unused_mesh_indices)} meshes, "
+                f"{len(inspection.diagnostics.unused_material_indices)} materials, "
+                f"{len(inspection.diagnostics.unused_texture_indices)} textures, "
+                f"{len(inspection.diagnostics.unused_image_indices)} images",
+                "- Apparent duplicate records: "
+                f"{len(inspection.diagnostics.duplicate_material_groups)} material groups, "
+                f"{len(inspection.diagnostics.duplicate_texture_groups)} texture groups",
+            )
+        )
     lines.extend(("", "## Findings", ""))
     if not inspection.findings:
         lines.append("No project-policy findings.")
     else:
-        lines.extend(("| Severity | Code | Finding | Action |", "|---|---|---|---|"))
         lines.extend(
-            f"| {finding.severity} | `{finding.code}` | {finding.title} | {finding.action_class} |"
+            (
+                "| Severity | Code | Finding | Basis | Action |",
+                "|---|---|---|---|---|",
+            )
+        )
+        lines.extend(
+            f"| {finding.severity} | `{finding.code}` | {finding.title} | {finding.basis} | "
+            f"{finding.action_class} |"
             for finding in inspection.findings
         )
     return "\n".join(lines) + "\n"

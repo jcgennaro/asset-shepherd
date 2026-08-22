@@ -4,6 +4,52 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D026 — Check authority is explicit and validation is layered
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** M10 evaluation strengthening
+
+**Context**
+
+The product already separated model proposals from deterministic repair authority, but findings and
+verification did not make that distinction uniformly visible. The selected Python glTF validator
+also covers only part of the specification, and count-only preservation cannot prove that material,
+texture, accessor, or binary content remained unchanged.
+
+**Decision**
+
+Classify every finding and verification check as a frozen project-policy assertion, universal
+invariant, objective source diagnostic, or external-consumer evidence. Preserve exact policy-rule
+sources on findings. Add direct primitive/accessor and resource-graph diagnostics, deep semantic
+section and binary-payload preservation checks, an optional pinned official Khronos validator
+adapter, and typed equally-framed render comparison. Keep all newly detected topology/resource
+issues report-only unless they violate glTF validity or an existing universal safety rule. Add no
+repair operation.
+
+The LLM remains limited to proposing supported intended use and semantic target height. Those
+values pass a confidence gate and explicit user confirmation before becoming policy. Universal
+validity, authorization, and preservation checks cannot be changed by the model, the user's target
+description, or advanced policy fields.
+
+**Evidence and consequences**
+
+Acceptance tests distinguish model/user-derived policy findings from universal blockers, corrupt
+attribute cardinality and topology intentionally, and prove that a parseable material mutation
+fails deep preservation. The official validator reports zero errors for the clean fixture and the
+same two pre-existing `ACCESSOR_MIN_MISMATCH` errors for untouched Patchling and Shader Lantern.
+The strengthened Shader Lantern workflow introduces no official errors and retains them as explicit
+source warnings. Typed render comparison reproduces the established four-view maximum MAE of
+0.081863/255 for raw versus Shepherd and 0.000334/255 for Shepherd versus Blender re-export.
+
+The native validator is an optional local/release tool, not a Python or hosted Blender dependency.
+If configured, failure to execute it fails verification. A source-retained official error prevents
+a zero-error conformance claim but does not authorize out-of-scope accessor repair.
+
 ### D025 — Target confirmation uses space for readable scale and optional rationale
 
 **Date:** 2026-08-22

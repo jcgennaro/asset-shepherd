@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/khronos_validation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Stable summary plus the complete official validator report.",
+  "properties": {
+    "error_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Error Codes",
+      "type": "array"
+    },
+    "error_count": {
+      "minimum": 0,
+      "title": "Error Count",
+      "type": "integer"
+    },
+    "error_fingerprints": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Error Fingerprints",
+      "type": "array"
+    },
+    "hint_count": {
+      "minimum": 0,
+      "title": "Hint Count",
+      "type": "integer"
+    },
+    "info_count": {
+      "minimum": 0,
+      "title": "Info Count",
+      "type": "integer"
+    },
+    "issue_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Issue Codes",
+      "type": "array"
+    },
+    "report": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Report",
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "validator_version": {
+      "title": "Validator Version",
+      "type": "string"
+    },
+    "warning_codes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warning Codes",
+      "type": "array"
+    },
+    "warning_count": {
+      "minimum": 0,
+      "title": "Warning Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "validator_version",
+    "error_count",
+    "warning_count",
+    "info_count",
+    "hint_count",
+    "issue_codes",
+    "error_codes",
+    "error_fingerprints",
+    "warning_codes",
+    "report"
+  ],
+  "title": "KhronosValidationResult",
+  "type": "object"
+}

@@ -11,6 +11,17 @@
       "title": "ActionClass",
       "type": "string"
     },
+    "CheckBasis": {
+      "description": "Authority behind a finding or verification assertion.",
+      "enum": [
+        "UNIVERSAL_INVARIANT",
+        "FROZEN_PROJECT_POLICY",
+        "OBJECTIVE_SOURCE_DIAGNOSTIC",
+        "EXTERNAL_CONSUMER_EVIDENCE"
+      ],
+      "title": "CheckBasis",
+      "type": "string"
+    },
     "FindingEvidence": {
       "additionalProperties": false,
       "description": "Structured distinction between measurement and inference.",
@@ -77,6 +88,19 @@
           "const": 1,
           "title": "Profile Version",
           "type": "integer"
+        },
+        "sources": {
+          "additionalProperties": {
+            "enum": [
+              "CONFIRMED_INTENT",
+              "DERIVED_INTENT",
+              "FAMILY_DEFAULT",
+              "USER_OVERRIDE"
+            ],
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "object"
         }
       },
       "required": [
@@ -114,6 +138,10 @@
       },
       "title": "Affected Components",
       "type": "array"
+    },
+    "basis": {
+      "$ref": "#/$defs/CheckBasis",
+      "default": "OBJECTIVE_SOURCE_DIAGNOSTIC"
     },
     "candidate_repairs": {
       "items": {

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** D025 readable target confirmation (this file is included)
+**Current commit:** D026 explicit check authority and layered validation (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -19,7 +19,7 @@
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
 | M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 semantic intake; D024 protected one-command local launcher |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
-| M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
+| M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
 
@@ -45,10 +45,32 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 87 passed and the opt-in live-provider test skipped. D019–D025 acceptance
+- Tests: `uv run pytest` — 97 passed and the opt-in live-provider test skipped. D019–D026 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
+- Check authority: every finding and verification assertion now identifies frozen project policy,
+  universal invariant, objective source diagnostic, or external-consumer evidence. Policy findings
+  cite exact parameter values and `CONFIRMED_INTENT`, `DERIVED_INTENT`, `FAMILY_DEFAULT`, or
+  `USER_OVERRIDE`; the earlier target-intake artifact separately preserves whether a proposal came
+  from model inference, explicit user text, or user clarification. Model conclusions cannot waive
+  validity, authorization, source-preservation, or verification invariants.
+- Strengthened inspection: direct accessor analysis covers cardinality, finite data, unit normals,
+  tangent handedness, index ranges, and degenerate triangles. Active-scene/resource diagnostics
+  cover empty and unreachable nodes, unused resources, apparent duplicate materials/textures, root
+  origins, and a ground-center reference. Newly exposed unsupported domains remain report-only;
+  malformed glTF-validity conditions block repair.
+- Strengthened verification: accessors, buffer views/buffers, materials, textures, images,
+  samplers, animations, skins, cameras, primitives, original node references, extensions/extras,
+  and the complete binary payload must remain semantically unchanged. A deliberately parseable
+  material mutation fails the universal preservation gate.
+- Official validation: the pinned Khronos glTF Validator 2.0.0-dev.3.10 reports zero errors for the
+  clean fixture and two `ACCESSOR_MIN_MISMATCH` errors for each untouched Tripo asset. The
+  strengthened Shader Lantern run added no errors, passed verification, and explicitly retained the
+  source errors plus its generated-tangent warning instead of claiming zero-error conformance.
+- Render evidence: the typed four-view comparison reproduces maximum raw-versus-Shepherd MAE of
+  0.081863/255 and Shepherd-versus-Blender-re-export MAE of 0.000334/255. The tool reports numeric
+  external evidence only and does not replace human appearance adjudication.
 - Semantic target intake: ordinary intake begins with one description. The authorized interim
   OpenAI Luna/xhigh provider proposes supported use and plausible semantic height through strict
   structured output; server validation and the 0.8 confidence gate ask only genuinely unresolved

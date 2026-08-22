@@ -4,6 +4,7 @@ from asset_shepherd.validation.models import (
     Adjudication,
     AssetProvenance,
     MutationManifest,
+    RenderComparison,
 )
 
-__all__ = ["Adjudication", "AssetProvenance", "MutationManifest"]
+__all__ = ["Adjudication", "AssetProvenance", "MutationManifest", "RenderComparison"]

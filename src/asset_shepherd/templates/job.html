@@ -86,8 +86,10 @@
                         <details class="finding-detail">
                           <summary>Details</summary>
                           <p>{{ finding.description }}</p>
+                          <p><strong>Check basis</strong> {{ finding.basis|replace('_', ' ')|lower }}</p>
                           {% if finding.id in rule_explanations %}
                             <p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>
+                            {% if finding.rule_provenance.sources %}<p class="rule-provenance"><strong>Rule source</strong> {% for path, source in finding.rule_provenance.sources.items() %}<code>{{ path }}</code> {{ source|replace('_', ' ')|lower }}{% if not loop.last %}; {% endif %}{% endfor %}</p>{% endif %}
                           {% endif %}
                           {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
                         </details>
@@ -111,6 +113,9 @@
               {% for stage in stages %}<li class="{{ stage.status }}">{{ stage.name }}</li>{% endfor %}
             </ol>
             <p class="session-note">Frozen policy <code>{{ job.profile.profile_id }}</code> · <code>{{ job.profile.policy_provenance.canonical_sha256[:12] }}</code>. Changing rules starts a new inspection and job.</p>
+            {% if inspection and inspection.diagnostics %}
+              <p class="session-note">Objective source diagnostics · {{ inspection.diagnostics.primitives|length }} primitives · {{ inspection.diagnostics.empty_leaf_node_indices|length }} empty leaf nodes · {{ inspection.diagnostics.unused_material_indices|length }} unused materials · {{ inspection.diagnostics.duplicate_material_groups|length }} apparent duplicate material groups.</p>
+            {% endif %}
           </div>
         </details>
       </section>
@@ -245,7 +250,7 @@
                 {% for check in verification.checks %}
                   <div class="check-row {{ check.status|lower }}">
                     <span aria-hidden="true">{% if check.status == 'PASS' %}✓{% elif check.status == 'BLOCKED' %}—{% else %}!{% endif %}</span>
-                    <div><strong>{{ check.code }}</strong><small>{{ check.description }}</small></div>
+                    <div><strong>{{ check.code }}</strong><small>{{ check.description }} · {{ check.basis|replace('_', ' ')|lower }}</small></div>
                   </div>
                 {% endfor %}
               </div>

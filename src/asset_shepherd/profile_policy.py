@@ -92,6 +92,7 @@ def _path_value(profile: ProjectProfile, path: str) -> JsonValue:
 def finding_rule_provenance(
     profile: ProjectProfile,
     profile_rule: str | None,
+    policy: ProfilePolicyProvenance | None = None,
 ) -> FindingRuleProvenance | None:
     """Resolve the active parameter values behind one primary finding rule."""
     if profile_rule is None:
@@ -101,4 +102,9 @@ def finding_rule_provenance(
         profile_id=profile.profile_id,
         profile_version=profile.profile_version,
         parameters={path: _path_value(profile, path) for path in parameter_paths},
+        sources={
+            path: source
+            for path in parameter_paths
+            if policy is not None and (source := policy.rule_sources.get(path)) is not None
+        },
     )
