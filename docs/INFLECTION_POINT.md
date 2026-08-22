@@ -1,6 +1,6 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** Review draft
+**Status:** External review complete; user decision required
 
 **Date:** 2026-08-22
 
@@ -20,7 +20,7 @@ deterministic core remains the sole authority for facts, repairs, approvals, and
 
 ## Short answer and recommended direction
 
-The stronger product is the second model, with a strict qualification:
+The stronger product hypothesis is the second model, with a strict qualification:
 
 > The conversation owns collaboration and explanation. The deterministic core owns truth and
 > execution.
@@ -345,3 +345,146 @@ Please return:
 5. any contradiction with the current contract, safety model, or evaluation plan;
 6. a proposed user journey in no more than eight steps;
 7. the three highest-risk assumptions to validate before implementation.
+
+## ChatGPT Pro review outcome
+
+**Review date:** 2026-08-22
+
+**Review source:**
+<https://chatgpt.com/c/6a879ddd-f8e8-83ea-b153-e5ebf18c8615>
+
+**Decision status:** Advisory. The review does not authorize AWS activity, paid model calls,
+contract changes, or implementation. The user must accept, modify, or reject the proposed product
+direction before it becomes a decision record.
+
+### Reviewer recommendation
+
+Adopt a **conversation-led, contract-anchored asset workspace**, while explicitly rejecting a
+chat-only product.
+
+The conversation should replace wizard sequencing as the primary interaction. A persistent,
+visible **Job Contract** should remain beside it and expose the source, target, rules, measured
+facts, findings, plan, decision, verification, and package status. The agent may collaborate,
+explain, and call narrow typed tools. Deterministic code remains authoritative for measurements,
+findings, candidate repairs, authorization validation, mutation, verification, and readiness. The
+human remains the authority who grants or rejects consequential authorization.
+
+The current form-led application should remain intact as the deterministic reference, offline
+acceptance harness, comparison baseline, and deployment fallback.
+
+### Answers to the ten product questions
+
+| Question | Reviewed direction |
+|---|---|
+| Conversation depth | Keep the agent present from intake through download and evidence-grounded follow-up, without expanding its authority. |
+| Policy selection | Ordinary users confirm a derived target and read-only rules summary; the system selects the nearest trusted baseline and freezes a schema-valid job copy. Advanced users retain supported rule customization. |
+| Target timing | Accept the GLB before final target agreement and run objective, measurement-only preflight. Do not create policy-relative findings, a registered plan, approval interrupt, readiness result, or mutation until typed target confirmation. |
+| Unsupported intent | Preserve the original request, but require acceptance of a narrower supported goal such as `static_mesh_for_external_rigging`. Otherwise return inspection-only diagnostics. Never claim that the result is playable. |
+| Description semantics | Use description text to choose questions. Compare it with appearance-related facts only when deterministic material or texture metadata supports the statement. Classify each property as supported, contradicted, or not evaluated. |
+| Conversation evidence | Package structured state transitions, confirmed intent, versions and hashes, a deterministic tool ledger, registered action and decision records, and artifact references. Exclude chain-of-thought, routine prose, hidden prompts, and the raw transcript. |
+| Durability | Survive browser refresh, application restart, and agent-runtime restart. Persist the frozen source, state, interrupt, decisions, idempotency keys, artifacts, retention deadline, and bounded conversation state. |
+| Default interface | Replace form-led navigation, not structured state. Keep the Job Contract inspectable and use a structured approval control; chat text cannot authorize repair. |
+| Evaluation | Compare form-led and conversation-led paths on the same registered assets and controlled cases. Gate release on target accuracy, comprehension, safe decisions, verified outputs, and reliable resume rather than perceived friendliness. |
+| Scope gate | Limit the first hosted conversation to bounded intake, typed confirmation, existing deterministic tools, exact approval, durable resume, evidence explanation, and the existing package. Defer all new repair domains and open-ended editing. |
+
+### Smallest coherent hosted slice
+
+Include:
+
+- one durable workspace for one conversation, one source GLB, one frozen target, one policy, one
+  deterministic plan, and one result package;
+- early source hashing, structural eligibility checks, and objective measurements;
+- at most three initial focused questions, with extra questions only for material contradictions or
+  unsupported goals;
+- an editable typed target card before confirmation and immutable state afterward;
+- narrow, path-free Strands tools over the current inspector, planner, repair engine, verifier, and
+  packager;
+- explanations that cite finding IDs, measurements, and frozen policy rules;
+- the existing exact grouped normalization interrupt, with approval or rejection bound to the
+  registered action ID and hash;
+- restart-safe, exactly-once resume and package behavior;
+- post-verification questions limited to recorded evidence and external handoffs;
+- the contract's existing AWS identity, model-access, budget, least-privilege, retention, and paid
+  invocation checkpoints.
+
+Explicitly defer:
+
+- every new repair operation or editable safety rule;
+- visual-model judgment and model-generated transforms;
+- authorization through conversational prose;
+- material, texture, transparency, emissive, topology, UV, rigging, animation, LOD, or collision
+  edits;
+- Blender or Unreal in AgentCore or as hosted workers;
+- multi-asset conversations, cross-job memory, accounts, teams, shared profile libraries, arbitrary
+  JSON policy upload, and open-ended post-completion editing;
+- general shell or filesystem access and long-term transcript retention.
+
+### Contract and decision conflicts requiring explicit resolution
+
+1. **D012 and D018 ordering.** They require rule and target agreement before upload. The reviewed
+   hosted flow permits upload and measurement-only preflight first. This is safe only if no
+   policy-relative finding, plan, approval, repair, or readiness state exists before confirmation.
+2. **Profile-selection language.** The project contract currently says the user selects a profile
+   in the UI or supplies JSON. The reviewed ordinary-user flow confirms a frozen derived policy
+   rather than choosing a named baseline. The resolved profile still must be schema-valid,
+   versioned, hashed, and inspectable.
+3. **D018 packaged description.** The current package freezes the exact original description and
+   story. The review recommends packaged structured intent plus a canonical hash, with raw text
+   retained privately for a short period or included only by explicit choice.
+4. **Authority wording.** The human grants or rejects consequential authorization. Deterministic
+   code validates its binding and enforces it. The agent owns neither authority.
+5. **M9 gate.** Conversation and durability can be a bounded M9 product slice, but they do not
+   replace the controlling M9 AWS deployment, logged-out-access, observability, retention, cleanup,
+   and cost gates.
+6. **Evidence standard.** The conversation-led model is the stronger hypothesis, not yet a proven
+   stronger product. A controlled comparison must decide that claim.
+
+No reviewed recommendation changes the GLB-only input boundary, source-preservation rules,
+registered repair set, exact approval requirement, independent verification, seven-artifact
+package, or real-world validation plan.
+
+### Reviewed eight-step user journey
+
+1. Describe the intended object and use in one sentence, then upload one GLB.
+2. Asset Shepherd hashes, validates, and measures the untouched source without planning repairs.
+3. The agent asks only questions required by missing context, measured contradictions, or unsupported
+   intent.
+4. The user edits and explicitly confirms the typed target, supported job goal, derived rules, and
+   external handoffs.
+5. Deterministic tools inspect and register the smallest supported plan; the agent explains cited
+   evidence.
+6. The user approves or rejects the exact grouped normalization through a structured interrupt.
+7. Deterministic tools repair a copy, independently verify it, and package the seven artifacts.
+8. The user downloads the result and may ask evidence-only questions until the job is deleted or
+   expires.
+
+### Highest-risk assumptions
+
+1. Conversation improves target accuracy, completion time, or comprehension without increasing
+   unsafe authorization or false-readiness claims.
+2. Users understand the difference between measured source facts and a provisional target that has
+   not yet been confirmed.
+3. Durable Bedrock/Strands interruption and exactly-once resume remain reliable and affordable
+   across browser, application, and runtime restarts.
+
+### Codex assessment and proposed disposition
+
+The recommendation is coherent and preserves Asset Shepherd's safety thesis. The Job Contract is
+the essential qualification: the product should feel conversational without making policy,
+evidence, or approval disappear into prose.
+
+If the user approves this direction, record a new decision before implementation that:
+
+- makes conversation the primary hosted navigation but keeps visible structured state and the
+  current form-led reference path;
+- permits only objective preflight before typed target confirmation;
+- derives and freezes the ordinary user's policy while retaining Advanced review and supported
+  customization;
+- separates original intent from a narrower supported job goal;
+- makes structured controls the only authorization mechanism;
+- minimizes packaged conversation data; and
+- treats conversation/durability as bounded additions to M9 without weakening its existing AWS,
+  deployment, cost, and access gate.
+
+Until that explicit user decision exists, D012 and D018 continue to control the executable product
+and no M9 implementation or AWS activity is authorized.

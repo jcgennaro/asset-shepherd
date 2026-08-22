@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** M8 intent-first target agreement and product inflection review (this file is included)
+**Current commit:** Product inflection external review recorded (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -99,8 +99,13 @@ before any paid invocation or resource creation.
 - Product inflection review: `docs/INFLECTION_POINT.md` is the single current-versus-envisioned
   handoff. It preserves the existing form-led product as the executable baseline, defines the
   proposed persistent Bedrock/Strands asset conversation, fixes the authority boundary, surfaces ten
-  pre-M9 decisions, and proposes a staged transition. Its envisioned model remains a review draft,
-  not authorization for AWS work or additional repair domains.
+  pre-M9 decisions, and proposes a staged transition. ChatGPT Pro completed the requested review and
+  recommended a conversation-led, contract-anchored workspace rather than a chat-only product. The
+  recorded outcome calls for objective preflight before target confirmation, a visible structured
+  Job Contract, derived frozen policy for ordinary users, exact non-chat authorization, durable
+  resume, structured provenance, and the unchanged repair pipeline. The recommendation remains
+  advisory pending an explicit user decision and does not authorize AWS work or additional repair
+  domains.
 - Distribution audit: `uv build --wheel` succeeded with the intent module, confirmation template,
   workflow rail, updated intake/job templates, CSS, JavaScript, favicon, and existing deterministic
   runtime assets included in the wheel. The checked-in public intent schema remains a repository
@@ -132,16 +137,20 @@ before any paid invocation or resource creation.
 
 ## Blockers
 
-RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. M9 requires the user to
-configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock region/model access,
-and a budget alert before paid calls. Read-only preflight found that AWS CLI is not installed on this
-workstation (`Get-Command aws` returned no command). A human-cleaned reference and manual-time
-record remain required for the full RW4 comparison gate.
+The product-inflection review requires the user to accept, modify, or reject its recommended hosted
+interaction model before implementation changes D012, D018, profile-selection language, or packaged
+intent retention. RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. M9 requires
+the user to configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock
+region/model access, and a budget alert before paid calls. Read-only preflight found that AWS CLI is
+not installed on this workstation (`Get-Command aws` returned no command). A human-cleaned reference
+and manual-time record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Review `docs/INFLECTION_POINT.md` with ChatGPT Pro and record the resulting product direction before
-beginning M9 implementation. The earliest corpus work remains RW2 registration of the untouched
-Debug Beetle GLB when the user supplies it; do not begin Cloudforge until that batch is complete.
-Before M9 paid-provider work, confirm the dedicated AWS profile, Bedrock model/region access, and
-budget alert. No paid invocation or AWS resource creation is authorized yet.
+Obtain the user's explicit disposition of the reviewed direction in `docs/INFLECTION_POINT.md`. If
+accepted, record a new decision and resolve the identified ordering, policy-presentation, authority,
+and provenance-retention changes before implementing them. The earliest corpus work remains RW2
+registration of the untouched Debug Beetle GLB when the user supplies it; do not begin Cloudforge
+until that batch is complete. Before M9 paid-provider work, confirm the dedicated AWS profile,
+Bedrock model/region access, and budget alert. No paid invocation or AWS resource creation is
+authorized yet.
