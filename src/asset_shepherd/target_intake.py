@@ -21,6 +21,7 @@ class TargetEvidenceSource(StrEnum):
     """Auditable source of one proposed target field."""
 
     EXPLICIT_USER_TEXT = "EXPLICIT_USER_TEXT"
+    MODEL_INFERENCE = "MODEL_INFERENCE"
     USER_CLARIFICATION = "USER_CLARIFICATION"
 
 
@@ -36,8 +37,10 @@ class TargetFieldEvidence(ContractModel):
 class TargetIntakeContract(ContractModel):
     """Minimum typed state required before Asset Shepherd may offer target confirmation."""
 
-    schema_version: Literal[1] = 1
+    schema_version: Literal[1, 2] = 2
     description: Annotated[str, Field(min_length=12, max_length=600)]
+    analyzer_provider: Annotated[str, Field(min_length=1, max_length=40)] = "deterministic"
+    analyzer_model: Annotated[str, Field(min_length=1, max_length=120)] = "explicit-text-v1"
     target_use: AssetTargetUse | None = None
     target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)] | None = None
     evidence: tuple[TargetFieldEvidence, ...] = ()
@@ -161,6 +164,8 @@ def draft_target_intake(description: str) -> TargetIntakeContract:
         missing_values.append("target_height_cm")
     return TargetIntakeContract(
         description=normalized,
+        analyzer_provider="deterministic",
+        analyzer_model="explicit-text-v1",
         target_use=target_use,
         target_height_cm=target_height_cm,
         evidence=evidence,
@@ -209,8 +214,47 @@ def clarify_target_intake(
         )
     return TargetIntakeContract(
         description=draft.description,
+        analyzer_provider=draft.analyzer_provider,
+        analyzer_model=draft.analyzer_model,
         target_use=target_use,
         target_height_cm=target_height_cm,
         evidence=tuple(evidence),
+        missing_fields=(),
+    )
+
+
+def revise_target_intake(
+    draft: TargetIntakeContract,
+    *,
+    target_use_value: str,
+    target_height_m: str,
+) -> TargetIntakeContract:
+    """Replace an unconfirmed proposal with two explicit user-supplied target values."""
+    try:
+        target_use = AssetTargetUse(target_use_value)
+    except ValueError as error:
+        raise ValueError("Choose what the asset should become.") from error
+    target_height_cm = target_height_cm_from_meters(target_height_m)
+    evidence = (
+        TargetFieldEvidence(
+            field="target_use",
+            source=TargetEvidenceSource.USER_CLARIFICATION,
+            confidence=1.0,
+            evidence="Explicit target adjustment",
+        ),
+        TargetFieldEvidence(
+            field="target_height_cm",
+            source=TargetEvidenceSource.USER_CLARIFICATION,
+            confidence=1.0,
+            evidence="Explicit target adjustment",
+        ),
+    )
+    return TargetIntakeContract(
+        description=draft.description,
+        analyzer_provider=draft.analyzer_provider,
+        analyzer_model=draft.analyzer_model,
+        target_use=target_use,
+        target_height_cm=target_height_cm,
+        evidence=evidence,
         missing_fields=(),
     )

@@ -33,18 +33,20 @@ distributable real-world demo input. Generated GLBs and ZIPs remain reproducible
 
 ```powershell
 uv sync
+$env:OPENAI_API_KEY = "your-key"
 uv run asset-shepherd web
 ```
 
 Open `http://127.0.0.1:8000`. The flow starts with one question: what the user was trying to make.
-Asset Shepherd extracts intended use and real-world height when the description states them, asks
-only for missing or conflicting required information, and then drafts one exact target story. The
-user must agree to it before rules or upload are available. The typed intake snapshot and frozen,
-canonically hashed intent are stored with the job. Changing intent starts a new inspection.
+The interim OpenAI intake provider uses `gpt-5.6-luna` with `xhigh` reasoning to propose a supported
+use and plausible semantic scale from ordinary language. Only the description is sent; the GLB
+stays local. The user adjusts or confirms that typed proposal before rules or upload are available.
+The frozen intake records provider/model provenance, and changing intent starts a new inspection.
+Use `uv run asset-shepherd web --offline-intake` for the explicit-text, zero-network fallback.
 
 The versioned D019 reference is at `http://127.0.0.1:8000/workspace`. It starts with a short asset
-description plus the untouched GLB, performs profile-free objective preflight, asks only for any
-missing intended use or height, and then asks the user to confirm the complete typed target. A
+description plus the untouched GLB, performs profile-free objective preflight, uses the same
+semantic proposal, and asks only for fields that remain genuinely ambiguous. A
 persistent Job Contract shows measured source facts, the derived
 frozen policy, findings, registered plan, exact decision, verification, and package state beside the
 conversation. Ordinary users never choose a named scale preset. Advanced customization is limited
@@ -52,11 +54,10 @@ to fields already enforced by `ProjectProfile`; safety and repair boundaries rem
 
 The persistent left pane shows the shared **Describe -> Agree -> Inspect -> Decide -> Download**
 workflow. Intake presents **Rules -> Upload** one step at a time, and each job presents only its
-current Inspect, Decide, or Download view. The default local implementation uses a zero-network
-scripted provider over the real Strands loop. The `/workspace` path provides the bounded
-conversation and evidence questions without a network request. A future Bedrock provider will make
-the questions adaptive, but deterministic measurements, repairs, authorization, and verification
-remain authoritative.
+current Inspect, Decide, or Download view. Intake currently calls OpenAI through a provider-neutral
+boundary; the repair workflow still uses a zero-network scripted provider over the real Strands
+loop. Bedrock will replace the interim intake provider through the same typed interface.
+Deterministic measurements, repairs, authorization, and verification remain authoritative.
 
 New conversational jobs use one immutable, versioned **Unreal Static Game Asset Policy Family**.
 Asset Shepherd proposes the complete job policy from the already-confirmed target story, including
@@ -108,7 +109,7 @@ resumes. The deterministic seven-file ZIP remains unchanged; `agent_result.json`
 contains the prompt version, user-facing summary, provider/model identity, token usage, tool
 success/error/duration metrics, interrupt count, correction count, and final verification state.
 
-Live model use is opt-in and has no hard-coded model ID. Copy `.env.example` into your environment,
-set `ASSET_SHEPHERD_MODEL_ID` and region to values available in your account, and use the standard
-`AWS_PROFILE`. The live integration test runs only when `ASSET_SHEPHERD_RUN_LIVE=1`; ordinary tests
-never look up credentials or make network requests.
+Live Bedrock use for the Strands repair workflow remains opt-in and has no hard-coded model ID. Copy
+`.env.example` into your environment, set `ASSET_SHEPHERD_MODEL_ID` and region to values available
+in your account, and use the standard `AWS_PROFILE`. The live integration test runs only when
+`ASSET_SHEPHERD_RUN_LIVE=1`; ordinary tests never look up credentials or make network requests.

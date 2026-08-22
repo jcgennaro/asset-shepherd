@@ -4,6 +4,50 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D023 — Provider-neutral semantic intake uses OpenAI Luna until Bedrock
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 conversational intake
+
+**Context**
+
+The D022 explicit-text extractor made the entry screen look like a questionnaire: descriptions such
+as “a mountain of goop” produced two required fields even though an LLM can propose a reasonable
+game use and semantic scale. The repository already used Strands for workflow sequencing, but the
+running intake path did not invoke a model. The user authorized interim paid OpenAI API use with
+`gpt-5.6-luna` at `xhigh` reasoning and directed that Bedrock replace it later.
+
+**Decision**
+
+Add a provider-neutral `TargetIntakeAnalyzer` boundary. The normal CLI web process uses the OpenAI
+Responses API with `gpt-5.6-luna`, `xhigh` reasoning, low answer verbosity, strict structured output,
+and `store: false`; `--offline-intake` retains the deterministic explicit-text acceptance path.
+Only the normalized description is sent to the intake provider, never the GLB. Server code validates
+the returned `TargetIntakeInference`, applies the existing 0.8 confidence gate, and constructs
+`TargetIntakeContract` itself. Provider and model identity are retained in that contract.
+
+The model should propose a supported use and plausible semantic vertical height whenever one
+interpretation is useful enough for confirmation. It asks a natural-language follow-up only when a
+required field remains genuinely ambiguous. The proposal is not a fact or authorization: the user
+may adjust it and must explicitly confirm it before policy inspection. Model output cannot specify
+transforms, policy safety settings, repair candidates, approvals, mutation, verification, or
+readiness. Bedrock will implement the same interface and schema rather than changing downstream
+contracts.
+
+**Evidence and consequences**
+
+Mock-transport acceptance verifies the exact Luna/xhigh structured request, semantic use/scale
+proposal, confidence fallback, safe provider errors, and credential-free offline selection. Web and
+durable-workspace acceptance verify concise questions, editable proposals, persisted analyzer
+provenance, restart-safe adjustments, and exactly-once commands. This changes intake collaboration
+only; the deterministic workflow, policy family, explicit physical approval, source preservation,
+and repair scope are unchanged.
+
 ### D022 — Minimum target-intake contract asks only for unresolved required information
 
 **Date:** 2026-08-22

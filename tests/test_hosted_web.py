@@ -54,11 +54,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
 
     measured = client.get(workspace_path)
     assert measured.status_code == 200
-    assert "Measured, target not yet agreed." in measured.text
-    assert (
-        "No policy findings, repair plan, approval, mutation, or readiness result exists yet."
-        in measured.text
-    )
+    assert "treat this as a 1.8 m static game asset." in measured.text
     assert "Job Contract" in measured.text
     assert "Rules are derived only after target confirmation." in measured.text
     assert not (work_root / "hosted" / workspace_id / "output").exists()
@@ -139,7 +135,7 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     workspace_path = urlparse(created.headers["location"]).path
 
     clarification = client.get(workspace_path)
-    assert "One quick answer before I can propose the target." in clarification.text
+    assert "About how tall should it be?" in clarification.text
     assert 'name="target_height_m"' in clarification.text
     assert 'name="target_use"' not in clarification.text
     command_id = _hidden(clarification.text, "command_id")
@@ -151,7 +147,7 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     )
     assert answered.status_code == 303
     proposal = client.get(workspace_path)
-    assert "I have enough information. Is this target right?" in proposal.text
-    assert "Static game asset" in proposal.text
+    assert "treat this as a 1.8 m static game asset." in proposal.text
     assert "1.8 m" in proposal.text
-    assert 'name="target_height_m"' not in proposal.text
+    assert "Adjust target" in proposal.text
+    assert "What real-world height should it have?" not in proposal.text

@@ -4,7 +4,7 @@
     <header class="intent-heading">
       <p class="section-label">One asset · one durable workspace</p>
       <h2 id="conversation-title">Show me what you made.</h2>
-      <p>Tell Asset Shepherd the intent, then upload the untouched GLB. We measure it before asking you to freeze a target.</p>
+      <p>Describe it naturally and upload the untouched GLB. I’ll propose the target.</p>
     </header>
 
     {% if error %}
@@ -19,7 +19,7 @@
       <label class="drop-zone compact" for="hosted-asset">
         <input id="hosted-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
         <strong data-file-label>Choose the untouched GLB</strong>
-        <span>Measured locally · no model or network request</span>
+        <span>The GLB stays local{% if semantic_intake_external %}; only your description is sent to the intake model{% endif %}</span>
       </label>
       <button class="primary-button" type="submit" data-submit-button>Measure my asset <span aria-hidden="true">→</span></button>
     </form>

@@ -25,6 +25,10 @@ from asset_shepherd.hosted_workspace import (
     HostedWorkspaceError,
     HostedWorkspaceStore,
 )
+from asset_shepherd.intake_analyzer import (
+    DeterministicTargetIntakeAnalyzer,
+    TargetIntakeAnalyzer,
+)
 from asset_shepherd.intent import (
     TARGET_USE_LABELS,
     build_asset_intent,
@@ -49,7 +53,7 @@ from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.target_intake import (
     TargetIntakeContract,
     clarify_target_intake,
-    draft_target_intake,
+    revise_target_intake,
 )
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -754,10 +758,16 @@ def _public_workflow_error(error: Exception) -> str:
 class WebJobStore:
     """Thread-safe in-process job registry with isolated filesystem workspaces."""
 
-    def __init__(self, work_root: Path, family: PolicyFamilyOption) -> None:
+    def __init__(
+        self,
+        work_root: Path,
+        family: PolicyFamilyOption,
+        intake_analyzer: TargetIntakeAnalyzer,
+    ) -> None:
         """Create a registry rooted in an ignored, caller-controlled directory."""
         self.work_root = work_root.resolve(strict=False)
         self.family = family
+        self.intake_analyzer = intake_analyzer
         self._intents: dict[str, WebIntent] = {}
         self._jobs: dict[str, WebJob] = {}
         self._lock = RLock()
@@ -767,7 +777,7 @@ class WebJobStore:
         description: str,
     ) -> WebIntent:
         """Extract and retain one minimum-information target contract."""
-        target = draft_target_intake(description)
+        target = self.intake_analyzer.analyze(description)
         intent_id = uuid4().hex
         intent = WebIntent(
             intent_id=intent_id,
@@ -790,6 +800,27 @@ class WebJobStore:
                 raise UploadValidationError("This target story is already confirmed.")
             try:
                 intent.target = clarify_target_intake(
+                    intent.target,
+                    target_use_value=target_use_value,
+                    target_height_m=target_height_m,
+                )
+            except ValueError as error:
+                raise UploadValidationError(str(error)) from error
+            return intent
+
+    def revise_intent(
+        self,
+        intent: WebIntent,
+        *,
+        target_use_value: str,
+        target_height_m: str,
+    ) -> WebIntent:
+        """Replace an unconfirmed model proposal with explicit target values."""
+        with self._lock:
+            if intent.confirmed is not None:
+                raise UploadValidationError("This target story is already confirmed.")
+            try:
+                intent.target = revise_target_intake(
                     intent.target,
                     target_use_value=target_use_value,
                     target_height_m=target_height_m,
@@ -1058,13 +1089,16 @@ def create_app(
     *,
     project_root: Path = _DEFAULT_PROJECT_ROOT,
     work_root: Path = _DEFAULT_WORK_ROOT,
+    intake_analyzer: TargetIntakeAnalyzer | None = None,
 ) -> FastAPI:
     """Create a local Asset Shepherd web application and isolated job store."""
     family = discover_policy_family(project_root.resolve(strict=True))
-    store = WebJobStore(work_root, family)
+    analyzer = intake_analyzer or DeterministicTargetIntakeAnalyzer()
+    store = WebJobStore(work_root, family, analyzer)
     hosted_store = HostedWorkspaceStore(
         work_root / "hosted",
         family.profile,
+        analyzer,
     )
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     app = FastAPI(
@@ -1088,6 +1122,7 @@ def create_app(
             context={
                 "error": error,
                 "values": values or {},
+                "semantic_intake_external": analyzer.provider != "deterministic",
                 "active_mode": "describe",
                 "active_style": "Describe",
             },
@@ -1108,6 +1143,7 @@ def create_app(
             context={
                 "error": error,
                 "description": description,
+                "semantic_intake_external": analyzer.provider != "deterministic",
                 "active_mode": "conversation",
                 "active_style": "Conversation",
             },
@@ -1219,6 +1255,30 @@ def create_app(
             headers={"Cache-Control": "no-store"},
         )
 
+    def render_intent_confirmation(
+        request: Request,
+        intent: WebIntent,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        """Render one concise, adjustable proposal before explicit agreement."""
+        return templates.TemplateResponse(
+            request=request,
+            name="intent.html",
+            context={
+                "intent": intent,
+                "target_use_label": TARGET_USE_LABELS[intent.target_use],
+                "target_uses": tuple(
+                    (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
+                ),
+                "error": error,
+                "active_mode": "confirm",
+                "active_style": "Confirm",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
     def render_story_home(
         request: Request,
         story: StoryDefinition,
@@ -1281,17 +1341,7 @@ def create_app(
             return render_intent_home(request, str(error), status_code=404)
         if not intent.ready_for_confirmation:
             return render_intent_clarification(request, intent)
-        return templates.TemplateResponse(
-            request=request,
-            name="intent.html",
-            context={
-                "intent": intent,
-                "target_use_label": TARGET_USE_LABELS[intent.target_use],
-                "active_mode": "confirm",
-                "active_style": "Confirm",
-            },
-            headers={"Cache-Control": "no-store"},
-        )
+        return render_intent_confirmation(request, intent)
 
     def clarify_intent(
         request: Request,
@@ -1312,6 +1362,30 @@ def create_app(
             if intent is None:
                 return render_intent_home(request, str(error), status_code=404)
             return render_intent_clarification(request, intent, str(error), status_code=400)
+        return RedirectResponse(
+            request.url_for("intent_review", intent_id=intent_id),
+            status_code=303,
+        )
+
+    def revise_intent(
+        request: Request,
+        intent_id: str,
+        target_use: Annotated[str, Form()],
+        target_height_m: Annotated[str, Form()],
+    ) -> Response:
+        """Apply an explicit pre-confirmation correction to a model proposal."""
+        try:
+            intent = require_intent(intent_id)
+            store.revise_intent(
+                intent,
+                target_use_value=target_use,
+                target_height_m=target_height_m,
+            )
+        except UploadValidationError as error:
+            intent = store.get_intent(intent_id)
+            if intent is None:
+                return render_intent_home(request, str(error), status_code=404)
+            return render_intent_confirmation(request, intent, str(error), status_code=400)
         return RedirectResponse(
             request.url_for("intent_review", intent_id=intent_id),
             status_code=303,
@@ -1561,6 +1635,33 @@ def create_app(
             status_code=303,
         )
 
+    def revise_hosted_target(
+        request: Request,
+        workspace_id: str,
+        command_id: Annotated[str, Form()],
+        target_use: Annotated[str, Form()],
+        target_height_m: Annotated[str, Form()],
+    ) -> Response:
+        """Apply an explicit correction to an unfrozen semantic target proposal."""
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            hosted_store.revise_target(
+                workspace,
+                target_use_value=target_use,
+                target_height_m=target_height_m,
+                command_id=command_id,
+            )
+        except HostedWorkspaceError as error:
+            try:
+                workspace = require_hosted_workspace(workspace_id)
+            except HostedWorkspaceError:
+                return render_hosted_home(request, str(error), status_code=404)
+            return render_hosted_workspace(request, workspace, str(error), status_code=400)
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            status_code=303,
+        )
+
     def confirm_hosted_target(
         request: Request,
         workspace_id: str,
@@ -1714,6 +1815,12 @@ def create_app(
         name="clarify_intent",
     )
     app.add_api_route(
+        "/intents/{intent_id}/revise",
+        revise_intent,
+        methods=["POST"],
+        name="revise_intent",
+    )
+    app.add_api_route(
         "/intents/{intent_id}/agree",
         confirm_intent,
         methods=["POST"],
@@ -1802,6 +1909,12 @@ def create_app(
         clarify_hosted_target,
         methods=["POST"],
         name="clarify_hosted_target",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/target/revise",
+        revise_hosted_target,
+        methods=["POST"],
+        name="revise_hosted_target",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/decision",

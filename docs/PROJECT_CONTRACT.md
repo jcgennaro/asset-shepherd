@@ -5,10 +5,10 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.3
+**Document version:** 1.4
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
-and D022 minimum target-intake contract, 2026-08-22
+D022 minimum target-intake contract, and D023 provider-neutral semantic intake, 2026-08-22
 
 ---
 
@@ -281,13 +281,15 @@ Before offering target confirmation, the agent must satisfy the versioned minimu
 contract. It requires a normalized asset description, one supported intended-use value, and a
 positive intended real-world target height. Every populated target field must retain concise source
 evidence and confidence of at least 0.8; a missing, ambiguous, conflicting, or lower-confidence
-required field remains explicitly
-missing. The agent should derive values already supported by the user's words and ask only for the
-missing or unresolved fields. It must never substitute the measured source dimensions for intended
-dimensions. Grounding, naming, tolerances, and resource budgets are resolved-policy parameters, not
-mandatory intake questions. The user still confirms the complete typed target once before any
-policy-relative inspection. The local zero-network extractor and a future Bedrock model must emit
-the same public schema; model prose alone is not target state.
+required field remains explicitly missing. The agent should infer a useful target proposal from the
+user's ordinary words, including semantic object scale when no number is supplied, and ask only
+when materially different interpretations remain below the confidence gate. It must never
+substitute measured source dimensions for intended dimensions. Grounding, naming, tolerances, and
+resource budgets are resolved-policy parameters, not mandatory intake questions. The user may
+adjust and must confirm the complete typed target once before any policy-relative inspection. Every
+provider, including the interim OpenAI implementation and the intended Bedrock implementation,
+must emit the same server-validated public schema; model prose alone is not target state. The model
+cannot propose raw transforms, expand repair domains, authorize an action, or declare readiness.
 
 Ordinary users confirm a schema-valid job-scoped policy resolved from one trusted, immutable,
 versioned parameterized family. They do not choose a named scale baseline or re-enter target state

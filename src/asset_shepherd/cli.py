@@ -74,6 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
     web_parser.add_argument("--host", default="127.0.0.1")
     web_parser.add_argument("--port", type=int, default=8000)
     web_parser.add_argument("--work-dir", type=Path, default=Path("build/web/jobs"))
+    web_parser.add_argument(
+        "--offline-intake",
+        action="store_true",
+        help="Use explicit-text intake instead of the configured semantic model provider",
+    )
     return parser
 
 
@@ -83,10 +88,23 @@ def run_cli(arguments: list[str] | None = None) -> int:
     if args.command == "web":
         import uvicorn
 
+        from asset_shepherd.intake_analyzer import (
+            DeterministicTargetIntakeAnalyzer,
+            TargetIntakeAnalysisError,
+            build_target_intake_analyzer,
+        )
         from asset_shepherd.web import create_app
 
+        try:
+            analyzer = (
+                DeterministicTargetIntakeAnalyzer()
+                if args.offline_intake
+                else build_target_intake_analyzer()
+            )
+        except TargetIntakeAnalysisError as error:
+            build_parser().error(str(error))
         uvicorn.run(
-            create_app(work_root=args.work_dir),
+            create_app(work_root=args.work_dir, intake_analyzer=analyzer),
             host=args.host,
             port=args.port,
         )

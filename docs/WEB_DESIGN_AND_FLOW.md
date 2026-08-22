@@ -16,11 +16,10 @@ Describe the intended asset and target state
   -> Independently verify and download the evidence package
 ```
 
-The future hosted form of the first two steps is a bounded Strands conversation using Amazon
-Bedrock. It may ask follow-up questions, structure intent, and explain results. Measurements,
-candidate repairs, authorization, mutation, verification, and ready/not-ready status remain owned
-by the deterministic engine. The current local implementation uses ordinary validated form input
-and makes no model or network request.
+The first two steps now use a bounded semantic intake provider. OpenAI `gpt-5.6-luna` with `xhigh`
+reasoning is the authorized interim implementation; Amazon Bedrock will replace it behind the same
+typed interface. Measurements, candidate repairs, authorization, mutation, verification, and
+ready/not-ready status remain owned by the deterministic engine.
 
 ## Why intent replaces the role selector
 
@@ -29,10 +28,10 @@ Those routes changed labels but not behavior, and did not answer the important p
 what the person meant to create, what it should be used for, and how large it should be.
 
 The primary entry point now asks one question: **What were you trying to make?** It accepts a
-12–600 character plain-text description. A typed intake pass extracts supported intended-use and
-real-world-height values when they are explicitly present. A clarification view then asks only for
-an unresolved use, unresolved height, or both. It never shows a field whose value is already
-supported by the description.
+12–600 character plain-text description. A typed intake pass proposes supported intended use and a
+plausible semantic vertical scale, even when the prompt contains no number. A clarification view
+asks one natural question only when a required field remains below the confidence gate. It never
+shows a field whose value is already supported by the proposal.
 
 Asset Shepherd drafts one exact first-person target story. The user must review and agree to that
 story before seeing validation rules or an upload control. The description is target metadata, not
@@ -62,7 +61,7 @@ current step, for example `Asset Shepherd -- Describe` or `Asset Shepherd -- Dec
 
 ## Target-story contract
 
-Before a target story exists, the public version-1 `TargetIntakeContract` requires:
+Before a target story exists, the public version-2 `TargetIntakeContract` requires:
 
 - the normalized description;
 - one supported intended-use enum;
@@ -70,11 +69,12 @@ Before a target story exists, the public version-1 `TargetIntakeContract` requir
 - one evidence record, source, and confidence of at least 0.8 for every populated target field; and
 - an exact list of fields that remain missing.
 
-The local zero-network implementation extracts only explicit supported phrases. Conflicting use or
-measurement phrases remain missing rather than being guessed. Structured clarification fills only
-missing fields. Measured GLB bounds can inform evidence and questions but can never stand in for the
-intended height. The draft is stored as `target_intake.json`; it is not repair authorization. A
-future Bedrock model must emit and validate the same schema before the product offers confirmation.
+The interim OpenAI analyzer emits a strict `TargetIntakeInference`; server code validates it,
+applies the 0.8 confidence gate, and constructs the contract. The proposal records provider/model
+identity and inference evidence. The user can adjust both target fields and must confirm once.
+Measured GLB bounds can inform evidence and questions but can never stand in for intended height.
+The draft is stored as `target_intake.json`; it is not repair authorization. The offline extractor
+and future Bedrock implementation emit the same schema.
 
 Agreement creates an immutable `AssetIntentProvenance` record with:
 
@@ -180,16 +180,16 @@ not change.
 
 ## Runtime boundaries and limitations
 
-- The local flow uses the real Strands loop with a scripted zero-network provider.
+- Intake uses the OpenAI Responses API unless `--offline-intake` selects explicit-text extraction.
+  Only the description leaves the process; the uploaded GLB remains local.
+- The repair flow uses the real Strands loop with a scripted zero-network provider.
 - Draft intents and active approval sessions are in memory. Refresh works while the process is
   running; restart requires a new target story and ends active sessions.
 - Job artifacts live below `build/web/jobs/{job_id}` and use opaque server-generated IDs.
-- The local target extractor and resolver recognize only a bounded set of explicit use,
-  measurement, and support-state language
-  such as standing, hanging, or hovering. It does not infer appearance, project budgets, artistic
-  intent, likely dimensions, or unsupported repair goals from prose.
-- A later Bedrock integration may improve that collaboration, but must emit this same bounded schema
-  and may not bypass deterministic inspection, explicit approval, or independent verification.
+- Semantic intake proposes only supported use and intended vertical size. It does not infer project
+  budgets, create transforms, or add unsupported repair goals from prose.
+- Bedrock must emit the same bounded schema and may not bypass deterministic inspection, explicit
+  approval, or independent verification.
 - The current product remains static-GLB repair only. It does not add rigging, skinning, animation,
   topology, UV, material, texture, transparency, emissive, or speculative artistic repair.
 
@@ -213,8 +213,8 @@ not change.
 
 ## Next hosted step
 
-When the AWS milestone is authorized, the Bedrock/Strands conversational layer should conduct the
-same intake as a typed dialogue:
+When the AWS milestone is authorized, Bedrock should replace the interim provider while preserving
+the same typed dialogue:
 
 ```text
 user description

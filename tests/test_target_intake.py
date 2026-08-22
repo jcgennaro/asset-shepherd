@@ -10,6 +10,7 @@ from asset_shepherd.target_intake import (
     TargetIntakeContract,
     clarify_target_intake,
     draft_target_intake,
+    revise_target_intake,
 )
 
 
@@ -94,3 +95,19 @@ def test_completed_contract_cannot_be_silently_rewritten_as_clarification() -> N
 
     with pytest.raises(ValueError, match="already complete"):
         clarify_target_intake(complete, target_height_m="2")
+
+
+def test_user_can_explicitly_replace_an_unconfirmed_model_proposal() -> None:
+    """Adjustment replaces both proposal fields with user evidence and preserves origin."""
+    draft = draft_target_intake("A 1.2 m lantern used as a static game asset.")
+    revised = revise_target_intake(
+        draft,
+        target_use_value=AssetTargetUse.RIG_READY_CHARACTER.value,
+        target_height_m="1.75",
+    )
+
+    assert revised.target_use is AssetTargetUse.RIG_READY_CHARACTER
+    assert revised.target_height_cm == 175.0
+    assert revised.description == draft.description
+    assert revised.analyzer_provider == draft.analyzer_provider
+    assert {item.source for item in revised.evidence} == {TargetEvidenceSource.USER_CLARIFICATION}

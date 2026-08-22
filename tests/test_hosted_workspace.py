@@ -223,3 +223,31 @@ def test_missing_target_answer_is_durable_and_confirmation_never_reasks_it(
     )
     assert completed.record.target is not None
     assert completed.record.target.target_height_cm == 180.0
+
+
+def test_target_adjustment_is_durable_and_exactly_once(tmp_path: Path) -> None:
+    """An explicit correction replaces an unfrozen proposal and survives application restart."""
+    root = tmp_path / "hosted"
+    store = HostedWorkspaceStore(root, _family())
+    workspace = _create(store, CLEAN_PATH)
+
+    revised = store.revise_target(
+        workspace,
+        target_use_value=AssetTargetUse.STATIC_GAME_ASSET.value,
+        target_height_m="2.4",
+        command_id="9" * 32,
+    )
+    duplicate = store.revise_target(
+        revised,
+        target_use_value=AssetTargetUse.PLAYABLE_CHARACTER.value,
+        target_height_m="3.0",
+        command_id="9" * 32,
+    )
+    restarted = HostedWorkspaceStore(root, _family()).get(duplicate.record.workspace_id)
+
+    assert restarted is not None
+    assert restarted.record.target_draft is not None
+    assert restarted.record.target_draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    assert restarted.record.target_draft.target_height_cm == 240.0
+    assert restarted.record.events[-1].event_type == "TARGET_REVISED"
+    assert sum(event.event_type == "TARGET_REVISED" for event in restarted.record.events) == 1

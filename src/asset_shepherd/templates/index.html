@@ -3,9 +3,8 @@
   <section class="intent-panel" data-focus-area="describe intent" aria-labelledby="intent-title">
     <a class="back-link" href="{{ url_for('hosted_home') }}">Try the durable conversation-led workspace →</a>
     <header class="intent-heading">
-      <p class="section-label">Start with intent</p>
       <h2 id="intent-title">What were you trying to make?</h2>
-      <p>Describe the result you wanted—not the repair operation.</p>
+      <p>Describe it naturally. I’ll propose the use and scale.</p>
     </header>
 
     {% if error %}
@@ -18,8 +17,8 @@
         <textarea name="description" minlength="12" maxlength="600" rows="6" required autofocus placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.">{{ values.get('description', '') }}</textarea>
       </label>
 
-      <p class="intent-boundary">Include intended use and real-world size if you know them. Asset Shepherd will extract what is explicit and ask only for required information that is still missing. This does not authorize a repair.</p>
-      <button class="primary-button" type="submit" data-submit-button>Understand my target <span aria-hidden="true">→</span></button>
+      <p class="intent-boundary">{% if semantic_intake_external %}Only this description is sent to the intake model; your GLB stays local. {% endif %}You confirm the proposal before inspection.</p>
+      <button class="primary-button" type="submit" data-submit-button>Propose a target <span aria-hidden="true">→</span></button>
     </form>
   </section>
 {% endblock %}

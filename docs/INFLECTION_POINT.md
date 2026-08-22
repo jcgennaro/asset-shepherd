@@ -1,16 +1,17 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** D019 direction plus D021 policy and D022 intake corrections implemented locally; live Bedrock pending
+**Status:** D019 direction plus D021–D023 intake corrections implemented locally; live Bedrock pending
 
 **Date:** 2026-08-22
 
-**Current implementation:** D020 durable hosted reference with D021 family resolution and D022 minimum target contract
+**Current implementation:** D020 durable hosted reference with D021 family resolution and D023 semantic intake
 
 **Controlling specifications:** `PROJECT_CONTRACT.md` and `REAL_WORLD_VALIDATION_PLAN.md`
 
 This document is the single handoff for a product-direction review. It separates the product that
-exists now from the conversational product we are considering next. It does not authorize AWS
-work, paid model calls, new repair domains, or changes to the controlling contract.
+exists now from the conversational product we are considering next. D023 authorizes only the
+interim OpenAI semantic-intake call; it does not authorize AWS work, new repair domains, or other
+changes to the controlling contract.
 
 ## The decision in one sentence
 
@@ -108,10 +109,10 @@ frozen target.
 
 Before that agreement, `TargetIntakeContract` is the model-facing minimum-information boundary. It
 requires description, supported intended use, and positive real-world height, with evidence and
-confidence for every populated field and an exact missing-field list. The local offline extractor
-uses explicit prose; a future Bedrock model must emit the same validated schema. Only missing or
-conflicting fields are asked, measured source size never becomes intended size, and the completed
-target still receives one explicit confirmation.
+confidence for every populated field and an exact missing-field list. An authorized interim OpenAI
+Luna/xhigh analyzer now proposes semantic use and scale from ordinary prose. The user adjusts or
+confirms it; only genuinely ambiguous fields are asked. A future Bedrock model must emit the same
+validated schema. Measured source size never becomes intended size.
 
 ### Current trust boundary
 
@@ -133,7 +134,7 @@ approval, or declare an output ready.
 
 ### Current evidence
 
-- 74 offline tests pass; one opt-in live-provider test is skipped.
+- 81 offline tests pass; one opt-in live-provider test is skipped.
 - Ruff, formatting, Pyright, uv lock validation, and wheel build pass.
 - Approved, rejected, clean-control, invalid-upload, and unsupported inspection-only paths are
   covered.
@@ -145,7 +146,8 @@ approval, or declare an output ready.
 
 ### Current limitations
 
-- The interaction is form-led, not a genuine adaptive conversation.
+- Intake is one semantic proposal plus bounded clarification, not yet a persistent general Bedrock
+  conversation.
 - Draft intent and approval state are in memory and disappear on server restart.
 - The description is stored but not semantically compared with the source asset.
 - The system cannot yet ask follow-ups based on inspection results.
@@ -364,7 +366,8 @@ Please return:
 
 **Decision status:** Accepted by the user and recorded as D019. The decision authorizes the bounded
 hosted interaction and durability direction described here. It does not authorize AWS activity,
-paid model calls, new repair domains, or weaker safety boundaries.
+paid model calls, new repair domains, or weaker safety boundaries. D023 later authorizes only the
+interim OpenAI semantic-intake call and does not broaden the other boundaries.
 
 ### Reviewer recommendation
 
@@ -500,7 +503,9 @@ visible Job Contract, native interrupt persistence, structured evidence question
 resume protection while keeping the M8 form-led baseline intact. D021 replaces the nearest-preset
 mechanism in both paths with one versioned parameterized family, intent-derived target values,
 per-rule sources, and bounded advanced edits without changing repair authority. D022 defines the
-minimum typed information the agent must possess, requires evidence, and limits clarification to
-missing use or height before final confirmation. The live Bedrock conversation,
+minimum typed information the agent must possess. D023 adds the provider-neutral OpenAI Luna/xhigh
+proposal and explicit adjustment while preserving the confidence gate and final confirmation. The
+live Bedrock conversation,
 remote concurrency/storage, deployment, observability, access, retention cleanup, and cost proof
-remain required for the M9 gate. No AWS activity or paid model invocation is authorized yet.
+remain required for the M9 gate. No AWS activity is authorized yet; D023 is the bounded interim
+OpenAI authorization.

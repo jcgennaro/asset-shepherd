@@ -2,17 +2,11 @@
 {% block content %}
   <section class="intent-confirmation" data-focus-area="confirm intent" aria-labelledby="confirm-title">
     <header class="intent-heading">
-      <p class="section-label">Confirm before inspection</p>
-      <h2 id="confirm-title">Is this the job you want done?</h2>
+      <h2 id="confirm-title">I’d treat this as a {{ "%g"|format(intent.target_height_cm / 100) }} m {{ target_use_label }}.</h2>
+      <p>Based on “{{ intent.original_description }}”</p>
     </header>
 
-    <blockquote>{{ intent.draft_story }}</blockquote>
-
-    <dl class="intent-facts">
-      <div><dt>Target use</dt><dd>{{ target_use_label|capitalize }}</dd></div>
-      <div><dt>Intended height</dt><dd>{{ "%g"|format(intent.target_height_cm / 100) }} m</dd></div>
-      <div><dt>Repair authority</dt><dd>Still requires inspection and explicit approval</dd></div>
-    </dl>
+    {% if error %}<div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>{% endif %}
 
     {% if intent.target_use.value != "STATIC_GAME_ASSET" %}
       <div class="intent-scope-note">
@@ -22,11 +16,19 @@
     {% endif %}
 
     <div class="intent-confirm-actions">
-      <a class="secondary-button" href="{{ url_for('home') }}">← Rewrite it</a>
       <form action="{{ url_for('confirm_intent', intent_id=intent.intent_id) }}" method="post" data-busy-form>
-        <button class="primary-button" type="submit" data-submit-button>Agree and continue <span aria-hidden="true">→</span></button>
+        <button class="primary-button" type="submit" data-submit-button>Use this target <span aria-hidden="true">→</span></button>
       </form>
     </div>
-    <p class="fine-print">Agreement freezes this description and target state into job provenance. Changing it later starts a new inspection.</p>
+    <details class="intent-adjust">
+      <summary>Adjust</summary>
+      <form action="{{ url_for('revise_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form" data-busy-form>
+        <label><span>Use</span><select name="target_use" required>{% for value, label in target_uses %}<option value="{{ value }}"{% if value == intent.target_use.value %} selected{% endif %}>{{ label|capitalize }}</option>{% endfor %}</select></label>
+        <label><span>Height</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" value="{{ "%g"|format(intent.target_height_cm / 100) }}" required><b>m</b></span></label>
+        <button class="secondary-button" type="submit" data-submit-button>Update proposal</button>
+      </form>
+      <a class="back-link" href="{{ url_for('home') }}">Start over with a different description</a>
+    </details>
+    <p class="fine-print">No repair starts until inspection; physical changes still require approval.</p>
   </section>
 {% endblock %}

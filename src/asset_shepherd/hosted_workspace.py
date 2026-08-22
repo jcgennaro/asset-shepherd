@@ -19,6 +19,10 @@ from strands.agent import AgentResult
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
 from asset_shepherd.agent_runtime import AssetShepherdAgent, build_scripted_agent
 from asset_shepherd.inspector import preflight_asset
+from asset_shepherd.intake_analyzer import (
+    DeterministicTargetIntakeAnalyzer,
+    TargetIntakeAnalyzer,
+)
 from asset_shepherd.intent import (
     build_asset_intent,
     normalize_intent_description,
@@ -37,7 +41,7 @@ from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_fa
 from asset_shepherd.target_intake import (
     TargetIntakeContract,
     clarify_target_intake,
-    draft_target_intake,
+    revise_target_intake,
 )
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -208,10 +212,16 @@ def _canonical_sha256(value: Mapping[str, JsonValue]) -> str:
 class HostedWorkspaceStore:
     """Filesystem-backed D019 state with restart-safe Strands reconstruction."""
 
-    def __init__(self, work_root: Path, family: ProjectProfile) -> None:
+    def __init__(
+        self,
+        work_root: Path,
+        family: ProjectProfile,
+        intake_analyzer: TargetIntakeAnalyzer | None = None,
+    ) -> None:
         """Bind durable workspaces to one trusted parameterized policy family."""
         self.work_root = work_root.resolve(strict=False)
         self.family = family
+        self.intake_analyzer = intake_analyzer or DeterministicTargetIntakeAnalyzer()
         self._lock = RLock()
 
     def _record_path(self, workspace_id: str) -> Path:
@@ -274,7 +284,7 @@ class HostedWorkspaceStore:
             _copy_validated_upload(stream, source_path)
             preflight = preflight_asset(source_path)
             _write_json_atomic(root / "preflight.json", preflight.model_dump(mode="json"))
-            target_draft = draft_target_intake(normalized)
+            target_draft = self.intake_analyzer.analyze(normalized)
             _write_json_atomic(
                 root / "target_intake.json",
                 target_draft.model_dump(mode="json"),
@@ -456,6 +466,48 @@ class HostedWorkspaceStore:
                 workspace.record,
                 "TARGET_CLARIFIED",
                 payload={"completed_fields": completed_fields},
+            )
+            _write_json_atomic(
+                workspace.root / "target_intake.json",
+                target_draft.model_dump(mode="json"),
+            )
+            self._persist(workspace)
+            return workspace
+
+    def revise_target(
+        self,
+        workspace: HostedWorkspace,
+        *,
+        target_use_value: str,
+        target_height_m: str,
+        command_id: str,
+    ) -> HostedWorkspace:
+        """Replace an unconfirmed model proposal with explicit target values exactly once."""
+        if _COMMAND_ID.fullmatch(command_id) is None:
+            raise HostedWorkspaceError("The target-adjustment command identifier is invalid.")
+        with self._lock:
+            if command_id in workspace.record.processed_commands:
+                return workspace
+            if workspace.record.phase is not WorkspacePhase.TARGET_CONFIRMATION:
+                raise HostedWorkspaceError("This workspace target is already frozen.")
+            if workspace.record.target_draft is None:
+                raise HostedWorkspaceError("The target proposal is unavailable.")
+            try:
+                target_draft = revise_target_intake(
+                    workspace.record.target_draft,
+                    target_use_value=target_use_value,
+                    target_height_m=target_height_m,
+                )
+            except ValueError as error:
+                raise HostedWorkspaceError(str(error)) from error
+            processed = {**workspace.record.processed_commands, command_id: "TARGET_REVISED"}
+            workspace.record = workspace.record.model_copy(
+                update={"target_draft": target_draft, "processed_commands": processed}
+            )
+            workspace.record = self._append_event(
+                workspace.record,
+                "TARGET_REVISED",
+                payload={"completed_fields": ["target_use", "target_height_cm"]},
             )
             _write_json_atomic(
                 workspace.root / "target_intake.json",

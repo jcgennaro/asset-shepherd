@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from pygltflib import Skin
 
 from asset_shepherd.glb import load_glb, save_glb
+from asset_shepherd.intake_analyzer import TargetIntakeInference, contract_from_inference
 from asset_shepherd.intent import validate_asset_intent
 from asset_shepherd.models import (
     AssetIntentProvenance,
@@ -153,8 +154,8 @@ def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: 
     assert "What were you trying to make?" in response.text
     assert 'name="target_use"' not in response.text
     assert 'name="target_height_m"' not in response.text
-    assert "ask only for required information that is still missing" in response.text
-    assert "Understand my target" in response.text
+    assert "propose the use and scale" in response.text
+    assert "Propose a target" in response.text
     assert "Game developer" not in response.text
     assert "3D artist" not in response.text
     assert "Technical artist" not in response.text
@@ -176,9 +177,8 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
 
     review = client.get(intent_path)
     assert review.status_code == 200
-    assert "Is this the job you want done?" in review.text
-    assert "playable animated character for Unreal at 1.72 m tall" in review.text
-    assert "Agree and continue" in review.text
+    assert "treat this as a 1.72 m playable animated character." in review.text
+    assert "Use this target" in review.text
     assert "rigging, skinning, and animation remain an external repair handoff" in review.text
     assert "Choose your GLB file" not in review.text
     assert "Review rules" not in review.text
@@ -222,8 +222,8 @@ def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: P
 
     clarification = client.get(intent_path)
     assert clarification.status_code == 200
-    assert "I need 1 quick answer." in clarification.text
-    assert "Static game asset" in clarification.text
+    assert "About how tall should it be?" in clarification.text
+    assert "treating it as static game asset" in clarification.text
     assert "What real-world height should it have?" in clarification.text
     assert "What should this asset become?" not in clarification.text
     assert "Agree and continue" not in clarification.text
@@ -242,8 +242,61 @@ def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: P
     )
     assert completed.status_code == 303
     review = client.get(intent_path)
-    assert "Is this the job you want done?" in review.text
-    assert "static game asset for Unreal at 1.2 m tall" in review.text
+    assert "treat this as a 1.2 m static game asset." in review.text
+
+
+def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questions(
+    tmp_path: Path,
+) -> None:
+    """A model-backed ordinary prompt reaches one concise, user-adjustable confirmation."""
+
+    class SemanticAnalyzer:
+        provider = "openai"
+        model_id = "gpt-5.6-luna"
+
+        def analyze(self, description: str) -> TargetIntakeContract:
+            return contract_from_inference(
+                description,
+                TargetIntakeInference(
+                    target_use=AssetTargetUse.STATIC_GAME_ASSET,
+                    target_use_confidence=0.96,
+                    target_use_evidence="A mountain is an environmental feature.",
+                    target_height_cm=80000.0,
+                    target_height_confidence=0.91,
+                    target_height_evidence="A mountain is a kilometer-scale feature.",
+                ),
+                provider=self.provider,
+                model_id=self.model_id,
+            )
+
+    client = TestClient(
+        create_app(
+            project_root=PROJECT_ROOT,
+            work_root=tmp_path / "jobs",
+            intake_analyzer=SemanticAnalyzer(),
+        )
+    )
+    created = client.post(
+        "/intents",
+        data={"description": "A mountain of goop for a surreal game world."},
+        follow_redirects=False,
+    )
+    intent_path = urlparse(created.headers["location"]).path
+    proposal = client.get(intent_path)
+
+    assert proposal.status_code == 200
+    assert "treat this as a 800 m static game asset." in proposal.text
+    assert "quick answer" not in proposal.text
+    assert "Adjust" in proposal.text
+
+    revised = client.post(
+        f"{intent_path}/revise",
+        data={"target_use": "STATIC_GAME_ASSET", "target_height_m": "600"},
+        follow_redirects=False,
+    )
+    assert revised.status_code == 303
+    adjusted = client.get(intent_path)
+    assert "treat this as a 600 m static game asset." in adjusted.text
 
 
 def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_height(

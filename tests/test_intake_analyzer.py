@@ -1,0 +1,132 @@
+"""Acceptance for provider-neutral semantic target intake."""
+
+import json
+
+import httpx
+import pytest
+
+from asset_shepherd.intake_analyzer import (
+    OPENAI_INTAKE_MODEL,
+    OpenAITargetIntakeAnalyzer,
+    OpenAITargetIntakeConfiguration,
+    TargetIntakeAnalysisError,
+    TargetIntakeInference,
+    build_target_intake_analyzer,
+    contract_from_inference,
+)
+from asset_shepherd.models import AssetTargetUse
+from asset_shepherd.target_intake import TargetEvidenceSource
+
+
+def _response(inference: dict[str, object]) -> dict[str, object]:
+    return {
+        "output": [
+            {
+                "type": "message",
+                "content": [{"type": "output_text", "text": json.dumps(inference)}],
+            }
+        ]
+    }
+
+
+def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
+    """Ordinary language can yield a confirmable proposal without duplicate form questions."""
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        assert request.headers["authorization"] == "Bearer test-key"
+        return httpx.Response(
+            200,
+            json=_response(
+                {
+                    "target_use": "STATIC_GAME_ASSET",
+                    "target_use_confidence": 0.96,
+                    "target_use_evidence": "A mountain is an environmental game-world feature.",
+                    "target_height_cm": 80000.0,
+                    "target_height_confidence": 0.91,
+                    "target_height_evidence": (
+                        "A mountain requires a kilometer-scale vertical target."
+                    ),
+                }
+            ),
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    analyzer = OpenAITargetIntakeAnalyzer(
+        OpenAITargetIntakeConfiguration(api_key="test-key"),
+        client=client,
+    )
+
+    contract = analyzer.analyze("A mountain of goop for a surreal game world.")
+
+    assert contract.ready_for_confirmation
+    assert contract.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    assert contract.target_height_cm == 80000.0
+    assert contract.analyzer_provider == "openai"
+    assert contract.analyzer_model == OPENAI_INTAKE_MODEL
+    assert {item.source for item in contract.evidence} == {TargetEvidenceSource.MODEL_INFERENCE}
+    assert captured["model"] == OPENAI_INTAKE_MODEL
+    assert captured["reasoning"] == {"effort": "xhigh"}
+    assert captured["store"] is False
+    text = captured["text"]
+    assert isinstance(text, dict)
+    assert text["format"]["strict"] is True
+
+
+def test_low_confidence_model_fields_become_questions() -> None:
+    """Untrusted or genuinely ambiguous proposals do not cross the typed confidence gate."""
+    contract = contract_from_inference(
+        "An abstract shape that could play several unrelated roles in the game.",
+        TargetIntakeInference(
+            target_use=None,
+            target_use_confidence=0.4,
+            target_use_evidence=None,
+            target_height_cm=None,
+            target_height_confidence=0.3,
+            target_height_evidence=None,
+        ),
+        provider="openai",
+        model_id=OPENAI_INTAKE_MODEL,
+    )
+
+    assert contract.missing_fields == ("target_use", "target_height_cm")
+    assert not contract.ready_for_confirmation
+
+    with pytest.raises(ValueError, match="confidence gate"):
+        TargetIntakeInference(
+            target_use=None,
+            target_use_confidence=0.9,
+            target_use_evidence=None,
+            target_height_cm=None,
+            target_height_confidence=0.3,
+            target_height_evidence=None,
+        )
+
+
+def test_openai_failure_is_safe_and_does_not_expose_credentials() -> None:
+    """Provider failures return a bounded public error without secret or body details."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, json={"error": {"message": "secret-provider-detail"}})
+
+    analyzer = OpenAITargetIntakeAnalyzer(
+        OpenAITargetIntakeConfiguration(api_key="never-print-this"),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(TargetIntakeAnalysisError) as caught:
+        analyzer.analyze("A mountain of goop for a surreal game world.")
+    message = str(caught.value)
+    assert "HTTP 429" in message
+    assert "never-print-this" not in message
+    assert "secret-provider-detail" not in message
+
+
+def test_provider_builder_requires_explicit_openai_configuration() -> None:
+    """The network provider fails closed while offline intake stays credential-free."""
+    with pytest.raises(TargetIntakeAnalysisError, match="OPENAI_API_KEY"):
+        build_target_intake_analyzer({})
+
+    offline = build_target_intake_analyzer({"ASSET_SHEPHERD_INTAKE_PROVIDER": "deterministic"})
+    assert offline.provider == "deterministic"

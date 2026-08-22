@@ -14,6 +14,7 @@
       "description": "Auditable source of one proposed target field.",
       "enum": [
         "EXPLICIT_USER_TEXT",
+        "MODEL_INFERENCE",
         "USER_CLARIFICATION"
       ],
       "title": "TargetEvidenceSource",
@@ -62,6 +63,20 @@
   "additionalProperties": false,
   "description": "Minimum typed state required before Asset Shepherd may offer target confirmation.",
   "properties": {
+    "analyzer_model": {
+      "default": "explicit-text-v1",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Analyzer Model",
+      "type": "string"
+    },
+    "analyzer_provider": {
+      "default": "deterministic",
+      "maxLength": 40,
+      "minLength": 1,
+      "title": "Analyzer Provider",
+      "type": "string"
+    },
     "description": {
       "maxLength": 600,
       "minLength": 12,
@@ -88,8 +103,11 @@
       "type": "array"
     },
     "schema_version": {
-      "const": 1,
-      "default": 1,
+      "default": 2,
+      "enum": [
+        1,
+        2
+      ],
       "title": "Schema Version",
       "type": "integer"
     },

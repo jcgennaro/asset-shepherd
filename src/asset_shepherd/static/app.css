@@ -534,25 +534,6 @@ a {
   justify-self: end;
 }
 
-.clarification-known {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 30px;
-}
-
-.clarification-known strong,
-.clarification-known span {
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-}
-
-.clarification-known strong {
-  color: var(--muted);
-}
-
 .clarification-form {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -621,6 +602,32 @@ a {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 28px;
+}
+
+.intent-adjust {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.intent-adjust summary {
+  width: fit-content;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.intent-adjust .intent-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.intent-adjust .secondary-button,
+.intent-adjust .back-link {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
 
 .job-intent {
@@ -2312,6 +2319,23 @@ model-viewer {
 
 .target-card .primary-button {
   grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.target-review-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.target-review-card > .intent-adjust {
+  margin: 0;
+}
+
+.target-confirm-form {
+  display: grid;
+  gap: 18px;
+}
+
+.target-confirm-form .primary-button {
   justify-self: end;
 }
 
