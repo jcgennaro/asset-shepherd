@@ -35,11 +35,14 @@ The validation-rule choice and file upload are deliberately separate:
    of that same workflow.
 3. **One visible workflow step.** The workspace renders only Rules or Upload during intake and only
    Inspect, Decide, or Download for a job. Evidence never competes with the current task.
-4. **One consequential decision.** Scale, upright orientation, and grounding are grouped into one
+4. **Large type, low default density.** The workspace defaults to the current question, choice, or
+   finding title. Audience context uses hover hints; policy parameters, finding evidence, and upload
+   behavior use explicit disclosures.
+5. **One consequential decision.** Scale, upright orientation, and grounding are grouped into one
    reversible physical-normalization approval. Safe display-name repairs remain separate.
-5. **Measured evidence over agent prose.** Visible facts and state come from deterministic job
+6. **Measured evidence over agent prose.** Visible facts and state come from deterministic job
    data. The model cannot invent repairs or declare success.
-6. **Preserve the source and artistic content.** The product does not perform topology, UV,
+7. **Preserve the source and artistic content.** The product does not perform topology, UV,
    material, texture, animation, or speculative artistic edits.
 
 ## Information architecture
@@ -95,14 +98,16 @@ flowchart TD
 
 The intake is one workspace focus area with a two-step navigator. Only the **Rules** panel is shown
 at first. No profile is selected by default. The user must explicitly choose one of the
-repository-owned versioned policy presets before the interface reveals the **Upload** panel:
+repository-owned versioned policy presets before the interface reveals the **Upload** panel. The
+current choice is intentionally framed as intended scale because that is the only rule difference:
 
-- **Unreal Indie Robot** — 1.8 m character-scale static mesh.
-- **Small Stylized Static Mesh** — 0.9–1.5 m compact stylized asset.
+- **Human-scale static mesh** — 1.8 m target; 1.7–1.9 m accepted.
+- **Compact static mesh** — 1.2 m target; 0.9–1.5 m accepted.
 
-Each preset visibly summarizes target height/tolerance, orientation and grounding, naming, budgets,
-and authorization behavior. **Review rules** remains collapsed and contains every active
-`ProjectProfile` parameter plus the preset version and canonical hash.
+Both otherwise use the same static-mesh engine, orientation and grounding, naming, budgets,
+automatic safe renaming, and normalization-approval behavior. **Review rules** remains collapsed
+and contains the concise policy summary, every active `ProjectProfile` parameter, preset version,
+legacy immutable ID, and canonical hash.
 
 **Customize a copy** is a collapsed advanced control below the presets. It allows only supported
 target-state fields already enforced by the deterministic core: height/tolerance, Y-up and ground
@@ -119,6 +124,10 @@ The resolved profile is schema-validated, copied into the isolated job, and iden
 profile ID and canonical SHA-256. A custom job additionally records the immutable base preset and
 only values that differ as explicit overrides. Rules cannot be edited in place after upload; the
 user returns to the intake and creates a new inspection/job.
+
+The human-readable scale labels are a presentation layer. The original
+`unreal-indie-robot-v1` and `small-stylized-static-mesh-v1` identifiers and profile bytes remain
+unchanged so prior results, hashes, validation evidence, and provenance stay reproducible.
 
 ### Pending approval
 
@@ -183,6 +192,11 @@ finding cites the frozen profile and exact active parameter value that triggered
   teal for artists, blue for technical artists, and violet for advanced mode.
 - The only page title is `Asset Shepherd -- [current style]` in the workspace header.
 - Content uses the full remaining workspace width, with one bordered workflow panel at a time.
+- The Help question scales to 112 px at the reviewed desktop size and its three choices fill a
+  1160 px row. Workflow headings scale to 54 px on desktop and 32 px on the compact breakpoint.
+- Default policy cards show only the preset name and target description; their concise summaries
+  and all 20 active parameters live under `Review rules`. Finding cards show code, class, and title;
+  explanation, observation, and rule provenance live under `Details`.
 - Desktop Rules uses two policy columns; inspection and approval use context-appropriate two-column
   arrangements. Each becomes one column at narrow widths without moving the mode pane.
 - Motion is minimal, and reduced-motion preferences are honored.
@@ -222,6 +236,12 @@ finding cites the frozen profile and exact active parameter value that triggered
   matching 96 px logo/title cells and a 320 px desktop navigation pane; the compact breakpoint
   measured matching 72 px logo/title cells, a 76 px icon pane, and zero horizontal overflow. No
   application console error or warning was observed.
+- The density pass measures a 1160 px Help chooser with three 376 × 260 px options and no visible
+  intro or advanced prompt. Rules has no open disclosures at startup and shows two 543 × 167 px
+  policy cards at desktop. Expanding `Review rules` reveals all 20 active parameters. Inspect shows
+  four core metrics and collapsed finding detail; expanding one finding restores its description,
+  observation, exact policy value, and frozen profile ID. Compact Help and Rules have no horizontal
+  overflow and retain one visible focus area.
 
 ## Known limitations
 

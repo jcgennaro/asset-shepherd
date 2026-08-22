@@ -4,6 +4,90 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D017 — Scale-oriented labels preserve immutable legacy profile identity
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+The first preset appeared in the UI as `Unreal Indie Robot`, which suggested a robot template or a
+different repair feature set. Direct comparison of both profile documents showed that engine and
+asset type, orientation and grounding, naming, budgets, auto-renaming, and approval behavior are
+identical. Only target height and tolerance differ.
+
+**Options considered**
+
+- Keep the asset-specific names and explain them in more text.
+- Rename the profile IDs and JSON content, invalidating immutable hashes and existing provenance.
+- Use truthful human-readable scale labels in the web presentation while retaining canonical
+  profile bytes and identifiers as legacy evidence.
+
+**Decision**
+
+Present `unreal-indie-robot-v1` as **Human-scale static mesh**, with a 1.8 m target and 1.7–1.9 m
+accepted range. Present `small-stylized-static-mesh-v1` as **Compact static mesh**, with a 1.2 m
+target and 0.9–1.5 m accepted range. Ask users to choose the asset's intended scale. State through
+the collapsed rule review that all other current behavior is identical. Do not modify either preset
+file, canonical hash, profile ID, frozen job policy, or historical validation artifact.
+
+**Evidence and consequences**
+
+Web acceptance requires both scale-oriented labels and ranges and rejects the old asset-specific
+display name. Profile IDs remain trusted server inputs and remain visible in expanded provenance.
+Choosing a preset changes only `HEIGHT_OUT_OF_RANGE` evaluation, the derived scale factor, and any
+resulting physical-normalization proposal; it does not unlock different repair capabilities.
+
+### D016 — Large-type, disclosure-first presentation
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+The clarified application frame matched the requested geometry, but the workspace still rendered
+too much explanatory and policy text at small sizes while leaving useful whitespace around it. The
+user asked for less default text, larger content that uses the workspace, and hover or expansion for
+details.
+
+**Options considered**
+
+- Increase every font without changing information density.
+- Remove policy and finding evidence from the product.
+- Keep the complete evidence in the document, but expose only the current choice or finding title
+  by default and enlarge the primary interaction surfaces.
+
+**Decision**
+
+Make the Help workspace one large question plus three large choice cards. Move each audience's
+question to the choice's hover title and remove repeated explanatory paragraphs. Enlarge the
+audience heading, panel headings, workflow labels, navigation tiles, policy choices, metrics, and
+finding titles. Collapse preset summaries and complete active parameters under `Review rules`,
+finding descriptions and policy provenance under `Details`, and upload behavior under
+`Upload details`. Keep all content in accessible server-rendered HTML and preserve the single-step
+workflow.
+
+**Evidence and consequences**
+
+Acceptance asserts that intro/promotional copy and secondary workflow captions are absent by
+default, both policy summaries remain inside collapsed reviews, and every finding retains a detail
+disclosure. Desktop browser evidence measures a 1160 px chooser with three 376 × 260 px choices and
+a 112 px question; the Rules step shows only two policy names, two review controls, customization,
+and the next action. Inspect shows four enlarged metrics and ten compact finding headings, with
+policy evidence restored when a detail is expanded. Compact review retains a 76 px left pane, 32 px
+workflow headings, one-column 274 px policy cards, and zero horizontal overflow. Backend behavior,
+policy completeness, provenance, authorization, repair, and package output are unchanged.
+
 ### D015 — Clarified two-column frame replaces narrow-rail proportions
 
 **Date:** 2026-08-22

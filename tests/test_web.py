@@ -123,6 +123,8 @@ def test_web_story_chooser_explains_three_equivalent_flows(tmp_path: Path) -> No
     assert "<title>Asset Shepherd -- Help me choose</title>" in response.text
     assert "LOGO" in response.text
     assert "Which best describes you?" in response.text
+    assert "chooser-intro" not in response.text
+    assert "advanced-prompt" not in response.text
     assert "No feature differences between concepts" not in response.text
     assert response.text.count('class="mode-link') == 5
     assert response.text.count('class="mode-link style-tile') == 3
@@ -144,7 +146,17 @@ def test_web_profiles_are_versioned_presets_with_collapsed_rules_and_safe_custom
 
     assert response.status_code == 200
     assert response.text.count("immutable preset v1") == 2
+    assert "Human-scale static mesh" in response.text
+    assert "1.8 m target · 1.7-1.9 m accepted" in response.text
+    assert "Compact static mesh" in response.text
+    assert "1.2 m target · 0.9-1.5 m accepted" in response.text
+    assert "Unreal Indie Robot" not in response.text
+    assert "Choose the asset's intended scale" in response.text
     assert response.text.count("Review rules") == 2
+    assert response.text.count('class="policy-summary"') == 2
+    assert response.text.index('<details class="policy-review">') < response.text.index(
+        '<dl class="policy-summary">'
+    )
     assert "Target height" in response.text
     assert "Require Y-up geometry" in response.text
     assert "Name pattern" in response.text
@@ -158,6 +170,8 @@ def test_web_profiles_are_versioned_presets_with_collapsed_rules_and_safe_custom
     assert '<button type="button" data-intake-step-button="upload"' in response.text
     assert 'data-intake-panel="rules"' in response.text
     assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in response.text
+    assert "Define ready" not in response.text
+    assert "Choose GLB" not in response.text
     _assert_focus_area_budget(response.text, expected=1)
 
 
@@ -225,6 +239,7 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     inspect_view = client.get(f"{job_path}?view=inspect")
     assert inspect_view.status_code == 200
     assert "Policy rule" in inspect_view.text
+    assert 'class="finding-detail"' in inspect_view.text
     assert "Height target 180.0 cm ± 10.0 cm" in inspect_view.text
     assert "Normalize physical scale, upright orientation, and grounding" not in inspect_view.text
     _assert_focus_area_budget(inspect_view.text, expected=1)

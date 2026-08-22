@@ -49,12 +49,15 @@ Every route uses the same trusted profiles, bounded GLB upload, native Strands i
 deterministic repair engine, interactive previews, independent verification, and contracted result
 ZIP. The workspace shows only one step at a time: **Rules -> Upload** during intake, then **Inspect
 -> Decide -> Download** for the job. Each server-rendered state has one primary focus area; the seven
-named execution stages, findings, checks, and metrics remain available in their relevant step. No
+named execution stages, policy parameters, finding evidence, checks, and metrics remain available
+through focused disclosures instead of competing with the current action. No
 model or network request is needed for the agent workflow; the default uses the zero-network
 scripted provider over the real Strands loop.
 
-Repository profiles are immutable versioned policy presets. Each preset shows a concise summary and
-a collapsed complete rule review. An advanced **Customize a copy** control permits only supported
+Repository profiles are immutable versioned policy presets. The web UI calls the two current
+choices **Human-scale static mesh** (1.7-1.9 m accepted) and **Compact static mesh** (0.9-1.5 m
+accepted); all other enforced rules are currently identical. Each preset keeps its concise summary
+and complete rule review collapsed. An advanced **Customize a copy** control permits only supported
 target-state and report-only budget overrides; safety policy and verification boundaries remain
 fixed. Upload freezes the resolved policy into the new job, and provenance records its base preset,
 explicit overrides, version, identifier, and canonical SHA-256. Changing rules starts a new

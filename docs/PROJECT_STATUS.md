@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** M8 clarified two-column application shell (this file is included)
+**Current commit:** M8 simplified presentation and scale-policy labels (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Two-column app frame with persistent five-mode navigation pane; single-visible-step Rules/Upload and Inspect/Decide/Download workspaces; immutable policy presets and validated custom copies; shared Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, D013, D014, and D015; latest presentation correction included in current commit |
+| M8 Web product | COMPLETE | Two-column app frame with persistent five-mode navigation pane; large-type disclosure-first presentation; scale-oriented labels over immutable policies; single-visible-step Rules/Upload and Inspect/Decide/Download workspaces; shared Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, D013, D014, D015, D016, and D017; latest presentation correction included in current commit |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -75,6 +75,11 @@ before any paid invocation or resource creation.
   hover/focus hints. Desktop measurements show equal 96 px logo/title cells; the compact breakpoint
   shows equal 72 px cells, a 76 px icon pane, one visible focus area, and no horizontal overflow.
   Every page title remains `Asset Shepherd -- [style]`.
+- Density browser evidence: Help now renders one 112 px question and three 376 × 260 px choices in
+  a 1160 px workspace. Rules defaults to two large policy choices with collapsed summaries and
+  parameters. Inspect defaults to four core metrics and compact finding headings; descriptions,
+  observations, and rule provenance expand on demand. Compact Rules uses 32 px headings and 274 px
+  one-column cards with no horizontal overflow. All views retain one focus area.
 - Single-step web evidence: intake shows Rules or Upload, never both; each job response renders only
   the selected Inspect, Decide, or Download step and exactly one `data-focus-area`. Pending approval
   defaults to Decide, while completed and blocked jobs default to Download. Inspect retains source
@@ -94,8 +99,12 @@ before any paid invocation or resource creation.
   enforced target-state and report-only budget fields; the server validates a resolved
   `ProjectProfile`, freezes it per job, and records frozen/base IDs, explicit overrides, version, and
   canonical SHA-256. Findings cite the exact active policy values, and changing rules creates a new
-  job/inspection. Thirteen web tests cover preset and custom paths without changing the role routes,
+  job/inspection. Fourteen web tests cover preset and custom paths without changing the role routes,
   grouped approval, verification, source preservation, focus-area budget, or ZIP contract.
+- Policy naming: the web UI now presents the legacy `unreal-indie-robot-v1` and
+  `small-stylized-static-mesh-v1` presets as Human-scale and Compact static meshes. Their only
+  functional difference is the accepted height band; immutable profile bytes, IDs, hashes,
+  provenance, and every other enforced rule remain unchanged.
 - Distribution audit: `uv build --wheel` succeeded with the shared story workspace, mode-rail and
   intake partials, job/chooser/base templates, CSS, JavaScript, and favicon.
 - Shader Lantern evidence: raw SHA-256

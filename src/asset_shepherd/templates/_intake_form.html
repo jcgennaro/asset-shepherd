@@ -14,21 +14,20 @@
 
   <nav class="workflow-nav intake-workflow-nav" aria-label="New inspection workflow">
     <button type="button" data-intake-step-button="rules" aria-controls="intake-rules" aria-current="step">
-      <span>1</span><strong>Rules</strong><small>Define ready</small>
+      <span>1</span><strong>Rules</strong>
     </button>
     <i aria-hidden="true"></i>
     <button type="button" data-intake-step-button="upload" aria-controls="intake-upload">
-      <span>2</span><strong>Upload</strong><small>Choose GLB</small>
+      <span>2</span><strong>Upload</strong>
     </button>
   </nav>
 
   <section id="intake-rules" class="intake-panel" data-intake-panel="rules" aria-labelledby="rules-title">
-    <header class="panel-heading">
+    <header class="panel-heading" title="These rules define “ready.” They do not choose a model.">
       <div>
         <p class="section-label">Step 1 of 2</p>
-        <h2 id="rules-title">{{ story.intake_title }}</h2>
+        <h2 id="rules-title">Choose the asset's intended scale</h2>
       </div>
-      <p>These rules define “ready.” They do not choose a model.</p>
     </header>
 
     <input type="hidden" name="profile_mode" value="preset" data-profile-mode>
@@ -47,13 +46,13 @@
               <small>{{ profile.description }} · immutable preset v{{ profile.profile.profile_version }}</small>
             </span>
           </label>
-          <dl class="policy-summary">
-            {% for label, value in profile.summary %}
-              <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
-            {% endfor %}
-          </dl>
           <details class="policy-review">
             <summary>Review rules</summary>
+            <dl class="policy-summary">
+              {% for label, value in profile.summary %}
+                <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+              {% endfor %}
+            </dl>
             <dl class="policy-rule-list">
               {% for label, value in profile.review_rules %}
                 <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
@@ -64,9 +63,9 @@
       {% endfor %}
     </div>
 
-    <details class="custom-policy" data-custom-policy>
+    <details class="custom-policy" data-custom-policy title="Advanced · supported target-state rules only">
       <summary>
-        <span><strong>Customize a copy</strong><small>Advanced · supported target-state rules only</small></span>
+        <span><strong>Customize a copy</strong></span>
       </summary>
       <div class="custom-policy-body">
         <p>Choose a preset above, then adjust only rules the deterministic inspector enforces. The preset stays unchanged.</p>
@@ -116,12 +115,11 @@
   </section>
 
   <section id="intake-upload" class="intake-panel upload-panel" data-intake-panel="upload" aria-labelledby="upload-title" hidden>
-    <header class="panel-heading">
+    <header class="panel-heading" title="This is the actual 3D model. The source stays unchanged.">
       <div>
         <p class="section-label">Step 2 of 2</p>
         <h2 id="upload-title">Upload the GLB you want checked</h2>
       </div>
-      <p>This is the actual 3D model. The source stays unchanged.</p>
     </header>
 
     <div class="selected-policy-line">
@@ -142,6 +140,9 @@
         <span aria-hidden="true">→</span>
       </button>
     </div>
-    <p class="fine-print">Rules freeze on upload. Changing them creates a new inspection and job. Local mode makes no model or network request.</p>
+    <details class="upload-notes">
+      <summary>Upload details</summary>
+      <p class="fine-print">Rules freeze on upload. Changing them creates a new inspection and job. Local mode makes no model or network request.</p>
+    </details>
   </section>
 </form>

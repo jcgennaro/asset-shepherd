@@ -16,7 +16,7 @@
           class="{{ step.status }}{% if active_view == step.slug %} active{% endif %}"
           href="{{ url_for('job_page', job_id=job.job_id) }}?view={{ step.slug }}"
           {% if active_view == step.slug %}aria-current="step"{% endif %}>
-          <span>{{ loop.index }}</span><strong>{{ step.label }}</strong><small>{{ step.status|replace('_', ' ') }}</small>
+          <span>{{ loop.index }}</span><strong>{{ step.label }}</strong>
         </a>
         {% if not loop.last %}<i aria-hidden="true"></i>{% endif %}
       {% endfor %}
@@ -29,7 +29,6 @@
             <p class="section-label">Inspect</p>
             <h2 id="inspect-title">{{ story.job_question }}</h2>
           </div>
-          <p>Measured facts and policy findings from the untouched source.</p>
         </header>
 
         <div class="inspect-layout">
@@ -63,8 +62,6 @@
                 <div><dt>Triangles</dt><dd>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</dd></div>
                 <div><dt>Materials</dt><dd>{{ inspection.package.material_count }}</dd></div>
                 <div><dt>Textures</dt><dd>{{ inspection.package.texture_count }}</dd></div>
-                <div><dt>Frozen policy</dt><dd>{{ job.profile.profile_id }}</dd></div>
-                <div><dt>Policy hash</dt><dd><code>{{ job.profile.policy_provenance.canonical_sha256[:12] }}</code></dd></div>
               </dl>
             {% endif %}
 
@@ -80,11 +77,14 @@
                       <article class="finding">
                         <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
                         <h4>{{ finding.title }}</h4>
-                        <p>{{ finding.description }}</p>
-                        {% if finding.id in rule_explanations %}
-                          <p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>
-                        {% endif %}
-                        {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
+                        <details class="finding-detail">
+                          <summary>Details</summary>
+                          <p>{{ finding.description }}</p>
+                          {% if finding.id in rule_explanations %}
+                            <p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>
+                          {% endif %}
+                          {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
+                        </details>
                       </article>
                     {% endfor %}
                   {% endfor %}
@@ -104,7 +104,7 @@
             <ol class="stage-list">
               {% for stage in stages %}<li class="{{ stage.status }}">{{ stage.name }}</li>{% endfor %}
             </ol>
-            <p class="session-note">The policy is frozen for this job. Changing rules starts a new inspection and job.</p>
+            <p class="session-note">Frozen policy <code>{{ job.profile.profile_id }}</code> · <code>{{ job.profile.policy_provenance.canonical_sha256[:12] }}</code>. Changing rules starts a new inspection and job.</p>
           </div>
         </details>
       </section>
@@ -147,7 +147,6 @@
         {% elif decision_records %}
           <header class="panel-heading">
             <div><p class="section-label">Decision recorded</p><h2 id="decide-title">Authorization is frozen with this job.</h2></div>
-            <p>Changing the policy or authorization requires a new inspection.</p>
           </header>
           <div class="decision-records">
             {% for record in decision_records %}
@@ -162,13 +161,11 @@
         {% elif is_blocked %}
           <header class="panel-heading">
             <div><p class="section-label">No repair authorized</p><h2 id="decide-title">This asset is inspection-only.</h2></div>
-            <p>Unsupported structural content blocks repair. No consequential action is available.</p>
           </header>
           <a class="primary-button inline-button" href="{{ url_for('job_page', job_id=job.job_id) }}?view=download">Open diagnostics package <span aria-hidden="true">→</span></a>
         {% elif workflow_result %}
           <header class="panel-heading">
             <div><p class="section-label">No decision needed</p><h2 id="decide-title">The asset required no physical normalization.</h2></div>
-            <p>Only automatically safe work, if any, was eligible to run.</p>
           </header>
           <a class="primary-button inline-button" href="{{ url_for('job_page', job_id=job.job_id) }}?view=download">Continue to download <span aria-hidden="true">→</span></a>
         {% else %}

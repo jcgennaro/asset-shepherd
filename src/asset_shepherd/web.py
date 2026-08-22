@@ -42,6 +42,16 @@ MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
 _DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
+_PROFILE_PRESENTATION = {
+    "unreal-indie-robot-v1": (
+        "Human-scale static mesh",
+        "1.8 m target · 1.7-1.9 m accepted",
+    ),
+    "small-stylized-static-mesh-v1": (
+        "Compact static mesh",
+        "1.2 m target · 0.9-1.5 m accepted",
+    ),
+}
 
 
 class UploadValidationError(ValueError):
@@ -709,19 +719,19 @@ def discover_profiles(project_root: Path) -> tuple[ProfileOption, ...]:
         project_root / "profiles" / "unreal_indie_robot.json",
         project_root / "validation" / "profiles" / "small_stylized_static_mesh.json",
     )
-    descriptions = {
-        "unreal-indie-robot-v1": "1.8 m character-scale static mesh",
-        "small-stylized-static-mesh-v1": "0.9-1.5 m compact stylized asset",
-    }
     options: list[ProfileOption] = []
     for path in profile_paths:
         profile = ProjectProfile.model_validate_json(path.read_text(encoding="utf-8"))
         canonical_sha256 = canonical_profile_sha256(profile)
+        display_name, description = _PROFILE_PRESENTATION.get(
+            profile.profile_id,
+            (profile.name, profile.asset_type),
+        )
         options.append(
             ProfileOption(
                 profile_id=profile.profile_id,
-                name=profile.name,
-                description=descriptions.get(profile.profile_id, profile.asset_type),
+                name=display_name,
+                description=description,
                 path=path.resolve(strict=True),
                 profile=profile,
                 canonical_sha256=canonical_sha256,
@@ -824,7 +834,14 @@ class WebJobStore:
             raise
         frozen_profile = FrozenProfile(
             profile_id=resolved_profile.profile_id,
-            name=resolved_profile.name,
+            name=(
+                resolved_profile.name
+                if policy_provenance.explicit_overrides
+                else _PROFILE_PRESENTATION.get(
+                    resolved_profile.profile_id,
+                    (resolved_profile.name, resolved_profile.asset_type),
+                )[0]
+            ),
             path=profile_path,
             policy_provenance=policy_provenance,
         )
