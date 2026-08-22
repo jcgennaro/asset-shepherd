@@ -1,56 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Asset Shepherd · Choose your workflow{% endblock %}
+{% block title %}Asset Shepherd · Choose your role{% endblock %}
 {% block content %}
-  <section class="concept-hero">
-    <div class="concept-intro">
-      <p class="eyebrow">Three user stories · one working product</p>
-      <h1>Start with the question<br><em>you actually walked in with.</em></h1>
-      <p class="lede">
-        Asset Shepherd inspects one static GLB, pauses before physical changes, independently
-        verifies the candidate, and packages the evidence. Choose the explanation that best matches
-        your role; the underlying workflow and safety boundaries are identical.
-      </p>
-    </div>
-    <aside class="same-engine-note" aria-label="Shared workflow guarantee">
-      <span class="pulse-dot"></span>
-      <div>
-        <strong>No feature differences between concepts</strong>
-        <p>Each route uses the same profiles, Strands interrupt, repair engine, verification, and result ZIP.</p>
+  <div class="role-chooser">
+    <section class="role-question" data-focus-area="question">
+      <h1>Which best describes you?</h1>
+      <p>Choose a role. You can switch later.</p>
+    </section>
+
+    {% if error %}
+      <div class="alert danger" role="alert">
+        <strong>That role is unavailable</strong>
+        <span>{{ error }}</span>
       </div>
-    </aside>
-  </section>
+    {% endif %}
 
-  {% if error %}
-    <div class="alert danger concept-alert" role="alert">
-      <strong>That concept is unavailable</strong>
-      <span>{{ error }}</span>
-    </div>
-  {% endif %}
-
-  <section class="concept-grid" aria-label="Choose a user-story concept">
-    {% for item in stories %}
-      <article class="concept-card concept-{{ item.slug }}">
-        <div class="concept-number">0{{ loop.index }}</div>
-        <p class="eyebrow">{{ item.audience }}</p>
-        <h2>{{ item.headline }}</h2>
-        <blockquote>“{{ item.user_story }}”</blockquote>
-        <p>{{ item.promise }}</p>
-        <ol>
-          {% for step in item.steps %}
-            <li><span>{{ step.number }}</span>{{ step.title }}</li>
-          {% endfor %}
-        </ol>
-        <a class="concept-button" href="{{ url_for('story_home', story_slug=item.slug) }}">
-          View {{ item.nav_label|lower }} flow <span aria-hidden="true">→</span>
-        </a>
-      </article>
-    {% endfor %}
-  </section>
-
-  <section class="scope-line" aria-label="Product boundary">
-    <span>What it changes</span>
-    <strong>Valid display names and an explicitly approved root normalization transform.</strong>
-    <span>What it will not change</span>
-    <strong>Topology, UVs, materials, textures, animation, or artistic content.</strong>
-  </section>
+    <nav class="role-options" aria-label="Choose your role" data-focus-area="role choices">
+      <a class="role-option developer" href="{{ url_for('story_home', story_slug='game-developer') }}">
+        <span><strong>Game developer</strong><small>Is this asset ready for my game?</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="role-option artist" href="{{ url_for('story_home', story_slug='artist') }}">
+        <span><strong>3D artist</strong><small>What will change in my work?</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="role-option technical" href="{{ url_for('story_home', story_slug='technical-artist') }}">
+        <span><strong>Technical artist</strong><small>Does this asset meet project policy?</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+    </nav>
+  </div>
 {% endblock %}

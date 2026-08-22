@@ -3,225 +3,217 @@
 {% block content %}
   <section class="job-shell">
     <header class="job-header">
-      <div>
-        <a class="back-link" href="{{ url_for('story_home', story_slug=story.slug) }}">← Back to {{ story.nav_label|lower }} intake</a>
-        <p class="eyebrow">{{ story.job_kicker }} · Job {{ job.job_id[:8] }}</p>
-        <h2 class="job-question">{{ story.job_question }}</h2>
-        <h1>{{ job.original_filename }}</h1>
-        <p>{{ job.profile.name }} · source preserved locally</p>
-      </div>
+      <a class="back-link" href="{{ url_for('story_home', story_slug=story.slug) }}">← Start over</a>
+      <span class="job-file">{{ job.original_filename }} · {{ job.profile.name }}</span>
+      <ol class="progress-line" aria-label="Workflow progress">
+        <li class="{% if inspection %}complete{% else %}current{% endif %}">Inspect</li>
+        <li class="{% if approval_card %}current{% elif inspection %}complete{% else %}pending{% endif %}">Decide</li>
+        <li class="{% if job.runtime.job.result %}complete{% else %}pending{% endif %}">Package</li>
+      </ol>
       <span class="state-pill {{ job.state_class }}"><i></i>{{ job.state_label }}</span>
     </header>
 
-    <ol class="stage-rail" aria-label="Workflow stages">
-      {% for stage in stages %}
-        <li class="{{ stage.status }}">
-          <span>{{ stage.eyebrow }}</span>
-          <strong>{{ stage.name }}</strong>
-        </li>
-      {% endfor %}
-    </ol>
-
-    {% if job.error %}
-      <div class="alert danger wide" role="alert">
-        <strong>Workflow stopped safely</strong>
-        <span>{{ job.error }}</span>
-      </div>
-    {% endif %}
-
-    {% if is_blocked %}
-      <div class="alert neutral wide" role="status">
-        <strong>Inspection-only result</strong>
-        <span>This asset was not eligible for structural repair. Diagnostics were packaged without producing a ready candidate.</span>
-      </div>
-    {% endif %}
-
-    <div class="story-job-flow">
-    {% if inspection %}
-      <section class="metric-strip job-metrics" aria-label="Inspection summary">
-        <div><small>Eligibility</small><strong>{{ inspection.repair_eligibility }}</strong></div>
-        <div><small>Triangles</small><strong>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</strong></div>
-        <div><small>Materials</small><strong>{{ inspection.package.material_count }}</strong></div>
-        <div><small>Textures</small><strong>{{ inspection.package.texture_count }}</strong></div>
-        <div><small>Findings</small><strong>{{ inspection.findings|length }}</strong></div>
-      </section>
-    {% endif %}
-
-    <section class="preview-grid job-preview {% if not job.ready_candidate %}single{% endif %}">
-      <article class="preview-card">
-        <div class="section-heading">
-          <div><p class="eyebrow">Before</p><h2>{{ story.source_label }}</h2></div>
-          <span>Immutable</span>
-        </div>
-        <model-viewer
-          src="{{ url_for('source_asset', job_id=job.job_id) }}"
-          alt="Interactive preview of the untouched uploaded model"
-          camera-controls
-          auto-rotate
-          rotation-per-second="12deg"
-          shadow-intensity="1"
-          environment-image="neutral"
-          exposure="1"
-          interaction-prompt="none">
-          <div class="viewer-fallback" slot="poster">Loading source preview…</div>
-        </model-viewer>
-        {% if inspection and inspection.geometry %}
-          <div class="bounds-line">
-            <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} m</span>
-            <span>×</span>
-            <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} m</span>
-            <span>×</span>
-            <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[2]) }} m</span>
-          </div>
-        {% endif %}
-      </article>
-
-      {% if job.ready_candidate %}
-        <article class="preview-card after-card">
-          <div class="section-heading">
-            <div><p class="eyebrow">After</p><h2>{{ story.candidate_label }}</h2></div>
-            <span>Ready</span>
-          </div>
-          <model-viewer
-            src="{{ url_for('repaired_asset', job_id=job.job_id) }}"
-            alt="Interactive preview of the verified repaired model"
-            camera-controls
-            auto-rotate
-            rotation-per-second="12deg"
-            shadow-intensity="1"
-            environment-image="neutral"
-            exposure="1"
-            interaction-prompt="none">
-            <div class="viewer-fallback" slot="poster">Loading verified preview…</div>
-          </model-viewer>
-          {% if approval_card %}
-            <div class="bounds-line">
-              {% for value in approval_card.expected_after_bounds.dimensions_m %}
-                <span>{{ "%.3f"|format(value) }} m</span>{% if not loop.last %}<span>×</span>{% endif %}
-              {% endfor %}
-            </div>
-          {% elif verification %}
-            <div class="bounds-line success-copy">Independently reloaded and verified</div>
-          {% endif %}
-        </article>
-      {% endif %}
-    </section>
-
-    {% if approval_card and interrupt_id %}
-      <section class="approval-panel job-approval" aria-labelledby="approval-title">
-        <div class="approval-copy">
-          <p class="eyebrow">{{ story.approval_eyebrow }} · 1 consequential change</p>
-          <h2 id="approval-title">{{ approval_card.title }}</h2>
-          <p>{{ approval_card.consequence_summary }}</p>
-          <div class="component-list">
-            {% for component in approval_card.components %}
+    <div class="job-flow">
+      {% if approval_card and interrupt_id %}
+        <section class="approval-panel" aria-labelledby="approval-title" data-focus-area="decision">
+          <div class="approval-copy">
+            <p class="section-label">One decision</p>
+            <h2 id="approval-title">{{ approval_card.title }}</h2>
+            <p>{{ approval_card.consequence_summary }}</p>
+            <div class="dimension-compare" aria-label="Expected size change">
               <div>
-                <span>{{ component.component }}</span>
-                <strong>{{ "%.0f"|format(component.confidence * 100) }}%</strong>
-                <small>{{ component.evidence }}</small>
+                <small>Before</small>
+                <strong>{{ "%.2f"|format(approval_card.before_bounds.dimensions_m|max) }} m</strong>
               </div>
-            {% endfor %}
-          </div>
-        </div>
-        <div class="decision-card">
-          <p class="eyebrow">Expected result</p>
-          <div class="dimension-compare">
-            <div>
-              <small>Before dominant extent</small>
-              <strong>{{ "%.2f"|format(approval_card.before_bounds.dimensions_m|max) }} m</strong>
-            </div>
-            <span>→</span>
-            <div>
-              <small>After height</small>
-              <strong>{{ "%.2f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m</strong>
+              <span aria-hidden="true">→</span>
+              <div>
+                <small>After height</small>
+                <strong>{{ "%.2f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m</strong>
+              </div>
             </div>
           </div>
-          <p class="decision-note">{{ story.rejection_note }}</p>
-          <form action="{{ url_for('decide_job', job_id=job.job_id) }}" method="post" class="decision-actions" data-busy-form>
-            <input type="hidden" name="interrupt_id" value="{{ interrupt_id }}">
-            <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
-            <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve repair <span>→</span></button>
-          </form>
-        </div>
-      </section>
-    {% endif %}
-
-    <div class="evidence-grid job-evidence">
-      <section class="evidence-card">
-        <div class="section-heading">
-          <div><p class="eyebrow">Observed facts</p><h2>{{ story.findings_heading }}</h2></div>
-          {% if inspection %}<span>{{ inspection.findings|length }} total</span>{% endif %}
-        </div>
-        {% if finding_groups %}
-          {% for severity, findings in finding_groups %}
-            <div class="finding-group">
-              <h3><span class="severity-dot {{ severity|lower }}"></span>{{ severity }}</h3>
-              {% for finding in findings %}
-                <article class="finding">
+          <div class="decision-side">
+            <details class="approval-evidence">
+              <summary>Why this is proposed</summary>
+              <div class="approval-components">
+                {% for component in approval_card.components %}
                   <div>
-                    <code>{{ finding.code }}</code>
-                    <span class="action-tag">{{ finding.action_class }}</span>
+                    <strong>{{ component.component }}</strong>
+                    <span>{{ "%.0f"|format(component.confidence * 100) }}% confidence</span>
+                    <p>{{ component.evidence }}</p>
                   </div>
-                  <h4>{{ finding.title }}</h4>
-                  <p>{{ finding.description }}</p>
-                  {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
-                </article>
-              {% endfor %}
-            </div>
-          {% endfor %}
-        {% elif inspection %}
-          <div class="empty-state"><strong>No project-policy findings.</strong><span>The asset already satisfies this profile.</span></div>
-        {% else %}
-          <div class="empty-state"><strong>No inspection available.</strong></div>
-        {% endif %}
-      </section>
-
-      <section class="evidence-card verification-card">
-        <div class="section-heading">
-          <div><p class="eyebrow">Independent evidence</p><h2>{{ story.verification_heading }}</h2></div>
-          {% if verification %}<span class="verify-state">{{ verification.state }}</span>{% endif %}
-        </div>
-        {% if verification %}
-          <div class="check-list">
-            {% for check in verification.checks %}
-              <div class="check-row {{ check.status|lower }}">
-                <span aria-hidden="true">{% if check.status == 'PASS' %}✓{% elif check.status == 'BLOCKED' %}—{% else %}!{% endif %}</span>
-                <div><strong>{{ check.code }}</strong><small>{{ check.description }}</small></div>
+                {% endfor %}
               </div>
-            {% endfor %}
-          </div>
-          {% if verification.remaining_warnings %}
-            <details>
-              <summary>{{ verification.remaining_warnings|length }} remaining warning{% if verification.remaining_warnings|length != 1 %}s{% endif %}</summary>
-              <ul>{% for warning in verification.remaining_warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
             </details>
-          {% endif %}
-        {% else %}
-          <div class="empty-state"><strong>Waiting for the repair decision.</strong><span>Verification reloads the on-disk candidate; it does not trust the agent's wording.</span></div>
-        {% endif %}
-
-        {% if workflow_result %}
-          <div class="agent-metrics">
-            <div><small>Tool calls</small><strong>{{ workflow_result.metrics.tool_calls|sum(attribute='call_count') }}</strong></div>
-            <div><small>Interrupts</small><strong>{{ workflow_result.metrics.interrupt_count }}</strong></div>
-            <div><small>Corrections</small><strong>{{ workflow_result.metrics.correction_attempts }}</strong></div>
+            <p class="decision-note">{{ story.rejection_note }}</p>
+            <form action="{{ url_for('decide_job', job_id=job.job_id) }}" method="post" class="decision-actions" data-busy-form>
+              <input type="hidden" name="interrupt_id" value="{{ interrupt_id }}">
+              <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
+              <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
+            </form>
           </div>
-        {% endif %}
+        </section>
+      {% endif %}
 
-        {% if job.runtime.job.result %}
-          <a class="download-button" href="{{ url_for('download_result', job_id=job.job_id) }}">
-            <span><small>Contracted artifacts</small><strong>Download result ZIP</strong></span>
-            <b aria-hidden="true">↓</b>
-          </a>
-        {% endif %}
+      {% if job.error or workflow_result %}
+        <section class="result-card {{ job.state_class }}" data-focus-area="result">
+          {% if job.error %}
+            <p class="section-label">Stopped safely</p>
+            <h2>No output was marked ready.</h2>
+            <p>{{ job.error }}</p>
+          {% elif is_blocked %}
+            <p class="section-label">Inspection complete</p>
+            <h2>Inspection-only result</h2>
+            <p>This asset is not eligible for structural repair. The diagnostics are packaged without a ready candidate.</p>
+          {% else %}
+            <p class="section-label">Complete</p>
+            <h2>{{ story.candidate_label }}</h2>
+            <p><strong>{{ verification.state }}</strong> · {{ story.verification_heading }}</p>
+          {% endif %}
+          {% if job.runtime.job.result %}
+            <a class="download-button" href="{{ url_for('download_result', job_id=job.job_id) }}">
+              <span><small>Seven contracted artifacts</small><strong>Download result ZIP</strong></span>
+              <b aria-hidden="true">↓</b>
+            </a>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      <section class="preview-area" aria-labelledby="preview-title" data-focus-area="preview">
+        <div class="section-heading">
+          <h2 id="preview-title">{% if job.ready_candidate %}Before and after{% else %}Source preview{% endif %}</h2>
+          <span>Interactive</span>
+        </div>
+        <div class="preview-grid {% if not job.ready_candidate %}single{% endif %}">
+          <article class="preview-card">
+            <div class="preview-label"><strong>{{ story.source_label }}</strong><span>Original</span></div>
+            <model-viewer
+              src="{{ url_for('source_asset', job_id=job.job_id) }}"
+              alt="Interactive preview of the untouched uploaded model"
+              camera-controls
+              auto-rotate
+              rotation-per-second="12deg"
+              shadow-intensity="1"
+              environment-image="neutral"
+              exposure="1"
+              interaction-prompt="none">
+              <div class="viewer-fallback" slot="poster">Loading source preview…</div>
+            </model-viewer>
+            {% if inspection and inspection.geometry %}
+              <div class="bounds-line">
+                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} m</span>
+                <span>×</span>
+                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} m</span>
+                <span>×</span>
+                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[2]) }} m</span>
+              </div>
+            {% endif %}
+          </article>
+
+          {% if job.ready_candidate %}
+            <article class="preview-card after-card">
+              <div class="preview-label"><strong>{{ story.candidate_label }}</strong><span>Verified</span></div>
+              <model-viewer
+                src="{{ url_for('repaired_asset', job_id=job.job_id) }}"
+                alt="Interactive preview of the verified repaired model"
+                camera-controls
+                auto-rotate
+                rotation-per-second="12deg"
+                shadow-intensity="1"
+                environment-image="neutral"
+                exposure="1"
+                interaction-prompt="none">
+                <div class="viewer-fallback" slot="poster">Loading verified preview…</div>
+              </model-viewer>
+              {% if approval_card %}
+                <div class="bounds-line">
+                  {% for value in approval_card.expected_after_bounds.dimensions_m %}
+                    <span>{{ "%.3f"|format(value) }} m</span>{% if not loop.last %}<span>×</span>{% endif %}
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="bounds-line success-copy">Reloaded and verified</div>
+              {% endif %}
+            </article>
+          {% endif %}
+        </div>
       </section>
-    </div>
-    </div>
 
-    <p class="session-note">
-      Refreshing this page is safe and preserves this job state while the local server keeps running.
-      Restarting the server ends the in-memory session; on-disk artifacts remain under the configured
-      work directory.
-    </p>
+      <details class="technical-details" data-focus-area="technical details">
+        <summary>
+          <span>Technical details</span>
+          <small>{% if inspection %}{{ inspection.findings|length }} finding{% if inspection.findings|length != 1 %}s{% endif %}{% else %}Not available{% endif %}</small>
+        </summary>
+        <div class="details-body">
+          {% if inspection %}
+            <dl class="metric-list">
+              <div><dt>Eligibility</dt><dd>{{ inspection.repair_eligibility }}</dd></div>
+              <div><dt>Triangles</dt><dd>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</dd></div>
+              <div><dt>Materials</dt><dd>{{ inspection.package.material_count }}</dd></div>
+              <div><dt>Textures</dt><dd>{{ inspection.package.texture_count }}</dd></div>
+            </dl>
+          {% endif %}
+
+          <section class="detail-section" aria-labelledby="stages-title">
+            <h3 id="stages-title">Stages</h3>
+            <ol class="stage-list">
+              {% for stage in stages %}<li class="{{ stage.status }}">{{ stage.name }}</li>{% endfor %}
+            </ol>
+          </section>
+
+          <section class="detail-section" aria-labelledby="findings-title">
+            <h3 id="findings-title">{{ story.findings_heading }}</h3>
+            {% if finding_groups %}
+              <div class="finding-list">
+                {% for severity, findings in finding_groups %}
+                  {% for finding in findings %}
+                    <article class="finding">
+                      <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
+                      <h4>{{ finding.title }}</h4>
+                      <p>{{ finding.description }}</p>
+                      {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
+                    </article>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            {% elif inspection %}
+              <p class="empty-state"><strong>No project-policy findings.</strong> The asset already satisfies this profile.</p>
+            {% else %}
+              <p class="empty-state">No inspection available.</p>
+            {% endif %}
+          </section>
+
+          <section class="detail-section" aria-labelledby="verification-title">
+            <h3 id="verification-title">{{ story.verification_heading }}</h3>
+            {% if verification %}
+              <p class="verification-state">{{ verification.state }}</p>
+              <div class="check-list">
+                {% for check in verification.checks %}
+                  <div class="check-row {{ check.status|lower }}">
+                    <span aria-hidden="true">{% if check.status == 'PASS' %}✓{% elif check.status == 'BLOCKED' %}—{% else %}!{% endif %}</span>
+                    <div><strong>{{ check.code }}</strong><small>{{ check.description }}</small></div>
+                  </div>
+                {% endfor %}
+              </div>
+              {% if verification.remaining_warnings %}
+                <ul class="warning-list">{% for warning in verification.remaining_warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+              {% endif %}
+            {% else %}
+              <p class="empty-state">Waiting for a repair decision.</p>
+            {% endif %}
+          </section>
+
+          {% if workflow_result %}
+            <dl class="metric-list compact">
+              <div><dt>Tool calls</dt><dd>{{ workflow_result.metrics.tool_calls|sum(attribute='call_count') }}</dd></div>
+              <div><dt>Interrupts</dt><dd>{{ workflow_result.metrics.interrupt_count }}</dd></div>
+              <div><dt>Corrections</dt><dd>{{ workflow_result.metrics.correction_attempts }}</dd></div>
+            </dl>
+          {% endif %}
+
+          <p class="session-note">Refresh preserves this job while the local server is running. Restarting the server ends the in-memory session.</p>
+        </div>
+      </details>
+    </div>
   </section>
 {% endblock %}

@@ -4,6 +4,50 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D010 — Progressive disclosure limits every web state to three primary focus areas
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+The first story chooser asked a new visitor to understand eleven separate visual and textual areas
+before choosing a role. Its three route cards also embedded mini workflows, promises, and product
+boundaries, while later screens exposed stage rails, metrics, previews, decisions, findings, and
+verification simultaneously. The behavior was correct, but the presentation made the product feel
+more complicated than the three actions a user actually performs.
+
+**Options considered**
+
+- Shorten individual paragraphs while retaining the same card and panel hierarchy.
+- Remove role-specific journeys and return to one generic technical-art page.
+- Keep the three functionally equivalent role routes from D008, but reveal only the next useful
+  action and collapse detailed evidence behind one explicit disclosure.
+
+**Decision**
+
+Make the role question the first visible content on `/`. Limit the chooser and each intake to two
+primary focus areas. Limit approval, blocked, and completed job states to three: the decision or
+result, the model preview, and one collapsed technical-details disclosure. Use the short visible
+sequence `Inspect → Decide → Download/Package`; retain all seven contracted stages, findings,
+checks, metrics, and session behavior inside technical details. Keep all workflow behavior, safety
+policy, output artifacts, and role distinctions unchanged.
+
+**Evidence and consequences**
+
+Automated acceptance tests count `data-focus-area` regions and fail any rendered state above three,
+while still completing the exact approval and seven-file ZIP workflow through every role. Desktop
+and 390 × 844 browser review confirms the chooser starts with `Which best describes you?`, all three
+role pages render without horizontal overflow, and pending/completed states expose only their three
+primary areas. The source, Strands interrupt, deterministic repair, independent verification,
+preview routes, and download package are unchanged. Detailed evidence now requires one intentional
+click, which is the deliberate tradeoff for a much clearer first scan.
+
 ### D009 — Track Shader Lantern and preserve its pending blind decision
 
 **Date:** 2026-08-21

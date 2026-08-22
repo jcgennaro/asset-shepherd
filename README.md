@@ -34,16 +34,18 @@ uv sync
 uv run asset-shepherd web
 ```
 
-Open `http://127.0.0.1:8000`. The entry page offers three complete, functionally equivalent journeys:
+Open `http://127.0.0.1:8000`. The first screen asks only which role best describes the user:
 
-- `/stories/game-developer` leads with import readiness and the one project-impact decision.
-- `/stories/artist` leads with source preservation, before/after comparison, and artistic control.
-- `/stories/technical-artist` leads with versioned policy, structured findings, and invariant evidence.
+- `/stories/game-developer` asks whether the asset is ready for a game.
+- `/stories/artist` asks what will change in the artist's work.
+- `/stories/technical-artist` asks whether the asset meets project policy.
 
-Every route uses the same trusted profiles, bounded GLB upload, seven named stages, native Strands
-interrupt/resume, deterministic repair engine, interactive previews, independent verification, and
-contracted result ZIP. No model or network request is needed for the agent workflow; the default uses
-the zero-network scripted provider over the real Strands loop.
+Every route uses the same trusted profiles, bounded GLB upload, native Strands interrupt/resume,
+deterministic repair engine, interactive previews, independent verification, and contracted result
+ZIP. Progressive disclosure limits each page to no more than three primary focus areas; the seven
+named stages, findings, checks, and metrics remain available under **Technical details**. No model or
+network request is needed for the agent workflow; the default uses the zero-network scripted
+provider over the real Strands loop.
 
 Browser refresh preserves the current job while the server process remains running. A server restart
 ends the in-memory approval session, while completed artifacts stay under `build/web/jobs/`. The 3D

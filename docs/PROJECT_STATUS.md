@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** M8 story-first UX and Shader Lantern blind intake (this file is included)
+**Current commit:** M8 progressive-disclosure UX refinement (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M8 concept review / M9 AWS setup
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Three story-first local concepts; shared real Strands interrupt/resume; dual GLB preview; verification/download; browser and automated equivalence acceptance | 4459b7b70ff46aa05f6b28e43c44e2300875c6ef | D006 and D008; current UX refinement commit pending |
+| M8 Web product | COMPLETE | Role-first chooser; two-area intake; three-area decision/result states; shared real Strands interrupt/resume; dual GLB preview; verification/download | 4459b7b70ff46aa05f6b28e43c44e2300875c6ef | D006, D008, and D010; progressive-disclosure refinement included in current commit |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -36,12 +36,13 @@
 
 ## Current gate
 
-M8 is complete and now presents three reviewable user-story concepts over one product core. Each
-route completes profile-select/upload/findings/approval/repair/verify/preview/download through the
-same real Strands loop and exact result package. Shader Lantern is the second registered real-world
-input; its blind prediction is frozen at the physical-size approval before any visual diagnosis. RW2
-still needs Debug Beetle and Cloudforge Workbench. M9 requires user-owned AWS profile, model access,
-region, and cost-control setup before any paid invocation or resource creation.
+M8 is complete and now begins with one role question, then progressively reveals upload, decision,
+result, preview, and technical evidence. Each route completes the same real Strands loop and exact
+result package, with an enforced maximum of three primary focus areas in every rendered state.
+Shader Lantern is the second registered real-world input; its blind prediction remains frozen at the
+physical-size approval before any visual diagnosis. RW2 still needs Debug Beetle and Cloudforge
+Workbench. M9 requires user-owned AWS profile, model access, region, and cost-control setup before
+any paid invocation or resource creation.
 
 ## Latest evidence
 
@@ -72,11 +73,12 @@ region, and cost-control setup before any paid invocation or resource creation.
 - Chrome review: desktop and 390 × 844 responsive layouts passed; synthetic before/after difference
   is immediately visible; Patchling textured raw/repaired previews match; no console warnings or
   errors. The packaged wheel includes templates, CSS, JavaScript, and the local favicon.
-- Story-first web evidence: the chooser identifies game developer, 3D artist, and technical artist
-  questions; each full route runs the same exact seven-file approval workflow. Desktop review passed
-  for every concept, responsive review has no horizontal overflow, and the presentation ordering
-  puts readiness, visual preservation, or audit evidence first respectively. Application console
-  logs were clean; one unrelated Chrome-extension animation warning was excluded.
+- Progressive-disclosure web evidence: `/` starts with `Which best describes you?` and three concise
+  role choices. Each intake has two primary focus areas; pending, blocked, and completed jobs have
+  three. Tests enforce that budget while each role still runs the exact seven-file approval workflow.
+  Desktop and 390 × 844 review passed with no horizontal overflow; the completed result keeps the
+  download and before/after preview visible while technical evidence is collapsed. No application
+  console errors or warnings were observed.
 - Distribution audit: `uv build --wheel` succeeded and the wheel contains all three story templates,
   both shared partials, the job/chooser/base templates, CSS, JavaScript, and favicon.
 - Shader Lantern evidence: raw SHA-256
@@ -102,7 +104,7 @@ reference remain future RW4 work.
 
 ## Next action
 
-The user reviews the three M8 concepts and approves or rejects Shader Lantern's exact
-`normalize-root-v1` proposal. After that decision, freeze the complete Lantern package before
+The user reviews the simplified role-first M8 experience and approves or rejects Shader Lantern's
+exact `normalize-root-v1` proposal. After that decision, freeze the complete Lantern package before
 Blender/Unreal diagnosis and continue RW2 with one Debug Beetle generation card. Before M9 paid
 provider work, confirm the dedicated AWS profile, Bedrock model/region access, and budget alert.

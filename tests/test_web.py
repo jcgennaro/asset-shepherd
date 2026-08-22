@@ -21,11 +21,16 @@ BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
 CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
 PROFILE_ID = "unreal-indie-robot-v1"
 STORY_EXPECTATIONS = (
-    ("game-developer", "Indie game developer", "Import-ready candidate", "Ready-to-import proof"),
-    ("artist", "3D artist and asset creator", "Verified delivery copy", "Preservation checks"),
+    (
+        "game-developer",
+        "Is this asset ready for my game?",
+        "Import-ready candidate",
+        "Ready-to-import proof",
+    ),
+    ("artist", "What will change in my work?", "Verified delivery copy", "Preservation checks"),
     (
         "technical-artist",
-        "Technical artist and content lead",
+        "Does this asset meet project policy?",
         "Verified artifact",
         "Invariant audit",
     ),
@@ -66,27 +71,34 @@ def _interrupt_id(html: str) -> str:
     return match.group(1)
 
 
+def _assert_focus_area_budget(html: str, expected: int) -> None:
+    """Keep every visible state inside the user-mandated three-area attention budget."""
+    focus_areas = re.findall(r'data-focus-area="([^"]+)"', html)
+    assert len(focus_areas) == expected, focus_areas
+    assert len(focus_areas) <= 3
+
+
 def test_web_story_chooser_explains_three_equivalent_flows(tmp_path: Path) -> None:
-    """The entry page starts with user questions and discloses the shared product core."""
+    """The entry page asks one question and offers three concise role choices."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Three user stories · one working product" in response.text
-    assert "No feature differences between concepts" in response.text
-    for story_slug, audience, _, _ in STORY_EXPECTATIONS:
-        assert audience in response.text
+    assert "Which best describes you?" in response.text
+    assert "No feature differences between concepts" not in response.text
+    _assert_focus_area_budget(response.text, expected=2)
+    for story_slug, _, _, _ in STORY_EXPECTATIONS:
         assert f"/stories/{story_slug}" in response.text
 
 
 @pytest.mark.parametrize(
-    ("story_slug", "audience", "candidate_label", "verification_heading"),
+    ("story_slug", "landing_question", "candidate_label", "verification_heading"),
     STORY_EXPECTATIONS,
 )
 def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     tmp_path: Path,
     story_slug: str,
-    audience: str,
+    landing_question: str,
     candidate_label: str,
     verification_heading: str,
 ) -> None:
@@ -94,9 +106,12 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     landing = client.get(f"/stories/{story_slug}")
     assert landing.status_code == 200
-    assert audience in landing.text
+    assert landing_question in landing.text
     assert f"/stories/{story_slug}/jobs" in landing.text
-    assert len(re.findall(r'class="journey-steps"', landing.text)) == 1
+    assert "Inspect" in landing.text
+    assert "Decide" in landing.text
+    assert "Download" in landing.text
+    _assert_focus_area_budget(landing.text, expected=2)
 
     job_path = _upload(client, BROKEN_PATH, story_slug=story_slug)
 
@@ -104,6 +119,7 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert pending.status_code == 200
     assert "Approval needed" in pending.text
     assert "Normalize physical scale, upright orientation, and grounding" in pending.text
+    _assert_focus_area_budget(pending.text, expected=3)
     interrupt_id = _interrupt_id(pending.text)
     pending_output = tmp_path / "jobs" / job_path.rsplit("/", 1)[-1] / "output"
     assert not (pending_output / "candidate.glb").exists()
@@ -127,6 +143,7 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert verification_heading in completed.text
     assert "PASSED_WITH_REMAINING_WARNINGS" in completed.text
     assert "Download result ZIP" in completed.text
+    _assert_focus_area_budget(completed.text, expected=3)
     assert client.get(f"{job_path}/repaired.glb").status_code == 200
 
     archive_response = client.get(f"{job_path}/download")
@@ -159,6 +176,7 @@ def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path)
         assert "Verified delivery copy" in completed.text
         assert "Approval needed" not in completed.text
         assert "PASSED_PROJECT_READY" in completed.text
+        _assert_focus_area_budget(completed.text, expected=3)
         assert client.get(f"{job_path}/download").status_code == 200
 
 
@@ -173,7 +191,8 @@ def test_web_rejects_non_glb_upload_without_starting_a_job(tmp_path: Path) -> No
     )
     assert response.status_code == 400
     assert "The upload is not a GLB 2.0 binary container." in response.text
-    assert "Bind an asset to a profile" in response.text
+    assert "Does this asset meet project policy?" in response.text
+    _assert_focus_area_budget(response.text, expected=2)
     assert not work_root.exists() or not tuple(work_root.iterdir())
 
 
@@ -192,6 +211,7 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
     assert "Inspection-only result" in blocked.text
     assert "INSPECTION_ONLY_UNSUPPORTED_FEATURES" in blocked.text
     assert "UNSUPPORTED_REPAIR_FEATURES" in blocked.text
+    _assert_focus_area_budget(blocked.text, expected=3)
     assert client.get(f"{job_path}/repaired.glb").status_code == 404
     assert skinned_path.read_bytes() == source_before
 

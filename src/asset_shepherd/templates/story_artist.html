@@ -1,43 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Asset Shepherd · 3D artist flow{% endblock %}
+{% block title %}Asset Shepherd · 3D artist{% endblock %}
 {% block content %}
-  <section class="artist-hero story-landing">
-    <div class="artist-manifesto">
-      <div class="audience-chip"><span></span>Flow 02 · {{ story.audience }}</div>
-      <p class="story-question">“{{ story.user_story }}”</p>
-      <h1>{{ story.headline }}</h1>
-      <p class="lede">{{ story.promise }}</p>
-      <div class="change-contract" aria-label="Artist change contract">
-        <article>
-          <p class="eyebrow">May change</p>
-          <strong>Display names</strong>
-          <strong>Approved root transform</strong>
-        </article>
-        <article>
-          <p class="eyebrow">Stays yours</p>
-          <strong>Geometry &amp; topology</strong>
-          <strong>Materials, textures &amp; UVs</strong>
-        </article>
-      </div>
-    </div>
-    <div class="artist-intake-frame">
-      <div class="frame-label"><span>Source</span><b>preserved</b><span>Candidate</span><b>verified</b></div>
-      {% include "_intake_form.html" %}
-    </div>
-  </section>
-
-  <section class="artist-flow story-flow" aria-labelledby="artist-flow-title">
-    <div class="flow-heading">
-      <p class="eyebrow">A protected handoff, not a black box</p>
-      <h2 id="artist-flow-title">You see the source, the proposal, the decision, and the delivery copy.</h2>
-    </div>
-    {% include "_journey_steps.html" %}
-  </section>
-
-  <section class="artist-principles">
-    <p>“Safe” means references and visible content survive independent reload—not that a model sounded confident.</p>
-    <div><span>01</span>Source never overwritten</div>
-    <div><span>02</span>No artistic cleanup invented</div>
-    <div><span>03</span>Rejection remains visible</div>
-  </section>
+  <div class="intake-layout">
+    <section class="role-intro" data-focus-area="role question">
+      <p class="role-label">For 3D artists</p>
+      <h1>What will change in my work?</h1>
+      <p>Review every proposed change while your geometry, materials, textures, and source stay yours.</p>
+      {% include "_journey_steps.html" %}
+    </section>
+    {% include "_intake_form.html" %}
+  </div>
 {% endblock %}
