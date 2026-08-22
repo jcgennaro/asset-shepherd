@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-21
-**Current commit:** Web design and flow handoff (this file is included)
+**Current commit:** M8 versioned project-policy enhancement (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Role-first chooser; explicit rules-then-upload intake; three-area decision/result states; shared real Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, and D012; intake clarification included in current commit |
+| M8 Web product | COMPLETE | Role-first chooser; immutable policy presets and validated custom copies; three-area decision/result states; shared real Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, and D013; policy enhancement included in current commit |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -45,8 +45,8 @@ before any paid invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 48 passed and the opt-in live-provider test skipped; story web gate —
-  7 passed.
+- Tests: `uv run pytest` — 54 passed and the opt-in live-provider test skipped; story web gate —
+  13 passed.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
@@ -88,6 +88,13 @@ before any paid invocation or resource creation.
   system, runtime boundaries, evidence, limitations, and the ordered decisions/next steps for
   external product review. The role chooser and all three intake routes were rendered and rechecked
   against the document.
+- Versioned policy intake: both repository profiles remain immutable presets with concise policy
+  summaries and collapsed 20-parameter rule reviews. `Customize a copy` exposes only deterministically
+  enforced target-state and report-only budget fields; the server validates a resolved
+  `ProjectProfile`, freezes it per job, and records frozen/base IDs, explicit overrides, version, and
+  canonical SHA-256. Findings cite the exact active policy values, and changing rules creates a new
+  job/inspection. Thirteen web tests cover preset and custom paths without changing the role routes,
+  grouped approval, verification, source preservation, focus-area budget, or ZIP contract.
 - Distribution audit: `uv build --wheel` succeeded and the wheel contains all three story templates,
   both shared partials, the job/chooser/base templates, CSS, JavaScript, and favicon.
 - Shader Lantern evidence: raw SHA-256

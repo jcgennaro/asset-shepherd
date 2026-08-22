@@ -18,6 +18,7 @@ from asset_shepherd.models import (
     InspectionResult,
     JobResult,
     JobState,
+    ProfilePolicyProvenance,
     ProjectProfile,
     Provenance,
     RepairPlan,
@@ -26,6 +27,7 @@ from asset_shepherd.models import (
     VerificationState,
 )
 from asset_shepherd.planner import plan_repairs
+from asset_shepherd.profile_policy import build_profile_policy_provenance
 from asset_shepherd.repair import RepairOutcome, apply_repairs, create_decisions
 from asset_shepherd.verification import verify_repair
 
@@ -88,6 +90,7 @@ def build_provenance(
     *,
     started_at: datetime,
     completed_at: datetime,
+    profile_policy: ProfilePolicyProvenance | None = None,
 ) -> Provenance:
     """Build provenance from the exact plan, decisions, and repair outcome."""
     candidates = {candidate.id: candidate for candidate in plan.candidates}
@@ -114,6 +117,7 @@ def build_provenance(
         output_sha256=output_sha256,
         profile_id=profile.profile_id,
         profile_version=profile.profile_version,
+        profile_policy=profile_policy or build_profile_policy_provenance(profile),
         application_version=application_version,
         commit_sha=_application_commit(),
         library_versions=_library_versions(),

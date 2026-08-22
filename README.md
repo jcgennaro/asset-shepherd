@@ -49,6 +49,13 @@ named stages, findings, checks, and metrics remain available under **Technical d
 network request is needed for the agent workflow; the default uses the zero-network scripted
 provider over the real Strands loop.
 
+Repository profiles are immutable versioned policy presets. Each preset shows a concise summary and
+a collapsed complete rule review. An advanced **Customize a copy** control permits only supported
+target-state and report-only budget overrides; safety policy and verification boundaries remain
+fixed. Upload freezes the resolved policy into the new job, and provenance records its base preset,
+explicit overrides, version, identifier, and canonical SHA-256. Changing rules starts a new
+inspection and job.
+
 Browser refresh preserves the current job while the server process remains running. A server restart
 ends the in-memory approval session, while completed artifacts stay under `build/web/jobs/`. The 3D
 preview uses the pinned official `<model-viewer>` browser component; GLB files remain served from the

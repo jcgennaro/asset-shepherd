@@ -43,6 +43,7 @@ from asset_shepherd.models import (
     TextureFact,
     TransformFacts,
 )
+from asset_shepherd.profile_policy import finding_rule_provenance
 
 SUPPORTED_REQUIRED_EXTENSIONS: Final[frozenset[str]] = frozenset()
 _IDENTITY: Final = np.eye(4, dtype=np.float64)
@@ -267,6 +268,7 @@ def _naming_facts(gltf: GLTF2, profile: ProjectProfile) -> NamingFacts:
         names: list[str | None],
         *,
         prefix: str,
+        require_unique: bool,
     ) -> tuple[tuple[int, ...], tuple[int, ...], dict[str, tuple[int, ...]], dict[str, str]]:
         missing = tuple(index for index, name in enumerate(names) if not name)
         invalid = tuple(
@@ -283,7 +285,11 @@ def _naming_facts(gltf: GLTF2, profile: ProjectProfile) -> NamingFacts:
             for name, indices in sorted(occurrences.items())
             if len(indices) > 1
         }
-        duplicate_indices = {index for indices in duplicates.values() for index in indices[1:]}
+        duplicate_indices: set[int] = (
+            {index for indices in duplicates.values() for index in indices[1:]}
+            if require_unique
+            else set[int]()
+        )
         repair_indices = set(missing) | set(invalid) | duplicate_indices
         reserved = {
             name
@@ -299,10 +305,12 @@ def _naming_facts(gltf: GLTF2, profile: ProjectProfile) -> NamingFacts:
     missing_nodes, invalid_nodes, duplicate_nodes, node_replacements = classify(
         node_names,
         prefix="Node",
+        require_unique=profile.naming.require_unique_node_names,
     )
     missing_meshes, invalid_meshes, duplicate_meshes, mesh_replacements = classify(
         mesh_names,
         prefix="Mesh",
+        require_unique=profile.naming.require_unique_mesh_names,
     )
     return NamingFacts(
         node_names=tuple(node_names),
@@ -406,6 +414,7 @@ def _finding(
     evidence: tuple[FindingEvidence, ...],
     profile_rule: str | None,
     candidates: tuple[str, ...] = (),
+    profile: ProjectProfile | None = None,
 ) -> Finding:
     return Finding(
         id=f"finding-{code.lower().replace('_', '-')}",
@@ -419,11 +428,14 @@ def _finding(
         affected_components=affected,
         evidence=evidence,
         profile_rule=profile_rule,
+        rule_provenance=(
+            finding_rule_provenance(profile, profile_rule) if profile is not None else None
+        ),
         candidate_repairs=candidates,
     )
 
 
-def _naming_findings(naming: NamingFacts) -> list[Finding]:
+def _naming_findings(naming: NamingFacts, profile: ProjectProfile) -> list[Finding]:
     findings: list[Finding] = []
     categories = (
         (
@@ -431,39 +443,57 @@ def _naming_findings(naming: NamingFacts) -> list[Finding]:
             naming.missing_node_indices,
             "Nodes are missing names",
             "node",
+            "naming.pattern",
         ),
         (
             "NODE_NAME_INVALID",
             naming.invalid_node_indices,
             "Node names violate the project pattern",
             "node",
+            "naming.pattern",
         ),
         (
             "NODE_NAME_DUPLICATE",
-            tuple(index for indices in naming.duplicate_node_names.values() for index in indices),
+            (
+                tuple(
+                    index for indices in naming.duplicate_node_names.values() for index in indices
+                )
+                if profile.naming.require_unique_node_names
+                else ()
+            ),
             "Node names are not unique",
             "node",
+            "naming.require_unique_node_names",
         ),
         (
             "MESH_NAME_MISSING",
             naming.missing_mesh_indices,
             "Meshes are missing names",
             "mesh",
+            "naming.pattern",
         ),
         (
             "MESH_NAME_INVALID",
             naming.invalid_mesh_indices,
             "Mesh names violate the project pattern",
             "mesh",
+            "naming.pattern",
         ),
         (
             "MESH_NAME_DUPLICATE",
-            tuple(index for indices in naming.duplicate_mesh_names.values() for index in indices),
+            (
+                tuple(
+                    index for indices in naming.duplicate_mesh_names.values() for index in indices
+                )
+                if profile.naming.require_unique_mesh_names
+                else ()
+            ),
             "Mesh names are not unique",
             "mesh",
+            "naming.require_unique_mesh_names",
         ),
     )
-    for code, indices, title, component_type in categories:
+    for code, indices, title, component_type, profile_rule in categories:
         if not indices:
             continue
         candidate_ids = tuple(
@@ -490,8 +520,9 @@ def _naming_findings(naming: NamingFacts) -> list[Finding]:
                         ),
                     ),
                 ),
-                profile_rule=f"naming.{component_type}_names",
+                profile_rule=profile_rule,
                 candidates=candidate_ids,
+                profile=profile,
             )
         )
     return findings
@@ -568,6 +599,7 @@ def _inspection_findings(
                 ),
                 profile_rule="expected_height_cm",
                 candidates=("normalize-root-v1",),
+                profile=profile,
             )
         )
     if profile.orientation.require_y_up_geometry and geometry.dominant_dimension_axis != "Y":
@@ -597,6 +629,7 @@ def _inspection_findings(
                 ),
                 profile_rule="orientation.require_y_up_geometry",
                 candidates=("normalize-root-v1",),
+                profile=profile,
             )
         )
     if profile.orientation.require_ground_contact and geometry.ground_relationship != "GROUNDED":
@@ -624,10 +657,11 @@ def _inspection_findings(
                 ),
                 profile_rule="orientation.require_ground_contact",
                 candidates=("normalize-root-v1",),
+                profile=profile,
             )
         )
 
-    findings.extend(_naming_findings(naming))
+    findings.extend(_naming_findings(naming, profile))
     if geometry.triangle_count > profile.budgets.max_triangles:
         findings.append(
             _finding(
@@ -647,6 +681,7 @@ def _inspection_findings(
                     ),
                 ),
                 profile_rule="budgets.max_triangles",
+                profile=profile,
             )
         )
     budget_findings = (
@@ -686,6 +721,7 @@ def _inspection_findings(
                     ),
                 ),
                 profile_rule=f"budgets.max_{resource_name}s",
+                profile=profile,
             )
         )
     oversized_images = [
@@ -715,6 +751,7 @@ def _inspection_findings(
                     ),
                 ),
                 profile_rule="budgets.max_texture_dimension",
+                profile=profile,
             )
         )
     unreadable_images = [

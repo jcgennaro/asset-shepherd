@@ -18,6 +18,7 @@ from asset_shepherd.models import (
     JobState,
     NormalizationPayload,
     PlanSelection,
+    ProfilePolicyProvenance,
     ProjectProfile,
     Provenance,
     RepairPlan,
@@ -25,6 +26,10 @@ from asset_shepherd.models import (
     VerificationState,
 )
 from asset_shepherd.planner import plan_repairs
+from asset_shepherd.profile_policy import (
+    build_profile_policy_provenance,
+    validate_profile_policy_provenance,
+)
 from asset_shepherd.repair import RepairOutcome, apply_repairs, create_decisions
 from asset_shepherd.verification import verify_repair
 from asset_shepherd.workflow import (
@@ -73,6 +78,7 @@ class AgentJob:
     source: Path
     profile_path: Path
     output_dir: Path
+    profile_policy: ProfilePolicyProvenance | None = None
     clock: Callable[[], datetime] = _utc_now
     verification_function: VerificationFunction = verify_repair
     profile: ProjectProfile = field(init=False)
@@ -101,6 +107,10 @@ class AgentJob:
         self.profile = ProjectProfile.model_validate_json(
             self.profile_path.read_text(encoding="utf-8")
         )
+        if self.profile_policy is None:
+            self.profile_policy = build_profile_policy_provenance(self.profile)
+        else:
+            validate_profile_policy_provenance(self.profile, self.profile_policy)
 
     @property
     def candidate_path(self) -> Path:
@@ -263,6 +273,7 @@ class AgentJob:
             self.outcome,
             started_at=self.started_at,
             completed_at=self.clock(),
+            profile_policy=self.profile_policy,
         )
         _write_json(
             self.output_dir / "decisions.json",
@@ -303,6 +314,7 @@ class AgentJob:
             self.outcome,
             started_at=self.started_at,
             completed_at=self.clock(),
+            profile_policy=self.profile_policy,
         )
         self.last_verification = None
         _write_json(
@@ -326,6 +338,7 @@ class AgentJob:
                 None,
                 started_at=self.started_at,
                 completed_at=self.clock(),
+                profile_policy=self.profile_policy,
             )
             verification = build_blocked_verification(self.selected_plan)
             self.last_verification = verification

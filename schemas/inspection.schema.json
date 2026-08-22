@@ -190,6 +190,17 @@
           ],
           "title": "Profile Rule"
         },
+        "rule_provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FindingRuleProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "severity": {
           "$ref": "#/$defs/Severity"
         },
@@ -260,6 +271,35 @@
         "observation"
       ],
       "title": "FindingEvidence",
+      "type": "object"
+    },
+    "FindingRuleProvenance": {
+      "additionalProperties": false,
+      "description": "Exact versioned policy parameters that caused one finding.",
+      "properties": {
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_version": {
+          "const": 1,
+          "title": "Profile Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "profile_id",
+        "profile_version",
+        "parameters"
+      ],
+      "title": "FindingRuleProvenance",
       "type": "object"
     },
     "GeometryFacts": {

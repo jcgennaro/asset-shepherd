@@ -344,6 +344,20 @@ select {
   gap: 8px;
 }
 
+.profile-option-shell {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.profile-option-shell:has(input:checked),
+.profile-option-shell:focus-within {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .profile-option {
   display: grid;
   min-height: 58px;
@@ -351,9 +365,9 @@ select {
   align-items: center;
   gap: 11px;
   padding: 10px 13px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease;
 }
@@ -361,8 +375,7 @@ select {
 .profile-option:hover,
 .profile-option:focus-within,
 .profile-option:has(input:checked) {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .profile-option input {
@@ -379,6 +392,221 @@ select {
 
 .profile-option strong {
   font-size: 0.82rem;
+}
+
+.policy-summary {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0 13px 12px 42px;
+}
+
+.policy-summary div {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.policy-summary dt,
+.policy-summary dd,
+.policy-rule-list dt,
+.policy-rule-list dd {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+.policy-summary dt,
+.policy-rule-list dt {
+  color: var(--muted);
+}
+
+.policy-summary dd,
+.policy-rule-list dd {
+  overflow-wrap: anywhere;
+}
+
+.policy-review {
+  border-top: 1px solid var(--line);
+}
+
+.policy-review summary,
+.custom-policy > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 13px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.policy-review summary::-webkit-details-marker,
+.custom-policy > summary::-webkit-details-marker {
+  display: none;
+}
+
+.policy-review summary::after,
+.custom-policy > summary::after {
+  color: var(--accent);
+  content: "+";
+}
+
+.policy-review[open] summary::after,
+.custom-policy[open] > summary::after {
+  content: "−";
+}
+
+.policy-rule-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 13px 14px 42px;
+}
+
+.policy-rule-list div {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+}
+
+.custom-policy {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(7, 14, 13, 0.45);
+}
+
+.custom-policy > summary {
+  min-height: 48px;
+  padding-inline: 13px;
+  color: var(--text);
+}
+
+.custom-policy > summary span {
+  display: grid;
+  gap: 2px;
+}
+
+.custom-policy > summary small {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 450;
+}
+
+.custom-policy-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 13px 14px;
+}
+
+.custom-policy-body > p,
+.custom-policy-fields small,
+.custom-policy-boundary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.custom-policy-toggle {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.custom-policy-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.custom-policy-toggle span {
+  display: grid;
+  gap: 2px;
+}
+
+.custom-policy-toggle strong {
+  font-size: 0.75rem;
+}
+
+.custom-policy-toggle small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.custom-policy-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.custom-policy-fields[hidden] {
+  display: none;
+}
+
+.custom-policy-fields fieldset {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.custom-policy-fields legend {
+  padding-inline: 4px;
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 750;
+}
+
+.custom-policy-fields label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.custom-policy-fields label > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.custom-policy-fields input,
+.custom-policy-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.custom-policy-fields input:focus,
+.custom-policy-fields select:focus {
+  border-color: var(--accent);
+}
+
+.custom-policy-boundary {
+  grid-column: 1 / -1;
+  padding: 10px;
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
 }
 
 .drop-zone {
@@ -983,6 +1211,24 @@ model-viewer.viewer-error::after {
   margin: 0 0 8px;
 }
 
+.finding .rule-provenance {
+  padding: 7px 8px;
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 0.68rem;
+}
+
+.finding .rule-provenance strong {
+  color: var(--text);
+}
+
+.finding .rule-provenance code {
+  display: block;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  color: var(--accent);
+}
+
 .verification-state {
   color: var(--success);
   font-size: 0.76rem;
@@ -1112,6 +1358,23 @@ model-viewer.viewer-error::after {
 
   .intake-card {
     padding: 22px;
+  }
+
+  .policy-summary {
+    padding-left: 13px;
+  }
+
+  .policy-rule-list {
+    padding-left: 13px;
+  }
+
+  .policy-rule-list div,
+  .custom-policy-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-policy-boundary {
+    grid-column: 1;
   }
 
   .job-shell {

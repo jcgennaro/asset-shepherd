@@ -92,6 +92,47 @@
       "title": "ExecutedAction",
       "type": "object"
     },
+    "JsonValue": {},
+    "ProfilePolicyProvenance": {
+      "additionalProperties": false,
+      "description": "Frozen identity and derivation record for one job's project policy.",
+      "properties": {
+        "base_preset_id": {
+          "title": "Base Preset Id",
+          "type": "string"
+        },
+        "canonical_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Canonical Sha256",
+          "type": "string"
+        },
+        "explicit_overrides": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Explicit Overrides",
+          "type": "object"
+        },
+        "frozen_profile_id": {
+          "title": "Frozen Profile Id",
+          "type": "string"
+        },
+        "profile_version": {
+          "const": 1,
+          "title": "Profile Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "frozen_profile_id",
+        "base_preset_id",
+        "explicit_overrides",
+        "profile_version",
+        "canonical_sha256"
+      ],
+      "title": "ProfilePolicyProvenance",
+      "type": "object"
+    },
     "RepairKind": {
       "description": "Registered version-1 repair operations.",
       "enum": [
@@ -156,6 +197,17 @@
     "profile_id": {
       "title": "Profile Id",
       "type": "string"
+    },
+    "profile_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProfilePolicyProvenance"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "profile_version": {
       "const": 1,

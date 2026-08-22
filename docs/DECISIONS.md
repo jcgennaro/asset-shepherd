@@ -4,6 +4,60 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D013 — Freeze versioned policy copies per inspection job
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+The explicit rules-then-upload intake prevented users from confusing a profile with a model, but a
+profile was still presented mostly as a short radio label. Job provenance recorded only its ID and
+version, findings exposed only a bare rule path, and the web job read the repository preset directly.
+The user asked to make profiles first-class versioned project policies, preserve presets as
+immutable, support bounded customization, and prove exactly which frozen rules governed a job.
+
+**Options considered**
+
+- Keep presets read-only and add descriptive copy only.
+- Allow arbitrary profile JSON or raw transform input in the browser.
+- Build a general policy-management service with mutable saved profiles.
+- Keep the existing role/intake flow, show complete preset policy evidence progressively, validate
+  only supported target-state overrides, and freeze the resolved copy inside each new job.
+
+**Decision**
+
+Keep repository JSON profiles immutable and expose them as presets with concise summaries and a
+collapsed full rule review. Add one collapsed `Customize a copy` section inside the existing intake
+focus area. Allow only height/tolerance, Y-up and ground-contact target state, an engine-compatible
+bounded naming pattern, and report-only budgets. Do not expose matrices or make repair safety,
+authorization classes, vertical inference, uniqueness guarantees, verification invariants,
+unsupported repair domains, engine/type, or source preservation editable.
+
+Every upload writes a resolved `profile.json` into its opaque job workspace. A custom policy receives
+a deterministic frozen ID derived from its base preset and explicit overrides. Provenance records
+that ID, the base preset, only changed values, profile version, and canonical SHA-256. Findings retain
+their primary rule path and add the exact frozen policy parameter values that caused them. Existing
+jobs have no policy mutation route; changing rules requires a new upload-backed inspection/job.
+
+**Evidence and consequences**
+
+Web acceptance covers preset summaries and collapsed reviews, successful validated custom copies,
+invalid numeric and naming-rule rejection before job creation, unchanged repository preset bytes,
+canonical-hash agreement, explicit override recording, finding rule citations, and distinct job and
+inspection records for different policies over the same source. Existing three role routes, the
+two-focus-area intake, single grouped normalization approval, clean/blocked/error behavior,
+independent verification, source preservation, and seven-artifact ZIP remain unchanged.
+
+Custom copies are deliberately job-scoped rather than a reusable policy library. This avoids adding
+accounts, mutable shared policy state, or deployment architecture before M9 while making every
+current result reproducible from its frozen policy evidence.
+
 ### D012 — Require an explicit validation-rule choice before GLB upload
 
 **Date:** 2026-08-21

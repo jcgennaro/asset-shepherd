@@ -3,8 +3,8 @@
 {% block content %}
   <section class="job-shell">
     <header class="job-header">
-      <a class="back-link" href="{{ url_for('story_home', story_slug=story.slug) }}">← Start over</a>
-      <span class="job-file">{{ job.original_filename }} · {{ job.profile.name }}</span>
+      <a class="back-link" href="{{ url_for('story_home', story_slug=story.slug) }}">← New inspection</a>
+      <span class="job-file" title="Frozen policy {{ job.profile.profile_id }}">{{ job.original_filename }} · {{ job.profile.name }}</span>
       <ol class="progress-line" aria-label="Workflow progress">
         <li class="{% if inspection %}complete{% else %}current{% endif %}">Inspect</li>
         <li class="{% if approval_card %}current{% elif inspection %}complete{% else %}pending{% endif %}">Decide</li>
@@ -151,6 +151,8 @@
               <div><dt>Triangles</dt><dd>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</dd></div>
               <div><dt>Materials</dt><dd>{{ inspection.package.material_count }}</dd></div>
               <div><dt>Textures</dt><dd>{{ inspection.package.texture_count }}</dd></div>
+              <div><dt>Frozen policy</dt><dd>{{ job.profile.profile_id }}</dd></div>
+              <div><dt>Policy hash</dt><dd><code>{{ job.profile.policy_provenance.canonical_sha256[:12] }}</code></dd></div>
             </dl>
           {% endif %}
 
@@ -171,6 +173,9 @@
                       <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
                       <h4>{{ finding.title }}</h4>
                       <p>{{ finding.description }}</p>
+                      {% if finding.id in rule_explanations %}
+                        <p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>
+                      {% endif %}
                       {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
                     </article>
                   {% endfor %}
@@ -211,7 +216,7 @@
             </dl>
           {% endif %}
 
-          <p class="session-note">Refresh preserves this job while the local server is running. Restarting the server ends the in-memory session.</p>
+          <p class="session-note">Refresh preserves this job while the local server is running. The policy is frozen; changing rules starts a new inspection and job. Restarting the server ends the in-memory session.</p>
         </div>
       </details>
     </div>

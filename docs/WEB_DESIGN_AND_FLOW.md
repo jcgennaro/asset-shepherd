@@ -1,8 +1,7 @@
 # Asset Shepherd Web Design and Flow
 
-This document describes the local web product as implemented after the explicit
-validation-rules intake clarification (`88b091741a3103a7409b8fea8fb262d1bf0c756a`). It is a
-handoff snapshot, not a proposal for expanded scope.
+This document describes the local web product after the explicit validation-rules intake and D013
+versioned policy enhancement. It is a handoff snapshot, not a proposal for expanded scope.
 
 ## Product mental model
 
@@ -10,7 +9,7 @@ Asset Shepherd is a guided intake workflow for one static GLB at a time:
 
 ```text
 Choose a role
-  -> choose the rules that define "ready"
+  -> choose an immutable preset or customize a supported copy
   -> upload the actual GLB
   -> inspect
   -> approve or reject one physical normalization, if needed
@@ -21,7 +20,8 @@ Choose a role
 The validation-rule choice and file upload are deliberately separate:
 
 - **Validation rules** select the target size, conventions, and limits against which the asset is
-  judged. They do not select a model.
+  judged. They do not select a model. Repository presets are immutable, and a custom copy is
+  validated and frozen before the job starts.
 - **GLB upload** selects the user's actual 3D model. Asset Shepherd works on a copied job artifact
   and does not mutate the uploaded source file.
 
@@ -89,13 +89,30 @@ flowchart TD
 ### Intake
 
 The intake has two focus areas: the audience question and one upload card. No profile is selected by
-default. The user must explicitly choose one of the repository-owned profiles before uploading:
+default. The user must explicitly choose one of the repository-owned versioned policy presets
+before uploading:
 
 - **Unreal Indie Robot** — 1.8 m character-scale static mesh.
 - **Small Stylized Static Mesh** — 0.9–1.5 m compact stylized asset.
 
+Each preset visibly summarizes target height/tolerance, orientation and grounding, naming, budgets,
+and authorization behavior. **Review rules** remains collapsed and contains every active
+`ProjectProfile` parameter plus the preset version and canonical hash.
+
+**Customize a copy** is a collapsed advanced control below the presets. It allows only supported
+target-state fields already enforced by the deterministic core: height/tolerance, Y-up and ground
+contact/tolerance, an engine-compatible naming pattern, and triangle/material/texture budgets. It
+does not expose transforms. Automatic safe-name handling, grouped physical approval, vertical
+inference, uniqueness policy, verification invariants, unsupported repair domains, engine/type,
+and source preservation remain fixed.
+
 The upload accepts one GLB 2.0 static mesh up to 50 MB. The server checks the extension, GLB magic,
 size, and trusted profile identifier before creating an isolated job.
+
+The resolved profile is schema-validated, copied into the isolated job, and identified by a frozen
+profile ID and canonical SHA-256. A custom job additionally records the immutable base preset and
+only values that differ as explicit overrides. Rules cannot be edited in place after upload; the
+user returns to the intake and creates a new inspection/job.
 
 ### Pending approval
 
@@ -143,7 +160,9 @@ report.md
 | Blocked or failed | Result; source preview; technical details | 3 |
 
 Technical details are collapsed by default and contain measured metrics, all seven stages, grouped
-findings, verification checks and remaining warnings, and tool/interrupt/correction counts.
+findings, verification checks and remaining warnings, and tool/interrupt/correction counts. Every
+policy-caused finding cites the frozen profile and the exact active parameter value that triggered
+it.
 
 ## Visual system
 
@@ -163,7 +182,8 @@ findings, verification checks and remaining warnings, and tool/interrupt/correct
 - The default local workflow uses the real Strands loop with a scripted zero-network provider. It
   does not require model credentials or a model/network request.
 - Uploaded files are copied below `build/web/jobs/{job_id}`. Completed artifacts remain there, but
-  active job state is in memory.
+  active job state is in memory. The resolved `profile.json` beside the upload is a job snapshot;
+  repository presets are never edited.
 - Refreshing the page preserves the job while the local server is running. Restarting the server
   ends the in-memory approval session.
 - Only a verified candidate is served from the repaired-asset route.
@@ -172,11 +192,12 @@ findings, verification checks and remaining warnings, and tool/interrupt/correct
 
 ## Current validation evidence
 
-- The full repository gate currently passes: 48 tests passed and the opt-in live-provider test was
+- The full repository gate currently passes: 54 tests passed and the opt-in live-provider test was
   skipped; Ruff and Pyright pass.
-- Seven web acceptance tests cover all three role routes, approve/resume/download, clean completion,
-  invalid GLB rejection, unsupported inspection-only packaging, source preservation, exact ZIP
-  contents, and the three-focus-area budget.
+- Thirteen web acceptance tests cover all three role routes, approve/resume/download, clean
+  completion, invalid GLB rejection, unsupported inspection-only packaging, source preservation,
+  exact ZIP contents, immutable presets, schema-validated custom copies, frozen policy provenance,
+  rule citations, new-job semantics, and the three-focus-area budget.
 - Chrome review passed at desktop and 390 x 844 phone width without horizontal overflow or
   application console errors.
 - The role chooser and all three rendered intake routes were rechecked while preparing this
@@ -187,6 +208,7 @@ findings, verification checks and remaining warnings, and tool/interrupt/correct
 - This is a local hackathon product, not a multi-user or durable hosted service.
 - Job state is not restored after a server restart.
 - Only static GLB input and two trusted profiles are exposed.
+- Custom copies are job-scoped; there is no reusable policy library or multi-user policy manager.
 - Unsupported rigs, animation, morph targets, and ambiguous structures are inspected and blocked,
   not silently repaired.
 - Unreal/AWS deployment, identity, storage, and durable orchestration are not implemented.
@@ -233,6 +255,7 @@ The immediate product decisions are:
 ## Implementation map
 
 - Route behavior and shared story definitions: `src/asset_shepherd/web.py`
+- Canonical policy hashing and rule citations: `src/asset_shepherd/profile_policy.py`
 - Role chooser and audience templates: `src/asset_shepherd/templates/index.html` and
   `src/asset_shepherd/templates/story_*.html`
 - Rules/upload intake: `src/asset_shepherd/templates/_intake_form.html`

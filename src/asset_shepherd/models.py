@@ -285,6 +285,14 @@ class FindingEvidence(ContractModel):
     units: str | None = None
 
 
+class FindingRuleProvenance(ContractModel):
+    """Exact versioned policy parameters that caused one finding."""
+
+    profile_id: str
+    profile_version: Literal[1]
+    parameters: dict[str, JsonValue]
+
+
 class Finding(ContractModel):
     """One evidence-backed inspection finding."""
 
@@ -299,6 +307,7 @@ class Finding(ContractModel):
     affected_components: tuple[str, ...]
     evidence: tuple[FindingEvidence, ...]
     profile_rule: str | None
+    rule_provenance: FindingRuleProvenance | None = None
     candidate_repairs: tuple[str, ...]
 
 
@@ -467,6 +476,16 @@ class ExecutedAction(ContractModel):
     authorization: DecisionValue
 
 
+class ProfilePolicyProvenance(ContractModel):
+    """Frozen identity and derivation record for one job's project policy."""
+
+    frozen_profile_id: str
+    base_preset_id: str
+    explicit_overrides: dict[str, JsonValue]
+    profile_version: Literal[1]
+    canonical_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+
 class Provenance(ContractModel):
     """Source, authorization, software, and timing provenance."""
 
@@ -475,6 +494,7 @@ class Provenance(ContractModel):
     output_sha256: str | None
     profile_id: str
     profile_version: Literal[1]
+    profile_policy: ProfilePolicyProvenance | None = None
     application_version: str
     commit_sha: str
     library_versions: dict[str, str]
@@ -482,6 +502,17 @@ class Provenance(ContractModel):
     decisions: tuple[DecisionRecord, ...]
     started_at: datetime
     completed_at: datetime
+
+    @model_validator(mode="after")
+    def policy_identity_matches_profile(self) -> "Provenance":
+        """Keep the legacy profile fields aligned with the frozen policy record."""
+        if self.profile_policy is None:
+            return self
+        if self.profile_policy.frozen_profile_id != self.profile_id:
+            raise ValueError("Frozen policy identifier must match profile_id")
+        if self.profile_policy.profile_version != self.profile_version:
+            raise ValueError("Frozen policy version must match profile_version")
+        return self
 
 
 class JobResult(ContractModel):

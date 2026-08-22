@@ -18,17 +18,81 @@
           <small>This does not choose a model. Pick the target size and limits that fit your asset.</small>
         </span>
       </legend>
+      <input type="hidden" name="profile_mode" value="preset" data-profile-mode>
       <div class="profile-options">
         {% for profile in profiles %}
-          <label class="profile-option">
-            <input type="radio" name="profile_id" value="{{ profile.profile_id }}" required>
-            <span>
-              <strong>{{ profile.name }}</strong>
-              <small>{{ profile.description }}</small>
-            </span>
-          </label>
+          <article class="profile-option-shell">
+            <label class="profile-option">
+              <input
+                type="radio"
+                name="profile_id"
+                value="{{ profile.profile_id }}"
+                data-profile-defaults='{{ profile.form_defaults | tojson }}'
+                required>
+              <span>
+                <strong>{{ profile.name }}</strong>
+                <small>{{ profile.description }} · immutable preset v{{ profile.profile.profile_version }}</small>
+              </span>
+            </label>
+            <dl class="policy-summary">
+              {% for label, value in profile.summary %}
+                <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+              {% endfor %}
+            </dl>
+            <details class="policy-review">
+              <summary>Review rules</summary>
+              <dl class="policy-rule-list">
+                {% for label, value in profile.review_rules %}
+                  <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+                {% endfor %}
+              </dl>
+            </details>
+          </article>
         {% endfor %}
       </div>
+
+      <details class="custom-policy" data-custom-policy>
+        <summary>
+          <span><strong>Customize a copy</strong><small>Advanced · supported target-state rules only</small></span>
+        </summary>
+        <div class="custom-policy-body">
+          <p>Choose a preset above, then adjust only rules the deterministic inspector enforces. The preset stays unchanged.</p>
+          <label class="custom-policy-toggle">
+            <input type="checkbox" data-custom-toggle>
+            <span><strong>Use a customized copy</strong><small data-custom-status>Select a preset first.</small></span>
+          </label>
+          <div class="custom-policy-fields" data-custom-fields hidden>
+            <fieldset>
+              <legend>Target dimensions</legend>
+              <label>Height target <span><input type="number" name="custom_height_target_cm" min="0.001" step="0.001" data-custom-field="custom_height_target_cm" disabled> cm</span></label>
+              <label>Height tolerance <span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" data-custom-field="custom_height_tolerance_cm" disabled> cm</span></label>
+            </fieldset>
+            <fieldset>
+              <legend>Orientation and grounding</legend>
+              <label>Require Y-up geometry
+                <select name="custom_require_y_up" data-custom-field="custom_require_y_up" disabled><option value="true">Yes</option><option value="false">No</option></select>
+              </label>
+              <label>Require ground contact
+                <select name="custom_require_ground_contact" data-custom-field="custom_require_ground_contact" disabled><option value="true">Yes</option><option value="false">No</option></select>
+              </label>
+              <label>Ground tolerance <span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" data-custom-field="custom_ground_tolerance_cm" disabled> cm</span></label>
+            </fieldset>
+            <fieldset>
+              <legend>Naming</legend>
+              <label>Name pattern <input type="text" name="custom_naming_pattern" maxlength="128" spellcheck="false" data-custom-field="custom_naming_pattern" disabled></label>
+              <small>Must allow deterministic safe names such as <code>Node_000</code> and <code>Mesh_000</code>.</small>
+            </fieldset>
+            <fieldset>
+              <legend>Report-only budgets</legend>
+              <label>Maximum triangles <input type="number" name="custom_max_triangles" min="0" step="1" data-custom-field="custom_max_triangles" disabled></label>
+              <label>Maximum materials <input type="number" name="custom_max_materials" min="0" step="1" data-custom-field="custom_max_materials" disabled></label>
+              <label>Maximum textures <input type="number" name="custom_max_textures" min="0" step="1" data-custom-field="custom_max_textures" disabled></label>
+              <label>Maximum texture dimension <span><input type="number" name="custom_max_texture_dimension" min="1" step="1" data-custom-field="custom_max_texture_dimension" disabled> px</span></label>
+            </fieldset>
+            <p class="custom-policy-boundary"><strong>Fixed safety boundary:</strong> automatic safe-name handling, grouped physical approval, verification invariants, unsupported repair domains, and source preservation cannot be changed here.</p>
+          </div>
+        </div>
+      </details>
     </fieldset>
 
     <div class="intake-step">
@@ -53,5 +117,5 @@
     </button>
   </form>
 
-  <p class="fine-print">Asset Shepherd checks the uploaded copy. Local mode makes no model or network request.</p>
+  <p class="fine-print">Rules freeze when you upload. Changing them starts a new inspection and job. Local mode makes no model or network request.</p>
 </section>

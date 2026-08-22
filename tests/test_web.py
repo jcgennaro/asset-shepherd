@@ -13,7 +13,14 @@ from fastapi.testclient import TestClient
 from pygltflib import Skin
 
 from asset_shepherd.glb import load_glb, save_glb
-from asset_shepherd.models import Decisions, DecisionValue
+from asset_shepherd.models import (
+    Decisions,
+    DecisionValue,
+    InspectionResult,
+    ProjectProfile,
+    Provenance,
+)
+from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.web import create_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +51,19 @@ PACKAGE_NAMES = {
     "repaired.glb",
     "verification.json",
 }
+CUSTOM_PROFILE_DATA = {
+    "profile_mode": "custom",
+    "custom_height_target_cm": "182",
+    "custom_height_tolerance_cm": "1",
+    "custom_require_y_up": "true",
+    "custom_require_ground_contact": "true",
+    "custom_ground_tolerance_cm": "1",
+    "custom_naming_pattern": "^[A-Z][A-Za-z0-9_]*$",
+    "custom_max_triangles": "100000",
+    "custom_max_materials": "8",
+    "custom_max_textures": "16",
+    "custom_max_texture_dimension": "4096",
+}
 
 
 def _upload(
@@ -51,11 +71,12 @@ def _upload(
     source: Path,
     profile_id: str = PROFILE_ID,
     story_slug: str = "game-developer",
+    policy_data: dict[str, str] | None = None,
 ) -> str:
     """Upload one fixture and return its redirected local job path."""
     response = client.post(
         f"/stories/{story_slug}/jobs",
-        data={"profile_id": profile_id},
+        data={"profile_id": profile_id, **(policy_data or {})},
         files={"asset": (source.name, source.read_bytes(), "model/gltf-binary")},
         follow_redirects=False,
     )
@@ -91,6 +112,28 @@ def test_web_story_chooser_explains_three_equivalent_flows(tmp_path: Path) -> No
         assert f"/stories/{story_slug}" in response.text
 
 
+def test_web_profiles_are_versioned_presets_with_collapsed_rules_and_safe_customization(
+    tmp_path: Path,
+) -> None:
+    """Preset summaries and advanced copies expose policy, not raw repair operations."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    response = client.get("/stories/game-developer")
+
+    assert response.status_code == 200
+    assert response.text.count("immutable preset v1") == 2
+    assert response.text.count("Review rules") == 2
+    assert "Target height" in response.text
+    assert "Require Y-up geometry" in response.text
+    assert "Name pattern" in response.text
+    assert "Maximum triangles" in response.text
+    assert "Approval for physical normalization" in response.text
+    assert "Customize a copy" in response.text
+    assert "supported target-state rules only" in response.text
+    assert "Fixed safety boundary" in response.text
+    assert "transform matrix" not in response.text.lower()
+    _assert_focus_area_budget(response.text, expected=2)
+
+
 @pytest.mark.parametrize(
     ("story_slug", "landing_question", "candidate_label", "verification_heading"),
     STORY_EXPECTATIONS,
@@ -117,7 +160,7 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert "Upload the GLB you want checked" in landing.text
     assert "Choose your GLB file" in landing.text
     assert "Project target" not in landing.text
-    assert landing.text.count('type="radio" name="profile_id"') == 2
+    assert landing.text.count('name="profile_id"') == 2
     _assert_focus_area_budget(landing.text, expected=2)
 
     job_path = _upload(client, BROKEN_PATH, story_slug=story_slug)
@@ -126,9 +169,23 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert pending.status_code == 200
     assert "Approval needed" in pending.text
     assert "Normalize physical scale, upright orientation, and grounding" in pending.text
+    assert "Policy rule" in pending.text
+    assert "Height target 180.0 cm ± 10.0 cm" in pending.text
     _assert_focus_area_budget(pending.text, expected=3)
     interrupt_id = _interrupt_id(pending.text)
     pending_output = tmp_path / "jobs" / job_path.rsplit("/", 1)[-1] / "output"
+    inspection = InspectionResult.model_validate_json(
+        (pending_output / "inspection.json").read_text(encoding="utf-8")
+    )
+    ruled_findings = tuple(
+        finding for finding in inspection.findings if finding.profile_rule is not None
+    )
+    assert ruled_findings
+    assert all(finding.rule_provenance is not None for finding in ruled_findings)
+    assert all(
+        finding.rule_provenance is not None and finding.rule_provenance.profile_id == PROFILE_ID
+        for finding in ruled_findings
+    )
     assert not (pending_output / "candidate.glb").exists()
 
     refreshed = client.get(job_path)
@@ -169,6 +226,117 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     )
     assert normalization.decision is DecisionValue.APPROVED
     assert normalization.interrupt_id == interrupt_id
+    provenance = Provenance.model_validate_json(
+        (pending_output / "provenance.json").read_text(encoding="utf-8")
+    )
+    assert provenance.profile_policy is not None
+    assert provenance.profile_policy.frozen_profile_id == PROFILE_ID
+    assert provenance.profile_policy.base_preset_id == PROFILE_ID
+    assert provenance.profile_policy.explicit_overrides == {}
+    assert re.fullmatch(r"[0-9a-f]{64}", provenance.profile_policy.canonical_sha256)
+
+
+def test_web_custom_profile_is_validated_frozen_and_recorded_without_mutating_preset(
+    tmp_path: Path,
+) -> None:
+    """A supported custom copy gets an immutable job snapshot and complete provenance."""
+    preset_path = PROJECT_ROOT / "profiles" / "unreal_indie_robot.json"
+    preset_before = preset_path.read_bytes()
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+
+    job_path = _upload(
+        client,
+        CLEAN_PATH,
+        story_slug="technical-artist",
+        policy_data=CUSTOM_PROFILE_DATA,
+    )
+    completed = client.get(job_path)
+    assert completed.status_code == 200
+    assert "PASSED_PROJECT_READY" in completed.text
+    assert "Approval needed" not in completed.text
+    assert "custom copy" in completed.text
+
+    job_root = work_root / job_path.rsplit("/", 1)[-1]
+    frozen_profile = ProjectProfile.model_validate_json(
+        (job_root / "profile.json").read_text(encoding="utf-8")
+    )
+    provenance = Provenance.model_validate_json(
+        (job_root / "output" / "provenance.json").read_text(encoding="utf-8")
+    )
+    assert frozen_profile.profile_id.startswith(f"{PROFILE_ID}-custom-")
+    assert provenance.profile_id == frozen_profile.profile_id
+    assert provenance.profile_policy is not None
+    assert provenance.profile_policy.frozen_profile_id == frozen_profile.profile_id
+    assert provenance.profile_policy.base_preset_id == PROFILE_ID
+    assert provenance.profile_policy.profile_version == 1
+    assert provenance.profile_policy.explicit_overrides == {
+        "expected_height_cm.target": 182.0,
+        "expected_height_cm.tolerance": 1.0,
+    }
+    assert provenance.profile_policy.canonical_sha256 == canonical_profile_sha256(frozen_profile)
+    assert preset_path.read_bytes() == preset_before
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("custom_height_target_cm", "-1", "expected_height_cm.target"),
+        ("custom_naming_pattern", "[", "naming pattern must use"),
+        ("custom_max_texture_dimension", "0", "budgets.max_texture_dimension"),
+    ),
+)
+def test_web_rejects_invalid_custom_profile_before_creating_job(
+    tmp_path: Path,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    """Server-side ProjectProfile validation fails closed before upload isolation."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    policy_data = {**CUSTOM_PROFILE_DATA, field: value}
+
+    response = client.post(
+        "/stories/game-developer/jobs",
+        data={"profile_id": PROFILE_ID, **policy_data},
+        files={"asset": (CLEAN_PATH.name, CLEAN_PATH.read_bytes(), "model/gltf-binary")},
+    )
+
+    assert response.status_code == 400
+    assert message in response.text
+    assert not work_root.exists() or not tuple(work_root.iterdir())
+
+
+def test_web_rule_change_after_upload_creates_a_distinct_job_and_inspection(
+    tmp_path: Path,
+) -> None:
+    """A frozen job is never reinterpreted when the user submits different rules."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    first_path = _upload(client, CLEAN_PATH, policy_data=CUSTOM_PROFILE_DATA)
+    second_policy = {
+        **CUSTOM_PROFILE_DATA,
+        "custom_height_target_cm": "181",
+        "custom_height_tolerance_cm": "2",
+    }
+    second_path = _upload(client, CLEAN_PATH, policy_data=second_policy)
+
+    assert first_path != second_path
+    first_root = work_root / first_path.rsplit("/", 1)[-1]
+    second_root = work_root / second_path.rsplit("/", 1)[-1]
+    first_inspection = InspectionResult.model_validate_json(
+        (first_root / "output" / "inspection.json").read_text(encoding="utf-8")
+    )
+    second_inspection = InspectionResult.model_validate_json(
+        (second_root / "output" / "inspection.json").read_text(encoding="utf-8")
+    )
+    assert first_inspection.profile_id != second_inspection.profile_id
+    assert first_inspection.profile_id.startswith(f"{PROFILE_ID}-custom-")
+    assert second_inspection.profile_id.startswith(f"{PROFILE_ID}-custom-")
+    assert client.get(first_path).status_code == 200
+    assert client.get(second_path).status_code == 200
+    assert "changing rules starts a new inspection and job" in client.get(first_path).text
 
 
 def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path) -> None:
