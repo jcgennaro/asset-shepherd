@@ -30,14 +30,29 @@ PROFILE_ID = "unreal-indie-robot-v1"
 STORY_EXPECTATIONS = (
     (
         "game-developer",
-        "Is this asset ready for my game?",
+        "Game developer",
+        "From downloaded GLB to an import-ready package.",
         "Import-ready candidate",
         "Ready-to-import proof",
     ),
-    ("artist", "What will change in my work?", "Verified delivery copy", "Preservation checks"),
+    (
+        "artist",
+        "3D artist",
+        "See exactly what changes—and what stays yours.",
+        "Verified delivery copy",
+        "Preservation checks",
+    ),
     (
         "technical-artist",
-        "Does this asset meet project policy?",
+        "Technical artist",
+        "One GLB in. A policy decision and evidence trail out.",
+        "Verified artifact",
+        "Invariant audit",
+    ),
+    (
+        "advanced",
+        "Advanced user",
+        "Set the policy, then run the same guarded workflow.",
         "Verified artifact",
         "Invariant audit",
     ),
@@ -93,22 +108,27 @@ def _interrupt_id(html: str) -> str:
 
 
 def _assert_focus_area_budget(html: str, expected: int) -> None:
-    """Keep every visible state inside the user-mandated three-area attention budget."""
+    """Keep every server-rendered state inside the one-step attention budget."""
     focus_areas = re.findall(r'data-focus-area="([^"]+)"', html)
     assert len(focus_areas) == expected, focus_areas
     assert len(focus_areas) <= 3
 
 
 def test_web_story_chooser_explains_three_equivalent_flows(tmp_path: Path) -> None:
-    """The entry page asks one question and offers three concise role choices."""
+    """The persistent rail offers three styles plus help and advanced modes."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     response = client.get("/")
 
     assert response.status_code == 200
+    assert "<title>Asset Shepherd -- Help me choose</title>" in response.text
+    assert "LOGO" in response.text
     assert "Which best describes you?" in response.text
     assert "No feature differences between concepts" not in response.text
-    _assert_focus_area_budget(response.text, expected=2)
-    for story_slug, _, _, _ in STORY_EXPECTATIONS:
+    assert response.text.count('class="mode-link') == 5
+    assert "Help me choose — compare the three explanations" in response.text
+    assert "Advanced user — go directly to supported policy controls" in response.text
+    _assert_focus_area_budget(response.text, expected=1)
+    for story_slug, _, _, _, _ in STORY_EXPECTATIONS:
         assert f"/stories/{story_slug}" in response.text
 
 
@@ -131,17 +151,28 @@ def test_web_profiles_are_versioned_presets_with_collapsed_rules_and_safe_custom
     assert "supported target-state rules only" in response.text
     assert "Fixed safety boundary" in response.text
     assert "transform matrix" not in response.text.lower()
-    _assert_focus_area_budget(response.text, expected=2)
+    assert '<button type="button" data-intake-step-button="rules"' in response.text
+    assert '<button type="button" data-intake-step-button="upload"' in response.text
+    assert 'data-intake-panel="rules"' in response.text
+    assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in response.text
+    _assert_focus_area_budget(response.text, expected=1)
 
 
 @pytest.mark.parametrize(
-    ("story_slug", "landing_question", "candidate_label", "verification_heading"),
+    (
+        "story_slug",
+        "style_label",
+        "landing_copy",
+        "candidate_label",
+        "verification_heading",
+    ),
     STORY_EXPECTATIONS,
 )
 def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     tmp_path: Path,
     story_slug: str,
-    landing_question: str,
+    style_label: str,
+    landing_copy: str,
     candidate_label: str,
     verification_heading: str,
 ) -> None:
@@ -149,19 +180,19 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     landing = client.get(f"/stories/{story_slug}")
     assert landing.status_code == 200
-    assert landing_question in landing.text
+    assert f"<title>Asset Shepherd -- {style_label}</title>" in landing.text
+    assert f"<h1>Asset Shepherd -- {style_label}</h1>" in landing.text
+    assert landing_copy in landing.text
     assert f"/stories/{story_slug}/jobs" in landing.text
-    assert "Inspect" in landing.text
-    assert "Decide" in landing.text
-    assert "Download" in landing.text
-    assert "Both are required" in landing.text
-    assert "Choose validation rules" in landing.text
-    assert "This does not choose a model" in landing.text
+    assert "Rules" in landing.text
+    assert "Upload" in landing.text
+    assert "These rules define “ready.” They do not choose a model." in landing.text
     assert "Upload the GLB you want checked" in landing.text
     assert "Choose your GLB file" in landing.text
     assert "Project target" not in landing.text
     assert landing.text.count('name="profile_id"') == 2
-    _assert_focus_area_budget(landing.text, expected=2)
+    assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in landing.text
+    _assert_focus_area_budget(landing.text, expected=1)
 
     job_path = _upload(client, BROKEN_PATH, story_slug=story_slug)
 
@@ -169,9 +200,9 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert pending.status_code == 200
     assert "Approval needed" in pending.text
     assert "Normalize physical scale, upright orientation, and grounding" in pending.text
-    assert "Policy rule" in pending.text
-    assert "Height target 180.0 cm ± 10.0 cm" in pending.text
-    _assert_focus_area_budget(pending.text, expected=3)
+    assert 'aria-current="step">' in pending.text
+    assert "Source preview" not in pending.text
+    _assert_focus_area_budget(pending.text, expected=1)
     interrupt_id = _interrupt_id(pending.text)
     pending_output = tmp_path / "jobs" / job_path.rsplit("/", 1)[-1] / "output"
     inspection = InspectionResult.model_validate_json(
@@ -187,6 +218,13 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
         for finding in ruled_findings
     )
     assert not (pending_output / "candidate.glb").exists()
+
+    inspect_view = client.get(f"{job_path}?view=inspect")
+    assert inspect_view.status_code == 200
+    assert "Policy rule" in inspect_view.text
+    assert "Height target 180.0 cm ± 10.0 cm" in inspect_view.text
+    assert "Normalize physical scale, upright orientation, and grounding" not in inspect_view.text
+    _assert_focus_area_budget(inspect_view.text, expected=1)
 
     refreshed = client.get(job_path)
     assert refreshed.status_code == 200
@@ -207,8 +245,15 @@ def test_web_broken_fixture_flow_is_equivalent_for_each_story(
     assert verification_heading in completed.text
     assert "PASSED_WITH_REMAINING_WARNINGS" in completed.text
     assert "Download result ZIP" in completed.text
-    _assert_focus_area_budget(completed.text, expected=3)
+    assert "Policy rule" not in completed.text
+    _assert_focus_area_budget(completed.text, expected=1)
     assert client.get(f"{job_path}/repaired.glb").status_code == 200
+
+    recorded_decision = client.get(f"{job_path}?view=decide")
+    assert recorded_decision.status_code == 200
+    assert "Decision recorded" in recorded_decision.text
+    assert "normalize-root-v1" in recorded_decision.text
+    _assert_focus_area_budget(recorded_decision.text, expected=1)
 
     archive_response = client.get(f"{job_path}/download")
     assert archive_response.status_code == 200
@@ -336,7 +381,8 @@ def test_web_rule_change_after_upload_creates_a_distinct_job_and_inspection(
     assert second_inspection.profile_id.startswith(f"{PROFILE_ID}-custom-")
     assert client.get(first_path).status_code == 200
     assert client.get(second_path).status_code == 200
-    assert "changing rules starts a new inspection and job" in client.get(first_path).text
+    first_inspect = client.get(f"{first_path}?view=inspect")
+    assert "Changing rules starts a new inspection and job" in first_inspect.text
 
 
 def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path) -> None:
@@ -347,11 +393,13 @@ def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path)
         job_path = _upload(client, CLEAN_PATH, story_slug="artist")
         completed = client.get(job_path)
         assert completed.status_code == 200
-        assert "No project-policy findings." in completed.text
         assert "Verified delivery copy" in completed.text
         assert "Approval needed" not in completed.text
         assert "PASSED_PROJECT_READY" in completed.text
-        _assert_focus_area_budget(completed.text, expected=3)
+        _assert_focus_area_budget(completed.text, expected=1)
+        inspected = client.get(f"{job_path}?view=inspect")
+        assert "No project-policy findings." in inspected.text
+        _assert_focus_area_budget(inspected.text, expected=1)
         assert client.get(f"{job_path}/download").status_code == 200
 
 
@@ -366,8 +414,8 @@ def test_web_rejects_non_glb_upload_without_starting_a_job(tmp_path: Path) -> No
     )
     assert response.status_code == 400
     assert "The upload is not a GLB 2.0 binary container." in response.text
-    assert "Does this asset meet project policy?" in response.text
-    _assert_focus_area_budget(response.text, expected=2)
+    assert "One GLB in. A policy decision and evidence trail out." in response.text
+    _assert_focus_area_budget(response.text, expected=1)
     assert not work_root.exists() or not tuple(work_root.iterdir())
 
 
@@ -384,9 +432,11 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
     blocked = client.get(job_path)
     assert blocked.status_code == 200
     assert "Inspection-only result" in blocked.text
-    assert "INSPECTION_ONLY_UNSUPPORTED_FEATURES" in blocked.text
-    assert "UNSUPPORTED_REPAIR_FEATURES" in blocked.text
-    _assert_focus_area_budget(blocked.text, expected=3)
+    _assert_focus_area_budget(blocked.text, expected=1)
+    blocked_inspect = client.get(f"{job_path}?view=inspect")
+    assert "INSPECTION_ONLY_UNSUPPORTED_FEATURES" in blocked_inspect.text
+    assert "UNSUPPORTED_REPAIR_FEATURES" in blocked_inspect.text
+    _assert_focus_area_budget(blocked_inspect.text, expected=1)
     assert client.get(f"{job_path}/repaired.glb").status_code == 404
     assert skinned_path.read_bytes() == source_before
 

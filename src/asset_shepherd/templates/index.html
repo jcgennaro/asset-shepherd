@@ -1,32 +1,35 @@
 {% extends "base.html" %}
-{% block title %}Asset Shepherd · Choose your role{% endblock %}
 {% block content %}
-  <div class="role-chooser">
-    <section class="role-question" data-focus-area="question">
-      <h1>Which best describes you?</h1>
-      <p>Choose a role. You can switch later.</p>
-    </section>
+  <section class="chooser-panel" data-focus-area="style chooser" aria-labelledby="choose-title">
+    <p class="section-label">Help me choose</p>
+    <h2 id="choose-title">Which best describes you?</h2>
+    <p class="chooser-intro">Choose the explanation that matches the question you bring. The inspection, safety boundaries, and output package are identical.</p>
 
     {% if error %}
       <div class="alert danger" role="alert">
-        <strong>That role is unavailable</strong>
+        <strong>That mode is unavailable</strong>
         <span>{{ error }}</span>
       </div>
     {% endif %}
 
-    <nav class="role-options" aria-label="Choose your role" data-focus-area="role choices">
-      <a class="role-option developer" href="{{ url_for('story_home', story_slug='game-developer') }}">
-        <span><strong>Game developer</strong><small>Is this asset ready for my game?</small></span>
+    <nav class="style-choices" aria-label="Choose an Asset Shepherd style">
+      <a href="{{ url_for('story_home', story_slug='game-developer') }}">
+        <span class="choice-icon" aria-hidden="true">01</span>
+        <span><strong>Game developer</strong><small>“Is this asset ready for my game?”</small></span>
         <b aria-hidden="true">→</b>
       </a>
-      <a class="role-option artist" href="{{ url_for('story_home', story_slug='artist') }}">
-        <span><strong>3D artist</strong><small>What will change in my work?</small></span>
+      <a href="{{ url_for('story_home', story_slug='artist') }}">
+        <span class="choice-icon" aria-hidden="true">02</span>
+        <span><strong>3D artist</strong><small>“What will change in my work?”</small></span>
         <b aria-hidden="true">→</b>
       </a>
-      <a class="role-option technical" href="{{ url_for('story_home', story_slug='technical-artist') }}">
-        <span><strong>Technical artist</strong><small>Does this asset meet project policy?</small></span>
+      <a href="{{ url_for('story_home', story_slug='technical-artist') }}">
+        <span class="choice-icon" aria-hidden="true">03</span>
+        <span><strong>Technical artist</strong><small>“Does this asset meet project policy?”</small></span>
         <b aria-hidden="true">→</b>
       </a>
     </nav>
-  </div>
+
+    <p class="advanced-prompt">Already know the rules you need? <a href="{{ url_for('story_home', story_slug='advanced') }}">Open advanced mode</a>.</p>
+  </section>
 {% endblock %}

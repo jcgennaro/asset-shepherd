@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-21
-**Current commit:** M8 versioned project-policy enhancement (this file is included)
+**Last updated:** 2026-08-22
+**Current commit:** M8 persistent five-mode, single-step workspace redesign (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Role-first chooser; immutable policy presets and validated custom copies; three-area decision/result states; shared real Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, and D013; policy enhancement included in current commit |
+| M8 Web product | COMPLETE | Persistent five-mode rail; single-visible-step Rules/Upload and Inspect/Decide/Download workspaces; immutable policy presets and validated custom copies; shared Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, D013, and D014; latest presentation pass included in current commit |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -45,8 +45,8 @@ before any paid invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 54 passed and the opt-in live-provider test skipped; story web gate —
-  13 passed.
+- Tests: `uv run pytest` — 55 passed and the opt-in live-provider test skipped; story web gate —
+  14 passed.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
@@ -69,25 +69,25 @@ before any paid invocation or resource creation.
 - Web acceptance: broken-fixture refresh/approve/resume/download; clean no-approval completion twice
   from independent app starts; invalid upload rejection; unsupported inspection-only packaging;
   exact ZIP audit; source preservation; trusted profile selection; 50 MB and GLB magic boundaries.
-- Chrome review: desktop and 390 × 844 responsive layouts passed; synthetic before/after difference
-  is immediately visible; Patchling textured raw/repaired previews match; no console warnings or
-  errors. The packaged wheel includes templates, CSS, JavaScript, and the local favicon.
-- Progressive-disclosure web evidence: `/` starts with `Which best describes you?` and three concise
-  role choices. Each intake has two primary focus areas; pending, blocked, and completed jobs have
-  three. Tests enforce that budget while each role still runs the exact seven-file approval workflow.
-  Desktop and 390 × 844 review passed with no horizontal overflow; the completed result keeps the
-  download and before/after preview visible while technical evidence is collapsed. No application
-  console errors or warnings were observed.
+- Persistent-mode browser evidence: the fixed left rail keeps Game developer, 3D artist, Technical
+  artist, Help me choose, and Advanced user visible with icons and hover/focus hints. Every page title
+  is `Asset Shepherd -- [style]`. Desktop review completed Rules, Upload, Inspect, Decide, and
+  Download; the corrected narrow-width view retains the rail with no document overflow. No
+  application console errors or warnings were observed.
+- Single-step web evidence: intake shows Rules or Upload, never both; each job response renders only
+  the selected Inspect, Decide, or Download step and exactly one `data-focus-area`. Pending approval
+  defaults to Decide, while completed and blocked jobs default to Download. Inspect retains source
+  preview and rule provenance, Decide retains exact interrupt authorization, and Download retains
+  verification, comparison, and the seven-file package. Parameterized acceptance runs the complete
+  approval workflow through the three audience styles and Advanced mode.
 - Intake clarification: the ambiguous `Project target` dropdown is replaced by two visible,
   unselected validation-rule choices followed by a separately numbered GLB upload. Copy explicitly
   says that the rules do not choose a model and that the upload is the actual model. All three story
   routes pass the same workflow tests; desktop and phone-width review passed without overflow or
   console errors.
-- Web design handoff: `docs/WEB_DESIGN_AND_FLOW.md` records the role-first information architecture,
-  shared inspect/decide/download behavior, every job state, three-area attention budget, visual
-  system, runtime boundaries, evidence, limitations, and the ordered decisions/next steps for
-  external product review. The role chooser and all three intake routes were rendered and rechecked
-  against the document.
+- Web design handoff: `docs/WEB_DESIGN_AND_FLOW.md` records the persistent five-mode information
+  architecture, single-visible-step workflow, every job state, one-area attention budget, visual
+  system, runtime boundaries, evidence, limitations, and ordered contracted next steps.
 - Versioned policy intake: both repository profiles remain immutable presets with concise policy
   summaries and collapsed 20-parameter rule reviews. `Customize a copy` exposes only deterministically
   enforced target-state and report-only budget fields; the server validates a resolved
@@ -95,8 +95,8 @@ before any paid invocation or resource creation.
   canonical SHA-256. Findings cite the exact active policy values, and changing rules creates a new
   job/inspection. Thirteen web tests cover preset and custom paths without changing the role routes,
   grouped approval, verification, source preservation, focus-area budget, or ZIP contract.
-- Distribution audit: `uv build --wheel` succeeded and the wheel contains all three story templates,
-  both shared partials, the job/chooser/base templates, CSS, JavaScript, and favicon.
+- Distribution audit: `uv build --wheel` succeeded with the shared story workspace, mode-rail and
+  intake partials, job/chooser/base templates, CSS, JavaScript, and favicon.
 - Shader Lantern evidence: raw SHA-256
   `be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9`; 77,545 vertices;
   101,564 triangles; one material; three readable embedded 4096² base-color,

@@ -36,18 +36,21 @@ uv sync
 uv run asset-shepherd web
 ```
 
-Open `http://127.0.0.1:8000`. The first screen asks only which role best describes the user:
+Open `http://127.0.0.1:8000`. A persistent icon rail keeps five presentation modes available:
 
 - `/stories/game-developer` asks whether the asset is ready for a game.
 - `/stories/artist` asks what will change in the artist's work.
 - `/stories/technical-artist` asks whether the asset meets project policy.
+- `/` helps a user choose among those three explanations.
+- `/stories/advanced` goes directly to the supported policy controls.
 
 Every route uses the same trusted profiles, bounded GLB upload, native Strands interrupt/resume,
 deterministic repair engine, interactive previews, independent verification, and contracted result
-ZIP. Progressive disclosure limits each page to no more than three primary focus areas; the seven
-named stages, findings, checks, and metrics remain available under **Technical details**. No model or
-network request is needed for the agent workflow; the default uses the zero-network scripted
-provider over the real Strands loop.
+ZIP. The workspace shows only one step at a time: **Rules -> Upload** during intake, then **Inspect
+-> Decide -> Download** for the job. Each server-rendered state has one primary focus area; the seven
+named execution stages, findings, checks, and metrics remain available in their relevant step. No
+model or network request is needed for the agent workflow; the default uses the zero-network
+scripted provider over the real Strands loop.
 
 Repository profiles are immutable versioned policy presets. Each preset shows a concise summary and
 a collapsed complete rule review. An advanced **Customize a copy** control permits only supported

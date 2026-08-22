@@ -25,6 +25,8 @@ from asset_shepherd.agent_runtime import AssetShepherdAgent, build_scripted_agen
 from asset_shepherd.models import (
     AgentWorkflowResult,
     ApprovalCard,
+    DecisionRecord,
+    DecisionValue,
     Finding,
     ProfilePolicyProvenance,
     ProjectProfile,
@@ -346,6 +348,15 @@ class JourneyStep:
 
 
 @dataclass(frozen=True)
+class WorkflowStepView:
+    """One user-facing workspace step and its deterministic progress state."""
+
+    slug: str
+    label: str
+    status: str
+
+
+@dataclass(frozen=True)
 class StoryDefinition:
     """Presentation copy for one functionally equivalent user-story concept."""
 
@@ -403,7 +414,7 @@ STORIES = (
             "Rejecting keeps the original physical setup, preserves the unresolved findings, "
             "and still packages safe name repairs."
         ),
-        landing_template="story_game_developer.html",
+        landing_template="story.html",
         steps=(
             JourneyStep(
                 "01", "Choose the target", "Select the scale and naming rules your project expects."
@@ -459,7 +470,7 @@ STORIES = (
             "Rejecting keeps your scale and orientation exactly as delivered. The decision and any "
             "remaining physical findings stay visible in the package."
         ),
-        landing_template="story_artist.html",
+        landing_template="story.html",
         steps=(
             JourneyStep(
                 "01", "Share the untouched work", "The original export is retained byte-for-byte."
@@ -515,7 +526,7 @@ STORIES = (
             "A rejection is durable job evidence: the normalization action is not executed, "
             "and its unresolved findings remain explicit in verification."
         ),
-        landing_template="story_technical_artist.html",
+        landing_template="story.html",
         steps=(
             JourneyStep(
                 "01", "Bind policy", "Select a trusted, versioned profile before inspection."
@@ -543,6 +554,49 @@ STORIES = (
         ),
     ),
 )
+
+
+ADVANCED_STORY = StoryDefinition(
+    slug="advanced",
+    nav_label="Advanced user",
+    audience="Advanced technical-art user",
+    user_story=(
+        "I already know the target policy and want direct access to every supported rule before "
+        "I submit an asset."
+    ),
+    headline="Set the policy, then run the same guarded workflow.",
+    promise=(
+        "Customize only rules the deterministic engine enforces; authorization and verification "
+        "boundaries stay fixed."
+    ),
+    intake_eyebrow="Advanced policy intake",
+    intake_title="Choose or customize the target rules",
+    profile_label="Versioned project policy",
+    upload_label="Unmodified source artifact",
+    upload_hint="GLB 2.0 · static mesh · isolated job workspace",
+    submit_label="Run policy-bound inspection",
+    job_kicker="Advanced policy run",
+    job_question="What did the frozen policy find and authorize?",
+    source_label="Registered source",
+    candidate_label="Verified artifact",
+    findings_heading="Policy findings",
+    verification_heading="Invariant audit",
+    approval_eyebrow="Interrupt-bound authorization",
+    rejection_note=(
+        "A rejection is durable job evidence: normalization does not execute, and unresolved "
+        "physical findings remain explicit."
+    ),
+    landing_template="story.html",
+    steps=(
+        JourneyStep("01", "Set policy", "Choose a preset or customize its supported target state."),
+        JourneyStep("02", "Upload source", "Bind one untouched GLB to the frozen policy copy."),
+        JourneyStep("03", "Inspect", "Review deterministic facts and policy provenance."),
+        JourneyStep("04", "Authorize", "Approve or reject the one grouped physical change."),
+        JourneyStep("05", "Package", "Download the verified candidate and evidence trail."),
+    ),
+)
+
+WORKFLOW_STORIES = (*STORIES, ADVANCED_STORY)
 
 
 @dataclass
@@ -835,14 +889,69 @@ def _finding_groups(job: WebJob) -> tuple[tuple[str, tuple[Finding, ...]], ...]:
     return tuple(groups)
 
 
-def _job_context(job: WebJob) -> dict[str, object]:
+def _default_job_view(job: WebJob) -> str:
+    """Choose the one workflow step that needs the user's attention now."""
+    if job.waiting_for_approval:
+        return "decide"
+    if job.workflow_result is not None or job.error is not None:
+        return "download"
+    return "inspect"
+
+
+def _workflow_steps(job: WebJob) -> tuple[WorkflowStepView, ...]:
+    """Summarize inspect, decide, and download progress without duplicating content."""
+    core = job.runtime.job
+    if job.waiting_for_approval:
+        decision_status = "attention"
+    elif core.selected_plan is not None and core.selected_plan.blocked:
+        decision_status = "blocked"
+    elif core.decisions is not None or (
+        core.selected_plan is not None and not core.selected_plan.approval_action_ids
+    ):
+        decision_status = "complete"
+    else:
+        decision_status = "pending"
+    if core.result is not None:
+        download_status = "complete"
+    elif job.error is not None:
+        download_status = "blocked"
+    else:
+        download_status = "pending"
+    return (
+        WorkflowStepView(
+            slug="inspect",
+            label="Inspect",
+            status="complete" if core.inspection is not None else "pending",
+        ),
+        WorkflowStepView(slug="decide", label="Decide", status=decision_status),
+        WorkflowStepView(slug="download", label="Download", status=download_status),
+    )
+
+
+def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, object]:
     """Build the template context solely from structured job state."""
     core = job.runtime.job
     verification = core.last_verification
+    active_view = (
+        requested_view
+        if requested_view in {"inspect", "decide", "download"}
+        else _default_job_view(job)
+    )
+    decision_records: tuple[DecisionRecord, ...] = ()
+    if core.decisions is not None:
+        decision_records = tuple(
+            record
+            for record in core.decisions.records
+            if record.decision is not DecisionValue.AUTO_AUTHORIZED
+        )
     return {
         "job": job,
         "story": job.story,
         "stories": STORIES,
+        "active_mode": job.story.slug,
+        "active_style": job.story.nav_label,
+        "active_view": active_view,
+        "workflow_steps": _workflow_steps(job),
         "stages": job.stages(),
         "finding_groups": _finding_groups(job),
         "rule_explanations": {
@@ -856,6 +965,7 @@ def _job_context(job: WebJob) -> dict[str, object]:
         "plan": core.selected_plan,
         "verification": verification,
         "workflow_result": job.workflow_result,
+        "decision_records": decision_records,
         "is_blocked": bool(
             verification is not None and verification.state is VerificationState.BLOCKED
         ),
@@ -869,7 +979,7 @@ def create_app(
 ) -> FastAPI:
     """Create a local Asset Shepherd web application and isolated job store."""
     profiles = discover_profiles(project_root.resolve(strict=True))
-    stories_by_slug = {story.slug: story for story in STORIES}
+    stories_by_slug = {story.slug: story for story in WORKFLOW_STORIES}
     store = WebJobStore(work_root, profiles)
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     app = FastAPI(
@@ -889,7 +999,12 @@ def create_app(
         return templates.TemplateResponse(
             request=request,
             name="index.html",
-            context={"stories": STORIES, "error": error},
+            context={
+                "stories": STORIES,
+                "error": error,
+                "active_mode": "help",
+                "active_style": "Help me choose",
+            },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
         )
@@ -917,6 +1032,8 @@ def create_app(
                 "story": story,
                 "error": error,
                 "max_upload_mb": 50,
+                "active_mode": story.slug,
+                "active_style": story.nav_label,
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -1000,7 +1117,7 @@ def create_app(
             status_code=303,
         )
 
-    def job_page(request: Request, job_id: str) -> Response:
+    def job_page(request: Request, job_id: str, view: str | None = None) -> Response:
         """Render refresh-safe in-process state for one opaque job ID."""
         try:
             job = require_job(job_id)
@@ -1009,7 +1126,7 @@ def create_app(
         return templates.TemplateResponse(
             request=request,
             name="job.html",
-            context=_job_context(job),
+            context=_job_context(job, view),
             headers={"Cache-Control": "no-store"},
         )
 
@@ -1033,7 +1150,7 @@ def create_app(
             return templates.TemplateResponse(
                 request=request,
                 name="job.html",
-                context=_job_context(job),
+                context=_job_context(job, "decide"),
                 status_code=409,
                 headers={"Cache-Control": "no-store"},
             )

@@ -4,6 +4,58 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D014 — Persistent five-mode rail with a single-step workspace
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+The progressively disclosed role-first site still spent substantial horizontal space on repeated
+audience framing and presented source preview, result, and technical evidence together on job
+pages. The user requested a more efficient application shell: three audience styles permanently on
+the left, Help me choose and Advanced user beside them, and only one workflow step visible in the
+main workspace at a time. The supplied visual reference rendered as a uniform black image, so the
+written layout specification was the only actionable design input.
+
+**Options considered**
+
+- Keep the existing centered role chooser and two-column story hero, then shorten its copy.
+- Create five separate products or expose advanced transform operations.
+- Keep one shared workflow, add a persistent icon rail for five presentation modes, and make
+  Rules/Upload plus Inspect/Decide/Download explicit single-visible-step workspace navigators.
+
+**Decision**
+
+Use a fixed left rail with placeholder `LOGO` text; Game developer, 3D artist, and Technical artist
+style icons; and separate Help me choose and Advanced user icon tiles. Every icon has an accessible
+label, native title, and hover/focus hint. The workspace header is exactly
+`Asset Shepherd -- [style]`, with the style updated by the active mode.
+
+Render only Rules or Upload during intake. Render only the selected Inspect, Decide, or Download
+job view, using a read-only query parameter over the same frozen in-process job. Default directly
+to Decide while approval is pending and Download after completion or blocking. Advanced mode uses
+the same supported profile-copy form and deterministic workflow; it does not unlock raw transforms,
+safety policy, unsupported repair domains, verification invariants, or source mutation.
+
+**Evidence and consequences**
+
+Parameterized web acceptance runs the complete approved broken-fixture workflow through all three
+audience styles and Advanced mode. Additional assertions cover all five rail modes, dynamic titles,
+hidden Upload startup state, explicit job views, exactly one focus area per server-rendered state,
+policy provenance in Inspect, authorization in Decide, and verification/package evidence in
+Download. The original role routes, profile schema validation, native Strands interrupt, grouped
+normalization approval, source preservation, and seven-artifact package contract remain unchanged.
+
+The left rail remains visible at narrow widths and therefore consumes a small fixed slice of mobile
+space. This is intentional: the user explicitly chose persistent orientation over moving the mode
+navigator to a bottom bar.
+
 ### D013 — Freeze versioned policy copies per inspection job
 
 **Date:** 2026-08-21

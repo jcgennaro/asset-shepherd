@@ -1,91 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Asset Shepherd · {{ job.state_label }}{% endblock %}
 {% block content %}
-  <section class="job-shell">
-    <header class="job-header">
+  <section class="job-workspace">
+    <header class="job-context">
       <a class="back-link" href="{{ url_for('story_home', story_slug=story.slug) }}">← New inspection</a>
-      <span class="job-file" title="Frozen policy {{ job.profile.profile_id }}">{{ job.original_filename }} · {{ job.profile.name }}</span>
-      <ol class="progress-line" aria-label="Workflow progress">
-        <li class="{% if inspection %}complete{% else %}current{% endif %}">Inspect</li>
-        <li class="{% if approval_card %}current{% elif inspection %}complete{% else %}pending{% endif %}">Decide</li>
-        <li class="{% if job.runtime.job.result %}complete{% else %}pending{% endif %}">Package</li>
-      </ol>
+      <p title="Frozen policy {{ job.profile.profile_id }}">
+        <strong>{{ job.original_filename }}</strong>
+        <span>{{ job.profile.name }}</span>
+      </p>
       <span class="state-pill {{ job.state_class }}"><i></i>{{ job.state_label }}</span>
     </header>
 
-    <div class="job-flow">
-      {% if approval_card and interrupt_id %}
-        <section class="approval-panel" aria-labelledby="approval-title" data-focus-area="decision">
-          <div class="approval-copy">
-            <p class="section-label">One decision</p>
-            <h2 id="approval-title">{{ approval_card.title }}</h2>
-            <p>{{ approval_card.consequence_summary }}</p>
-            <div class="dimension-compare" aria-label="Expected size change">
-              <div>
-                <small>Before</small>
-                <strong>{{ "%.2f"|format(approval_card.before_bounds.dimensions_m|max) }} m</strong>
-              </div>
-              <span aria-hidden="true">→</span>
-              <div>
-                <small>After height</small>
-                <strong>{{ "%.2f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m</strong>
-              </div>
-            </div>
-          </div>
-          <div class="decision-side">
-            <details class="approval-evidence">
-              <summary>Why this is proposed</summary>
-              <div class="approval-components">
-                {% for component in approval_card.components %}
-                  <div>
-                    <strong>{{ component.component }}</strong>
-                    <span>{{ "%.0f"|format(component.confidence * 100) }}% confidence</span>
-                    <p>{{ component.evidence }}</p>
-                  </div>
-                {% endfor %}
-              </div>
-            </details>
-            <p class="decision-note">{{ story.rejection_note }}</p>
-            <form action="{{ url_for('decide_job', job_id=job.job_id) }}" method="post" class="decision-actions" data-busy-form>
-              <input type="hidden" name="interrupt_id" value="{{ interrupt_id }}">
-              <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
-              <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
-            </form>
-          </div>
-        </section>
-      {% endif %}
+    <nav class="workflow-nav job-workflow-nav" aria-label="Inspection workflow">
+      {% for step in workflow_steps %}
+        <a
+          class="{{ step.status }}{% if active_view == step.slug %} active{% endif %}"
+          href="{{ url_for('job_page', job_id=job.job_id) }}?view={{ step.slug }}"
+          {% if active_view == step.slug %}aria-current="step"{% endif %}>
+          <span>{{ loop.index }}</span><strong>{{ step.label }}</strong><small>{{ step.status|replace('_', ' ') }}</small>
+        </a>
+        {% if not loop.last %}<i aria-hidden="true"></i>{% endif %}
+      {% endfor %}
+    </nav>
 
-      {% if job.error or workflow_result %}
-        <section class="result-card {{ job.state_class }}" data-focus-area="result">
-          {% if job.error %}
-            <p class="section-label">Stopped safely</p>
-            <h2>No output was marked ready.</h2>
-            <p>{{ job.error }}</p>
-          {% elif is_blocked %}
-            <p class="section-label">Inspection complete</p>
-            <h2>Inspection-only result</h2>
-            <p>This asset is not eligible for structural repair. The diagnostics are packaged without a ready candidate.</p>
-          {% else %}
-            <p class="section-label">Complete</p>
-            <h2>{{ story.candidate_label }}</h2>
-            <p><strong>{{ verification.state }}</strong> · {{ story.verification_heading }}</p>
-          {% endif %}
-          {% if job.runtime.job.result %}
-            <a class="download-button" href="{{ url_for('download_result', job_id=job.job_id) }}">
-              <span><small>Seven contracted artifacts</small><strong>Download result ZIP</strong></span>
-              <b aria-hidden="true">↓</b>
-            </a>
-          {% endif %}
-        </section>
-      {% endif %}
+    {% if active_view == "inspect" %}
+      <section class="workflow-panel inspect-panel" data-focus-area="inspect" aria-labelledby="inspect-title">
+        <header class="panel-heading">
+          <div>
+            <p class="section-label">Inspect</p>
+            <h2 id="inspect-title">{{ story.job_question }}</h2>
+          </div>
+          <p>Measured facts and policy findings from the untouched source.</p>
+        </header>
 
-      <section class="preview-area" aria-labelledby="preview-title" data-focus-area="preview">
-        <div class="section-heading">
-          <h2 id="preview-title">{% if job.ready_candidate %}Before and after{% else %}Source preview{% endif %}</h2>
-          <span>Interactive</span>
-        </div>
-        <div class="preview-grid {% if not job.ready_candidate %}single{% endif %}">
-          <article class="preview-card">
+        <div class="inspect-layout">
+          <article class="preview-card source-inspection">
             <div class="preview-label"><strong>{{ story.source_label }}</strong><span>Original</span></div>
             <model-viewer
               src="{{ url_for('source_asset', job_id=job.job_id) }}"
@@ -101,97 +49,195 @@
             </model-viewer>
             {% if inspection and inspection.geometry %}
               <div class="bounds-line">
-                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} m</span>
-                <span>×</span>
-                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} m</span>
-                <span>×</span>
+                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} m</span><span>×</span>
+                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} m</span><span>×</span>
                 <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[2]) }} m</span>
               </div>
             {% endif %}
           </article>
 
+          <div class="inspection-evidence">
+            {% if inspection %}
+              <dl class="metric-list">
+                <div><dt>Eligibility</dt><dd>{{ inspection.repair_eligibility }}</dd></div>
+                <div><dt>Triangles</dt><dd>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</dd></div>
+                <div><dt>Materials</dt><dd>{{ inspection.package.material_count }}</dd></div>
+                <div><dt>Textures</dt><dd>{{ inspection.package.texture_count }}</dd></div>
+                <div><dt>Frozen policy</dt><dd>{{ job.profile.profile_id }}</dd></div>
+                <div><dt>Policy hash</dt><dd><code>{{ job.profile.policy_provenance.canonical_sha256[:12] }}</code></dd></div>
+              </dl>
+            {% endif %}
+
+            <section class="findings-block" aria-labelledby="findings-title">
+              <div class="section-heading">
+                <h3 id="findings-title">{{ story.findings_heading }}</h3>
+                <span>{% if inspection %}{{ inspection.findings|length }} total{% endif %}</span>
+              </div>
+              {% if finding_groups %}
+                <div class="finding-list">
+                  {% for severity, findings in finding_groups %}
+                    {% for finding in findings %}
+                      <article class="finding">
+                        <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
+                        <h4>{{ finding.title }}</h4>
+                        <p>{{ finding.description }}</p>
+                        {% if finding.id in rule_explanations %}
+                          <p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>
+                        {% endif %}
+                        {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
+                      </article>
+                    {% endfor %}
+                  {% endfor %}
+                </div>
+              {% elif inspection %}
+                <p class="empty-state"><strong>No project-policy findings.</strong> The asset already satisfies this profile.</p>
+              {% else %}
+                <p class="empty-state">No inspection is available.</p>
+              {% endif %}
+            </section>
+          </div>
+        </div>
+
+        <details class="technical-details">
+          <summary><span>Seven-stage execution detail</span><small>Structured evidence</small></summary>
+          <div class="details-body">
+            <ol class="stage-list">
+              {% for stage in stages %}<li class="{{ stage.status }}">{{ stage.name }}</li>{% endfor %}
+            </ol>
+            <p class="session-note">The policy is frozen for this job. Changing rules starts a new inspection and job.</p>
+          </div>
+        </details>
+      </section>
+
+    {% elif active_view == "decide" %}
+      <section class="workflow-panel decide-panel" data-focus-area="decide" aria-labelledby="decide-title">
+        {% if approval_card and interrupt_id %}
+          <div class="approval-layout">
+            <div class="approval-copy">
+              <p class="section-label">One grouped decision</p>
+              <h2 id="decide-title">{{ approval_card.title }}</h2>
+              <p>{{ approval_card.consequence_summary }}</p>
+              <div class="dimension-compare" aria-label="Expected size change">
+                <div><small>Before</small><strong>{{ "%.2f"|format(approval_card.before_bounds.dimensions_m|max) }} m</strong></div>
+                <span aria-hidden="true">→</span>
+                <div><small>After height</small><strong>{{ "%.2f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m</strong></div>
+              </div>
+            </div>
+            <div class="decision-side">
+              <details class="approval-evidence">
+                <summary>Why this is proposed</summary>
+                <div class="approval-components">
+                  {% for component in approval_card.components %}
+                    <div>
+                      <strong>{{ component.component }}</strong>
+                      <span>{{ "%.0f"|format(component.confidence * 100) }}% confidence</span>
+                      <p>{{ component.evidence }}</p>
+                    </div>
+                  {% endfor %}
+                </div>
+              </details>
+              <p class="decision-note">{{ story.rejection_note }}</p>
+              <form action="{{ url_for('decide_job', job_id=job.job_id) }}" method="post" class="decision-actions" data-busy-form>
+                <input type="hidden" name="interrupt_id" value="{{ interrupt_id }}">
+                <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
+                <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
+              </form>
+            </div>
+          </div>
+        {% elif decision_records %}
+          <header class="panel-heading">
+            <div><p class="section-label">Decision recorded</p><h2 id="decide-title">Authorization is frozen with this job.</h2></div>
+            <p>Changing the policy or authorization requires a new inspection.</p>
+          </header>
+          <div class="decision-records">
+            {% for record in decision_records %}
+              <article>
+                <span>{{ record.decision }}</span>
+                <strong>{{ record.candidate_id }}</strong>
+                <small>{{ record.source }} · {{ record.decided_at }}</small>
+              </article>
+            {% endfor %}
+          </div>
+          <a class="primary-button inline-button" href="{{ url_for('job_page', job_id=job.job_id) }}?view=download">Continue to download <span aria-hidden="true">→</span></a>
+        {% elif is_blocked %}
+          <header class="panel-heading">
+            <div><p class="section-label">No repair authorized</p><h2 id="decide-title">This asset is inspection-only.</h2></div>
+            <p>Unsupported structural content blocks repair. No consequential action is available.</p>
+          </header>
+          <a class="primary-button inline-button" href="{{ url_for('job_page', job_id=job.job_id) }}?view=download">Open diagnostics package <span aria-hidden="true">→</span></a>
+        {% elif workflow_result %}
+          <header class="panel-heading">
+            <div><p class="section-label">No decision needed</p><h2 id="decide-title">The asset required no physical normalization.</h2></div>
+            <p>Only automatically safe work, if any, was eligible to run.</p>
+          </header>
+          <a class="primary-button inline-button" href="{{ url_for('job_page', job_id=job.job_id) }}?view=download">Continue to download <span aria-hidden="true">→</span></a>
+        {% else %}
+          <header class="panel-heading">
+            <div><p class="section-label">Decision unavailable</p><h2 id="decide-title">Inspection has not produced a decision yet.</h2></div>
+          </header>
+        {% endif %}
+      </section>
+
+    {% else %}
+      <section class="workflow-panel download-panel" data-focus-area="download" aria-labelledby="download-title">
+        {% if job.error %}
+          <header class="panel-heading danger-copy">
+            <div><p class="section-label">Stopped safely</p><h2 id="download-title">No output was marked ready.</h2></div>
+            <p>{{ job.error }}</p>
+          </header>
+        {% elif is_blocked %}
+          <header class="panel-heading">
+            <div><p class="section-label">Inspection complete</p><h2 id="download-title">Inspection-only result</h2></div>
+            <p>This asset is not eligible for structural repair. Diagnostics are packaged without a ready candidate.</p>
+          </header>
+        {% elif workflow_result %}
+          <header class="panel-heading success-copy">
+            <div><p class="section-label">Verified and packaged</p><h2 id="download-title">{{ story.candidate_label }}</h2></div>
+            <p><strong>{{ verification.state }}</strong> · {{ story.verification_heading }}</p>
+          </header>
+        {% else %}
+          <header class="panel-heading">
+            <div><p class="section-label">Not ready</p><h2 id="download-title">Finish the current workflow first.</h2></div>
+            <p>The source remains unchanged.</p>
+          </header>
+        {% endif %}
+
+        {% if job.runtime.job.result %}
+          <a class="download-button" href="{{ url_for('download_result', job_id=job.job_id) }}">
+            <span><small>Contracted evidence package</small><strong>Download result ZIP</strong></span>
+            <b aria-hidden="true">↓</b>
+          </a>
+        {% endif %}
+
+        <div class="preview-grid{% if not job.ready_candidate %} single{% endif %}">
+          <article class="preview-card">
+            <div class="preview-label"><strong>{{ story.source_label }}</strong><span>Original</span></div>
+            <model-viewer
+              src="{{ url_for('source_asset', job_id=job.job_id) }}"
+              alt="Interactive preview of the untouched uploaded model"
+              camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
+              environment-image="neutral" exposure="1" interaction-prompt="none">
+              <div class="viewer-fallback" slot="poster">Loading source preview…</div>
+            </model-viewer>
+          </article>
           {% if job.ready_candidate %}
             <article class="preview-card after-card">
               <div class="preview-label"><strong>{{ story.candidate_label }}</strong><span>Verified</span></div>
               <model-viewer
                 src="{{ url_for('repaired_asset', job_id=job.job_id) }}"
                 alt="Interactive preview of the verified repaired model"
-                camera-controls
-                auto-rotate
-                rotation-per-second="12deg"
-                shadow-intensity="1"
-                environment-image="neutral"
-                exposure="1"
-                interaction-prompt="none">
+                camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
+                environment-image="neutral" exposure="1" interaction-prompt="none">
                 <div class="viewer-fallback" slot="poster">Loading verified preview…</div>
               </model-viewer>
-              {% if approval_card %}
-                <div class="bounds-line">
-                  {% for value in approval_card.expected_after_bounds.dimensions_m %}
-                    <span>{{ "%.3f"|format(value) }} m</span>{% if not loop.last %}<span>×</span>{% endif %}
-                  {% endfor %}
-                </div>
-              {% else %}
-                <div class="bounds-line success-copy">Reloaded and verified</div>
-              {% endif %}
             </article>
           {% endif %}
         </div>
-      </section>
 
-      <details class="technical-details" data-focus-area="technical details">
-        <summary>
-          <span>Technical details</span>
-          <small>{% if inspection %}{{ inspection.findings|length }} finding{% if inspection.findings|length != 1 %}s{% endif %}{% else %}Not available{% endif %}</small>
-        </summary>
-        <div class="details-body">
-          {% if inspection %}
-            <dl class="metric-list">
-              <div><dt>Eligibility</dt><dd>{{ inspection.repair_eligibility }}</dd></div>
-              <div><dt>Triangles</dt><dd>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</dd></div>
-              <div><dt>Materials</dt><dd>{{ inspection.package.material_count }}</dd></div>
-              <div><dt>Textures</dt><dd>{{ inspection.package.texture_count }}</dd></div>
-              <div><dt>Frozen policy</dt><dd>{{ job.profile.profile_id }}</dd></div>
-              <div><dt>Policy hash</dt><dd><code>{{ job.profile.policy_provenance.canonical_sha256[:12] }}</code></dd></div>
-            </dl>
-          {% endif %}
-
-          <section class="detail-section" aria-labelledby="stages-title">
-            <h3 id="stages-title">Stages</h3>
-            <ol class="stage-list">
-              {% for stage in stages %}<li class="{{ stage.status }}">{{ stage.name }}</li>{% endfor %}
-            </ol>
-          </section>
-
-          <section class="detail-section" aria-labelledby="findings-title">
-            <h3 id="findings-title">{{ story.findings_heading }}</h3>
-            {% if finding_groups %}
-              <div class="finding-list">
-                {% for severity, findings in finding_groups %}
-                  {% for finding in findings %}
-                    <article class="finding">
-                      <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
-                      <h4>{{ finding.title }}</h4>
-                      <p>{{ finding.description }}</p>
-                      {% if finding.id in rule_explanations %}
-                        <p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>
-                      {% endif %}
-                      {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
-                    </article>
-                  {% endfor %}
-                {% endfor %}
-              </div>
-            {% elif inspection %}
-              <p class="empty-state"><strong>No project-policy findings.</strong> The asset already satisfies this profile.</p>
-            {% else %}
-              <p class="empty-state">No inspection available.</p>
-            {% endif %}
-          </section>
-
-          <section class="detail-section" aria-labelledby="verification-title">
-            <h3 id="verification-title">{{ story.verification_heading }}</h3>
+        <details class="technical-details">
+          <summary><span>Verification and package details</span><small>{% if verification %}{{ verification.state }}{% else %}Not available{% endif %}</small></summary>
+          <div class="details-body">
             {% if verification %}
-              <p class="verification-state">{{ verification.state }}</p>
               <div class="check-list">
                 {% for check in verification.checks %}
                   <div class="check-row {{ check.status|lower }}">
@@ -203,22 +249,18 @@
               {% if verification.remaining_warnings %}
                 <ul class="warning-list">{% for warning in verification.remaining_warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
               {% endif %}
-            {% else %}
-              <p class="empty-state">Waiting for a repair decision.</p>
             {% endif %}
-          </section>
-
-          {% if workflow_result %}
-            <dl class="metric-list compact">
-              <div><dt>Tool calls</dt><dd>{{ workflow_result.metrics.tool_calls|sum(attribute='call_count') }}</dd></div>
-              <div><dt>Interrupts</dt><dd>{{ workflow_result.metrics.interrupt_count }}</dd></div>
-              <div><dt>Corrections</dt><dd>{{ workflow_result.metrics.correction_attempts }}</dd></div>
-            </dl>
-          {% endif %}
-
-          <p class="session-note">Refresh preserves this job while the local server is running. The policy is frozen; changing rules starts a new inspection and job. Restarting the server ends the in-memory session.</p>
-        </div>
-      </details>
-    </div>
+            {% if workflow_result %}
+              <dl class="metric-list compact">
+                <div><dt>Tool calls</dt><dd>{{ workflow_result.metrics.tool_calls|sum(attribute='call_count') }}</dd></div>
+                <div><dt>Interrupts</dt><dd>{{ workflow_result.metrics.interrupt_count }}</dd></div>
+                <div><dt>Corrections</dt><dd>{{ workflow_result.metrics.correction_attempts }}</dd></div>
+              </dl>
+            {% endif %}
+            <p class="session-note">Refresh preserves this job while the local server is running. Restarting the server ends the in-memory session.</p>
+          </div>
+        </details>
+      </section>
+    {% endif %}
   </section>
 {% endblock %}

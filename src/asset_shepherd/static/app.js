@@ -14,6 +14,7 @@ const customToggle = document.querySelector("[data-custom-toggle]");
 const customFields = document.querySelector("[data-custom-fields]");
 const customStatus = document.querySelector("[data-custom-status]");
 const customInputs = [...document.querySelectorAll("[data-custom-field]")];
+const selectedPolicyLabel = document.querySelector("[data-selected-policy]");
 
 function selectedProfile() {
   return profileRadios.find((radio) => radio.checked);
@@ -34,6 +35,22 @@ function populateCustomFields(profileRadio) {
   }
 }
 
+function updateSelectedPolicyLabel() {
+  const profileRadio = selectedProfile();
+  if (!selectedPolicyLabel) {
+    return;
+  }
+  if (!profileRadio) {
+    selectedPolicyLabel.textContent = "No preset selected";
+    return;
+  }
+  const profileName = profileRadio
+    .closest(".profile-option-shell")
+    ?.querySelector(".profile-option strong")?.textContent;
+  const suffix = customToggle?.checked ? " — customized copy" : " — immutable preset";
+  selectedPolicyLabel.textContent = `${profileName || "Selected policy"}${suffix}`;
+}
+
 function setCustomMode(enabled) {
   if (profileMode) {
     profileMode.value = enabled ? "custom" : "preset";
@@ -45,6 +62,7 @@ function setCustomMode(enabled) {
     input.disabled = !enabled;
     input.required = enabled;
   }
+  updateSelectedPolicyLabel();
 }
 
 for (const radio of profileRadios) {
@@ -54,6 +72,7 @@ for (const radio of profileRadios) {
       customToggle.checked = false;
     }
     setCustomMode(false);
+    updateSelectedPolicyLabel();
   });
 }
 
@@ -68,6 +87,60 @@ customToggle?.addEventListener("change", () => {
   populateCustomFields(profileRadio);
   setCustomMode(customToggle.checked);
 });
+
+const intakeWorkflow = document.querySelector("[data-intake-workflow]");
+
+if (intakeWorkflow) {
+  const panels = [...intakeWorkflow.querySelectorAll("[data-intake-panel]")];
+  const stepButtons = [...intakeWorkflow.querySelectorAll("[data-intake-step-button]")];
+  const validationMessage = intakeWorkflow.querySelector("[data-step-validation]");
+
+  function validateRules() {
+    const profileRadio = selectedProfile();
+    if (!profileRadio) {
+      if (validationMessage) {
+        validationMessage.textContent = "Choose one validation policy before uploading.";
+      }
+      profileRadios[0]?.focus();
+      return false;
+    }
+    for (const input of customInputs) {
+      if (!input.disabled && !input.checkValidity()) {
+        input.reportValidity();
+        return false;
+      }
+    }
+    if (validationMessage) {
+      validationMessage.textContent = "";
+    }
+    updateSelectedPolicyLabel();
+    return true;
+  }
+
+  function showStep(step) {
+    if (step === "upload" && !validateRules()) {
+      return;
+    }
+    for (const panel of panels) {
+      panel.hidden = panel.dataset.intakePanel !== step;
+    }
+    for (const button of stepButtons) {
+      if (button.dataset.intakeStepButton === step) {
+        button.setAttribute("aria-current", "step");
+      } else {
+        button.removeAttribute("aria-current");
+      }
+    }
+    intakeWorkflow.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  for (const button of intakeWorkflow.querySelectorAll("[data-intake-next]")) {
+    button.addEventListener("click", () => showStep(button.dataset.intakeNext));
+  }
+  for (const button of stepButtons) {
+    button.addEventListener("click", () => showStep(button.dataset.intakeStepButton));
+  }
+}
 
 for (const form of document.querySelectorAll("[data-busy-form]")) {
   form.addEventListener("submit", (event) => {

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="intake-workspace" data-focus-area="new inspection">
+    <header class="mode-context">
+      <div>
+        <p class="section-label">{{ story.audience }}</p>
+        <p class="mode-question">{{ story.headline }}</p>
+      </div>
+      <p>{{ story.promise }}</p>
+    </header>
+    {% include "_intake_form.html" %}
+  </section>
+{% endblock %}

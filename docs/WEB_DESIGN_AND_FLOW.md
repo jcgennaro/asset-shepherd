@@ -1,20 +1,19 @@
 # Asset Shepherd Web Design and Flow
 
-This document describes the local web product after the explicit validation-rules intake and D013
-versioned policy enhancement. It is a handoff snapshot, not a proposal for expanded scope.
+This document describes the local web product after the persistent mode-rail and single-step
+workspace redesign. It is a handoff snapshot, not a proposal for expanded scope.
 
 ## Product mental model
 
 Asset Shepherd is a guided intake workflow for one static GLB at a time:
 
 ```text
-Choose a role
-  -> choose an immutable preset or customize a supported copy
-  -> upload the actual GLB
-  -> inspect
-  -> approve or reject one physical normalization, if needed
-  -> independently verify
-  -> preview and download the evidence package
+Choose a presentation mode in the persistent left rail
+  -> Rules: choose an immutable preset or customize a supported copy
+  -> Upload: select the actual GLB
+  -> Inspect: review source facts and policy findings
+  -> Decide: approve or reject one physical normalization, if needed
+  -> Download: review verification, compare, and retrieve the package
 ```
 
 The validation-rule choice and file upload are deliberately separate:
@@ -27,12 +26,15 @@ The validation-rule choice and file upload are deliberately separate:
 
 ## Design principles already implemented
 
-1. **Role first.** The first screen asks only, “Which best describes you?”
-2. **One product, three explanations.** Every audience route uses the same profiles, inspection,
+1. **Five persistent modes.** Game developer, 3D artist, technical artist, Help me choose, and
+   Advanced user remain visible as icon tiles in a fixed left rail. Hover and focus hints explain
+   each icon.
+2. **One product, three audience explanations.** Every audience route uses the same profiles, inspection,
    Strands interrupt, deterministic repair engine, verification, and output package. Only the
-   framing and labels change.
-3. **No more than three primary focus areas.** Evidence is progressively disclosed instead of
-   competing with the current task.
+   framing and labels change. Help is a chooser; Advanced is a direct policy-oriented presentation
+   of that same workflow.
+3. **One visible workflow step.** The workspace renders only Rules or Upload during intake and only
+   Inspect, Decide, or Download for a job. Evidence never competes with the current task.
 4. **One consequential decision.** Scale, upright orientation, and grounding are grouped into one
    reversible physical-normalization approval. Safe display-name repairs remain separate.
 5. **Measured evidence over agent prose.** Visible facts and state come from deterministic job
@@ -45,10 +47,11 @@ The validation-rule choice and file upload are deliberately separate:
 | Route | Audience framing | Primary question |
 |---|---|---|
 | `/` | Role chooser | Which best describes you? |
-| `/stories/game-developer` | Game developer | Is this asset ready for my game? |
-| `/stories/artist` | 3D artist | What will change in my work? |
-| `/stories/technical-artist` | Technical artist | Does this asset meet project policy? |
-| `/jobs/{job_id}` | Shared job experience | What needs a decision, and is the result verified? |
+| `/stories/game-developer` | Game developer | Is this asset ready to enter my game? |
+| `/stories/artist` | 3D artist | What changes, and what remains untouched? |
+| `/stories/technical-artist` | Technical artist | What does the versioned policy require? |
+| `/stories/advanced` | Advanced user | Which supported target rules should be frozen? |
+| `/jobs/{job_id}?view=inspect\|decide\|download` | Shared job workspace | What does this workflow step require? |
 
 The three audience routes are functionally equivalent:
 
@@ -59,14 +62,16 @@ The three audience routes are functionally equivalent:
 - **Technical artist:** emphasizes versioned policy, bounded authorization, verification, and an
   auditable evidence trail.
 
-Each intake reduces the public workflow to **Inspect -> Decide -> Download**. The full technical
-rail remains available as **Intake -> Inspect -> Plan -> Approve -> Repair -> Verify -> Package**.
+The persistent style rail is separate from the workspace workflow navigator. Intake exposes
+**Rules -> Upload**. A job exposes **Inspect -> Decide -> Download**. The full technical execution
+sequence remains available under structured detail as **Intake -> Inspect -> Plan -> Approve ->
+Repair -> Verify -> Package**.
 
 ## End-to-end flow and states
 
 ```mermaid
 flowchart TD
-    A[Choose role] --> B[Choose validation rules]
+    A[Choose presentation mode] --> B[Rules step]
     B --> C[Upload one static GLB]
     C --> D{Valid GLB and trusted profile?}
     D -- No --> E[Show intake error; create no job]
@@ -88,9 +93,9 @@ flowchart TD
 
 ### Intake
 
-The intake has two focus areas: the audience question and one upload card. No profile is selected by
-default. The user must explicitly choose one of the repository-owned versioned policy presets
-before uploading:
+The intake is one workspace focus area with a two-step navigator. Only the **Rules** panel is shown
+at first. No profile is selected by default. The user must explicitly choose one of the
+repository-owned versioned policy presets before the interface reveals the **Upload** panel:
 
 - **Unreal Indie Robot** — 1.8 m character-scale static mesh.
 - **Small Stylized Static Mesh** — 0.9–1.5 m compact stylized asset.
@@ -106,8 +111,9 @@ does not expose transforms. Automatic safe-name handling, grouped physical appro
 inference, uniqueness policy, verification invariants, unsupported repair domains, engine/type,
 and source preservation remain fixed.
 
-The upload accepts one GLB 2.0 static mesh up to 50 MB. The server checks the extension, GLB magic,
-size, and trusted profile identifier before creating an isolated job.
+The user can return from Upload to Rules before submission. Upload accepts one GLB 2.0 static mesh
+up to 50 MB. The server checks the extension, GLB magic, size, and trusted profile identifier before
+creating an isolated job.
 
 The resolved profile is schema-validated, copied into the isolated job, and identified by a frozen
 profile ID and canonical SHA-256. A custom job additionally records the immutable base preset and
@@ -116,13 +122,14 @@ user returns to the intake and creates a new inspection/job.
 
 ### Pending approval
 
-When a physical normalization needs authorization, the page shows:
+When a physical normalization needs authorization, the workspace opens **Decide** and shows only:
 
 - one decision card with the consequence and before/expected-after height;
 - **Approve** and **Reject** actions tied to the exact Strands interrupt;
 - a collapsed “Why this is proposed” section with component confidence and evidence;
-- the source preview; and
-- collapsed technical details.
+
+The source preview, all findings, and their rule provenance remain in **Inspect**, one explicit
+workflow step away. Approve and Reject remain tied to the exact Strands interrupt.
 
 Approval executes only the selected registered action. Rejection is durable evidence: the
 normalization is not executed, unresolved physical findings remain explicit, and policy-safe name
@@ -130,8 +137,8 @@ repairs may still be packaged.
 
 ### Completed, blocked, and error results
 
-- A verified result shows the role-specific candidate label, verification state, before/after 3D
-  previews, and the result ZIP download.
+- A verified result opens **Download** and shows the role-specific candidate label, verification
+  state, before/after 3D previews, and result ZIP download.
 - A structurally unsupported asset produces an inspection-only diagnostic package without
   `repaired.glb` and is not called ready.
 - An execution or verification error stops safely and does not mark an output ready.
@@ -153,26 +160,28 @@ report.md
 
 | Page or state | Primary focus areas | Count |
 |---|---|---:|
-| Role chooser | Question; role choices | 2 |
-| Any role intake | Role question; rules/upload card | 2 |
-| Awaiting approval | Decision; source preview; technical details | 3 |
-| Verified result | Result/download; before/after preview; technical details | 3 |
-| Blocked or failed | Result; source preview; technical details | 3 |
+| Help me choose | Style chooser workspace | 1 |
+| Any intake | Current Rules or Upload workspace step | 1 |
+| Inspect | Source preview and inspection evidence inside one step | 1 |
+| Decide | Pending or recorded authorization inside one step | 1 |
+| Download | Result, comparison, and collapsed verification inside one step | 1 |
 
-Technical details are collapsed by default and contain measured metrics, all seven stages, grouped
-findings, verification checks and remaining warnings, and tool/interrupt/correction counts. Every
-policy-caused finding cites the frozen profile and the exact active parameter value that triggered
-it.
+Inspect contains measured metrics, grouped findings, policy-rule provenance, and a collapsed
+seven-stage execution detail. Download contains the result and comparison plus collapsed
+verification checks, remaining warnings, and tool/interrupt/correction counts. Every policy-caused
+finding cites the frozen profile and exact active parameter value that triggered it.
 
 ## Visual system
 
 - Dark charcoal/green “workshop” background with warm off-white text.
-- Role accents distinguish context without changing behavior: amber for game developers, teal for
-  artists, and blue for technical artists.
-- The page-leading question is intentionally oversized; supporting copy and controls are compact.
-- Cards use restrained borders and spacing rather than dashboard-style panel density.
-- Desktop intake uses two columns; it collapses for narrow screens at 820 px and tightens again at
-  620 px.
+- The placeholder `LOGO` mark and five icon tiles live in a 112 px left rail; the rail narrows but
+  stays on the left at small widths.
+- Role accents distinguish context without changing behavior: amber for game developers/help,
+  teal for artists, blue for technical artists, and violet for advanced mode.
+- The only page title is `Asset Shepherd -- [current style]` in the workspace header.
+- Content uses the full remaining workspace width, with one bordered workflow panel at a time.
+- Desktop Rules uses two policy columns; inspection and approval use context-appropriate two-column
+  arrangements. Each becomes one column at narrow widths without moving the mode rail.
 - Motion is minimal, and reduced-motion preferences are honored.
 - Interactive GLB previews use pinned `<model-viewer>` 4.3.1 with camera controls, neutral
   environment, and a slow rotation.
@@ -192,16 +201,20 @@ it.
 
 ## Current validation evidence
 
-- The full repository gate currently passes: 54 tests passed and the opt-in live-provider test was
-  skipped; Ruff and Pyright pass.
-- Thirteen web acceptance tests cover all three role routes, approve/resume/download, clean
-  completion, invalid GLB rejection, unsupported inspection-only packaging, source preservation,
-  exact ZIP contents, immutable presets, schema-validated custom copies, frozen policy provenance,
-  rule citations, new-job semantics, and the three-focus-area budget.
-- Chrome review passed at desktop and 390 x 844 phone width without horizontal overflow or
-  application console errors.
-- The role chooser and all three rendered intake routes were rechecked while preparing this
-  document. They show the same explicit rules-then-upload interaction and no preselected profile.
+- Fourteen web acceptance tests cover the three role routes plus Advanced mode,
+  approve/resume/download, explicit Inspect/Decide/Download views, clean completion, invalid GLB
+  rejection, unsupported inspection-only packaging, source preservation, exact ZIP contents,
+  immutable presets, schema-validated custom copies, frozen policy provenance, rule citations,
+  new-job semantics, and the one-step focus-area budget.
+- Server-rendered acceptance proves that each job response contains exactly one workflow panel;
+  intake renders Rules initially and keeps Upload hidden until the client-side transition.
+- The persistent rail contains exactly five icon modes with native title text and visible
+  hover/focus hints. Every route emits the exact dynamic `Asset Shepherd -- [style]` title.
+- Live browser review completed the approved broken-fixture workflow from Decide through Download,
+  inspected all three job views, and rendered Help, Rules, Upload, Inspect, Decide, and Download at
+  desktop width. A narrow-width pass found and fixed one grid min-content overflow; the corrected
+  document has no horizontal overflow, keeps the rail on the left, and contains one focus area and
+  one workflow panel. No application console error or warning was observed.
 
 ## Known limitations
 
@@ -217,8 +230,8 @@ it.
 
 ## Next contracted steps
 
-No further web redesign is required by the current contract. The next work should remain within the
-existing validation and deployment milestones:
+This presentation change does not alter milestone priority. After this web pass is accepted, work
+should remain within the existing validation and deployment milestones:
 
 1. **Review this handoff and the Shader Lantern visual checkpoint.** Confirm that the current role
    framing and rules/upload explanation are understandable enough to freeze while validation work
@@ -240,24 +253,13 @@ existing validation and deployment milestones:
 7. **Finish M10 evidence and claims.** Consolidate corpus metrics and the demo/failure story. Keep
    public performance and quality claims prohibited until the validation gates pass.
 
-### Direction requested from ChatGPT Pro
-
-The immediate product decisions are:
-
-- Freeze the current two-step intake copy, or identify one specific comprehension failure to test.
-- Confirm Debug Beetle as the next corpus asset and approve preparation of its one-batch generation
-  card.
-- Choose which registered asset will receive the human-cleaned reference for the three-way Blender
-  and Unreal comparison.
-- Decide whether AWS setup should happen in parallel with corpus work or remain deferred until RW2
-  is complete.
-
 ## Implementation map
 
 - Route behavior and shared story definitions: `src/asset_shepherd/web.py`
 - Canonical policy hashing and rule citations: `src/asset_shepherd/profile_policy.py`
-- Role chooser and audience templates: `src/asset_shepherd/templates/index.html` and
-  `src/asset_shepherd/templates/story_*.html`
+- Persistent mode rail: `src/asset_shepherd/templates/_mode_rail.html`
+- Help chooser and shared audience workspace: `src/asset_shepherd/templates/index.html` and
+  `src/asset_shepherd/templates/story.html`
 - Rules/upload intake: `src/asset_shepherd/templates/_intake_form.html`
 - Job, approval, preview, result, and evidence states: `src/asset_shepherd/templates/job.html`
 - Visual system and responsive rules: `src/asset_shepherd/static/app.css`

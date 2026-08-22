@@ -4,23 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <title>{% block title %}Asset Shepherd{% endblock %}</title>
+    <title>Asset Shepherd -- {{ active_style }}</title>
     <link rel="icon" href="{{ url_for('static', path='/favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
   </head>
-  <body class="{% if story %}story story-{{ story.slug }}{% else %}story-chooser{% endif %}">
-    {% if story %}
-      <header class="topbar">
-        <a class="brand" href="{{ url_for('home') }}" aria-label="Asset Shepherd home">
-          <span class="brand-mark" aria-hidden="true"><span></span></span>
-          <strong>Asset Shepherd</strong>
-        </a>
-        <a class="change-role" href="{{ url_for('home') }}">Change role</a>
-      </header>
-    {% endif %}
-
-    <main>{% block content %}{% endblock %}</main>
+  <body class="mode-{{ active_mode }}">
+    <div class="app-shell">
+      {% include "_mode_rail.html" %}
+      <section class="workspace-shell">
+        <header class="workspace-header">
+          <h1>Asset Shepherd -- {{ active_style }}</h1>
+        </header>
+        <main id="workspace" class="workspace-body">{% block content %}{% endblock %}</main>
+      </section>
+    </div>
     <script src="{{ url_for('static', path='/app.js') }}" defer></script>
   </body>
 </html>
