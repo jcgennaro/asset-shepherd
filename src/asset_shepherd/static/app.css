@@ -426,9 +426,13 @@ a {
   margin-top: auto;
 }
 
-.intent-panel,
+.intent-panel {
+  width: min(1100px, 100%);
+  margin: clamp(24px, 5vh, 64px) auto 0;
+}
+
 .intent-confirmation {
-  width: min(920px, 100%);
+  width: min(1240px, 100%);
   margin: clamp(24px, 5vh, 64px) auto 0;
 }
 
@@ -442,6 +446,16 @@ a {
   font-weight: 520;
   letter-spacing: -0.055em;
   line-height: 0.98;
+}
+
+.intent-confirmation .intent-heading {
+  max-width: 1160px;
+}
+
+.intent-confirmation .intent-heading h2 {
+  max-width: 1120px;
+  font-size: clamp(3rem, 5.2vw, 5.8rem);
+  line-height: 1;
 }
 
 .intent-heading > p:last-child {
@@ -604,6 +618,61 @@ a {
   margin-top: 28px;
 }
 
+.proposal-decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(24px, 5vw, 72px);
+  align-items: start;
+  margin-top: clamp(30px, 5vh, 54px);
+}
+
+.proposal-decision-row form {
+  justify-self: end;
+}
+
+.proposal-evidence {
+  max-width: 760px;
+  color: var(--muted);
+}
+
+.proposal-evidence summary {
+  width: fit-content;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.proposal-evidence dl {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.proposal-evidence dl div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.proposal-evidence dt {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.proposal-evidence dd,
+.proposal-evidence p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.proposal-evidence p {
+  margin-top: 14px;
+  font-size: 0.82rem;
+}
+
 .intent-adjust {
   margin-top: 18px;
   padding-top: 16px;
@@ -628,6 +697,11 @@ a {
 .intent-adjust .back-link {
   grid-column: 1 / -1;
   justify-self: start;
+}
+
+.intent-confirmation > .fine-print {
+  margin-top: 18px;
+  padding: 0;
 }
 
 .job-intent {
@@ -1965,6 +2039,19 @@ model-viewer {
   .intent-confirm-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .proposal-decision-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .proposal-decision-row form,
+  .proposal-decision-row .primary-button {
+    width: 100%;
+  }
+
+  .intent-confirmation .intent-heading h2 {
+    font-size: clamp(2.5rem, 10vw, 4rem);
   }
 
   .intent-confirm-actions .secondary-button,

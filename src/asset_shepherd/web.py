@@ -755,6 +755,15 @@ def _public_workflow_error(error: Exception) -> str:
     return "The workflow stopped unexpectedly. The source is preserved and no output is ready."
 
 
+def _display_target_height(height_cm: float) -> str:
+    """Format target scale in the most readable metric unit for confirmation."""
+    if height_cm < 1.0:
+        return f"{height_cm * 10:g} mm"
+    if height_cm < 100.0:
+        return f"{height_cm:g} cm"
+    return f"{height_cm / 100:g} m"
+
+
 class WebJobStore:
     """Thread-safe in-process job registry with isolated filesystem workspaces."""
 
@@ -1205,6 +1214,12 @@ def create_app(
                     and workspace.record.target_draft.target_use is not None
                     else None
                 ),
+                "target_height_label": (
+                    _display_target_height(workspace.record.target_draft.target_height_cm)
+                    if workspace.record.target_draft is not None
+                    and workspace.record.target_draft.target_height_cm is not None
+                    else None
+                ),
                 "target_uses": tuple(
                     (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
                 ),
@@ -1268,6 +1283,7 @@ def create_app(
             context={
                 "intent": intent,
                 "target_use_label": TARGET_USE_LABELS[intent.target_use],
+                "target_height_label": _display_target_height(intent.target_height_cm),
                 "target_uses": tuple(
                     (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
                 ),

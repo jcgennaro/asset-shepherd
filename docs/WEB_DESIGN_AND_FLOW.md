@@ -170,6 +170,8 @@ not change.
 - The two-column shell retains the placeholder `LOGO` cell, persistent left navigation, current-step
   title, and full workspace.
 - Primary questions and actions use large type and available whitespace.
+- Target confirmation uses a wider canvas, human-readable metric units, and one collapsed rationale
+  sourced from the typed intake evidence.
 - Policy parameters, finding evidence, the confirmed story on job pages, upload notes, and
   verification details stay available through disclosures instead of competing with the next
   action.

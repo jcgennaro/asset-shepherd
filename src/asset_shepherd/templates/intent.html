@@ -2,8 +2,8 @@
 {% block content %}
   <section class="intent-confirmation" data-focus-area="confirm intent" aria-labelledby="confirm-title">
     <header class="intent-heading">
-      <h2 id="confirm-title">I’d treat this as a {{ "%g"|format(intent.target_height_cm / 100) }} m {{ target_use_label }}.</h2>
-      <p>Based on “{{ intent.original_description }}”</p>
+      <h2 id="confirm-title">I’d treat this as a {{ target_use_label }}, about {{ target_height_label }} tall.</h2>
+      <p class="proposal-source">“{{ intent.original_description }}”</p>
     </header>
 
     {% if error %}<div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>{% endif %}
@@ -15,7 +15,14 @@
       </div>
     {% endif %}
 
-    <div class="intent-confirm-actions">
+    <div class="proposal-decision-row">
+      <details class="proposal-evidence">
+        <summary>Why this target?</summary>
+        <dl>
+          {% for item in intent.target.evidence %}<div><dt>{{ "Use" if item.field == "target_use" else "Scale" }}</dt><dd>{{ item.evidence }}</dd></div>{% endfor %}
+        </dl>
+        <p>This is an interpretation of your description, not a measurement of the GLB.</p>
+      </details>
       <form action="{{ url_for('confirm_intent', intent_id=intent.intent_id) }}" method="post" data-busy-form>
         <button class="primary-button" type="submit" data-submit-button>Use this target <span aria-hidden="true">→</span></button>
       </form>

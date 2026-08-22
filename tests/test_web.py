@@ -165,6 +165,54 @@ def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: 
     _assert_focus_area_budget(response.text)
 
 
+@pytest.mark.parametrize(
+    ("height_cm", "expected_label"),
+    ((0.5, "5 mm"), (2.0, "2 cm"), (120.0, "1.2 m"), (80000.0, "800 m")),
+)
+def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
+    tmp_path: Path,
+    height_cm: float,
+    expected_label: str,
+) -> None:
+    """Human-readable scale avoids tiny decimal meters on the public confirmation page."""
+
+    class ScaleAnalyzer:
+        provider = "openai"
+        model_id = "gpt-5.6-luna"
+
+        def analyze(self, description: str) -> TargetIntakeContract:
+            return contract_from_inference(
+                description,
+                TargetIntakeInference(
+                    target_use=AssetTargetUse.STATIC_GAME_ASSET,
+                    target_use_confidence=0.96,
+                    target_use_evidence="The description identifies a static prop.",
+                    target_height_cm=height_cm,
+                    target_height_confidence=0.91,
+                    target_height_evidence="The description states the intended scale.",
+                ),
+                provider=self.provider,
+                model_id=self.model_id,
+            )
+
+    client = TestClient(
+        create_app(
+            project_root=PROJECT_ROOT,
+            work_root=tmp_path / "jobs",
+            intake_analyzer=ScaleAnalyzer(),
+        )
+    )
+    created = client.post(
+        "/intents",
+        data={"description": "A tiny bracelet with buttons used as a static game prop."},
+        follow_redirects=False,
+    )
+    review = client.get(urlparse(created.headers["location"]).path)
+
+    assert review.status_code == 200
+    assert f"about {expected_label} tall" in review.text
+
+
 def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path) -> None:
     """No rules or upload control appears until the exact story is reviewed and agreed."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
@@ -177,7 +225,7 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
 
     review = client.get(intent_path)
     assert review.status_code == 200
-    assert "treat this as a 1.72 m playable animated character." in review.text
+    assert "treat this as a playable animated character, about 1.72 m tall." in review.text
     assert "Use this target" in review.text
     assert "rigging, skinning, and animation remain an external repair handoff" in review.text
     assert "Choose your GLB file" not in review.text
@@ -242,7 +290,7 @@ def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: P
     )
     assert completed.status_code == 303
     review = client.get(intent_path)
-    assert "treat this as a 1.2 m static game asset." in review.text
+    assert "treat this as a static game asset, about 1.2 m tall." in review.text
 
 
 def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questions(
@@ -285,9 +333,12 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     proposal = client.get(intent_path)
 
     assert proposal.status_code == 200
-    assert "treat this as a 800 m static game asset." in proposal.text
+    assert "treat this as a static game asset, about 800 m tall." in proposal.text
     assert "quick answer" not in proposal.text
     assert "Adjust" in proposal.text
+    assert "Why this target?" in proposal.text
+    assert "A mountain is an environmental feature." in proposal.text
+    assert "not a measurement of the GLB" in proposal.text
 
     revised = client.post(
         f"{intent_path}/revise",
@@ -296,7 +347,7 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     )
     assert revised.status_code == 303
     adjusted = client.get(intent_path)
-    assert "treat this as a 600 m static game asset." in adjusted.text
+    assert "treat this as a static game asset, about 600 m tall." in adjusted.text
 
 
 def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_height(

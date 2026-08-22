@@ -4,6 +4,38 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D025 — Target confirmation uses space for readable scale and optional rationale
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 semantic-intake presentation
+
+**Context**
+
+The concise target confirmation was understandable, but its 920-pixel content cap forced a very
+large headline into narrow lines and left substantial workspace unused. Tiny objects were also
+shown as decimal meters, such as `0.02 m`, rather than in the unit a person would naturally scan.
+
+**Decision**
+
+Use a wider confirmation canvas and a smaller, bounded headline scale. Format sub-centimeter
+targets in millimeters, sub-meter targets in centimeters, and larger targets in meters while
+preserving canonical centimeters in the contract. Keep the primary view minimal, but add one
+collapsed **Why this target?** disclosure containing the already-recorded use and scale evidence
+and a reminder that the proposal is interpretation, not source measurement.
+
+**Evidence and consequences**
+
+Route acceptance covers readable unit selection, model evidence, the source-measurement boundary,
+and unchanged adjustment/confirmation behavior. Browser review covers the wider layout, attention
+budget, disclosure behavior, and horizontal overflow; the existing compact breakpoint stacks the
+decision row and makes its action full-width. No additional model call, policy field, repair scope,
+or authorization behavior is added.
+
 ### D024 — One-command Windows launcher protects the local OpenAI key
 
 **Date:** 2026-08-22

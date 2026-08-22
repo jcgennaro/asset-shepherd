@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** D024 one-command protected local key launcher (this file is included)
+**Current commit:** D025 readable target confirmation (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -45,7 +45,7 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 83 passed and the opt-in live-provider test skipped. D019–D024 acceptance
+- Tests: `uv run pytest` — 87 passed and the opt-in live-provider test skipped. D019–D025 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -60,6 +60,10 @@ before any AWS invocation or resource creation.
   web command and restore process state on exit. Windows PowerShell 5.1 parser, DPAPI round-trip,
   real server startup/shutdown, and static security acceptance pass; the scripts never contain or
   echo a key.
+- Target confirmation presentation: the proposal uses the wider workspace, reduces headline scale,
+  and displays small targets in centimeters or millimeters instead of decimal meters. One collapsed
+  rationale exposes the existing use/scale evidence and explicitly distinguishes interpretation
+  from GLB measurement; the primary action and adjustment remain unchanged.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
