@@ -10,28 +10,37 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
   </head>
-  <body>
+  <body class="{% if story %}story story-{{ story.slug }}{% else %}story-chooser{% endif %}">
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
     <header class="topbar">
-      <a class="brand" href="{{ url_for('home') }}" aria-label="Asset Shepherd home">
+      <a class="brand" href="{{ url_for('home') }}" aria-label="Asset Shepherd concept chooser">
         <span class="brand-mark" aria-hidden="true"><span></span></span>
         <span>
           <strong>Asset Shepherd</strong>
           <small>3D intake &amp; verification</small>
         </span>
       </a>
-      <div class="topbar-note">
-        <span class="pulse-dot"></span>
-        Local validation workbench
-      </div>
+      {% if story %}
+        <nav class="story-nav" aria-label="User-story concepts">
+          {% for item in stories %}
+            <a href="{{ url_for('story_home', story_slug=item.slug) }}"{% if item.slug == story.slug %} aria-current="page"{% endif %}>{{ item.nav_label }}</a>
+          {% endfor %}
+        </nav>
+        <a class="compare-link" href="{{ url_for('home') }}">Compare all three</a>
+      {% else %}
+        <div class="topbar-note">
+          <span class="pulse-dot"></span>
+          Three ways into one workflow
+        </div>
+      {% endif %}
     </header>
 
     <main>{% block content %}{% endblock %}</main>
 
     <footer>
       <span>Evidence before confidence.</span>
-      <span>GLB · static mesh · source preserved</span>
+      <span>One GLB · static mesh · source preserved</span>
     </footer>
     <script src="{{ url_for('static', path='/app.js') }}" defer></script>
   </body>

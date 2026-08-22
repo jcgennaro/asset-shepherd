@@ -1,0 +1,8 @@
+<ol class="journey-steps">
+  {% for step in story.steps %}
+    <li>
+      <span>{{ step.number }}</span>
+      <div><strong>{{ step.title }}</strong><small>{{ step.description }}</small></div>
+    </li>
+  {% endfor %}
+</ol>

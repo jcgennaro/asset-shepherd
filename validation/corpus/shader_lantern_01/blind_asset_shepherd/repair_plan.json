@@ -1,0 +1,161 @@
+{
+  "approval_action_ids": [
+    "normalize-root-v1"
+  ],
+  "auto_action_ids": [
+    "rename-mesh-000",
+    "rename-node-001"
+  ],
+  "blocked": false,
+  "blocked_reasons": [],
+  "candidates": [
+    {
+      "action_class": "AUTO_SAFE",
+      "description": "Rename mesh:0 to Mesh_000 while preserving its index.",
+      "finding_ids": [
+        "finding-mesh-name-invalid"
+      ],
+      "id": "rename-mesh-000",
+      "kind": "RENAME_MESH",
+      "payload": {
+        "after_name": "Mesh_000",
+        "before_name": "tripo_mesh_d8dd79ae",
+        "component_index": 0,
+        "component_type": "mesh",
+        "payload_type": "rename"
+      }
+    },
+    {
+      "action_class": "AUTO_SAFE",
+      "description": "Rename node:1 to Node_001 while preserving its index.",
+      "finding_ids": [
+        "finding-node-name-invalid"
+      ],
+      "id": "rename-node-001",
+      "kind": "RENAME_NODE",
+      "payload": {
+        "after_name": "Node_001",
+        "before_name": "tripo_node_d8dd79ae",
+        "component_index": 1,
+        "component_type": "node",
+        "payload_type": "rename"
+      }
+    },
+    {
+      "action_class": "APPROVAL_REQUIRED",
+      "description": "Apply one reversible root normalization transform.",
+      "finding_ids": [
+        "finding-height-out-of-range"
+      ],
+      "id": "normalize-root-v1",
+      "kind": "NORMALIZATION_TRANSFORM",
+      "payload": {
+        "before_bounds": {
+          "dimensions_cm": [
+            5598.809814453125,
+            9990.890502929688,
+            5794.422912597656
+          ],
+          "dimensions_m": [
+            55.98809814453125,
+            99.90890502929688,
+            57.94422912597656
+          ],
+          "maximum_cm": [
+            2799.4049072265625,
+            9990.890502929688,
+            2897.211456298828
+          ],
+          "maximum_m": [
+            27.994049072265625,
+            99.90890502929688,
+            28.97211456298828
+          ],
+          "minimum_cm": [
+            -2799.4049072265625,
+            0.0,
+            -2897.211456298828
+          ],
+          "minimum_m": [
+            -27.994049072265625,
+            0.0,
+            -28.97211456298828
+          ]
+        },
+        "components": [
+          {
+            "component": "scale",
+            "confidence": 0.99,
+            "evidence": "Dominant extent 99.908905 m versus target 1.2 m."
+          }
+        ],
+        "consequence_summary": "This changes world-space scale without modifying vertex data. The original file remains untouched.",
+        "expected_after_bounds": {
+          "dimensions_cm": [
+            67.24697638687586,
+            120.0,
+            69.59647383862558
+          ],
+          "dimensions_m": [
+            0.6724697638687586,
+            1.2,
+            0.6959647383862558
+          ],
+          "maximum_cm": [
+            33.62348819343793,
+            120.0,
+            34.79823691931279
+          ],
+          "maximum_m": [
+            0.3362348819343793,
+            1.2,
+            0.3479823691931279
+          ],
+          "minimum_cm": [
+            -33.62348819343793,
+            0.0,
+            -34.79823691931279
+          ],
+          "minimum_m": [
+            -0.3362348819343793,
+            0.0,
+            -0.3479823691931279
+          ]
+        },
+        "payload_type": "normalization",
+        "proposed_matrix": [
+          [
+            0.012010941363516265,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.012010941363516265,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.012010941363516265,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      }
+    }
+  ],
+  "inspection_id": "inspection-be2c9cab8d4e51f7-p1",
+  "plan_id": "plan-be2c9cab8d4e51f7-v1",
+  "profile_id": "small-stylized-static-mesh-v1",
+  "profile_version": 1,
+  "schema_version": 1,
+  "source_sha256": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9"
+}

@@ -63,8 +63,8 @@ def test_patchling_registration_is_typed_and_prompt_is_frozen() -> None:
     )
 
 
-def test_shader_lantern_drafts_are_typed_and_prompt_is_frozen() -> None:
-    """The next requested asset has typed drafts with the contracted exact prompt."""
+def test_shader_lantern_registration_and_pending_blind_plan_are_frozen() -> None:
+    """The registered Lantern keeps its prompt, raw hash, and exact pending candidate."""
     provenance = AssetProvenance.model_validate_json(
         (SHADER_LANTERN_ROOT / "provenance.json").read_text(encoding="utf-8")
     )
@@ -78,14 +78,23 @@ def test_shader_lantern_drafts_are_typed_and_prompt_is_frozen() -> None:
     assert provenance.asset_id == adjudication.asset_id == "shader_lantern_01"
     assert provenance.prompt in card
     assert provenance.prompt in prompt_record
-    assert provenance.raw_sha256 == ""
-    assert not provenance.public_use_confirmed
-    assert set(provenance.registration_errors()) == {
-        "generation_date_utc",
-        "model_or_mode",
-        "public_use_confirmed",
-        "selected_candidate_reason",
-    }
+    assert provenance.registration_errors() == ()
+    assert provenance.public_use_confirmed
+    raw_asset = SHADER_LANTERN_ROOT / "raw" / "asset.glb"
+    assert raw_asset.stat().st_size == 12_813_168
+    assert hash_file(raw_asset) == provenance.raw_sha256
+    plan = json.loads(
+        (SHADER_LANTERN_ROOT / "blind_asset_shepherd" / "repair_plan.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert plan["source_sha256"] == provenance.raw_sha256
+    assert plan["approval_action_ids"] == ["normalize-root-v1"]
+    assert [candidate["id"] for candidate in plan["candidates"]] == [
+        "rename-mesh-000",
+        "rename-node-001",
+        "normalize-root-v1",
+    ]
 
 
 def test_small_stylized_profile_matches_addendum_height_range() -> None:

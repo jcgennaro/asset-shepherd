@@ -54,12 +54,222 @@ class StageView:
     status: str
 
 
+@dataclass(frozen=True)
+class JourneyStep:
+    """One plain-language step in a story-specific product journey."""
+
+    number: str
+    title: str
+    description: str
+
+
+@dataclass(frozen=True)
+class StoryDefinition:
+    """Presentation copy for one functionally equivalent user-story concept."""
+
+    slug: str
+    nav_label: str
+    audience: str
+    user_story: str
+    headline: str
+    promise: str
+    intake_eyebrow: str
+    intake_title: str
+    profile_label: str
+    upload_label: str
+    upload_hint: str
+    submit_label: str
+    job_kicker: str
+    job_question: str
+    source_label: str
+    candidate_label: str
+    findings_heading: str
+    verification_heading: str
+    approval_eyebrow: str
+    rejection_note: str
+    landing_template: str
+    steps: tuple[JourneyStep, ...]
+
+
+STORIES = (
+    StoryDefinition(
+        slug="game-developer",
+        nav_label="Game developer",
+        audience="Indie game developer",
+        user_story=(
+            "I just acquired a model and need to know whether it can enter my game without "
+            "surprise scale, orientation, or import cleanup."
+        ),
+        headline="From downloaded GLB to an import-ready package.",
+        promise=(
+            "Know what blocks the asset, make one meaningful call, and get evidence you can ship."
+        ),
+        intake_eyebrow="Start your import check",
+        intake_title="Where should this asset work?",
+        profile_label="Choose the target convention",
+        upload_label="Add the original GLB",
+        upload_hint="One static mesh · embedded resources · source stays untouched",
+        submit_label="Check import readiness",
+        job_kicker="Import readiness run",
+        job_question="Can this asset enter the project safely?",
+        source_label="Downloaded asset",
+        candidate_label="Import-ready candidate",
+        findings_heading="What needs attention",
+        verification_heading="Ready-to-import proof",
+        approval_eyebrow="Your one project-impact decision",
+        rejection_note=(
+            "Rejecting keeps the original physical setup, preserves the unresolved findings, "
+            "and still packages safe name repairs."
+        ),
+        landing_template="story_game_developer.html",
+        steps=(
+            JourneyStep(
+                "01", "Choose the target", "Select the scale and naming rules your project expects."
+            ),
+            JourneyStep(
+                "02",
+                "Upload the original",
+                "Hand over one untouched static GLB; the source is preserved.",
+            ),
+            JourneyStep(
+                "03",
+                "See import blockers",
+                "Read measured problems in plain language, sorted by consequence.",
+            ),
+            JourneyStep(
+                "04",
+                "Make one call",
+                "Approve or reject scale, upright orientation, and grounding together.",
+            ),
+            JourneyStep(
+                "05",
+                "Download with proof",
+                "Get the candidate plus inspection, decisions, verification, and provenance.",
+            ),
+        ),
+    ),
+    StoryDefinition(
+        slug="artist",
+        nav_label="3D artist",
+        audience="3D artist and asset creator",
+        user_story=(
+            "I want to hand off my work for technical cleanup without losing control of its look, "
+            "materials, topology, or intended proportions."
+        ),
+        headline="See exactly what changes—and what stays yours.",
+        promise=(
+            "Keep the art direction. Let deterministic tools handle the reversible intake work."
+        ),
+        intake_eyebrow="Open a protected handoff",
+        intake_title="Bring the untouched work",
+        profile_label="Choose the delivery target",
+        upload_label="Choose your source GLB",
+        upload_hint="No topology, UV, material, texture, or artistic edits",
+        submit_label="Preview the handoff",
+        job_kicker="Protected artist handoff",
+        job_question="What changes before delivery—and what remains untouched?",
+        source_label="Your untouched work",
+        candidate_label="Verified delivery copy",
+        findings_heading="Technical handoff notes",
+        verification_heading="Preservation checks",
+        approval_eyebrow="Your artistic-intent checkpoint",
+        rejection_note=(
+            "Rejecting keeps your scale and orientation exactly as delivered. The decision and any "
+            "remaining physical findings stay visible in the package."
+        ),
+        landing_template="story_artist.html",
+        steps=(
+            JourneyStep(
+                "01", "Share the untouched work", "The original export is retained byte-for-byte."
+            ),
+            JourneyStep(
+                "02",
+                "Inspect without editing",
+                "Asset facts are measured before any candidate is written.",
+            ),
+            JourneyStep(
+                "03",
+                "Review every proposed change",
+                "Safe names are separated from physical, intent-sensitive changes.",
+            ),
+            JourneyStep(
+                "04",
+                "Keep artistic control",
+                "Approve or reject the combined physical normalization card.",
+            ),
+            JourneyStep(
+                "05",
+                "Compare and deliver",
+                "View source and candidate, then download the full evidence package.",
+            ),
+        ),
+    ),
+    StoryDefinition(
+        slug="technical-artist",
+        nav_label="Technical artist",
+        audience="Technical artist and content lead",
+        user_story=(
+            "I need every incoming asset checked against a versioned policy, with bounded actions, "
+            "explicit authorization, and reproducible evidence."
+        ),
+        headline="One GLB in. A policy decision and evidence trail out.",
+        promise=(
+            "Turn intake from tribal knowledge into an auditable, repeatable exception workflow."
+        ),
+        intake_eyebrow="Create a policy run",
+        intake_title="Bind an asset to a profile",
+        profile_label="Versioned project profile",
+        upload_label="Unmodified source artifact",
+        upload_hint="GLB 2.0 · static mesh · isolated job workspace",
+        submit_label="Run deterministic intake",
+        job_kicker="Policy-bound intake",
+        job_question="What does the evidence say, and what was authorized?",
+        source_label="Registered source",
+        candidate_label="Verified artifact",
+        findings_heading="Policy findings",
+        verification_heading="Invariant audit",
+        approval_eyebrow="Interrupt-bound authorization",
+        rejection_note=(
+            "A rejection is durable job evidence: the normalization action is not executed, "
+            "and its unresolved findings remain explicit in verification."
+        ),
+        landing_template="story_technical_artist.html",
+        steps=(
+            JourneyStep(
+                "01", "Bind policy", "Select a trusted, versioned profile before inspection."
+            ),
+            JourneyStep(
+                "02",
+                "Measure facts",
+                "Parse structure, transforms, bounds, names, resources, and budgets.",
+            ),
+            JourneyStep(
+                "03",
+                "Constrain the plan",
+                "Choose only registered repair candidates backed by findings.",
+            ),
+            JourneyStep(
+                "04",
+                "Record authorization",
+                "Resume the exact Strands interrupt with approve or reject.",
+            ),
+            JourneyStep(
+                "05",
+                "Audit the result",
+                "Reload, re-plan, verify invariants, and package seven traceable artifacts.",
+            ),
+        ),
+    ),
+)
+
+
 @dataclass
 class WebJob:
     """In-memory browser session state bound to one isolated on-disk job."""
 
     job_id: str
     original_filename: str
+    story: StoryDefinition
     profile: ProfileOption
     root: Path
     source_path: Path
@@ -216,7 +426,13 @@ class WebJobStore:
         self._jobs: dict[str, WebJob] = {}
         self._lock = RLock()
 
-    def create(self, original_filename: str, profile_id: str, stream: BinaryIO) -> WebJob:
+    def create(
+        self,
+        original_filename: str,
+        story: StoryDefinition,
+        profile_id: str,
+        stream: BinaryIO,
+    ) -> WebJob:
         """Validate, isolate, start, and retain one browser-submitted job."""
         if Path(original_filename).suffix.lower() != ".glb":
             raise UploadValidationError("Choose exactly one file with a .glb extension.")
@@ -237,6 +453,7 @@ class WebJobStore:
         job = WebJob(
             job_id=job_id,
             original_filename=Path(original_filename).name,
+            story=story,
             profile=profile,
             root=job_root,
             source_path=source_path,
@@ -292,6 +509,8 @@ def _job_context(job: WebJob) -> dict[str, object]:
     verification = core.last_verification
     return {
         "job": job,
+        "story": job.story,
+        "stories": STORIES,
         "stages": job.stages(),
         "finding_groups": _finding_groups(job),
         "approval_card": job.approval_card(),
@@ -313,6 +532,7 @@ def create_app(
 ) -> FastAPI:
     """Create a local Asset Shepherd web application and isolated job store."""
     profiles = discover_profiles(project_root.resolve(strict=True))
+    stories_by_slug = {story.slug: story for story in STORIES}
     store = WebJobStore(work_root, profiles)
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     app = FastAPI(
@@ -323,12 +543,44 @@ def create_app(
     )
     app.mount("/static", StaticFiles(directory=_PACKAGE_ROOT / "static"), name="static")
 
-    def render_home(request: Request, error: str | None = None, status_code: int = 200) -> Response:
-        """Render the upload surface with trusted profile choices."""
+    def render_concepts(
+        request: Request,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        """Render the three-story concept chooser."""
         return templates.TemplateResponse(
             request=request,
             name="index.html",
-            context={"profiles": profiles, "error": error, "max_upload_mb": 50},
+            context={"stories": STORIES, "error": error},
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def require_story(story_slug: str) -> StoryDefinition:
+        """Resolve one of the three explicit presentation concepts."""
+        story = stories_by_slug.get(story_slug)
+        if story is None:
+            raise UploadValidationError("Choose one of the three user-story concepts.")
+        return story
+
+    def render_story_home(
+        request: Request,
+        story: StoryDefinition,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        """Render a story-specific intake over the shared workflow."""
+        return templates.TemplateResponse(
+            request=request,
+            name=story.landing_template,
+            context={
+                "profiles": profiles,
+                "stories": STORIES,
+                "story": story,
+                "error": error,
+                "max_upload_mb": 50,
+            },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
         )
@@ -343,24 +595,37 @@ def create_app(
         return job
 
     def home(request: Request) -> Response:
-        """Show the local intake page."""
-        return render_home(request)
+        """Show the user-story concept chooser."""
+        return render_concepts(request)
+
+    def story_home(request: Request, story_slug: str) -> Response:
+        """Show one complete story-specific intake experience."""
+        try:
+            story = require_story(story_slug)
+        except UploadValidationError as error:
+            return render_concepts(request, str(error), status_code=404)
+        return render_story_home(request, story)
 
     def health() -> dict[str, str]:
         """Return a minimal liveness response without job or credential data."""
         return {"status": "ok"}
 
-    def create_job(
+    def create_story_job(
         request: Request,
+        story_slug: str,
         profile_id: Annotated[str, Form()],
         asset: Annotated[UploadFile, File()],
     ) -> Response:
         """Accept one bounded GLB and advance it to approval or completion."""
         filename = asset.filename or ""
         try:
-            job = store.create(filename, profile_id, asset.file)
+            story = require_story(story_slug)
+            job = store.create(filename, story, profile_id, asset.file)
         except UploadValidationError as error:
-            return render_home(request, str(error), status_code=400)
+            story = stories_by_slug.get(story_slug)
+            if story is None:
+                return render_concepts(request, str(error), status_code=404)
+            return render_story_home(request, story, str(error), status_code=400)
         finally:
             asset.file.close()
         return RedirectResponse(
@@ -373,7 +638,7 @@ def create_app(
         try:
             job = require_job(job_id)
         except UploadValidationError as error:
-            return render_home(request, str(error), status_code=404)
+            return render_concepts(request, str(error), status_code=404)
         return templates.TemplateResponse(
             request=request,
             name="job.html",
@@ -396,7 +661,7 @@ def create_app(
             store.resume(job, interrupt_id, approved=decision == "approve")
         except (UploadValidationError, AgentWorkflowError) as error:
             if job is None:
-                return render_home(request, str(error), status_code=404)
+                return render_concepts(request, str(error), status_code=404)
             job.error = _public_workflow_error(error)
             return templates.TemplateResponse(
                 request=request,
@@ -448,8 +713,20 @@ def create_app(
         )
 
     app.add_api_route("/", home, methods=["GET"], response_class=HTMLResponse, name="home")
+    app.add_api_route(
+        "/stories/{story_slug}",
+        story_home,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="story_home",
+    )
     app.add_api_route("/healthz", health, methods=["GET"], name="health")
-    app.add_api_route("/jobs", create_job, methods=["POST"], name="create_job")
+    app.add_api_route(
+        "/stories/{story_slug}/jobs",
+        create_story_job,
+        methods=["POST"],
+        name="create_story_job",
+    )
     app.add_api_route(
         "/jobs/{job_id}",
         job_page,

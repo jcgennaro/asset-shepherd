@@ -1,79 +1,56 @@
 {% extends "base.html" %}
-{% block title %}Asset Shepherd · Intake{% endblock %}
+{% block title %}Asset Shepherd · Choose your workflow{% endblock %}
 {% block content %}
-  <section class="hero-shell">
-    <div class="hero-copy">
-      <p class="eyebrow">Autonomous 3D asset intake</p>
-      <h1>Hand off the repetitive checks.<br><em>Keep the consequential calls.</em></h1>
+  <section class="concept-hero">
+    <div class="concept-intro">
+      <p class="eyebrow">Three user stories · one working product</p>
+      <h1>Start with the question<br><em>you actually walked in with.</em></h1>
       <p class="lede">
-        Asset Shepherd measures a static GLB, proposes only registered repairs, pauses before
-        scale or orientation changes, then independently verifies the output.
+        Asset Shepherd inspects one static GLB, pauses before physical changes, independently
+        verifies the candidate, and packages the evidence. Choose the explanation that best matches
+        your role; the underlying workflow and safety boundaries are identical.
       </p>
-      <div class="promise-row" aria-label="Workflow promises">
-        <div><b>01</b><span>Inspect facts</span></div>
-        <div><b>02</b><span>Approve intent</span></div>
-        <div><b>03</b><span>Verify output</span></div>
-      </div>
     </div>
-
-    <section class="intake-card" aria-labelledby="intake-title">
-      <div class="card-heading">
-        <span class="mini-mark" aria-hidden="true"></span>
-        <div>
-          <p class="eyebrow">New intake</p>
-          <h2 id="intake-title">Inspect one GLB</h2>
-        </div>
+    <aside class="same-engine-note" aria-label="Shared workflow guarantee">
+      <span class="pulse-dot"></span>
+      <div>
+        <strong>No feature differences between concepts</strong>
+        <p>Each route uses the same profiles, Strands interrupt, repair engine, verification, and result ZIP.</p>
       </div>
-
-      {% if error %}
-        <div class="alert danger" role="alert">
-          <strong>Intake stopped</strong>
-          <span>{{ error }}</span>
-        </div>
-      {% endif %}
-
-      <form action="{{ url_for('create_job') }}" method="post" enctype="multipart/form-data" class="intake-form" data-busy-form>
-        <label class="field-label" for="profile_id">Project profile</label>
-        <div class="select-wrap">
-          <select id="profile_id" name="profile_id" required>
-            {% for profile in profiles %}
-              <option value="{{ profile.profile_id }}">
-                {{ profile.name }} — {{ profile.description }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <label class="drop-zone" for="asset">
-          <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
-          <span class="drop-icon" aria-hidden="true">↥</span>
-          <strong data-file-label>Choose an untouched GLB</strong>
-          <span>Static mesh · embedded resources · up to {{ max_upload_mb }} MB</span>
-        </label>
-
-        <button class="primary-button" type="submit" data-submit-button>
-          <span>Begin inspection</span>
-          <span aria-hidden="true">→</span>
-        </button>
-      </form>
-
-      <p class="fine-print">
-        Your browser filename is never used as a filesystem path. The original is retained
-        byte-for-byte; all candidate work happens in an isolated local job directory.
-      </p>
-    </section>
+    </aside>
   </section>
 
-  <section class="workflow-band" aria-label="Asset Shepherd workflow">
-    <div>
-      <p class="eyebrow">The quiet loop</p>
-      <h2>One decision, seven traceable stages.</h2>
+  {% if error %}
+    <div class="alert danger concept-alert" role="alert">
+      <strong>That concept is unavailable</strong>
+      <span>{{ error }}</span>
     </div>
-    <ol>
-      <li><span>Inspect</span><small>Structure, bounds, transforms, resources</small></li>
-      <li><span>Plan</span><small>Registered actions with evidence</small></li>
-      <li><span>Approve</span><small>Only scale, upright, and grounding</small></li>
-      <li><span>Verify</span><small>Independent reload and second plan</small></li>
-    </ol>
+  {% endif %}
+
+  <section class="concept-grid" aria-label="Choose a user-story concept">
+    {% for item in stories %}
+      <article class="concept-card concept-{{ item.slug }}">
+        <div class="concept-number">0{{ loop.index }}</div>
+        <p class="eyebrow">{{ item.audience }}</p>
+        <h2>{{ item.headline }}</h2>
+        <blockquote>“{{ item.user_story }}”</blockquote>
+        <p>{{ item.promise }}</p>
+        <ol>
+          {% for step in item.steps %}
+            <li><span>{{ step.number }}</span>{{ step.title }}</li>
+          {% endfor %}
+        </ol>
+        <a class="concept-button" href="{{ url_for('story_home', story_slug=item.slug) }}">
+          View {{ item.nav_label|lower }} flow <span aria-hidden="true">→</span>
+        </a>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="scope-line" aria-label="Product boundary">
+    <span>What it changes</span>
+    <strong>Valid display names and an explicitly approved root normalization transform.</strong>
+    <span>What it will not change</span>
+    <strong>Topology, UVs, materials, textures, animation, or artistic content.</strong>
   </section>
 {% endblock %}

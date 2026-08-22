@@ -2,16 +2,31 @@
   "asset_id": "shader_lantern_01",
   "display_name": "Shader Lantern",
   "export_format": "glb",
-  "export_settings": {},
-  "generation_date_utc": null,
-  "generation_settings": {},
+  "export_settings": {
+    "file_name": "stylized lantern 3d model",
+    "format": "GLB",
+    "resource_packaging": "embedded in GLB",
+    "source_state": "untouched direct Tripo export",
+    "texture_resolution": "4k (Current)"
+  },
+  "generation_date_utc": "2026-08-21T23:35:00Z",
+  "generation_settings": {
+    "mesh_mode": "Smart Mesh",
+    "smart_mesh_version": "not exposed on the selected workspace item page",
+    "speed_preset": "not exposed on the selected workspace item page",
+    "topology": "Quad",
+    "tripo_ui_final_faces": 50787,
+    "tripo_ui_final_vertices": 50674,
+    "workspace_item_id": "2ba39d05-0e1e-4e4c-867c-7e38eb2c1d09",
+    "workspace_url": "https://studio.tripo3d.ai/workspace/generate/2ba39d05-0e1e-4e4c-867c-7e38eb2c1d09"
+  },
   "generator": "Tripo",
-  "model_or_mode": "",
+  "model_or_mode": "Tripo Smart Mesh (version and speed preset not exposed)",
   "negative_prompt_or_constraints": "No background, ground plane, text, letters, logos, characters, detached objects, or franchise resemblance.",
-  "notes": "",
+  "notes": "Tripo displayed the selected item at 08-21 19:35 in the America/New_York browser session; this is recorded as 2026-08-21T23:35:00Z. The user handed off the untouched export and workspace URL. Their 2026-08-21 confirmation that this paid Tripo account grants commercial rights is applied to this account-generated asset for public repository and demo use. The workspace URL is provenance and is not assumed to be publicly accessible.",
   "prompt": "Create a single isolated stylized 3D game prop called the Shader Lantern: a whimsical fantasy-technology workshop lantern used by tiny repair agents. It has a sturdy grounded base, thin protective cage elements, a glass or translucent chamber, a warm emissive core, painted metal, worn rubber grips, and subtle cloth or cord details. Strong clean silhouette, detailed PBR textures, game-ready, centered, full object visible, no background, no ground plane, no text, no letters, no logos, no characters, no extra detached objects, no franchise resemblance.",
-  "public_use_confirmed": false,
-  "raw_sha256": "",
+  "public_use_confirmed": true,
+  "raw_sha256": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
   "schema_version": 1,
-  "selected_candidate_reason": ""
+  "selected_candidate_reason": "The user selected and handed off this Shader Lantern candidate for the requested blind corpus run. Visual selection criteria were deliberately not inspected before Asset Shepherd froze its prediction."
 }

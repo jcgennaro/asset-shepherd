@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Asset Shepherd · Technical artist flow{% endblock %}
+{% block content %}
+  <section class="technical-hero story-landing">
+    <header class="technical-header">
+      <div>
+        <div class="audience-chip"><span></span>Flow 03 · {{ story.audience }}</div>
+        <p class="story-question">“{{ story.user_story }}”</p>
+        <h1>{{ story.headline }}</h1>
+      </div>
+      <p class="lede">{{ story.promise }}</p>
+    </header>
+
+    <div class="technical-console">
+      <section class="policy-sequence" aria-labelledby="policy-sequence-title">
+        <div class="console-bar"><span></span><span></span><span></span><code>intake.contract/v1</code></div>
+        <p class="eyebrow">Exception supervision sequence</p>
+        <h2 id="policy-sequence-title">Every stage has an owner and a proof.</h2>
+        {% include "_journey_steps.html" %}
+        <dl class="boundary-ledger">
+          <div><dt>Agent</dt><dd>Selects registered actions and sequences tools</dd></div>
+          <div><dt>User</dt><dd>Authorizes consequential normalization</dd></div>
+          <div><dt>Core</dt><dd>Mutates, reloads, verifies, and packages</dd></div>
+        </dl>
+      </section>
+      {% include "_intake_form.html" %}
+    </div>
+  </section>
+
+  <section class="technical-contract" aria-label="Technical intake contract">
+    <div><small>Input boundary</small><strong>GLB 2.0 · static mesh · 50 MB</strong></div>
+    <div><small>Approval boundary</small><strong>Exact Strands interrupt ID</strong></div>
+    <div><small>Mutation boundary</small><strong>Registered deterministic actions</strong></div>
+    <div><small>Acceptance boundary</small><strong>Independent verification state</strong></div>
+  </section>
+{% endblock %}

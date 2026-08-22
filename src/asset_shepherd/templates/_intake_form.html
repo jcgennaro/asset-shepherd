@@ -1,0 +1,47 @@
+<section class="intake-card story-intake" aria-labelledby="intake-title">
+  <div class="card-heading">
+    <span class="mini-mark" aria-hidden="true"></span>
+    <div>
+      <p class="eyebrow">{{ story.intake_eyebrow }}</p>
+      <h2 id="intake-title">{{ story.intake_title }}</h2>
+    </div>
+  </div>
+
+  {% if error %}
+    <div class="alert danger" role="alert">
+      <strong>Intake stopped</strong>
+      <span>{{ error }}</span>
+    </div>
+  {% endif %}
+
+  <form action="{{ url_for('create_story_job', story_slug=story.slug) }}" method="post" enctype="multipart/form-data" class="intake-form" data-busy-form>
+    <label class="field-label" for="profile_id">{{ story.profile_label }}</label>
+    <div class="select-wrap">
+      <select id="profile_id" name="profile_id" required>
+        {% for profile in profiles %}
+          <option value="{{ profile.profile_id }}">
+            {{ profile.name }} — {{ profile.description }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <span class="field-label">{{ story.upload_label }}</span>
+    <label class="drop-zone" for="asset">
+      <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
+      <span class="drop-icon" aria-hidden="true">↥</span>
+      <strong data-file-label>Choose an untouched GLB</strong>
+      <span>{{ story.upload_hint }} · up to {{ max_upload_mb }} MB</span>
+    </label>
+
+    <button class="primary-button" type="submit" data-submit-button>
+      <span>{{ story.submit_label }}</span>
+      <span aria-hidden="true">→</span>
+    </button>
+  </form>
+
+  <p class="fine-print">
+    The original is retained byte-for-byte in an isolated local job. A browser filename never
+    becomes a filesystem path, and the workflow makes no model or network request in local mode.
+  </p>
+</section>

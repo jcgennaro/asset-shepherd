@@ -15,6 +15,9 @@
 # Patchling is the first rights-confirmed, size-reviewed distributable raw demo input.
 !patchling_01/raw/asset.glb
 
+# Shader Lantern is the second rights-confirmed, size-reviewed distributable raw input.
+!shader_lantern_01/raw/asset.glb
+
 !.gitignore
 !README.md
 !**/README.md

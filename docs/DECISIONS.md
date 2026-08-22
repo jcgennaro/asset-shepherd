@@ -4,6 +4,91 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D009 — Track Shader Lantern and preserve its pending blind decision
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** RW2 / M10
+
+**Context**
+
+The user supplied the untouched Shader Lantern GLB and its authenticated Tripo workspace reference.
+The 12.8 MB file was generated through the same paid Tripo account for which the user confirmed
+commercial public-use rights. Blind inspection found a standards-compliant but implausible
+99.908905-meter represented height and proposed a consequential scale normalization to the selected
+general small-asset profile's 1.2-meter target. The user has not yet stated the lantern's intended
+real-world height.
+
+**Options considered**
+
+- Guess the intended physical size and approve the root normalization.
+- Reject the proposal on the user's behalf and complete a name-only result.
+- Preserve the registered source and frozen inspection/plan at the approval boundary until the user
+  approves or rejects the exact transform.
+- Keep the rights-confirmed input private despite its modest size and reproducibility value.
+
+**Decision**
+
+Track the byte-identical raw GLB as the second distributable corpus input and freeze its blind result
+at `normalize-root-v1`. Do not open the Lantern in Blender, Unreal, or a visual preview and do not
+execute even safe names until the human physical-size decision is recorded. Record only workspace
+settings actually exposed by the authenticated item page; mark Smart Mesh version and speed preset
+as unverified.
+
+**Evidence and consequences**
+
+The raw SHA-256 is
+`be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9` before and after
+registration. Blind evidence reports a valid static GLB with 77,545 vertices, 101,564 triangles,
+three embedded 4096² PBR images, no rig/animation/morph targets, two safe name candidates, a
+report-only 1,564-triangle budget overage, and the pending reversible `0.0120109414` scale. This
+preserves the addendum's prediction-before-diagnosis discipline and makes the missing user decision
+explicit instead of disguising it as autonomy.
+
+### D008 — Three story-first web concepts share one product core
+
+**Date:** 2026-08-21
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+The first M8 surface exposed the complete workflow but explained it with one generic technical-art
+layout. A new game developer, 3D artist, and technical artist arrive with different questions: ship
+readiness, preservation of artistic intent, and policy evidence. A single information hierarchy made
+the underlying product harder to understand even though the workflow itself was correct.
+
+**Options considered**
+
+- Replace the existing page with one compromise layout for every audience.
+- Fork the backend or available capabilities by audience.
+- Build three complete presentation concepts that reorder and rephrase the same profile, upload,
+  Strands interrupt, deterministic repair, verification, preview, and result package.
+
+**Decision**
+
+Make `/` a transparent three-concept chooser and provide full routes for game developer, 3D artist,
+and technical artist journeys. Store the selected story with the in-process job so refreshes and the
+approval/completion page preserve that mental model. Keep all behavior, safety boundaries, profiles,
+actions, output artifacts, and local zero-network provider identical.
+
+**Evidence and consequences**
+
+Parameterized acceptance tests run the complete broken-fixture approval and exact seven-file ZIP
+audit through every story. Clean, invalid, and inspection-only paths remain covered. Live Chrome
+review passed for all three desktop layouts; 390 × 844 responsive review found no horizontal
+overflow; Patchling's textured before/after previews render in the artist flow; and the application
+console is clean. The repository deliberately keeps all three concepts available for user comparison
+rather than declaring a canonical audience hierarchy before review.
+
 ### D007 — Track Patchling as the first distributable real-world input
 
 **Date:** 2026-08-21

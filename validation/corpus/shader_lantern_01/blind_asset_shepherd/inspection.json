@@ -1,0 +1,262 @@
+{
+  "findings": [
+    {
+      "action_class": "APPROVAL_REQUIRED",
+      "affected_components": [
+        "active_scene"
+      ],
+      "candidate_repairs": [
+        "normalize-root-v1"
+      ],
+      "code": "HEIGHT_OUT_OF_RANGE",
+      "confidence": 0.99,
+      "description": "The dominant measured extent does not match the target asset height.",
+      "domain": "geometry",
+      "evidence": [
+        {
+          "expected_value": {
+            "target_cm": 120.0,
+            "tolerance_cm": 30.0
+          },
+          "inference": "A scale factor of 0.0120109414 reaches target height.",
+          "observation": "Dominant extent is 9990.89 cm.",
+          "observed_value": 9990.890502929688,
+          "units": "centimeters"
+        }
+      ],
+      "id": "finding-height-out-of-range",
+      "profile_rule": "expected_height_cm",
+      "severity": "ERROR",
+      "title": "Physical size is outside the project tolerance"
+    },
+    {
+      "action_class": "AUTO_SAFE",
+      "affected_components": [
+        "mesh:0"
+      ],
+      "candidate_repairs": [
+        "rename-mesh-000"
+      ],
+      "code": "MESH_NAME_INVALID",
+      "confidence": 1.0,
+      "description": "Display names can be normalized without changing index references.",
+      "domain": "naming",
+      "evidence": [
+        {
+          "expected_value": null,
+          "inference": "Deterministic valid unique names can replace these display names.",
+          "observation": "Affected mesh indices: [0]",
+          "observed_value": [
+            0
+          ],
+          "units": null
+        }
+      ],
+      "id": "finding-mesh-name-invalid",
+      "profile_rule": "naming.mesh_names",
+      "severity": "ERROR",
+      "title": "Mesh names violate the project pattern"
+    },
+    {
+      "action_class": "AUTO_SAFE",
+      "affected_components": [
+        "node:1"
+      ],
+      "candidate_repairs": [
+        "rename-node-001"
+      ],
+      "code": "NODE_NAME_INVALID",
+      "confidence": 1.0,
+      "description": "Display names can be normalized without changing index references.",
+      "domain": "naming",
+      "evidence": [
+        {
+          "expected_value": null,
+          "inference": "Deterministic valid unique names can replace these display names.",
+          "observation": "Affected node indices: [1]",
+          "observed_value": [
+            1
+          ],
+          "units": null
+        }
+      ],
+      "id": "finding-node-name-invalid",
+      "profile_rule": "naming.node_names",
+      "severity": "ERROR",
+      "title": "Node names violate the project pattern"
+    },
+    {
+      "action_class": "REPORT_ONLY",
+      "affected_components": [
+        "geometry"
+      ],
+      "candidate_repairs": [],
+      "code": "TRIANGLE_BUDGET_EXCEEDED",
+      "confidence": 1.0,
+      "description": "Version 1 reports topology budgets but does not alter topology.",
+      "domain": "budgets",
+      "evidence": [
+        {
+          "expected_value": 100000,
+          "inference": null,
+          "observation": "Triangle count is 101564.",
+          "observed_value": 101564,
+          "units": null
+        }
+      ],
+      "id": "finding-triangle-budget-exceeded",
+      "profile_rule": "budgets.max_triangles",
+      "severity": "WARNING",
+      "title": "Triangle budget exceeded"
+    }
+  ],
+  "geometry": {
+    "bounds": {
+      "dimensions_cm": [
+        5598.809814453125,
+        9990.890502929688,
+        5794.422912597656
+      ],
+      "dimensions_m": [
+        55.98809814453125,
+        99.90890502929688,
+        57.94422912597656
+      ],
+      "maximum_cm": [
+        2799.4049072265625,
+        9990.890502929688,
+        2897.211456298828
+      ],
+      "maximum_m": [
+        27.994049072265625,
+        99.90890502929688,
+        28.97211456298828
+      ],
+      "minimum_cm": [
+        -2799.4049072265625,
+        0.0,
+        -2897.211456298828
+      ],
+      "minimum_m": [
+        -27.994049072265625,
+        0.0,
+        -28.97211456298828
+      ]
+    },
+    "dominant_dimension_axis": "Y",
+    "ground_relationship": "GROUNDED",
+    "triangle_count": 101564,
+    "vertex_count": 77545
+  },
+  "inspection_id": "inspection-be2c9cab8d4e51f7-p1",
+  "naming": {
+    "duplicate_mesh_names": {},
+    "duplicate_node_names": {},
+    "invalid_mesh_indices": [
+      0
+    ],
+    "invalid_node_indices": [
+      1
+    ],
+    "mesh_names": [
+      "tripo_mesh_d8dd79ae"
+    ],
+    "missing_mesh_indices": [],
+    "missing_node_indices": [],
+    "node_names": [
+      "RootNode",
+      "tripo_node_d8dd79ae"
+    ],
+    "proposed_replacements": {
+      "mesh:0": "Mesh_000",
+      "node:1": "Node_001"
+    }
+  },
+  "package": {
+    "active_scene": 0,
+    "animation_count": 0,
+    "asset_version": "2.0",
+    "byte_size": 12813168,
+    "camera_count": 0,
+    "extensions_required": [],
+    "extensions_used": [
+      "FB_ngon_encoding",
+      "KHR_materials_specular",
+      "KHR_materials_volume"
+    ],
+    "file_sha256": "be2c9cab8d4e51f7a948c7c54db7a10c932f24faf69bc3166ff724ccc00c49b9",
+    "generator": "Tripo",
+    "has_morph_targets": false,
+    "image_count": 3,
+    "material_count": 1,
+    "mesh_count": 1,
+    "node_count": 2,
+    "parse_success": true,
+    "primitive_count": 1,
+    "scene_count": 1,
+    "skin_count": 0,
+    "texture_count": 3
+  },
+  "profile_id": "small-stylized-static-mesh-v1",
+  "profile_version": 1,
+  "repair_eligibility": "ELIGIBLE_STATIC_MESH",
+  "resources": {
+    "budget_violations": [],
+    "image_count": 3,
+    "material_count": 1,
+    "texture_count": 3,
+    "textures": [
+      {
+        "detail": null,
+        "height": 4096,
+        "image_index": 0,
+        "mime_type": "JPEG",
+        "name": "stylized+lantern+3d+model_basecolor.jpg",
+        "readable": true,
+        "width": 4096
+      },
+      {
+        "detail": null,
+        "height": 4096,
+        "image_index": 1,
+        "mime_type": "PNG",
+        "name": "stylized+lantern+3d+model_rm.png",
+        "readable": true,
+        "width": 4096
+      },
+      {
+        "detail": null,
+        "height": 4096,
+        "image_index": 2,
+        "mime_type": "JPEG",
+        "name": "stylized+lantern+3d+model_normal.jpg",
+        "readable": true,
+        "width": 4096
+      }
+    ]
+  },
+  "schema_version": 1,
+  "source_filename": "asset.glb",
+  "transforms": {
+    "hierarchy": [
+      {
+        "child_indices": [
+          1
+        ],
+        "node_index": 0,
+        "parent_index": null
+      },
+      {
+        "child_indices": [],
+        "node_index": 1,
+        "parent_index": 0
+      }
+    ],
+    "negative_determinant_nodes": [],
+    "non_identity_transforms": [],
+    "non_uniform_scale_nodes": [],
+    "root_nodes": [
+      0
+    ]
+  }
+}

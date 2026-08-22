@@ -4,8 +4,9 @@
   <section class="job-shell">
     <header class="job-header">
       <div>
-        <a class="back-link" href="{{ url_for('home') }}">← New intake</a>
-        <p class="eyebrow">Job {{ job.job_id[:8] }}</p>
+        <a class="back-link" href="{{ url_for('story_home', story_slug=story.slug) }}">← Back to {{ story.nav_label|lower }} intake</a>
+        <p class="eyebrow">{{ story.job_kicker }} · Job {{ job.job_id[:8] }}</p>
+        <h2 class="job-question">{{ story.job_question }}</h2>
         <h1>{{ job.original_filename }}</h1>
         <p>{{ job.profile.name }} · source preserved locally</p>
       </div>
@@ -35,8 +36,9 @@
       </div>
     {% endif %}
 
+    <div class="story-job-flow">
     {% if inspection %}
-      <section class="metric-strip" aria-label="Inspection summary">
+      <section class="metric-strip job-metrics" aria-label="Inspection summary">
         <div><small>Eligibility</small><strong>{{ inspection.repair_eligibility }}</strong></div>
         <div><small>Triangles</small><strong>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</strong></div>
         <div><small>Materials</small><strong>{{ inspection.package.material_count }}</strong></div>
@@ -45,10 +47,10 @@
       </section>
     {% endif %}
 
-    <section class="preview-grid {% if not job.ready_candidate %}single{% endif %}">
+    <section class="preview-grid job-preview {% if not job.ready_candidate %}single{% endif %}">
       <article class="preview-card">
         <div class="section-heading">
-          <div><p class="eyebrow">Before</p><h2>Untouched source</h2></div>
+          <div><p class="eyebrow">Before</p><h2>{{ story.source_label }}</h2></div>
           <span>Immutable</span>
         </div>
         <model-viewer
@@ -77,7 +79,7 @@
       {% if job.ready_candidate %}
         <article class="preview-card after-card">
           <div class="section-heading">
-            <div><p class="eyebrow">After</p><h2>Verified candidate</h2></div>
+            <div><p class="eyebrow">After</p><h2>{{ story.candidate_label }}</h2></div>
             <span>Ready</span>
           </div>
           <model-viewer
@@ -106,9 +108,9 @@
     </section>
 
     {% if approval_card and interrupt_id %}
-      <section class="approval-panel" aria-labelledby="approval-title">
+      <section class="approval-panel job-approval" aria-labelledby="approval-title">
         <div class="approval-copy">
-          <p class="eyebrow">Human decision · 1 consequential change</p>
+          <p class="eyebrow">{{ story.approval_eyebrow }} · 1 consequential change</p>
           <h2 id="approval-title">{{ approval_card.title }}</h2>
           <p>{{ approval_card.consequence_summary }}</p>
           <div class="component-list">
@@ -134,7 +136,7 @@
               <strong>{{ "%.2f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m</strong>
             </div>
           </div>
-          <p class="decision-note">Rejecting preserves the normalization findings and still packages a verified name-only result.</p>
+          <p class="decision-note">{{ story.rejection_note }}</p>
           <form action="{{ url_for('decide_job', job_id=job.job_id) }}" method="post" class="decision-actions" data-busy-form>
             <input type="hidden" name="interrupt_id" value="{{ interrupt_id }}">
             <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
@@ -144,10 +146,10 @@
       </section>
     {% endif %}
 
-    <div class="evidence-grid">
+    <div class="evidence-grid job-evidence">
       <section class="evidence-card">
         <div class="section-heading">
-          <div><p class="eyebrow">Observed facts</p><h2>Findings</h2></div>
+          <div><p class="eyebrow">Observed facts</p><h2>{{ story.findings_heading }}</h2></div>
           {% if inspection %}<span>{{ inspection.findings|length }} total</span>{% endif %}
         </div>
         {% if finding_groups %}
@@ -176,7 +178,7 @@
 
       <section class="evidence-card verification-card">
         <div class="section-heading">
-          <div><p class="eyebrow">Independent evidence</p><h2>Verification</h2></div>
+          <div><p class="eyebrow">Independent evidence</p><h2>{{ story.verification_heading }}</h2></div>
           {% if verification %}<span class="verify-state">{{ verification.state }}</span>{% endif %}
         </div>
         {% if verification %}
@@ -213,6 +215,7 @@
           </a>
         {% endif %}
       </section>
+    </div>
     </div>
 
     <p class="session-note">

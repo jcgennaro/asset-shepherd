@@ -18,12 +18,14 @@ verification agent for game developers.
 The [validation workspace](validation/README.md) preserves immutable raw provenance, controlled
 mutation ground truth, Blender evidence, and an isolated Unreal comparison harness. Patchling
 Courier is registered as the current hero and preservation case. Shader Lantern is the next
-one-batch human-generated asset; its exact prompt, selection criteria, export settings, destination,
-and untouched-file rules are in the
-[Shader Lantern generation card](validation/corpus/shader_lantern_01/generation-card.md).
+real-world corpus member. Its rights-confirmed 12.8 MB
+[raw GLB](validation/corpus/shader_lantern_01/raw/asset.glb) is registered and its blind inspection
+and plan are frozen at the required physical-scale approval; the exact evidence and current limits
+are in the
+[Shader Lantern checkpoint](validation/corpus/shader_lantern_01/checkpoint.md).
 The rights-confirmed 4.86 MB
 [Patchling raw GLB](validation/corpus/patchling_01/raw/asset.glb) is the repository's first
-distributable real-world demo input; generated outputs remain reproducible and untracked.
+distributable real-world demo input. Generated GLBs and ZIPs remain reproducible and untracked.
 
 ## Local web product
 
@@ -32,11 +34,16 @@ uv sync
 uv run asset-shepherd web
 ```
 
-Open `http://127.0.0.1:8000`. The local web product provides trusted profile selection, bounded GLB
-upload, named progress stages, severity-grouped findings, a single normalization approval card,
-native Strands interrupt/resume, interactive before/after previews, independent verification, and a
-downloadable contracted result ZIP. No model or network request is needed for the agent workflow;
-the default uses the zero-network scripted provider over the real Strands loop.
+Open `http://127.0.0.1:8000`. The entry page offers three complete, functionally equivalent journeys:
+
+- `/stories/game-developer` leads with import readiness and the one project-impact decision.
+- `/stories/artist` leads with source preservation, before/after comparison, and artistic control.
+- `/stories/technical-artist` leads with versioned policy, structured findings, and invariant evidence.
+
+Every route uses the same trusted profiles, bounded GLB upload, seven named stages, native Strands
+interrupt/resume, deterministic repair engine, interactive previews, independent verification, and
+contracted result ZIP. No model or network request is needed for the agent workflow; the default uses
+the zero-network scripted provider over the real Strands loop.
 
 Browser refresh preserves the current job while the server process remains running. A server restart
 ends the in-memory approval session, while completed artifacts stay under `build/web/jobs/`. The 3D

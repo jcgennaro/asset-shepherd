@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Asset Shepherd · Game developer flow{% endblock %}
+{% block content %}
+  <section class="developer-hero story-landing">
+    <div class="developer-copy">
+      <div class="audience-chip"><span></span>Flow 01 · {{ story.audience }}</div>
+      <p class="story-question">“{{ story.user_story }}”</p>
+      <h1>{{ story.headline }}</h1>
+      <p class="lede">{{ story.promise }}</p>
+      <div class="release-promise">
+        <span>Input</span><strong>1 untouched GLB</strong>
+        <b>→</b>
+        <span>Output</span><strong>verified asset + evidence</strong>
+      </div>
+    </div>
+    {% include "_intake_form.html" %}
+  </section>
+
+  <section class="developer-flow story-flow" aria-labelledby="developer-flow-title">
+    <div class="flow-heading">
+      <p class="eyebrow">Your path through the site</p>
+      <h2 id="developer-flow-title">Five steps from “will this work?” to a verified download.</h2>
+    </div>
+    {% include "_journey_steps.html" %}
+  </section>
+
+  <section class="developer-outcomes">
+    <article><small>Before approval</small><strong>See the exact measured problem</strong><p>No generic “optimize this” advice—bounds, names, budgets, and consequences.</p></article>
+    <article><small>Your only consequential call</small><strong>Approve physical normalization</strong><p>Scale, upright orientation, and grounding stay together as one understandable decision.</p></article>
+    <article><small>After the run</small><strong>Import the evidence-backed copy</strong><p>The ZIP includes the GLB, inspection, plan, decision, verification, provenance, and report.</p></article>
+  </section>
+{% endblock %}
