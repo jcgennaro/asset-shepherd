@@ -5,8 +5,9 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.0  
+**Document version:** 1.1
 **Controlling status:** Approved project contract once committed by the user  
+**Approved amendment:** D019 conversation-led hosted workspace, 2026-08-22
 
 ---
 
@@ -174,7 +175,8 @@ The hackathon MVP accepts:
 - Maximum hosted file size: 50 MB.
 - Static mesh content.
 - Embedded materials and images are allowed.
-- One project profile selected in the UI or supplied as JSON.
+- One resolved project profile selected, supplied as JSON, or derived from a trusted immutable
+  preset and explicitly confirmed in the hosted UI.
 
 A file containing skins, animations, or morph targets may be inspected, but the MVP must refuse structural repair and explain why.
 
@@ -256,6 +258,35 @@ report.md
 - Start and completion timestamps.
 
 A blocked or failed job should still provide diagnostic files that were safely produced. It must not label an unverified file as project-ready.
+
+### 6.7 Hosted conversational job definition
+
+For the M9 hosted path, Asset Shepherd is conversation-led but contract-anchored. Conversation is
+the primary navigation model; it is not the source of record for target state, policy, findings,
+authorization, or readiness.
+
+The hosted workspace must display an inspectable structured **Job Contract** containing source
+status, intended target, rules, measured facts, findings, registered plan, decision state,
+verification, and package status.
+
+After minimal user context, the hosted path may accept and hash the GLB before final target
+agreement. Before confirmation it may perform only objective preflight: structural eligibility,
+represented dimensions, orientation and grounding facts, supported-feature counts, resource counts,
+and deterministically available material or texture metadata. This state must be labeled as measured
+source facts with no agreed target. It must not create policy-relative findings, a registered plan,
+an approval interrupt, a mutation, or a readiness result.
+
+Ordinary users confirm a schema-valid job-scoped policy derived from the nearest trusted immutable
+preset and explicit target overrides. They do not need to choose a named scale baseline. The full
+resolved rules remain visible and frozen with identifier, base preset, overrides, version, and
+canonical hash. Advanced users retain only the supported `ProjectProfile` copy fields already
+enforced by the deterministic engine. Changing confirmed intent or rules creates a new inspection
+and job.
+
+Original intent must be distinct from the supported job goal. Unsupported playable-character,
+rigging, skinning, or animation intent may be preserved as context only when the user explicitly
+accepts a narrowed static-mesh or inspection-only goal. The product must not claim unsupported
+readiness.
 
 ---
 
@@ -610,16 +641,20 @@ Exact command names may be adjusted for coherence. The CLI must support a comple
 
 ### 12.6 Web interface
 
-The final experience should provide:
+The hosted final experience should provide:
 
-1. Project profile selection.
-2. GLB upload.
-3. Named progress stages.
-4. Findings grouped by severity and action class.
-5. One normalization approval card.
-6. Before and after 3D preview.
-7. Verification summary.
-8. Downloadable result ZIP.
+1. A persistent job-scoped conversation from bounded intake through evidence-grounded completion.
+2. GLB upload with objective preflight before final target agreement.
+3. An editable typed target card before confirmation and a frozen structured Job Contract after it.
+4. A visible resolved policy summary, with supported advanced rule customization.
+5. Findings grouped by severity and action class.
+6. One exact normalization approval card whose structured control is the only authorization path.
+7. Before and after 3D preview, verification summary, and downloadable result ZIP.
+8. Durable refresh, application-restart, and agent-runtime-restart resume behavior.
+
+The M8 form-led application remains the deterministic reference implementation, offline acceptance
+harness, comparison baseline, and deployment fallback. M9 may change hosted navigation without
+weakening its tests or binary-output contract.
 
 The UI must not expose private chain-of-thought or treat streaming token text as proof of work.
 
@@ -653,6 +688,7 @@ The Strands design follows the model-tools-prompt structure:
 - Invoke repair and verification tools.
 - Interpret verification results without overriding them.
 - Return a structured final result and user-facing explanation.
+- Remain available through download for questions answerable from recorded job evidence.
 
 ### 13.4 Human-in-the-loop
 
@@ -694,6 +730,18 @@ Use Strands `AgentResult` metrics and OpenTelemetry or AWS-native tracing where 
 Do not hard-code an obsolete model ID from an old tutorial.
 
 Model provider, model ID, AWS profile, and region must be explicit configuration. Local unit tests must not require a live model. Live integration tests must be opt-in and skip cleanly when credentials are absent.
+
+### 13.8 Conversation and authorization boundary
+
+The conversation may ask bounded follow-up questions, propose typed intent and policy state, explain
+structured results, and cite finding IDs, measured values, and frozen rules. Description semantics
+may influence what the agent asks. A statement about appearance is permitted only when deterministic
+material or texture metadata supports it; otherwise the property must be marked not evaluated.
+
+Typing approval language in chat never authorizes a repair. The human grants or rejects
+consequential authorization through the structured interrupt control. The deterministic core
+validates that event against the exact registered action ID and hash and enforces it. The agent has
+neither authorization role.
 
 ---
 
@@ -786,6 +834,19 @@ If AgentCore threatens the submission deadline, Codex may propose a fallback dep
 Fixture generation, inspection, candidate-repair calculation, repair application, and verification should be deterministic for the same source, profile, and approvals.
 
 The agent's wording may vary. The actual repair matrix and output acceptance must not depend on creative prose.
+
+### 15.5 Hosted conversation data
+
+Hosted provenance must record structured state transitions rather than the raw transcript. Include
+confirmed structured intent and supported goal, profile and prompt versions and hashes, deterministic
+tool-call inputs and output hashes, the registered action and decision event, verification and
+package references, timestamps, and external-handoff status.
+
+Do not package chain-of-thought, hidden prompts, routine agent prose, or the complete raw
+conversation. For hosted jobs, package structured intent plus a canonical hash; retain raw
+description text only in private short-lived job state or by explicit user choice. Existing M8
+form-led artifacts remain the reference until the versioned hosted schema migration is implemented
+and accepted.
 
 ---
 
@@ -1139,12 +1200,21 @@ And:
 
 ---
 
-### M9 — AWS/Bedrock and preferred AgentCore deployment
+### M9 — Hosted Bedrock conversation, durability, and preferred AgentCore deployment
 
 **Target:** September 6–9
 
 **Work:**
 
+- Add the D019 conversation-led workspace over the existing typed intent, profile, finding, plan,
+  decision, verification, and package schemas.
+- Implement objective preflight before target confirmation, a visible Job Contract, and derived
+  frozen policy confirmation for ordinary users.
+- Persist source identity, structured state, deterministic tool results, the exact pending
+  interrupt, decisions, idempotency keys, output references, bounded conversation state, retention,
+  and deletion status.
+- Prove browser, application, and agent-runtime restart resume without duplicate mutation or
+  packaging.
 - Configure dedicated AWS development profile with user assistance.
 - Verify identity, region, Bedrock model access, and permissions.
 - Set budget alert.
@@ -1156,11 +1226,21 @@ And:
 
 **Gate:**
 
+- One live Bedrock conversation completes bounded intake → preflight → target confirmation →
+  inspect → plan → approve or reject → repair → verify → package → evidence follow-up.
+- The same source, resolved policy, decision, and deterministic pipeline produce the same contracted
+  result as the M8 reference path.
+- A pending approval survives browser and runtime restart, and duplicate resume or callback attempts
+  do not duplicate mutation or packaging.
+- Every conversational factual statement in the acceptance trace maps to recorded evidence.
+- Chat text cannot authorize an action, and hosted provenance contains structured conversation
+  events without a raw transcript.
 - A logged-out or documented test user can access the product.
 - Remote upload, interrupt, resume, repair, verify, and download all work.
 - Traces and metrics are visible.
 - Idle cost is within threshold.
 - Cleanup and retention are documented.
+- The existing offline form-led acceptance suite remains passing.
 
 **Mandatory checkpoint 3:** Stop and report before public release work.
 

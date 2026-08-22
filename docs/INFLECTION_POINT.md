@@ -1,6 +1,6 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** External review complete; user decision required
+**Status:** Direction accepted in D019; M9 implementation pending
 
 **Date:** 2026-08-22
 
@@ -353,9 +353,9 @@ Please return:
 **Review source:**
 <https://chatgpt.com/c/6a879ddd-f8e8-83ea-b153-e5ebf18c8615>
 
-**Decision status:** Advisory. The review does not authorize AWS activity, paid model calls,
-contract changes, or implementation. The user must accept, modify, or reject the proposed product
-direction before it becomes a decision record.
+**Decision status:** Accepted by the user and recorded as D019. The decision authorizes the bounded
+hosted interaction and durability direction described here. It does not authorize AWS activity,
+paid model calls, new repair domains, or weaker safety boundaries.
 
 ### Reviewer recommendation
 
@@ -473,7 +473,7 @@ The recommendation is coherent and preserves Asset Shepherd's safety thesis. The
 the essential qualification: the product should feel conversational without making policy,
 evidence, or approval disappear into prose.
 
-If the user approves this direction, record a new decision before implementation that:
+D019 records the approved direction and requires implementation to:
 
 - makes conversation the primary hosted navigation but keeps visible structured state and the
   current form-led reference path;
@@ -486,5 +486,6 @@ If the user approves this direction, record a new decision before implementation
 - treats conversation/durability as bounded additions to M9 without weakening its existing AWS,
   deployment, cost, and access gate.
 
-Until that explicit user decision exists, D012 and D018 continue to control the executable product
-and no M9 implementation or AWS activity is authorized.
+D019 supersedes D012 and the ordering portion of D018 for the hosted M9 path. The M8 form-led
+behavior remains the executable reference until the versioned M9 implementation passes its gate.
+No AWS activity or paid model invocation is authorized yet.

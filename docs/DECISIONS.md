@@ -4,6 +4,91 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D019 — Conversation-led hosted workspace with typed target and objective preflight
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9
+
+**Context**
+
+The M8 form-led product safely completes the full static-GLB workflow, but the remaining human
+ambiguity is intent: what the asset should represent, its real-world size and use, and which
+unsupported goals require an external handoff. D012 and D018 required agreement before upload,
+which prevented measured source facts from improving follow-up questions. The user asked for a
+Codex-like collaboration around one asset, and a completed ChatGPT Pro review recommended a
+conversation-led, contract-anchored workspace while explicitly rejecting a chat-only product.
+
+**Options considered**
+
+- Keep the M8 form-led interaction as the only product interface.
+- Replace structured state and approval with an open-ended chat interface.
+- Make conversation the primary hosted navigation while retaining a visible Job Contract, typed
+  confirmation, deterministic execution, and exact structured approval.
+
+**Decision**
+
+Adopt the third option for the M9 hosted path. Keep the M8 form-led product intact as the reference,
+offline acceptance harness, comparison baseline, and fallback.
+
+After minimal context, permit GLB upload and objective measurement-only preflight before final target
+agreement. Clearly label this state as measured source facts without an agreed target. Do not create
+policy-relative findings, a registered repair plan, an approval interrupt, a readiness result, or
+any mutation until the user explicitly confirms typed target state.
+
+Show a persistent structured Job Contract beside the conversation. It contains source status,
+target, rules, measurements, findings, plan, decision, verification, and package status. Ordinary
+users confirm a schema-valid job copy derived from the nearest immutable trusted preset and explicit
+target overrides rather than choosing a named scale baseline. Preserve the resolved policy's ID,
+base preset, overrides, version, canonical hash, and complete read-only rules. Advanced users may
+edit only fields already supported by `ProjectProfile` and the deterministic engine. Changing
+confirmed intent or rules creates a new job.
+
+Preserve `original_intent`, a narrower `supported_job_goal`, and an explicit support status.
+Playable-character, rigging, skinning, or animation requests may proceed only after the user accepts
+a static-mesh or inspection-only goal; the final result must disclose the external handoff and may
+not claim unsupported readiness.
+
+Conversation may decide what to ask and explain only recorded evidence. Appearance-related
+statements require deterministic material or texture metadata and must be classified as supported,
+contradicted, or not evaluated. The human grants or rejects consequential authorization through the
+exact structured interrupt. The deterministic core validates and enforces its binding. Chat prose
+and the agent have no authorization role.
+
+Persist enough structured state to survive browser, application, and agent-runtime restart with
+exactly-once mutation and packaging. Hosted provenance records confirmed typed state, versions and
+hashes, deterministic tool-call ledger, action and decision events, artifact references, and
+external handoffs. Do not package chain-of-thought, hidden prompts, routine prose, or a raw
+transcript. Prefer structured intent plus a canonical hash in the package; raw description text is
+private short-lived job state or an explicit opt-in.
+
+Limit M9 to dialogue, typed-state confirmation, existing narrow tools, exact approval, durable
+resume, evidence-grounded follow-up, and the unchanged registered repair pipeline. Defer every new
+repair operation, visual-model judgment, model-generated transforms, conversational authorization,
+hosted Blender or Unreal workers, multi-asset workspaces, cross-job memory, accounts and teams,
+shared profile libraries, arbitrary policy upload, general shell access, and open-ended editing.
+
+This decision supersedes D012 and the ordering portion of D018 for the hosted M9 path. Their current
+form-led behavior remains the executable reference until the versioned M9 implementation passes its
+gate. D013's frozen-policy and editable-safety boundaries remain controlling.
+
+**Evidence and consequences**
+
+The accepted direction and its seven-part review are recorded in `docs/INFLECTION_POINT.md`.
+`docs/PROJECT_CONTRACT.md` version 1.1 incorporates the hosted input, web, Strands, privacy,
+durability, and M9 gate changes. The GLB-only boundary, source preservation, registered repair set,
+exact human approval, independent verification, seven-artifact package, and real-world validation
+addendum are unchanged.
+
+The interaction change remains a hypothesis until controlled comparison shows better target
+accuracy, completion time, or comprehension without worse unsafe authorization, false readiness, or
+verified-output rate. This decision does not authorize AWS spending, paid model invocation, resource
+creation, or any new repair capability.
+
 ### D018 — Confirmed asset intent replaces audience-mode selection
 
 **Date:** 2026-08-22

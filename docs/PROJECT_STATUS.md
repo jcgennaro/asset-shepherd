@@ -1,9 +1,9 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** Product inflection external review recorded (this file is included)
-**Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
-**Overall state:** HUMAN_ACTION_REQUIRED
+**Current commit:** D019 conversation-led hosted direction accepted (this file is included)
+**Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
+**Overall state:** IN_PROGRESS
 
 ## Milestones
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; frozen intent and policy provenance; two-column app frame; large-type disclosure-first presentation; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018; D018 supersedes the primary role-selector modality; latest intent flow is included in current commit |
-| M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; contract v1.1 defines conversation, typed confirmation, durability, and unchanged AWS gate |  | No paid call or resource is authorized; mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -103,9 +103,10 @@ before any paid invocation or resource creation.
   recommended a conversation-led, contract-anchored workspace rather than a chat-only product. The
   recorded outcome calls for objective preflight before target confirmation, a visible structured
   Job Contract, derived frozen policy for ordinary users, exact non-chat authorization, durable
-  resume, structured provenance, and the unchanged repair pipeline. The recommendation remains
-  advisory pending an explicit user decision and does not authorize AWS work or additional repair
-  domains.
+  resume, structured provenance, and the unchanged repair pipeline. The direction is accepted in
+  D019. Contract version 1.1 now controls objective preflight, visible Job Contract, derived frozen
+  policies, exact structured authorization, durable resume, and minimized hosted conversation
+  provenance without authorizing AWS work or additional repair domains.
 - Distribution audit: `uv build --wheel` succeeded with the intent module, confirmation template,
   workflow rail, updated intake/job templates, CSS, JavaScript, favicon, and existing deterministic
   runtime assets included in the wheel. The checked-in public intent schema remains a repository
@@ -137,20 +138,18 @@ before any paid invocation or resource creation.
 
 ## Blockers
 
-The product-inflection review requires the user to accept, modify, or reject its recommended hosted
-interaction model before implementation changes D012, D018, profile-selection language, or packaged
-intent retention. RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. M9 requires
+RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. Paid or remote M9 work requires
 the user to configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock
-region/model access, and a budget alert before paid calls. Read-only preflight found that AWS CLI is
-not installed on this workstation (`Get-Command aws` returned no command). A human-cleaned reference
-and manual-time record remain required for the full RW4 comparison gate.
+region/model access, and a budget alert. Read-only preflight found that AWS CLI is not installed on
+this workstation (`Get-Command aws` returned no command). A human-cleaned reference and manual-time
+record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Obtain the user's explicit disposition of the reviewed direction in `docs/INFLECTION_POINT.md`. If
-accepted, record a new decision and resolve the identified ordering, policy-presentation, authority,
-and provenance-retention changes before implementing them. The earliest corpus work remains RW2
-registration of the untouched Debug Beetle GLB when the user supplies it; do not begin Cloudforge
-until that batch is complete. Before M9 paid-provider work, confirm the dedicated AWS profile,
-Bedrock model/region access, and budget alert. No paid invocation or AWS resource creation is
-authorized yet.
+Implement the unblocked local D019 slice over the existing schemas and deterministic pipeline:
+objective preflight, typed target confirmation, visible Job Contract, evidence-grounded
+conversation, and restart-safe exactly-once job state. Preserve the M8 form-led path as the reference
+and keep the full offline gate passing. The earliest corpus work remains RW2 registration of the
+untouched Debug Beetle GLB when the user supplies it; do not begin Cloudforge until that batch is
+complete. Before M9 paid-provider work, confirm the dedicated AWS profile, Bedrock model/region
+access, and budget alert. No paid invocation or AWS resource creation is authorized yet.
