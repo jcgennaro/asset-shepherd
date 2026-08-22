@@ -211,6 +211,23 @@ a {
   text-align: center;
 }
 
+.rail-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.intent-rail .rail-actions .utility-tile {
+  margin-top: 0;
+}
+
+.help-icon {
+  color: currentColor;
+  font-size: 2.55rem;
+  font-weight: 480;
+  line-height: 0.8;
+}
+
 .mode-link:hover,
 .mode-link:focus-visible,
 .mode-link.active {
@@ -422,8 +439,112 @@ a {
   background: var(--accent-soft);
 }
 
-.intent-rail .utility-tile {
-  margin-top: auto;
+/* How it works */
+
+.how-page {
+  width: min(1180px, 100%);
+  margin: clamp(20px, 4vh, 52px) auto 0;
+}
+
+.how-hero {
+  max-width: 1040px;
+}
+
+.how-hero h2 {
+  max-width: 1000px;
+  margin: 0;
+  font-size: clamp(3.4rem, 6.8vw, 7rem);
+  font-weight: 520;
+  letter-spacing: -0.055em;
+  line-height: 0.94;
+}
+
+.how-hero > p:last-child {
+  max-width: 760px;
+  margin: 22px 0 0;
+  color: var(--muted);
+  font-size: clamp(1.05rem, 1.45vw, 1.3rem);
+  line-height: 1.55;
+}
+
+.how-flow {
+  display: grid;
+  margin: clamp(42px, 7vh, 78px) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line-strong);
+  list-style: none;
+}
+
+.how-flow li {
+  display: grid;
+  min-height: 132px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(18px, 3vw, 42px);
+  padding: 24px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.how-flow li > span {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: clamp(1.4rem, 2.2vw, 2rem);
+}
+
+.how-flow strong {
+  display: block;
+  color: var(--text);
+  font-size: clamp(1.45rem, 2.3vw, 2.2rem);
+  font-weight: 580;
+  letter-spacing: -0.03em;
+}
+
+.how-flow p {
+  max-width: 820px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: clamp(0.98rem, 1.25vw, 1.12rem);
+  line-height: 1.5;
+}
+
+.how-finish {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 36px;
+  padding: clamp(38px, 6vh, 68px) 0 12px;
+}
+
+.how-finish h3 {
+  max-width: 820px;
+  margin: 0;
+  font-size: clamp(1.7rem, 3vw, 3rem);
+  font-weight: 540;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.how-finish details {
+  max-width: 820px;
+  margin-top: 24px;
+  color: var(--muted);
+}
+
+.how-finish summary {
+  width: fit-content;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.how-finish details p {
+  margin: 12px 0 0;
+  line-height: 1.55;
+}
+
+.how-cta {
+  min-width: 220px;
+  text-decoration: none;
 }
 
 .intent-panel {
@@ -1948,6 +2069,14 @@ model-viewer {
     height: 22px;
   }
 
+  .rail-actions {
+    gap: 5px;
+  }
+
+  .help-icon {
+    font-size: 1.9rem;
+  }
+
   .mode-link.active::before {
     left: -1px;
   }
@@ -1993,6 +2122,37 @@ model-viewer {
 
   .workspace-body {
     padding: 20px 14px 44px;
+  }
+
+  .how-hero h2 {
+    font-size: clamp(3rem, 12.5vw, 4.6rem);
+  }
+
+  .how-flow {
+    margin-top: 40px;
+  }
+
+  .how-flow li {
+    min-height: 0;
+    grid-template-columns: 46px minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+    padding-block: 22px;
+  }
+
+  .how-flow li > span {
+    padding-top: 2px;
+    font-size: 1.1rem;
+  }
+
+  .how-finish {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 28px;
+  }
+
+  .how-cta {
+    width: 100%;
   }
 
   .chooser-panel {

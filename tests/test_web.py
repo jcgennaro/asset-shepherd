@@ -165,6 +165,33 @@ def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: 
     _assert_focus_area_budget(response.text)
 
 
+def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
+    tmp_path: Path,
+) -> None:
+    """The persistent question-mark action opens one concise workflow explanation."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+
+    entry = client.get("/workspace")
+    assert entry.status_code == 200
+    new_asset_position = entry.text.index(">New asset<")
+    help_position = entry.text.index(">How it works<")
+    assert new_asset_position < help_position
+    assert 'class="help-icon" aria-hidden="true">?</span>' in entry.text
+    assert 'href="http://testserver/how-it-works"' in entry.text
+
+    help_page = client.get("/how-it-works")
+    assert help_page.status_code == 200
+    assert "<title>Asset Shepherd -- How it works</title>" in help_page.text
+    assert "One asset in." in help_page.text
+    assert "Describe the target" in help_page.text
+    assert "Upload the untouched GLB" in help_page.text
+    assert "Make one meaningful decision" in help_page.text
+    assert "Download with proof" in help_page.text
+    assert "Your original stays untouched" in help_page.text
+    assert "What can Asset Shepherd repair?" in help_page.text
+    _assert_focus_area_budget(help_page.text)
+
+
 @pytest.mark.parametrize(
     ("height_cm", "expected_label"),
     ((0.5, "5 mm"), (2.0, "2 cm"), (120.0, "1.2 m"), (80000.0, "800 m")),

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="how-page" data-focus-area="how it works" aria-labelledby="how-title">
+    <header class="how-hero">
+      <p class="section-label">How does it work?</p>
+      <h2 id="how-title">One asset in.<br>A verified package out.</h2>
+      <p>You explain what you meant to make. Asset Shepherd measures the GLB, asks about consequential changes, and proves what came out.</p>
+    </header>
+
+    <ol class="how-flow" aria-label="Asset Shepherd workflow">
+      <li>
+        <span>01</span>
+        <div><strong>Describe the target</strong><p>The agent proposes the intended use and real-world size from your words. You confirm or adjust it once.</p></div>
+      </li>
+      <li>
+        <span>02</span>
+        <div><strong>Upload the untouched GLB</strong><p>Deterministic tools measure scale, orientation, grounding, names, geometry, materials, textures, and structural risks.</p></div>
+      </li>
+      <li>
+        <span>03</span>
+        <div><strong>Make one meaningful decision</strong><p>Safe display-name fixes can run automatically. Physical normalization waits for your explicit approval.</p></div>
+      </li>
+      <li>
+        <span>04</span>
+        <div><strong>Download with proof</strong><p>The candidate is independently re-inspected and packaged with the findings, plan, decision, verification, and provenance.</p></div>
+      </li>
+    </ol>
+
+    <div class="how-finish">
+      <div>
+        <p class="section-label">The safety boundary</p>
+        <h3>Your original stays untouched. The agent cannot approve its own physical changes.</h3>
+        <details>
+          <summary>What can Asset Shepherd repair?</summary>
+          <p>Version 1 repairs node and mesh display names, plus an approved reversible root normalization for scale, upright orientation, and grounding. It reports—but does not alter—topology, UVs, materials, textures, rigs, or animation.</p>
+        </details>
+      </div>
+      <a class="primary-button how-cta" href="{{ url_for('hosted_home') }}">Start with an asset <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+{% endblock %}

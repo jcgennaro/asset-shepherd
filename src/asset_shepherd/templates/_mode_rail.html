@@ -1,23 +1,29 @@
 <aside class="mode-rail" aria-label="Asset Shepherd workflow">
-  <a class="rail-logo" href="{{ url_for('hosted_home') if active_mode == 'conversation' else url_for('home') }}" aria-label="Asset Shepherd home">
+  <a class="rail-logo" href="{{ url_for('hosted_home') if active_mode in ['conversation', 'help'] else url_for('home') }}" aria-label="Asset Shepherd home">
     <span>LOGO</span>
   </a>
 
-  {% if active_mode == 'conversation' %}
+  {% if active_mode in ['conversation', 'help'] %}
   <nav class="mode-nav intent-rail" aria-label="Conversation-led workflow">
     <p class="rail-group-label">Durable workspace</p>
-    <a class="mode-link active" href="#workspace" title="Conversation and the visible Job Contract">
+    <a class="mode-link{% if active_mode == 'conversation' %} active{% endif %}" href="{{ '#workspace' if active_mode == 'conversation' else url_for('hosted_home') }}" title="Conversation and the visible Job Contract">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 3V5Z"/></svg>
       <span class="mode-label">Workspace</span>
     </a>
-    <a class="mode-link utility-tile" href="{{ url_for('hosted_home') }}" title="Start a new durable asset workspace">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-      <span class="mode-label">New asset</span>
-    </a>
-    <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Open the M8 form-led comparison workflow">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5zM8 9h8M8 13h8"/></svg>
-      <span class="mode-label">Form reference</span>
-    </a>
+    <div class="rail-actions">
+      <a class="mode-link utility-tile" href="{{ url_for('hosted_home') }}" title="Start a new durable asset workspace">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="mode-label">New asset</span>
+      </a>
+      <a class="mode-link utility-tile help-tile{% if active_mode == 'help' %} active{% endif %}" href="{{ url_for('how_it_works') }}" title="See how Asset Shepherd works">
+        <span class="help-icon" aria-hidden="true">?</span>
+        <span class="mode-label">How it works</span>
+      </a>
+      <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Open the M8 form-led comparison workflow">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5zM8 9h8M8 13h8"/></svg>
+        <span class="mode-label">Form reference</span>
+      </a>
+    </div>
   </nav>
   {% else %}
   <nav class="mode-nav intent-rail" aria-label="Intent-first workflow">
@@ -29,10 +35,16 @@
       <li class="{% if active_mode == 'decide' %}active{% endif %}"><span>4</span><strong>Decide</strong></li>
       <li class="{% if active_mode == 'download' %}active{% endif %}"><span>5</span><strong>Download</strong></li>
     </ol>
-    <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Start a new target story">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-      <span class="mode-label">New asset</span>
-    </a>
+    <div class="rail-actions">
+      <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Start a new target story">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="mode-label">New asset</span>
+      </a>
+      <a class="mode-link utility-tile help-tile" href="{{ url_for('how_it_works') }}" title="See how Asset Shepherd works">
+        <span class="help-icon" aria-hidden="true">?</span>
+        <span class="mode-label">How it works</span>
+      </a>
+    </div>
   </nav>
   {% endif %}
 </aside>

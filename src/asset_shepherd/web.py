@@ -1334,6 +1334,18 @@ def create_app(
         """Ask what the user was trying to make."""
         return render_intent_home(request)
 
+    def how_it_works(request: Request) -> Response:
+        """Explain the complete workflow and its safety boundary."""
+        return templates.TemplateResponse(
+            request=request,
+            name="how_it_works.html",
+            context={
+                "active_mode": "help",
+                "active_style": "How it works",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
     def create_intent(
         request: Request,
         description: Annotated[str, Form()],
@@ -1811,6 +1823,13 @@ def create_app(
         )
 
     app.add_api_route("/", home, methods=["GET"], response_class=HTMLResponse, name="home")
+    app.add_api_route(
+        "/how-it-works",
+        how_it_works,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="how_it_works",
+    )
     app.add_api_route(
         "/intents",
         create_intent,

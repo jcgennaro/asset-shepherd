@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** D026 explicit check authority and layered validation (this file is included)
+**Current commit:** How-it-works help page (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -45,7 +45,7 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 97 passed and the opt-in live-provider test skipped. D019–D026 acceptance
+- Tests: `uv run pytest` — 98 passed and the opt-in live-provider test skipped. D019–D026 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -124,6 +124,11 @@ before any AWS invocation or resource creation.
 - Single-step evidence: the persistent left pane now orients **Describe → Agree → Inspect → Decide
   → Download**. Intake renders only Rules or Upload and every job response renders only its selected
   Inspect, Decide, or Download panel. Every server-rendered state retains one `data-focus-area`.
+- Workflow help: a large persistent `?` action sits immediately below **New asset** in both rail
+  variants and opens `/how-it-works`. The page uses one continuous four-step explanation, one
+  collapsed repair-scope disclosure, and a start action without changing the workflow. Browser
+  acceptance at the default viewport and 390 × 844 confirms action order, active state, one focus
+  area, no horizontal overflow, and no console warning or error.
 - Browser review at 1440 × 900 confirms that Describe, confirmation, and agreed intake use the full
   workspace without horizontal overflow. The full agreed story appears at confirmation and becomes
   a collapsed disclosure during intake so policy controls stay near the fold. At 390 × 844 the left
