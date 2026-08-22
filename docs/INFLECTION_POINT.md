@@ -1,8 +1,11 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** Review draft  
-**Date:** 2026-08-22  
-**Current implementation:** `main` at `adda928feea80b2db5c9c4196ef4b5cc171e7d6f`  
+**Status:** Review draft
+
+**Date:** 2026-08-22
+
+**Current implementation:** `main` at `adda928feea80b2db5c9c4196ef4b5cc171e7d6f`
+
 **Controlling specifications:** `PROJECT_CONTRACT.md` and `REAL_WORLD_VALIDATION_PLAN.md`
 
 This document is the single handoff for a product-direction review. It separates the product that
