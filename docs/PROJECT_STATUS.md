@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** M8 persistent five-mode, single-step workspace redesign (this file is included)
+**Current commit:** M8 clarified two-column application shell (this file is included)
 **Current milestone:** RW2 Minimum Asset Flock / M9 AWS setup / M10 evaluation
 **Overall state:** HUMAN_ACTION_REQUIRED
 
@@ -17,7 +17,7 @@
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
-| M8 Web product | COMPLETE | Persistent five-mode rail; single-visible-step Rules/Upload and Inspect/Decide/Download workspaces; immutable policy presets and validated custom copies; shared Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, D013, and D014; latest presentation pass included in current commit |
+| M8 Web product | COMPLETE | Two-column app frame with persistent five-mode navigation pane; single-visible-step Rules/Upload and Inspect/Decide/Download workspaces; immutable policy presets and validated custom copies; shared Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006, D008, D010, D012, D013, D014, and D015; latest presentation correction included in current commit |
 | M9 AWS deployment | NOT_STARTED |  |  | Mandatory checkpoint after completion |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus and evidence harness | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation and demo-asset evidence |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
@@ -69,11 +69,12 @@ before any paid invocation or resource creation.
 - Web acceptance: broken-fixture refresh/approve/resume/download; clean no-approval completion twice
   from independent app starts; invalid upload rejection; unsupported inspection-only packaging;
   exact ZIP audit; source preservation; trusted profile selection; 50 MB and GLB magic boundaries.
-- Persistent-mode browser evidence: the fixed left rail keeps Game developer, 3D artist, Technical
-  artist, Help me choose, and Advanced user visible with icons and hover/focus hints. Every page title
-  is `Asset Shepherd -- [style]`. Desktop review completed Rules, Upload, Inspect, Decide, and
-  Download; the corrected narrow-width view retains the rail with no document overflow. No
-  application console errors or warnings were observed.
+- Persistent-mode browser evidence: the clarified frame aligns a dedicated logo cell over a
+  248–320 px desktop navigation pane and the dynamic title cell over the full workspace. Three
+  prominent audience tiles and two secondary guidance tiles remain visible with icons and
+  hover/focus hints. Desktop measurements show equal 96 px logo/title cells; the compact breakpoint
+  shows equal 72 px cells, a 76 px icon pane, one visible focus area, and no horizontal overflow.
+  Every page title remains `Asset Shepherd -- [style]`.
 - Single-step web evidence: intake shows Rules or Upload, never both; each job response renders only
   the selected Inspect, Decide, or Download step and exactly one `data-focus-area`. Pending approval
   defaults to Decide, while completed and blocked jobs default to Download. Inspect retains source

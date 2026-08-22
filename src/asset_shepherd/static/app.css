@@ -74,10 +74,10 @@ a {
 .app-shell {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-columns: clamp(248px, 22vw, 320px) minmax(0, 1fr);
 }
 
-/* Persistent mode rail */
+/* Persistent two-cell navigation column */
 
 .mode-rail {
   position: sticky;
@@ -86,9 +86,7 @@ a {
   display: flex;
   height: 100svh;
   min-height: 560px;
-  overflow-x: hidden;
   flex-direction: column;
-  align-items: center;
   border-right: 1px solid var(--line);
   background: rgba(9, 16, 15, 0.97);
 }
@@ -96,7 +94,7 @@ a {
 .rail-logo {
   display: grid;
   width: 100%;
-  min-height: 78px;
+  min-height: 96px;
   place-items: center;
   border-bottom: 1px solid var(--line);
   color: var(--text);
@@ -108,8 +106,8 @@ a {
 
 .rail-logo span {
   display: grid;
-  width: 54px;
-  height: 34px;
+  width: 74px;
+  height: 42px;
   place-items: center;
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
@@ -120,49 +118,64 @@ a {
   width: 100%;
   flex: 1;
   flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 18px 10px;
+  gap: 10px;
+  padding: clamp(18px, 2vw, 28px);
 }
 
 .rail-group-label {
   width: 100%;
-  margin: 0 0 2px;
+  margin: 0 0 4px;
   color: #71807b;
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.14em;
-  text-align: center;
   text-transform: uppercase;
 }
 
+.style-tiles {
+  display: grid;
+  gap: 10px;
+}
+
+.rail-spacer {
+  flex: 1;
+  min-height: 18px;
+}
+
 .rail-divider {
-  width: 42px;
+  width: 100%;
   height: 1px;
-  margin: 10px 0 7px;
+  margin: 0 0 4px;
   background: var(--line);
+}
+
+.utility-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .mode-link {
   position: relative;
   display: grid;
-  width: 88px;
-  min-height: 67px;
+  width: 100%;
+  min-width: 0;
+  min-height: 80px;
   place-items: center;
   align-content: center;
-  gap: 5px;
-  border: 1px solid transparent;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   color: #84918d;
+  background: rgba(19, 30, 28, 0.55);
   text-decoration: none;
   transition: color 150ms ease, border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
 .mode-link svg {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -171,9 +184,30 @@ a {
 }
 
 .mode-label {
-  font-size: 0.64rem;
+  min-width: 0;
+  font-size: 0.76rem;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.2;
+}
+
+.style-tile {
+  min-height: 86px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  justify-items: start;
+  padding: 16px 18px;
+}
+
+.style-tile svg {
+  width: 30px;
+  height: 30px;
+}
+
+.utility-tile {
+  min-height: 82px;
+  grid-template-rows: 28px auto;
+  gap: 8px;
+  padding: 12px 8px;
+  text-align: center;
 }
 
 .mode-link:hover,
@@ -192,10 +226,10 @@ a {
 
 .mode-link.active::before {
   position: absolute;
-  left: -11px;
-  width: 3px;
-  height: 32px;
-  border-radius: 0 4px 4px 0;
+  left: -1px;
+  width: 4px;
+  height: 42px;
+  border-radius: 0 5px 5px 0;
   background: var(--accent);
   content: "";
 }
@@ -231,12 +265,14 @@ a {
 /* Workspace shell */
 
 .workspace-shell {
+  display: grid;
   min-width: 0;
+  grid-template-rows: 96px minmax(0, 1fr);
 }
 
 .workspace-header {
   display: flex;
-  min-height: 78px;
+  min-height: 96px;
   align-items: center;
   padding: 0 clamp(24px, 3.2vw, 52px);
   border-bottom: 1px solid var(--line);
@@ -1419,15 +1455,31 @@ model-viewer {
 
 @media (max-width: 980px) {
   .app-shell {
-    grid-template-columns: 86px minmax(0, 1fr);
+    grid-template-columns: 224px minmax(0, 1fr);
   }
 
-  .mode-link {
-    width: 66px;
+  .mode-nav {
+    padding-inline: 16px;
   }
 
-  .mode-link.active::before {
-    left: -11px;
+  .style-tile {
+    min-height: 78px;
+    grid-template-columns: 36px minmax(0, 1fr);
+    padding-inline: 13px;
+  }
+
+  .utility-tiles {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .utility-tile {
+    min-height: 58px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    justify-items: start;
+    padding: 10px 13px;
+    text-align: left;
   }
 
   .mode-context {
@@ -1451,9 +1503,9 @@ model-viewer {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .app-shell {
-    grid-template-columns: 68px minmax(0, 1fr);
+    grid-template-columns: 76px minmax(0, 1fr);
   }
 
   .mode-rail {
@@ -1461,7 +1513,7 @@ model-viewer {
   }
 
   .rail-logo {
-    min-height: 66px;
+    min-height: 72px;
   }
 
   .rail-logo span {
@@ -1471,12 +1523,32 @@ model-viewer {
   }
 
   .mode-nav {
-    padding-inline: 6px;
+    align-items: center;
+    gap: 5px;
+    padding: 16px 8px;
+  }
+
+  .style-tiles,
+  .utility-tiles {
+    display: contents;
+  }
+
+  .rail-spacer {
+    min-height: 8px;
+  }
+
+  .rail-divider {
+    width: 42px;
+    margin-block: 8px 5px;
   }
 
   .mode-link {
-    width: 54px;
+    width: 58px;
     min-height: 60px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    justify-items: center;
+    padding: 10px;
   }
 
   .mode-link svg {
@@ -1484,22 +1556,23 @@ model-viewer {
     height: 22px;
   }
 
-  .mode-label {
-    font-size: 0.55rem;
-  }
-
   .mode-link.active::before {
-    left: -7px;
+    left: -1px;
   }
 
   .mode-hint,
+  .mode-label,
   .rail-group-label {
     display: none;
   }
 
   .workspace-header {
-    min-height: 66px;
+    min-height: 72px;
     padding-inline: 16px;
+  }
+
+  .workspace-shell {
+    grid-template-rows: 72px minmax(0, 1fr);
   }
 
   .workspace-header h1 {
@@ -1621,15 +1694,11 @@ model-viewer {
 
 @media (max-width: 430px) {
   .app-shell {
-    grid-template-columns: 60px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
   }
 
   .mode-link {
-    width: 48px;
-  }
-
-  .mode-label {
-    font-size: 0.5rem;
+    width: 50px;
   }
 
   .workspace-header h1 {

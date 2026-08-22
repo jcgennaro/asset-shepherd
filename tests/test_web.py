@@ -115,7 +115,7 @@ def _assert_focus_area_budget(html: str, expected: int) -> None:
 
 
 def test_web_story_chooser_explains_three_equivalent_flows(tmp_path: Path) -> None:
-    """The persistent rail offers three styles plus help and advanced modes."""
+    """The navigation pane offers three style tiles plus two guidance tiles."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     response = client.get("/")
 
@@ -125,6 +125,9 @@ def test_web_story_chooser_explains_three_equivalent_flows(tmp_path: Path) -> No
     assert "Which best describes you?" in response.text
     assert "No feature differences between concepts" not in response.text
     assert response.text.count('class="mode-link') == 5
+    assert response.text.count('class="mode-link style-tile') == 3
+    assert response.text.count('class="mode-link utility-tile') == 2
+    assert "Choose your style" in response.text
     assert "Help me choose — compare the three explanations" in response.text
     assert "Advanced user — go directly to supported policy controls" in response.text
     _assert_focus_area_budget(response.text, expected=1)

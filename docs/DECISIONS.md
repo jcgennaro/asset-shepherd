@@ -4,6 +4,48 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D015 — Clarified two-column frame replaces narrow-rail proportions
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M8
+
+**Context**
+
+D014 correctly established five persistent presentation modes and a one-step workspace, but its
+112 px icon rail did not match the user's intended spatial hierarchy. A follow-up wireframe made the
+layout explicit: a dedicated logo cell above a wider three-tile style selector on the left, a title
+cell above the workspace on the right, and aligned dividers forming a two-by-two application frame.
+
+**Options considered**
+
+- Keep the narrow icon rail and treat the clarification as documentation only.
+- Move the selector into the workspace or redesign the workflow itself.
+- Preserve D014's behavior while widening and restructuring the left pane to match the clarified
+  frame.
+
+**Decision**
+
+Use a 248–320 px desktop navigation pane below the placeholder logo cell. Make Game developer,
+3D artist, and Technical artist prominent full-width tiles. Keep Help me choose and Advanced user
+as smaller secondary tiles in the same pane. Align the 96 px logo cell exactly with the workspace
+title header. At compact widths preserve the left-side orientation as a 64–76 px icon pane with an
+aligned 72 px header. Do not change role routes, policy controls, workflow steps, job state, repair
+authorization, or product scope.
+
+**Evidence and consequences**
+
+Web acceptance asserts exactly three primary style tiles, two secondary guidance tiles, five modes,
+dynamic titles, and the one-focus-area budget. Live browser measurements confirm the equal-height
+logo/title row, 320 px desktop and 76 px compact navigation widths, one visible workflow area, and
+zero horizontal overflow. The wider pane consumes more desktop width, deliberately giving the
+style selector the prominence shown in the user's wireframe; compact screens retain the prior
+icon-only behavior.
+
 ### D014 — Persistent five-mode rail with a single-step workspace
 
 **Date:** 2026-08-22

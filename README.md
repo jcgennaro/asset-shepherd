@@ -36,7 +36,8 @@ uv sync
 uv run asset-shepherd web
 ```
 
-Open `http://127.0.0.1:8000`. A persistent icon rail keeps five presentation modes available:
+Open `http://127.0.0.1:8000`. A persistent left navigation pane keeps five presentation modes
+available:
 
 - `/stories/game-developer` asks whether the asset is ready for a game.
 - `/stories/artist` asks what will change in the artist's work.
