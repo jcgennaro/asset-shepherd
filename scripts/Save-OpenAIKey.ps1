@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 5.1
 
 [CmdletBinding()]
 param(
@@ -11,6 +11,7 @@ $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') {
     throw 'This local key helper requires Windows data protection.'
 }
+Add-Type -AssemblyName System.Security
 
 $secretDirectory = Split-Path -Parent $SecretPath
 [void](New-Item -ItemType Directory -Path $secretDirectory -Force)
@@ -26,10 +27,10 @@ try {
         throw 'The API key cannot be empty.'
     }
     $plainBytes = [Text.Encoding]::UTF8.GetBytes($plainKey)
-    $protectedBytes = [Security.Cryptography.ProtectedData]::Protect(
+    $protectedBytes = [System.Security.Cryptography.ProtectedData]::Protect(
         $plainBytes,
         $null,
-        [Security.Cryptography.DataProtectionScope]::CurrentUser
+        [System.Security.Cryptography.DataProtectionScope]::CurrentUser
     )
     [IO.File]::WriteAllText(
         $SecretPath,

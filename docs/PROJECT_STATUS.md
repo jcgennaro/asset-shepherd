@@ -57,8 +57,9 @@ before any AWS invocation or resource creation.
   covers the paid request contract; the live probe did not run because `OPENAI_API_KEY` was absent.
 - Local key handling: two one-line PowerShell entry points save the key through a hidden prompt as
   Windows current-user protected ciphertext outside the repository, then unlock it only around the
-  web command and restore process state on exit. PowerShell parser and static security acceptance
-  pass; the scripts never contain or echo a key.
+  web command and restore process state on exit. Windows PowerShell 5.1 parser, DPAPI round-trip,
+  real server startup/shutdown, and static security acceptance pass; the scripts never contain or
+  echo a key.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source

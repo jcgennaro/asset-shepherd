@@ -29,10 +29,10 @@ the temporary byte buffers. No key material or encrypted secret is written insid
 
 **Evidence and consequences**
 
-Both scripts pass PowerShell parser validation. Static acceptance requires hidden input,
-current-user data protection, an external local-app-data path, scoped environment injection, and
-cleanup. This is a local Windows development convenience, not the production secret mechanism;
-Bedrock deployment must use the approved hosted secret-management design.
+Both scripts pass Windows PowerShell 5.1 parser and runtime validation. Static acceptance requires
+hidden input, current-user data protection, an external local-app-data path, scoped environment
+injection, and cleanup. This is a local Windows development convenience, not the production secret
+mechanism; Bedrock deployment must use the approved hosted secret-management design.
 
 ### D023 — Provider-neutral semantic intake uses OpenAI Luna until Bedrock
 

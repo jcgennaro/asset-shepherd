@@ -11,6 +11,8 @@ def test_key_setup_uses_hidden_input_and_windows_user_protection() -> None:
     """The setup script must not request a key in command text or write it unencrypted."""
     script = SAVE_SCRIPT.read_text(encoding="utf-8")
 
+    assert "#Requires -Version 5.1" in script
+    assert "Add-Type -AssemblyName System.Security" in script
     assert "Read-Host" in script
     assert "-AsSecureString" in script
     assert "ProtectedData]::Protect" in script
@@ -24,6 +26,8 @@ def test_launcher_injects_and_removes_the_key_around_only_the_web_process() -> N
     """The launcher decrypts locally, starts the app, and restores process state in finally."""
     script = START_SCRIPT.read_text(encoding="utf-8")
 
+    assert "#Requires -Version 5.1" in script
+    assert "Add-Type -AssemblyName System.Security" in script
     assert "ProtectedData]::Unprotect" in script
     assert "$env:OPENAI_API_KEY = $plainKey" in script
     assert "uv run asset-shepherd web" in script

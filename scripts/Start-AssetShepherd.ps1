@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 5.1
 
 [CmdletBinding()]
 param(
@@ -15,6 +15,7 @@ $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') {
     throw 'This local key helper requires Windows data protection.'
 }
+Add-Type -AssemblyName System.Security
 if (-not (Test-Path -LiteralPath $SecretPath -PathType Leaf)) {
     throw 'No saved OpenAI key was found. Run .\scripts\Save-OpenAIKey.ps1 first.'
 }
@@ -34,10 +35,10 @@ try {
     $protectedBytes = [Convert]::FromBase64String(
         [IO.File]::ReadAllText($SecretPath, [Text.Encoding]::UTF8).Trim()
     )
-    $plainBytes = [Security.Cryptography.ProtectedData]::Unprotect(
+    $plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
         $protectedBytes,
         $null,
-        [Security.Cryptography.DataProtectionScope]::CurrentUser
+        [System.Security.Cryptography.DataProtectionScope]::CurrentUser
     )
     $plainKey = [Text.Encoding]::UTF8.GetString($plainBytes)
     if ([string]::IsNullOrWhiteSpace($plainKey)) {
@@ -60,7 +61,7 @@ try {
         }
     }
 }
-catch [Security.Cryptography.CryptographicException] {
+catch [System.Security.Cryptography.CryptographicException] {
     throw 'The saved key cannot be unlocked by this Windows user. Save it again.'
 }
 finally {
