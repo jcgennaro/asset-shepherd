@@ -3246,6 +3246,12 @@ model-viewer {
   letter-spacing: -0.045em;
 }
 
+.conversation-pane > header h2.approval-heading {
+  font-size: clamp(1.75rem, 2.7vw, 2.8rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
 .conversation-message,
 .target-card {
   padding: clamp(20px, 3vw, 32px);
@@ -3451,28 +3457,8 @@ model-viewer {
   background: var(--surface-soft);
 }
 
-.conversation-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 22px 0;
-}
-
-.conversation-metrics div {
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--surface-soft);
-}
-
-.conversation-metrics dt {
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.conversation-metrics dd {
-  margin: 5px 0 0;
-  font-size: 1.35rem;
-  font-weight: 750;
+.approval-details {
+  margin: -8px 0 4px;
 }
 
 .hosted-decision {

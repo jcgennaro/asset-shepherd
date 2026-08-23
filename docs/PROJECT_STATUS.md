@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** Version-2 agent operating contract (this file is included)
+**Current commit:** Comparison-viewer and approval-copy correction (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -45,6 +45,16 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
+- Comparison-viewer recovery: the pinned `model-viewer` extension requires plain numeric
+  `extra-model` offsets and enters a bad camera state when given the former unbounded
+  `min-camera-orbit`/`max-camera-orbit` values. Both attributes are removed, initial and dynamic
+  offsets are unitless, and the one shared WebGL scene now visibly renders source, repaired, and
+  optional banana GLBs. Browser acceptance exercised Both/Before/After fits, metric axes, banana,
+  desktop, and 390 × 844 layouts with no warning or error.
+- Approval presentation now asks one compact question containing the exact before/target dimensions,
+  keeps component evidence behind one `Details` disclosure, and offers only Reject/Approve. The
+  redundant source-file reassurance and duplicate metric tiles are removed. Rendered browser
+  acceptance confirms the old sentence is absent and the compact state has one disclosure.
 - Agent operating contract: prompt version 2 now defines the user's goal, evidence and authorization
   boundaries, concise technical-art voice, structured-control versus free-text explanation split,
   bounded tool workflow, stop conditions, prompt-injection handling, on-topic behavior, and private

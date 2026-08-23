@@ -169,8 +169,7 @@ def _normalization_candidate(
             expected_after_bounds=_bounds_from_points(transformed),
             components=tuple(components),
             consequence_summary=(
-                f"This changes world-space {component_names} without modifying vertex data. "
-                "The original file remains untouched."
+                f"This changes world-space {component_names} without modifying vertex data."
             ),
         ),
     )

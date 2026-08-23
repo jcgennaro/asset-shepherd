@@ -27,21 +27,20 @@
       data-comparison-viewer
       src="{{ comparison_source_url }}"
       alt="Interactive before and after model comparison"
+      loading="eager"
       camera-controls touch-action="pan-y" disable-tap
-      min-camera-orbit="auto auto 0.0001m" max-camera-orbit="auto auto 10000000m"
       shadow-intensity="1" environment-image="neutral" exposure="1" interaction-prompt="none">
       <extra-model
         data-after-model
         src="{{ comparison_after_url }}"
-        offset="{{ comparison_scene.after_offset_css }}">
+        offset="{{ comparison_scene.after_offset_m|join(' ') }}">
       </extra-model>
       <extra-model
         data-banana-model
         src="{{ url_for('static', path='/banana-scale.glb') }}?v={{ static_version }}"
-        offset="{{ comparison_scene.banana_offset_css }}"
+        offset="{{ comparison_scene.banana_offset_m|join(' ') }}"
         scale="0 0 0">
       </extra-model>
-
       {% for corner in comparison_scene.before.corners_m %}
         <span class="comparison-anchor" slot="hotspot-before-{{ loop.index0 }}" data-position="{{ corner|join('m ') }}m" aria-hidden="true"></span>
       {% endfor %}

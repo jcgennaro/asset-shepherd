@@ -434,15 +434,23 @@ function initializeModelComparison(comparison) {
       bounds.minimum[1] + 0.015916550531983376,
       bounds.minimum[2] - gap - 0.015987513586878777,
     ];
-    const minimum = [offset[0] - 0.0865677, offset[1] - 0.01591656, offset[2] - 0.01598752];
-    const maximum = [offset[0] + 0.0865677, offset[1] + 0.05696436, offset[2] + 0.01598752];
+    const minimum = [
+      offset[0] - 0.0865677,
+      offset[1] - 0.01591656,
+      offset[2] - 0.01598752,
+    ];
+    const maximum = [
+      offset[0] + 0.0865677,
+      offset[1] + 0.05696436,
+      offset[2] + 0.01598752,
+    ];
     bananaBounds = {
       minimum,
       maximum,
       center: minimum.map((value, index) => (value + maximum[index]) / 2),
       longest: Math.max(...minimum.map((value, index) => maximum[index] - value)),
     };
-    bananaModel?.setAttribute("offset", offset.map((component) => `${component}m`).join(" "));
+    bananaModel?.setAttribute("offset", offset.join(" "));
     viewer.updateHotspot({
       name: "hotspot-banana",
       position: `${offset[0]}m ${offset[1] + 0.025}m ${offset[2]}m`,

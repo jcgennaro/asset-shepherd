@@ -4,6 +4,51 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D035 — One shared comparison scene uses the viewer's supported camera and transform syntax
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation
+
+**Context**
+
+The completed workspace rendered metric axes, banana annotation, and HUD target boxes while both
+GLBs were invisible. The HUD uses measured bounds and therefore remained plausible even when the
+WebGL camera was invalid. Isolated browser probes proved both GLBs were valid and independently
+renderable. The pinned `model-viewer` fork parses `extra-model` offsets with `Number`, so values such
+as `1.5m` are invalid, and its former extreme `min-camera-orbit`/`max-camera-orbit` attributes put
+the primary camera into a state where a loaded model did not draw.
+
+The same approval state also repeated one decision across a headline, explanatory card, two metric
+tiles, and buttons even though the exact component evidence can remain progressive detail.
+
+**Decision**
+
+Keep source, repaired candidate, and banana in the existing single shared `model-viewer` scene.
+Supply plain numeric offsets to `extra-model`, including dynamic banana placement; remove the
+unsupported orbit-limit attributes; and eagerly load this one result comparison. Keep fit controls,
+metric axes, target boxes, shared rotate/pan/zoom, and the banana toggle unchanged.
+
+Present normalization approval as one compact exact question plus Reject/Approve. Put component
+evidence behind one `Details` disclosure and remove duplicate before/target tiles and source-file
+reassurance.
+
+**Evidence and consequences**
+
+Rendered desktop acceptance shows source and repaired GLBs together at their measured relative
+scales. Both, Before, and After fits execute; axes and the 20 cm banana toggle on; dynamic banana
+offsets remain numeric; and browser diagnostics report no warning or error. A 390 × 844 pass keeps
+the models, controls, HUD labels, and interaction hint within the viewport. Route tests enforce one
+viewer, two numeric extra-model offsets, compact approval copy, one detail disclosure, and absence
+of the removed reassurance.
+
+The comparison remains a browser preview rather than verification evidence; deterministic and
+independent verification continue to decide package readiness.
+
 ### D034 — Prose explains; structured controls decide
 
 **Date:** 2026-08-23

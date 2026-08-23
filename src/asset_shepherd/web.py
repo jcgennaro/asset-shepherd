@@ -158,14 +158,13 @@ class MetricAxisView:
 
 @dataclass(frozen=True)
 class ComparisonSceneView:
-    """Geometry needed to stage before and after assets in one viewer."""
+    """Geometry needed to stage before and after assets in one scene."""
 
     before: ComparisonBoundsView
     after: ComparisonBoundsView
     combined: ComparisonBoundsView
     after_offset_m: tuple[float, float, float]
-    after_offset_css: str
-    banana_offset_css: str
+    banana_offset_m: tuple[float, float, float]
     banana_anchor_m: tuple[float, float, float]
     axes: tuple[MetricAxisView, ...]
     client_data: dict[str, JsonValue]
@@ -1889,8 +1888,7 @@ def _comparison_scene(source_path: Path, candidate_path: Path) -> ComparisonScen
         after=after,
         combined=combined,
         after_offset_m=after_offset_m,
-        after_offset_css=" ".join(f"{value:.9g}m" for value in after_offset_m),
-        banana_offset_css=" ".join(f"{value:.9g}m" for value in banana_offset_m),
+        banana_offset_m=banana_offset_m,
         banana_anchor_m=banana_anchor_m,
         axes=axes,
         client_data=client_data,

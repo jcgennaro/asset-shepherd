@@ -730,6 +730,9 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert "data-model-comparison" in completed.text
     assert completed.text.count("<model-viewer") == 1
     assert completed.text.count("<extra-model") == 2
+    offsets = re.findall(r'<extra-model[^>]+offset="([^"]+)"', completed.text)
+    assert len(offsets) == 2
+    assert all("m" not in offset for offset in offsets)
     assert 'data-comparison-fit="both"' in completed.text
     assert 'data-comparison-fit="before"' in completed.text
     assert 'data-comparison-fit="after"' in completed.text

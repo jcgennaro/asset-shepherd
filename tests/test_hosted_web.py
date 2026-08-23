@@ -81,8 +81,11 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     )
     assert confirmed.status_code == 303
     pending = client.get(workspace_path)
-    assert "One physical change needs your decision." in pending.text
-    assert "Approve exact plan" in pending.text
+    assert "Normalize scale, orientation, grounding:" in pending.text
+    assert re.search(r"\d+\.\d{3} m → 1\.800 m\?", pending.text)
+    assert pending.text.count('class="approval-details"') == 1
+    assert "The original file remains untouched." not in pending.text
+    assert ">Approve <" in pending.text
     interrupt_id = _hidden(pending.text, "interrupt_id")
     decision_command = _hidden(pending.text, "command_id")
 
@@ -116,6 +119,9 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Download result ZIP" in completed.text
     assert "data-model-comparison" in completed.text
     assert completed.text.count("<model-viewer") == 1
+    offsets = re.findall(r'<extra-model[^>]+offset="([^"]+)"', completed.text)
+    assert len(offsets) == 2
+    assert all("m" not in offset for offset in offsets)
     assert "normal-size 20 cm banana" in completed.text
 
     archive_response = restarted.get(f"{workspace_path}/download")
