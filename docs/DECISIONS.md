@@ -4,6 +4,44 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D028 — Apply progressive rule-of-three disclosure and one contextual feedback path
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 conversation and web product
+
+**Context**
+
+The target proposal rendered six assumption cards, provenance labels, explanatory text, a separate
+evidence disclosure, confirmation, correction, restart, and safety notes on one surface. Although
+the facts were accurate, the interface exposed the implementation taxonomy and required too much
+simultaneous reading and choice.
+
+**Decision**
+
+Present exactly three closed groups: **Purpose**, **Scale and pose**, and **Structure and safety**.
+Each group shows one agent-written conclusion and reveals at most three supporting facts only after
+the user opens it. Replace the competing controls with one question, **Did I get it right?**, and
+two answers: continue to inspection or edit the prefilled description and try again. The same text
+may be resubmitted to request a retake.
+
+Add one reusable `/feedback` page. Links provide an allowlisted workflow context, an opaque local
+reference, and a safe app-local return path. The page offers four bounded reasons and an optional
+1,000-character note. Development feedback is written atomically below the configured work root;
+no network service, credential, analytics SDK, or new product authority is introduced.
+
+**Evidence and consequences**
+
+Route acceptance verifies the three-group budget, binary decision, reusable feedback context,
+reason bounds, note limit, and local JSON record. Desktop and 390 × 844 browser review show the
+complete default decision surface without horizontal overflow or browser warnings. Existing typed
+target, deterministic inspection, exact repair authorization, source preservation, and independent
+verification behavior remain unchanged.
+
 ### D027 — Replace use-mode selection with an expectation-to-evidence contract
 
 **Date:** 2026-08-22

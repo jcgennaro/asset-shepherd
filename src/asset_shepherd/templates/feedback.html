@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="feedback-page" data-focus-area="feedback" aria-labelledby="feedback-title">
+    {% if submitted %}
+      <header>
+        <h2 id="feedback-title">Thanks. I recorded that.</h2>
+        <p>{{ feedback_context_label }}</p>
+      </header>
+      <a class="primary-button" href="{{ return_path }}">Return to Asset Shepherd <span aria-hidden="true">→</span></a>
+    {% else %}
+      <header>
+        <h2 id="feedback-title">What isn’t working?</h2>
+        <p>{{ feedback_context_label }}</p>
+      </header>
+
+      {% if error %}<div class="alert danger" role="alert"><strong>Choose one option</strong><span>{{ error }}</span></div>{% endif %}
+
+      <form action="{{ url_for('submit_feedback') }}" method="post" class="feedback-form" data-busy-form>
+        <input type="hidden" name="context" value="{{ feedback_context }}">
+        <input type="hidden" name="reference_id" value="{{ reference_id }}">
+        <input type="hidden" name="return_path" value="{{ return_path }}">
+
+        <fieldset>
+          <legend>What happened?</legend>
+          <div class="feedback-reasons">
+            {% for value, label in feedback_reasons %}
+              <label><input type="radio" name="reason" value="{{ value }}" required><span>{{ label }}</span></label>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <label class="feedback-note"><span>Anything else?</span><textarea name="note" maxlength="1000" rows="7" placeholder="Optional · up to 1,000 characters">{{ note }}</textarea></label>
+        <button class="primary-button" type="submit" data-submit-button>Send feedback <span aria-hidden="true">→</span></button>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

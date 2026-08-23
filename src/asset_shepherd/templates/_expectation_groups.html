@@ -1,0 +1,19 @@
+<div class="expectation-groups" aria-label="Proposed target">
+  {% for group in expectation_groups %}
+    <details class="expectation-group">
+      <summary>
+        <span>{{ group.label }}</span>
+        <strong>{{ group.summary }}</strong>
+      </summary>
+      <div class="expectation-group-items">
+        {% for item in group.items %}
+          <article>
+            <small>{{ item.label }}</small>
+            <strong>{{ item.value }}</strong>
+            <p>{{ item.source }}{% if item.detail %} · {{ item.detail }}{% endif %}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </details>
+  {% endfor %}
+</div>

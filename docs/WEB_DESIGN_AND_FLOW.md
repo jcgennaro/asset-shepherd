@@ -53,6 +53,7 @@ and animation remain external work. This does not add those repair domains.
 | `/jobs/{job_id}?view=inspect` | Review measured facts, findings, and rule provenance | No |
 | `/jobs/{job_id}?view=decide` | Approve or reject the grouped normalization | Only approval can authorize it |
 | `/jobs/{job_id}?view=download` | Review verification and retrieve the result package | No |
+| `/feedback` | Record bounded feedback with the originating workflow context | Local feedback record only |
 
 Former `/stories/{role}` bookmarks redirect to `/`. Audience modes are no longer a primary product
 choice. Internally retained presentation labels do not affect policy or deterministic behavior.
@@ -184,10 +185,13 @@ not change.
 - The two-column shell retains the placeholder `LOGO` cell, persistent left navigation, current-step
   title, and full workspace.
 - Primary questions and actions use large type and available whitespace.
-- Target confirmation uses a wider canvas, human-readable metric units, and one collapsed rationale
-  sourced from the typed intake evidence.
-- Confirmation lists target-specific assumptions and keeps universal checks in one disclosure.
-  Corrections are ordinary-language edits that are reanalyzed, never a hidden mode or transform.
+- Target confirmation uses a wider canvas, human-readable metric units, and exactly three collapsed
+  groups: purpose, scale and pose, and structure and safety. Each group exposes at most three
+  supporting facts only after the user opens it.
+- The only target decision is **Did I get it right?** The user either continues or edits the same
+  description and asks for another interpretation; resubmitting unchanged text is also a retake.
+- **It’s not working for me** opens one reusable feedback page with the originating workflow
+  context, four bounded reasons, and an optional note of at most 1,000 characters.
 - Policy parameters, finding evidence, the confirmed story on job pages, upload notes, and
   verification details stay available through disclosures instead of competing with the next
   action.

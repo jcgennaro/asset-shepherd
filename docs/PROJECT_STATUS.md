@@ -92,10 +92,13 @@ before any AWS invocation or resource creation.
   web command and restore process state on exit. Windows PowerShell 5.1 parser, DPAPI round-trip,
   real server startup/shutdown, and static security acceptance pass; the scripts never contain or
   echo a key.
-- Target confirmation presentation: the proposal uses the wider workspace, reduces headline scale,
-  and displays small targets in centimeters or millimeters instead of decimal meters. One collapsed
-  rationale exposes the existing use/scale evidence and explicitly distinguishes interpretation
-  from GLB measurement; the primary action and adjustment remain unchanged.
+- Target confirmation presentation: the proposal uses the wider workspace, a restrained headline,
+  and human-readable metric units. Six assumptions and five invariants are compressed into three
+  collapsed groups with no more than three facts per expanded group. The only decision is whether
+  the agent got it right; the alternative reveals one prefilled description for another attempt.
+- Shared feedback: `/feedback` accepts context from any workflow surface, offers four bounded
+  reasons and an optional 1,000-character note, and records a local atomic JSON artifact without an
+  external service. Confirmation links include their intent or workspace reference and return path.
 - Lint: `uv run ruff check .` and `uv run ruff format --check .` — passed.
 - Type checking: `uv run pyright` — 0 errors, 0 warnings, 0 informations.
 - Local-consumer evidence: Blender 5.1.2 imported and re-exported the clean fixture with its source
@@ -144,10 +147,10 @@ before any AWS invocation or resource creation.
   a collapsed disclosure during intake so policy controls stay near the fold. At 390 × 844 the left
   workflow rail remains visible, content uses one column, horizontal overflow is absent, and browser
   diagnostics contain no warnings or errors.
-- D027 browser review confirms the new expectation sheet at the default desktop viewport and
-  390 × 844. The compact document width is 375 pixels within the 390-pixel viewport, with the
-  description-derived goal, product boundary, scale, orientation, grounding, and explicit
-  unspecified assembly assumption readable without a mode selector.
+- D027/D028 browser review confirms the three-group confirmation and shared feedback page at the
+  default desktop viewport and 390 × 844. The compact document width is 375 pixels within the
+  390-pixel viewport, all decisions and the feedback link remain visible, navigation starts at the
+  top, and browser diagnostics contain no warnings or errors.
 - Versioned policy intake remains intact: historical repository profiles stay byte-for-byte
   immutable for CLI and evidence reproduction, while new conversational jobs use the immutable
   `unreal-static-game-asset-family-v1` family. `Review all active rules` and `Why these rules?`

@@ -1,3 +1,5 @@
+window.scrollTo(0, 0);
+
 const fileInput = document.querySelector("[data-file-input]");
 const fileLabel = document.querySelector("[data-file-label]");
 

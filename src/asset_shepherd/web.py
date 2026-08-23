@@ -6,6 +6,7 @@ import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
@@ -105,6 +106,15 @@ class ExpectationView:
     value: str
     source: str
     detail: str
+
+
+@dataclass(frozen=True)
+class ExpectationGroupView:
+    """One of three progressively disclosed target-review groups."""
+
+    label: str
+    summary: str
+    items: tuple[ExpectationView, ...]
 
 
 @dataclass(frozen=True)
@@ -810,6 +820,65 @@ UNIVERSAL_EXPECTATIONS: tuple[tuple[str, str], ...] = (
     ),
 )
 
+FEEDBACK_CONTEXTS = {
+    "general": "Using Asset Shepherd",
+    "target-confirmation": "Reviewing the proposed target",
+    "rules-and-upload": "Reviewing rules or uploading a GLB",
+    "inspection": "Reviewing inspection results",
+    "approval": "Deciding whether to approve a repair",
+    "download": "Downloading the result",
+}
+
+FEEDBACK_REASONS = (
+    ("wrong-result", "The result is wrong"),
+    ("confusing", "The explanation is confusing"),
+    ("blocked", "I can\u2019t continue"),
+    ("other", "Something else"),
+)
+
+
+def _safe_feedback_return_path(value: str) -> str:
+    """Allow only an app-local path back from the shared feedback page."""
+    if (
+        not value.startswith("/")
+        or value.startswith("//")
+        or any(character in value for character in ("\r", "\n"))
+    ):
+        return "/"
+    return value
+
+
+def _write_feedback_record(
+    feedback_root: Path,
+    *,
+    context: str,
+    reference_id: str,
+    reason: str,
+    note: str,
+) -> str:
+    """Persist one local feedback record without introducing an external service."""
+    feedback_root.mkdir(parents=True, exist_ok=True)
+    feedback_id = uuid4().hex
+    destination = feedback_root / f"{feedback_id}.json"
+    temporary = destination.with_suffix(".tmp")
+    payload = {
+        "feedback_id": feedback_id,
+        "created_at": datetime.now(UTC).isoformat(),
+        "context": context,
+        "context_label": FEEDBACK_CONTEXTS[context],
+        "reference_id": reference_id,
+        "reason": reason,
+        "note": note,
+    }
+    temporary.write_text(
+        f"{json.dumps(payload, indent=2, sort_keys=True)}\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    temporary.replace(destination)
+    return feedback_id
+
+
 BASIS_LABELS = {
     "UNIVERSAL_INVARIANT": "Always-required invariant",
     "FROZEN_PROJECT_POLICY": "Target-specific expectation",
@@ -850,6 +919,8 @@ def _target_expectations(
     if target.target_use is None or target.target_height_cm is None:
         return ()
     evidence = {item.field: item for item in target.evidence}
+    use_evidence = evidence.get("target_use")
+    height_evidence = evidence.get("target_height_cm")
     full_static = target.target_use is AssetTargetUse.STATIC_GAME_ASSET
     orientation_value = (
         "Y-up; propose upright normalization if the measured dominant axis disagrees"
@@ -865,8 +936,8 @@ def _target_expectations(
         ExpectationView(
             label="Intended use",
             value=TARGET_USE_LABELS[target.target_use].capitalize(),
-            source=_evidence_source_label(evidence.get("target_use")),
-            detail="This is context and a support-boundary check, not a repair preset.",
+            source=_evidence_source_label(use_evidence),
+            detail=use_evidence.evidence if use_evidence else "",
         ),
         ExpectationView(
             label="Supported outcome",
@@ -876,34 +947,98 @@ def _target_expectations(
                 else "Static inspection and handoff; no rigging or animation repair"
             ),
             source="Current product boundary",
-            detail="The same deterministic checks and safety rules apply to every supported GLB.",
+            detail=(
+                "I can complete the static repair workflow."
+                if full_static
+                else (
+                    "I can inspect the static mesh, but rigging and animation stay in your "
+                    "creation tool."
+                )
+            ),
         ),
         ExpectationView(
             label="Real-world size",
             value=f"About {_display_target_height(target.target_height_cm)} tall",
-            source=_evidence_source_label(evidence.get("target_height_cm")),
-            detail="This target will be compared with measured world-space bounds.",
+            source=_evidence_source_label(height_evidence),
+            detail=height_evidence.evidence if height_evidence else "",
         ),
         ExpectationView(
             label="Orientation",
             value=orientation_value,
             source=_policy_source_label(policy_sources.get("orientation.require_y_up_geometry")),
-            detail="The GLB is measured before any rotation is proposed.",
+            detail="I\u2019ll measure the GLB before proposing any rotation.",
         ),
         ExpectationView(
             label="Grounding",
             value=grounding_value,
             source=_policy_source_label(policy_sources.get("orientation.require_ground_contact")),
-            detail="Hanging or hovering language can remove this target-specific goal.",
+            detail="I\u2019ll compare the asset\u2019s lowest point with the ground plane.",
         ),
         ExpectationView(
             label="Assembly",
             value="No semantic piece-count assumption",
             source="Unspecified",
             detail=(
-                "Inspection reports nodes, meshes, roots, and primitives. Asset Shepherd does not "
-                "merge, split, or guess semantic pieces."
+                "I\u2019ll report the structure I find without merging, splitting, or guessing "
+                "pieces."
             ),
+        ),
+    )
+
+
+def _expectation_groups(
+    target: TargetIntakeContract,
+    profile: ProjectProfile,
+    policy_sources: Mapping[str, str],
+) -> tuple[ExpectationGroupView, ...]:
+    """Compress the review into three conclusions with details on demand."""
+    expectations = _target_expectations(target, profile, policy_sources)
+    if len(expectations) != 6:
+        return ()
+    assert target.target_height_cm is not None
+    full_static = target.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    workflow_summary = (
+        "full static repair workflow" if full_static else "static inspection and handoff"
+    )
+    placement = [
+        f"About {_display_target_height(target.target_height_cm)} tall",
+        "Y-up" if profile.orientation.require_y_up_geometry else "orientation unrestricted",
+        "grounded" if profile.orientation.require_ground_contact else "ground contact optional",
+    ]
+    file_validity = ExpectationView(
+        label="File validity",
+        value="Valid GLB structure and geometry data",
+        source="Always required",
+        detail=(
+            "I\u2019ll check the container, references, geometry attributes, indices, and finite "
+            "values."
+        ),
+    )
+    preservation = ExpectationView(
+        label="Preservation and permission",
+        value="Source content preserved; physical changes require approval",
+        source="Always required",
+        detail=(
+            "I won\u2019t make artistic or unsupported structural edits. "
+            "I\u2019ll independently verify "
+            "any authorized physical change."
+        ),
+    )
+    return (
+        ExpectationGroupView(
+            label="Purpose",
+            summary=f"{expectations[0].value} → {workflow_summary}",
+            items=expectations[0:2],
+        ),
+        ExpectationGroupView(
+            label="Scale and pose",
+            summary=" · ".join(placement),
+            items=expectations[2:5],
+        ),
+        ExpectationGroupView(
+            label="Structure and safety",
+            summary="Piece count unspecified · source content protected",
+            items=(expectations[5], file_validity, preservation),
         ),
     )
 
@@ -1271,6 +1406,7 @@ def create_app(
         family.profile,
         analyzer,
     )
+    feedback_root = work_root / "feedback"
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     cast(dict[str, object], templates.env.globals)["static_version"] = _static_asset_version()
     app = FastAPI(
@@ -1352,7 +1488,7 @@ def create_app(
         approval_card = None
         if runtime_job is not None and runtime_job.pending_interrupt_id is not None:
             approval_card = runtime_job.approval_card()
-        target_expectations: tuple[ExpectationView, ...] = ()
+        expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
         if target_draft is not None and target_draft.ready_for_confirmation:
             if runtime_job is not None and workspace.record.profile_policy is not None:
@@ -1369,7 +1505,7 @@ def create_app(
                 )
                 expectation_profile = expectation_resolution.profile
                 expectation_sources = expectation_resolution.provenance.rule_sources
-            target_expectations = _target_expectations(
+            expectation_groups = _expectation_groups(
                 target_draft,
                 expectation_profile,
                 expectation_sources,
@@ -1391,8 +1527,7 @@ def create_app(
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,
                 "target_draft": workspace.record.target_draft,
-                "target_expectations": target_expectations,
-                "universal_expectations": UNIVERSAL_EXPECTATIONS,
+                "expectation_groups": expectation_groups,
                 "basis_labels": BASIS_LABELS,
                 "target_use_label": (
                     TARGET_USE_LABELS[workspace.record.target_draft.target_use]
@@ -1465,12 +1600,11 @@ def create_app(
                 "intent": intent,
                 "target_use_label": TARGET_USE_LABELS[intent.target_use],
                 "target_height_label": _display_target_height(intent.target_height_cm),
-                "target_expectations": _target_expectations(
+                "expectation_groups": _expectation_groups(
                     intent.target,
                     policy_proposal.resolution.profile,
                     policy_proposal.resolution.provenance.rule_sources,
                 ),
-                "universal_expectations": UNIVERSAL_EXPECTATIONS,
                 "error": error,
                 "active_mode": "confirm",
                 "active_style": "Confirm",
@@ -1528,6 +1662,88 @@ def create_app(
                 "active_style": "How it works",
             },
             headers={"Cache-Control": "no-store"},
+        )
+
+    def render_feedback(
+        request: Request,
+        *,
+        context: str,
+        reference_id: str,
+        return_path: str,
+        error: str | None = None,
+        note: str = "",
+        submitted: bool = False,
+        status_code: int = 200,
+    ) -> Response:
+        """Render the shared contextual feedback page."""
+        safe_context = context if context in FEEDBACK_CONTEXTS else "general"
+        return templates.TemplateResponse(
+            request=request,
+            name="feedback.html",
+            context={
+                "feedback_context": safe_context,
+                "feedback_context_label": FEEDBACK_CONTEXTS[safe_context],
+                "feedback_reasons": FEEDBACK_REASONS,
+                "reference_id": reference_id[:128],
+                "return_path": _safe_feedback_return_path(return_path),
+                "error": error,
+                "note": note,
+                "submitted": submitted,
+                "active_mode": "feedback",
+                "active_style": "Feedback",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def feedback_page(
+        request: Request,
+        context: str = "general",
+        reference_id: str = "",
+        return_path: str = "/",
+    ) -> Response:
+        """Accept feedback links from any workflow surface."""
+        return render_feedback(
+            request,
+            context=context,
+            reference_id=reference_id,
+            return_path=return_path,
+        )
+
+    def submit_feedback(
+        request: Request,
+        context: Annotated[str, Form(max_length=64)],
+        reference_id: Annotated[str, Form(max_length=128)],
+        return_path: Annotated[str, Form(max_length=512)],
+        reason: Annotated[str, Form(max_length=64)],
+        note: Annotated[str, Form(max_length=1000)] = "",
+    ) -> Response:
+        """Validate and locally record one reusable contextual feedback submission."""
+        safe_context = context if context in FEEDBACK_CONTEXTS else "general"
+        valid_reasons = {value for value, _ in FEEDBACK_REASONS}
+        if reason not in valid_reasons:
+            return render_feedback(
+                request,
+                context=safe_context,
+                reference_id=reference_id,
+                return_path=return_path,
+                error="Choose the option that comes closest.",
+                note=note,
+                status_code=400,
+            )
+        _write_feedback_record(
+            feedback_root,
+            context=safe_context,
+            reference_id=reference_id,
+            reason=reason,
+            note=note.strip(),
+        )
+        return render_feedback(
+            request,
+            context=safe_context,
+            reference_id=reference_id,
+            return_path=return_path,
+            submitted=True,
         )
 
     def create_intent(
@@ -2030,6 +2246,20 @@ def create_app(
         methods=["GET"],
         response_class=HTMLResponse,
         name="how_it_works",
+    )
+    app.add_api_route(
+        "/feedback",
+        feedback_page,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="feedback_page",
+    )
+    app.add_api_route(
+        "/feedback",
+        submit_feedback,
+        methods=["POST"],
+        response_class=HTMLResponse,
+        name="submit_feedback",
     )
     app.add_api_route(
         "/intents",

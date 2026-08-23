@@ -3,6 +3,7 @@
 # pygltflib is typed internally but does not publish PEP 561 metadata.
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false
 
+import json
 import re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -255,14 +256,20 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
 
     review = client.get(intent_path)
     assert review.status_code == 200
-    assert "Here\u2019s what I expect before I inspect." in review.text
+    assert "I\u2019d inspect this as a 1.72 m playable animated character." in review.text
     assert "Playable animated character" in review.text
     assert "About 1.72 m tall" in review.text
     assert "Static inspection and handoff; no rigging or animation repair" in review.text
-    assert "not a repair preset" in review.text
+    assert review.text.count('class="expectation-group"') == 3
+    assert "Purpose" in review.text
+    assert "Scale and pose" in review.text
+    assert "Structure and safety" in review.text
     assert 'name="target_use"' not in review.text
     assert 'name="target_height_m"' not in review.text
-    assert "Use this target" in review.text
+    assert "Did I get it right?" in review.text
+    assert "Yes, inspect this asset" in review.text
+    assert "No, edit and try again" in review.text
+    assert "It\u2019s not working for me" in review.text
     assert "no rigging or animation repair" in review.text
     assert "Choose your GLB file" not in review.text
     assert "Review rules" not in review.text
@@ -401,12 +408,12 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     assert "Static game asset" in proposal.text
     assert "About 800 m tall" in proposal.text
     assert "quick answer" not in proposal.text
-    assert "Tell me what I misunderstood" in proposal.text
-    assert "Show inference evidence" in proposal.text
+    assert "No, edit and try again" in proposal.text
+    assert "Show inference evidence" not in proposal.text
     assert "A mountain is an environmental feature." in proposal.text
-    assert "not a measurement of the GLB" in proposal.text
     assert "No semantic piece-count assumption" in proposal.text
-    assert "Always checked for every GLB" in proposal.text
+    assert proposal.text.count('class="expectation-group"') == 3
+    assert "Always checked for every GLB" not in proposal.text
     assert 'name="target_use"' not in proposal.text
     assert 'name="target_height_m"' not in proposal.text
 
@@ -418,6 +425,48 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     assert revised.status_code == 303
     adjusted = client.get(intent_path)
     assert "About 600 m tall" in adjusted.text
+
+
+def test_shared_feedback_page_records_workflow_context(tmp_path: Path) -> None:
+    """One reusable feedback page stores bounded reasons, notes, and workflow context."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+
+    page = client.get(
+        "/feedback",
+        params={
+            "context": "target-confirmation",
+            "reference_id": "intent-123",
+            "return_path": "/intents/intent-123",
+        },
+    )
+    assert page.status_code == 200
+    assert "What isn\u2019t working?" in page.text
+    assert "Reviewing the proposed target" in page.text
+    assert page.text.count('name="reason"') == 4
+    assert 'maxlength="1000"' in page.text
+
+    submitted = client.post(
+        "/feedback",
+        data={
+            "context": "target-confirmation",
+            "reference_id": "intent-123",
+            "return_path": "/intents/intent-123",
+            "reason": "wrong-result",
+            "note": "The proposed scale ignored the description.",
+        },
+    )
+    assert submitted.status_code == 200
+    assert "Thanks. I recorded that." in submitted.text
+    assert 'href="/intents/intent-123"' in submitted.text
+
+    records = list((work_root / "feedback").glob("*.json"))
+    assert len(records) == 1
+    payload = json.loads(records[0].read_text(encoding="utf-8"))
+    assert payload["context"] == "target-confirmation"
+    assert payload["reference_id"] == "intent-123"
+    assert payload["reason"] == "wrong-result"
+    assert payload["note"] == "The proposed scale ignored the description."
 
 
 def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_height(

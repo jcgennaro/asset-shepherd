@@ -2,56 +2,30 @@
 {% block content %}
   <section class="intent-confirmation" data-focus-area="confirm intent" aria-labelledby="confirm-title">
     <header class="intent-heading">
-      <p class="section-label">Target expectations · not GLB findings</p>
-      <h2 id="confirm-title">Here’s what I expect before I inspect.</h2>
-      <p class="proposal-source">“{{ intent.original_description }}”</p>
+      <h2 id="confirm-title">I’d inspect this as a {{ target_height_label }} {{ target_use_label|lower }}.</h2>
     </header>
 
     {% if error %}<div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>{% endif %}
 
-    <section class="expectation-sheet" aria-labelledby="expectation-title">
-      <div class="expectation-sheet-heading">
-        <div><p class="section-label">From your description</p><h3 id="expectation-title">Target-specific assumptions</h3></div>
-        <span>Review before upload</span>
-      </div>
-      <div class="expectation-list">
-        {% for expectation in target_expectations %}
-          <article>
-            <div><small>{{ expectation.label }}</small><strong>{{ expectation.value }}</strong></div>
-            <span>{{ expectation.source }}</span>
-            <p>{{ expectation.detail }}</p>
-          </article>
-        {% endfor %}
-      </div>
-      <details class="universal-expectations">
-        <summary>Always checked for every GLB</summary>
-        <dl>
-          {% for label, detail in universal_expectations %}<div><dt>{{ label }}</dt><dd>{{ detail }}</dd></div>{% endfor %}
-        </dl>
-      </details>
+    <section class="expectation-sheet" aria-label="Review the proposed target">
+      {% include "_expectation_groups.html" %}
     </section>
 
-    <div class="proposal-decision-row">
-      <details class="proposal-evidence">
-        <summary>Show inference evidence</summary>
-        <dl>
-          {% for item in intent.target.evidence %}<div><dt>{{ "Use" if item.field == "target_use" else "Scale" }}</dt><dd>{{ item.evidence }}</dd></div>{% endfor %}
-        </dl>
-        <p>This is an interpretation of your description, not a measurement of the GLB.</p>
-      </details>
-      <form action="{{ url_for('confirm_intent', intent_id=intent.intent_id) }}" method="post" data-busy-form>
-        <button class="primary-button" type="submit" data-submit-button>Use this target <span aria-hidden="true">→</span></button>
-      </form>
-    </div>
-    <details class="intent-adjust">
-      <summary>Tell me what I misunderstood</summary>
-      <form action="{{ url_for('revise_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form" data-busy-form>
-        <label><span>Edit the description in your own words</span><textarea name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea></label>
-        <p>I’ll infer the target again. You are not choosing a hidden repair mode.</p>
-        <button class="secondary-button" type="submit" data-submit-button>Reinterpret description</button>
-      </form>
-      <a class="back-link" href="{{ url_for('home') }}">Start over with a different description</a>
-    </details>
-    <p class="fine-print">No repair starts until inspection; physical changes still require approval.</p>
+    <section class="confirmation-question" aria-labelledby="confirmation-question-title">
+      <h3 id="confirmation-question-title">Did I get it right?</h3>
+      <div class="confirmation-actions">
+        <form action="{{ url_for('confirm_intent', intent_id=intent.intent_id) }}" method="post" data-busy-form>
+          <button class="primary-button" type="submit" data-submit-button>Yes, inspect this asset <span aria-hidden="true">→</span></button>
+        </form>
+        <details class="intent-adjust">
+          <summary>No, edit and try again</summary>
+          <form action="{{ url_for('revise_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form" data-busy-form>
+            <label><span>Asset description</span><textarea name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea></label>
+            <button class="secondary-button" type="submit" data-submit-button>Try again</button>
+          </form>
+        </details>
+      </div>
+      <a class="feedback-link" href="{{ url_for('feedback_page') }}?context=target-confirmation&amp;reference_id={{ intent.intent_id }}&amp;return_path={{ request.url.path }}">It’s not working for me</a>
+    </section>
   </section>
 {% endblock %}
