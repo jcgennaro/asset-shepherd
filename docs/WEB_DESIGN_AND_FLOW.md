@@ -27,7 +27,7 @@ The former entry point asked whether someone was a game developer, 3D artist, or
 Those routes changed labels but not behavior, and did not answer the important project questions:
 what the person meant to create, what it should be used for, and how large it should be.
 
-The primary entry point now asks one question: **What were you trying to make?** It accepts a
+The primary entry point now asks one question: **Describe the model you’re working on.** It accepts a
 12–600 character plain-text description. A typed intake pass proposes supported intended use and a
 plausible semantic vertical scale, even when the prompt contains no number. A clarification view
 asks one natural question only when a required field remains below the confidence gate. It never

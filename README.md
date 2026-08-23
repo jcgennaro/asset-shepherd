@@ -53,7 +53,8 @@ Start Asset Shepherd later with one command:
 .\scripts\Start-AssetShepherd.ps1
 ```
 
-Open `http://127.0.0.1:8000`. The flow starts with one question: what the user was trying to make.
+Open `http://127.0.0.1:8000`. The flow starts by asking the user to describe the model they are
+already working on.
 The interim OpenAI intake provider uses `gpt-5.6-luna` with `xhigh` reasoning to propose a supported
 use and plausible semantic scale from ordinary language. Only the description is sent; the GLB
 stays local. The user adjusts or confirms that typed proposal before rules or upload are available.

@@ -3,8 +3,8 @@
   <section class="conversation-start" data-focus-area="start conversation" aria-labelledby="conversation-title">
     <header class="intent-heading">
       <p class="section-label">One asset · one durable workspace</p>
-      <h2 id="conversation-title">Show me what you made.</h2>
-      <p>Describe it naturally and upload the untouched GLB. I’ll propose the target.</p>
+      <h2 id="conversation-title">Describe the model you’re working on.</h2>
+      <p>Tell me what it should be, how it will be used, and add the untouched GLB.</p>
     </header>
 
     {% if error %}
@@ -13,7 +13,7 @@
 
     <form action="{{ url_for('create_hosted_workspace') }}" method="post" enctype="multipart/form-data" class="conversation-start-form" data-busy-form>
       <label>
-        <span>What were you trying to make?</span>
+        <span>Model description</span>
         <textarea name="description" minlength="12" maxlength="600" rows="4" required autofocus placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.">{{ description }}</textarea>
       </label>
       <label class="drop-zone compact" for="hosted-asset">

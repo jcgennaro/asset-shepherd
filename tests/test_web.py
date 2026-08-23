@@ -151,10 +151,10 @@ def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: 
 
     assert response.status_code == 200
     assert "<title>Asset Shepherd -- Describe</title>" in response.text
-    assert "What were you trying to make?" in response.text
+    assert "Describe the model you\u2019re working on." in response.text
     assert 'name="target_use"' not in response.text
     assert 'name="target_height_m"' not in response.text
-    assert "propose the use and scale" in response.text
+    assert "what it should be, how it will be used" in response.text
     assert "Propose a target" in response.text
     assert "Game developer" not in response.text
     assert "3D artist" not in response.text

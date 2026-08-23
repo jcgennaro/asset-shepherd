@@ -3,8 +3,8 @@
   <section class="intent-panel" data-focus-area="describe intent" aria-labelledby="intent-title">
     <a class="back-link" href="{{ url_for('hosted_home') }}">Try the durable conversation-led workspace →</a>
     <header class="intent-heading">
-      <h2 id="intent-title">What were you trying to make?</h2>
-      <p>Describe it naturally. I’ll propose the use and scale.</p>
+      <h2 id="intent-title">Describe the model you’re working on.</h2>
+      <p>Tell me what it should be, how it will be used, and any scale clue you know.</p>
     </header>
 
     {% if error %}
@@ -13,7 +13,7 @@
 
     <form action="{{ url_for('create_intent') }}" method="post" class="intent-form" data-busy-form>
       <label class="intent-description">
-        <span>Your asset idea</span>
+        <span>Model description</span>
         <textarea name="description" minlength="12" maxlength="600" rows="6" required autofocus placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.">{{ values.get('description', '') }}</textarea>
       </label>
 

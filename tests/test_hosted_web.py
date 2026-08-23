@@ -38,7 +38,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
 
     entry = client.get("/workspace")
     assert entry.status_code == 200
-    assert "Show me what you made." in entry.text
+    assert "Describe the model you\u2019re working on." in entry.text
     assert "Choose the untouched GLB" in entry.text
     assert entry.text.count('data-focus-area="') == 1
 
