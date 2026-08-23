@@ -61,7 +61,9 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "inspect this as a 1.8 m static game asset." in measured.text
     assert measured.text.count('class="expectation-group"') == 3
     assert "Did I get it right?" in measured.text
-    assert "No, edit and try again" in measured.text
+    assert "<summary>No</summary>" in measured.text
+    assert ">Yes</button>" in measured.text
+    assert 'textarea class="asset-description-input"' in measured.text
     assert "Job Contract" in measured.text
     assert "Rules are derived only after target confirmation." in measured.text
     assert not (work_root / "hosted" / workspace_id / "output").exists()
@@ -156,7 +158,7 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     proposal = client.get(workspace_path)
     assert "inspect this as a 1.8 m static game asset." in proposal.text
     assert "1.8 m" in proposal.text
-    assert "No, edit and try again" in proposal.text
+    assert "<summary>No</summary>" in proposal.text
     assert proposal.text.count('class="expectation-group"') == 3
     assert "No semantic piece-count assumption" in proposal.text
     assert 'name="target_use"' not in proposal.text

@@ -12,7 +12,7 @@
     <form action="{{ url_for('create_intent') }}" method="post" class="intent-form" data-busy-form>
       <label class="intent-description">
         <span>Model description</span>
-        <textarea name="description" minlength="12" maxlength="600" rows="6" required autofocus placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.">{{ values.get('description', '') }}</textarea>
+        <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" rows="6" required autofocus placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.">{{ values.get('description', '') }}</textarea>
       </label>
 
       <button class="primary-button" type="submit" data-submit-button>Propose a target <span aria-hidden="true">→</span></button>

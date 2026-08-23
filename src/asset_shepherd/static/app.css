@@ -3252,6 +3252,34 @@ model-viewer {
   line-height: 1.45;
 }
 
+textarea.asset-description-input {
+  width: 100%;
+  min-height: 160px;
+  padding: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.5;
+}
+
+textarea.asset-description-input::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+  opacity: 1;
+}
+
+textarea.asset-description-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
 @media (max-width: 1050px) {
   .hosted-columns {
     grid-template-columns: 1fr;

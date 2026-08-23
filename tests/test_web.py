@@ -267,8 +267,11 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     assert 'name="target_use"' not in review.text
     assert 'name="target_height_m"' not in review.text
     assert "Did I get it right?" in review.text
-    assert "Yes, inspect this asset" in review.text
-    assert "No, edit and try again" in review.text
+    assert ">Yes</button>" in review.text
+    assert "<summary>No</summary>" in review.text
+    assert "Yes, inspect this asset" not in review.text
+    assert "No, edit and try again" not in review.text
+    assert 'textarea class="asset-description-input"' in review.text
     assert "It\u2019s not working for me" in review.text
     assert "no rigging or animation repair" in review.text
     assert "Choose your GLB file" not in review.text
@@ -408,7 +411,7 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     assert "Static game asset" in proposal.text
     assert "About 800 m tall" in proposal.text
     assert "quick answer" not in proposal.text
-    assert "No, edit and try again" in proposal.text
+    assert "<summary>No</summary>" in proposal.text
     assert "Show inference evidence" not in proposal.text
     assert "A mountain is an environmental feature." in proposal.text
     assert "No semantic piece-count assumption" in proposal.text

@@ -34,7 +34,7 @@
               <input type="hidden" name="command_id" value="{{ command_id }}">
               {% if target_draft.target_use %}<p class="fine-print">I’m treating it as {{ target_use_label }}; I only need the size.</p>{% elif target_draft.target_height_cm %}<p class="fine-print">I have the {{ target_height_label }} height; I need clearer intended use.</p>{% endif %}
               {% if "target_use" in target_draft.missing_fields %}<label><span>Add what this should be, how it will be used, and any scale clue you know</span>
-                <textarea name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea>
+                <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea>
               </label>{% elif "target_height_cm" in target_draft.missing_fields %}<label><span>What real-world height should it have?</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>{% endif %}
               <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
             </form>
@@ -49,13 +49,13 @@
                   <form action="{{ url_for('confirm_hosted_target', workspace_id=record.workspace_id) }}" method="post" data-busy-form>
                     <input type="hidden" name="command_id" value="{{ command_id }}">
                     <input type="hidden" name="accept_supported_goal" value="true">
-                    <button class="primary-button" type="submit" data-submit-button>Yes, inspect this asset <span aria-hidden="true">→</span></button>
+                    <button class="primary-button" type="submit" data-submit-button>Yes</button>
                   </form>
                   <details class="intent-adjust">
-                    <summary>No, edit and try again</summary>
+                    <summary>No</summary>
                     <form action="{{ url_for('revise_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="intent-form" data-busy-form>
                       <input type="hidden" name="command_id" value="{{ command_id }}">
-                      <label><span>Asset description</span><textarea name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea></label>
+                      <label><span>Asset description</span><textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea></label>
                       <button class="secondary-button" type="submit" data-submit-button>Try again</button>
                     </form>
                   </details>

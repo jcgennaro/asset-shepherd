@@ -14,7 +14,7 @@
       {% if "target_use" in intent.target.missing_fields %}
         <label>
           <span>Add what this should be, how it will be used, and any scale clue you know</span>
-          <textarea name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea>
+          <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea>
         </label>
       {% elif "target_height_cm" in intent.target.missing_fields %}
         <label>

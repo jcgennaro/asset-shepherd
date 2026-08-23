@@ -15,12 +15,12 @@
       <h3 id="confirmation-question-title">Did I get it right?</h3>
       <div class="confirmation-actions">
         <form action="{{ url_for('confirm_intent', intent_id=intent.intent_id) }}" method="post" data-busy-form>
-          <button class="primary-button" type="submit" data-submit-button>Yes, inspect this asset <span aria-hidden="true">→</span></button>
+          <button class="primary-button" type="submit" data-submit-button>Yes</button>
         </form>
         <details class="intent-adjust">
-          <summary>No, edit and try again</summary>
+          <summary>No</summary>
           <form action="{{ url_for('revise_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form" data-busy-form>
-            <label><span>Asset description</span><textarea name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea></label>
+            <label><span>Asset description</span><textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea></label>
             <button class="secondary-button" type="submit" data-submit-button>Try again</button>
           </form>
         </details>
