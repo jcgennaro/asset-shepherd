@@ -97,7 +97,9 @@ before any AWS invocation or resource creation.
   collapsed groups with no more than three facts per expanded group. The only decision is whether
   the agent got it right; its controls are simply **Yes** and **No**. **No** reveals one prefilled
   description for another attempt, using the same 16-pixel regular-weight field styling as entry
-  and clarification.
+  and clarification. Full-page browser comparison at 1366 × 768 and 390 × 844 confirms identical
+  panel bounds, heading typography/position, and active description-field geometry and styling;
+  stable scrollbar space prevents width shifts between steps.
 - Shared feedback: `/feedback` accepts context from any workflow surface, offers four bounded
   reasons and an optional 1,000-character note, and records a local atomic JSON artifact without an
   external service. Confirmation links include their intent or workspace reference and return path.

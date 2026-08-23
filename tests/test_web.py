@@ -169,6 +169,36 @@ def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: 
     _assert_focus_area_budget(response.text)
 
 
+def test_describe_and_confirm_share_layout_and_description_field_rules(tmp_path: Path) -> None:
+    """Forward and backward target entry use one width, type scale, and field geometry."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    css = client.get("/static/app.css")
+
+    assert css.status_code == 200
+    assert re.search(
+        r"\.intent-panel,\s*\.intent-confirmation\s*\{[^}]*width: 100%;[^}]*margin:",
+        css.text,
+        re.DOTALL,
+    )
+    assert re.search(
+        r"\.intent-panel \.intent-heading h2,\s*"
+        r"\.intent-confirmation \.intent-heading h2\s*\{[^}]*"
+        r"font-size: clamp\(1\.75rem, 2\.4vw, 2\.5rem\);",
+        css.text,
+        re.DOTALL,
+    )
+    assert re.search(
+        r"textarea\.asset-description-input\s*\{[^}]*width: 100%;[^}]*"
+        r"height: 168px;[^}]*font-size: 1rem;[^}]*font-weight: 400;",
+        css.text,
+        re.DOTALL,
+    )
+    assert re.search(
+        r"\.confirmation-actions \.intent-adjust \.intent-form\s*\{\s*width: 100%;",
+        css.text,
+    )
+
+
 def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
     tmp_path: Path,
 ) -> None:

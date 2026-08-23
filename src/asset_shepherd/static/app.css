@@ -30,6 +30,7 @@ html {
   min-width: 320px;
   min-height: 100%;
   background: var(--bg);
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -547,25 +548,23 @@ a {
   text-decoration: none;
 }
 
-.intent-panel {
+.intent-panel,
+.intent-confirmation {
   width: 100%;
   margin: clamp(16px, 3vh, 40px) 0 0;
 }
 
-.intent-panel .intent-heading {
+.intent-panel .intent-heading,
+.intent-confirmation .intent-heading {
   max-width: none;
 }
 
-.intent-panel .intent-heading h2 {
+.intent-panel .intent-heading h2,
+.intent-confirmation .intent-heading h2 {
   max-width: none;
   font-size: clamp(1.75rem, 2.4vw, 2.5rem);
   letter-spacing: -0.03em;
   line-height: 1.15;
-}
-
-.intent-confirmation {
-  width: min(1240px, 100%);
-  margin: clamp(24px, 5vh, 64px) auto 0;
 }
 
 .intent-heading {
@@ -578,16 +577,6 @@ a {
   font-weight: 520;
   letter-spacing: -0.055em;
   line-height: 0.98;
-}
-
-.intent-confirmation .intent-heading {
-  max-width: 1160px;
-}
-
-.intent-confirmation .intent-heading h2 {
-  max-width: 1120px;
-  font-size: clamp(2rem, 3.5vw, 3.5rem);
-  line-height: 1.08;
 }
 
 .intent-heading > p:last-child {
@@ -889,7 +878,7 @@ a {
 }
 
 .confirmation-actions .intent-adjust .intent-form {
-  width: min(760px, 100%);
+  width: 100%;
 }
 
 .feedback-link {
@@ -2705,10 +2694,6 @@ model-viewer {
     width: 100%;
   }
 
-  .intent-confirmation .intent-heading h2 {
-    font-size: clamp(1.8rem, 7vw, 2.3rem);
-  }
-
   .intent-confirm-actions .secondary-button,
   .intent-confirm-actions form,
   .intent-confirm-actions .primary-button {
@@ -3254,7 +3239,8 @@ model-viewer {
 
 textarea.asset-description-input {
   width: 100%;
-  min-height: 160px;
+  height: 168px;
+  min-height: 168px;
   padding: 20px;
   border: 1px solid var(--line-strong);
   border-radius: 12px;
