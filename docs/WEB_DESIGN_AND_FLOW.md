@@ -27,11 +27,13 @@ The former entry point asked whether someone was a game developer, 3D artist, or
 Those routes changed labels but not behavior, and did not answer the important project questions:
 what the person meant to create, what it should be used for, and how large it should be.
 
-The primary entry point now asks one question: **Describe the model you’re working on.** It accepts a
-12–600 character plain-text description. A typed intake pass proposes supported intended use and a
-plausible semantic vertical scale, even when the prompt contains no number. A clarification view
-asks one natural question only when a required field remains below the confidence gate. It never
-shows a field whose value is already supported by the proposal.
+The primary entry point now gives one instruction: **Describe your model, how it will be used, and
+its intended scale.** It accepts a 12–600 character plain-text description. The entry surface does
+not repeat that instruction or expose privacy, implementation, or alternate-workflow notes. A typed
+intake pass proposes supported intended use and a plausible semantic vertical scale, even when the
+prompt contains no number. A clarification view asks one natural question only when a required
+field remains below the confidence gate. It never shows a field whose value is already supported by
+the proposal.
 
 Asset Shepherd drafts one exact first-person target story. The user must review and agree to that
 story before seeing validation rules or an upload control. The description is target metadata, not

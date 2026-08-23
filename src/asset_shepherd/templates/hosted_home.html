@@ -2,9 +2,7 @@
 {% block content %}
   <section class="conversation-start" data-focus-area="start conversation" aria-labelledby="conversation-title">
     <header class="intent-heading">
-      <p class="section-label">One asset · one durable workspace</p>
-      <h2 id="conversation-title">Describe the model you’re working on.</h2>
-      <p>Tell me what it should be, how it will be used, and add the untouched GLB.</p>
+      <h2 id="conversation-title">Describe your model, how it will be used, and its intended scale.</h2>
     </header>
 
     {% if error %}
@@ -19,10 +17,9 @@
       <label class="drop-zone compact" for="hosted-asset">
         <input id="hosted-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
         <strong data-file-label>Choose the untouched GLB</strong>
-        <span>The GLB stays local{% if semantic_intake_external %}; only your description is sent to the intake model{% endif %}</span>
+        <span>Static GLB · up to 50 MB</span>
       </label>
       <button class="primary-button" type="submit" data-submit-button>Measure my asset <span aria-hidden="true">→</span></button>
     </form>
-    <p class="fine-print"><a href="{{ url_for('home') }}">Use the form-led reference workflow instead</a></p>
   </section>
 {% endblock %}

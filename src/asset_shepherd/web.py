@@ -1284,7 +1284,6 @@ def create_app(
             context={
                 "error": error,
                 "values": values or {},
-                "semantic_intake_external": analyzer.provider != "deterministic",
                 "active_mode": "describe",
                 "active_style": "Describe",
             },
@@ -1305,9 +1304,8 @@ def create_app(
             context={
                 "error": error,
                 "description": description,
-                "semantic_intake_external": analyzer.provider != "deterministic",
                 "active_mode": "conversation",
-                "active_style": "Conversation",
+                "active_style": "New asset",
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},

@@ -1,10 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
   <section class="intent-panel" data-focus-area="describe intent" aria-labelledby="intent-title">
-    <a class="back-link" href="{{ url_for('hosted_home') }}">Try the durable conversation-led workspace →</a>
     <header class="intent-heading">
-      <h2 id="intent-title">Describe the model you’re working on.</h2>
-      <p>Tell me what it should be, how it will be used, and any scale clue you know.</p>
+      <h2 id="intent-title">Describe your model, how it will be used, and its intended scale.</h2>
     </header>
 
     {% if error %}
@@ -17,7 +15,6 @@
         <textarea name="description" minlength="12" maxlength="600" rows="6" required autofocus placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.">{{ values.get('description', '') }}</textarea>
       </label>
 
-      <p class="intent-boundary">{% if semantic_intake_external %}Only this description is sent to the intake model; your GLB stays local. {% endif %}You confirm the proposal before inspection.</p>
       <button class="primary-button" type="submit" data-submit-button>Propose a target <span aria-hidden="true">→</span></button>
     </form>
   </section>

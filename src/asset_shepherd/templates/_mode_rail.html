@@ -5,13 +5,13 @@
 
   {% if active_mode in ['conversation', 'help'] %}
   <nav class="mode-nav intent-rail" aria-label="Conversation-led workflow">
-    <p class="rail-group-label">Durable workspace</p>
-    <a class="mode-link{% if active_mode == 'conversation' %} active{% endif %}" href="{{ '#workspace' if active_mode == 'conversation' else url_for('hosted_home') }}" title="Conversation and the visible Job Contract">
+    <p class="rail-group-label">Asset workflow</p>
+    <a class="mode-link{% if active_mode == 'conversation' %} active{% endif %}" href="{{ '#workspace' if active_mode == 'conversation' else url_for('hosted_home') }}" title="Open your asset workspace">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 3V5Z"/></svg>
       <span class="mode-label">Workspace</span>
     </a>
     <div class="rail-actions">
-      <a class="mode-link utility-tile" href="{{ url_for('hosted_home') }}" title="Start a new durable asset workspace">
+      <a class="mode-link utility-tile" href="{{ url_for('hosted_home') }}" title="Start a new asset">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span class="mode-label">New asset</span>
       </a>
@@ -19,15 +19,11 @@
         <span class="help-icon" aria-hidden="true">?</span>
         <span class="mode-label">How it works</span>
       </a>
-      <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Open the M8 form-led comparison workflow">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5zM8 9h8M8 13h8"/></svg>
-        <span class="mode-label">Form reference</span>
-      </a>
     </div>
   </nav>
   {% else %}
   <nav class="mode-nav intent-rail" aria-label="Intent-first workflow">
-    <p class="rail-group-label">One shared workflow</p>
+    <p class="rail-group-label">Workflow</p>
     <ol>
       <li class="{% if active_mode == 'describe' %}active{% endif %}"><span>1</span><strong>Describe</strong></li>
       <li class="{% if active_mode == 'confirm' %}active{% endif %}"><span>2</span><strong>Agree</strong></li>
@@ -36,7 +32,7 @@
       <li class="{% if active_mode == 'download' %}active{% endif %}"><span>5</span><strong>Download</strong></li>
     </ol>
     <div class="rail-actions">
-      <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Start a new target story">
+      <a class="mode-link utility-tile" href="{{ url_for('home') }}" title="Start a new asset">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span class="mode-label">New asset</span>
       </a>
