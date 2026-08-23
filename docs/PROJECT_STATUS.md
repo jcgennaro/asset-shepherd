@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** Derived grounding, evidence-backed failure UI, and bounded reassessment (this file is included)
+**Current commit:** Version-2 agent operating contract (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -45,6 +45,14 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
+- Agent operating contract: prompt version 2 now defines the user's goal, evidence and authorization
+  boundaries, concise technical-art voice, structured-control versus free-text explanation split,
+  bounded tool workflow, stop conditions, prompt-injection handling, on-topic behavior, and private
+  content limits. The confirmed target and complete frozen policy are appended as delimited JSON job
+  data. Tool descriptions now state prerequisites, important returns, and failure behavior. The
+  interim Luna intake shares the same private topic/content boundary. New `agent_result.json` records
+  use prompt version 2 while version-1 records remain valid. D034 and focused zero-network tests cover
+  the contract; representative live-model conversational evaluation remains open.
 - Derived normalization postconditions: grounding is now calculated from the bounds produced by
   the proposed scale-and-orientation matrix. A grounded Z-up regression proves the grouped plan
   includes scale, orientation, and newly required grounding; the repaired asset is Y-up, 3.5 m

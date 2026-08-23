@@ -33,28 +33,48 @@ class AssetShepherdTools:
 
     @tool(name="inspect_asset_for_job")
     def inspect_asset_for_job(self) -> dict[str, Any]:
-        """Inspect the configured GLB and return deterministic structured facts."""
+        """Measure the configured GLB without changing it; always use this first.
+
+        Returns the authoritative inspection, including measured package and geometry facts,
+        eligibility, findings, evidence, and rule provenance. Raises a workflow error when the
+        configured input cannot be inspected.
+
+        """
         return self.job.inspect().model_dump(mode="json")
 
     @tool(name="list_repair_candidates")
     def list_repair_candidates(self) -> dict[str, Any]:
-        """Return the registered deterministic version-1 repair candidates."""
+        """Build the deterministic repair registry after inspection, without changing the GLB.
+
+        Returns exact candidate IDs, authorization classes, finding links, payload evidence, and
+        blocked reasons. Use only these registered candidates in the selection tool.
+
+        """
         return self.job.list_candidates().model_dump(mode="json")
 
     @tool(name="select_repair_candidates")
     def select_repair_candidates(self, candidate_ids: list[str]) -> dict[str, Any]:
-        """Select registered repair candidates using their exact IDs.
+        """Freeze one subset of the registered plan before execution.
 
         Args:
             candidate_ids: Candidate IDs chosen from list_repair_candidates. Every AUTO_SAFE ID
                 must be included; unregistered IDs are rejected.
+
+        Returns the validated plan ID and selected IDs. Raises a workflow error for unknown,
+        duplicate, omitted AUTO_SAFE, or repeated selections. This tool performs no mutation.
 
         """
         return self.job.select_candidates(candidate_ids).model_dump(mode="json")
 
     @tool(context=True, name="execute_selected_repairs")
     def execute_selected_repairs(self, tool_context: ToolContext) -> dict[str, Any]:
-        """Execute selected repairs after the native approval interrupt, if required."""
+        """Execute the frozen selection, using a native interrupt for physical normalization.
+
+        Call only after selection. The tool supplies the exact approval card and validates the
+        returned candidate and interrupt IDs; free text cannot authorize it. A rejection is recorded
+        and not executed. Returns source/output hashes and executed/rejected candidate IDs.
+
+        """
         card = self.job.approval_card()
         if card is None:
             return _outcome_json(self.job.execute(approved=None, interrupt_id=None))
@@ -77,7 +97,13 @@ class AssetShepherdTools:
 
     @tool(name="verify_and_package")
     def verify_and_package(self) -> dict[str, Any]:
-        """Verify/package a repaired candidate, or package safe diagnostics for a blocked plan."""
+        """Independently reload, verify, and package the selected workflow result.
+
+        Use after execution, rejection, or a blocked plan. Returns the authoritative verification
+        state, final job result when complete, remaining warnings, and whether one fresh
+        reassessment is available. A failed candidate is never marked ready.
+
+        """
         verification, result = self.job.verify_and_package()
         return {
             "verification": verification.model_dump(mode="json"),
@@ -89,7 +115,13 @@ class AssetShepherdTools:
 
     @tool(name="reassess_candidate_after_verification_failure")
     def reassess_candidate_after_verification_failure(self) -> dict[str, Any]:
-        """Reinspect a failed candidate and derive a fresh, unexecuted repair plan."""
+        """After a failed verification, derive one fresh plan from the failed on-disk candidate.
+
+        Use only when verify_and_package reports reassessment_available. Returns an unexecuted plan
+        and whether it would need a new approval. It never reapplies the old plan or mutates the
+        candidate, and a second reassessment raises a workflow error.
+
+        """
         plan = self.job.reassess_candidate_after_failure()
         return {
             "repair_plan": plan.model_dump(mode="json"),

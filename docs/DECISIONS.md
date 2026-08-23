@@ -4,6 +4,49 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D034 — Prose explains; structured controls decide
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation
+
+**Context**
+
+The version-1 workflow prompt was primarily a seven-step tool script. It protected execution order,
+but did not adequately teach the model the user's goal, distinguish explanatory prose from interface
+controls, define the product's voice, carry the confirmed target into the run, or resist instructions
+embedded in user and asset data. Tool descriptions were too short to tell a hosted model their
+prerequisites, important outputs, and failure behavior.
+
+**Decision**
+
+Adopt the version-2 operating contract in `docs/AGENT_OPERATING_CONTRACT.md`. Treat the model as a
+technical-art collaborator for one existing GLB. Keep the initial model description as the primary
+open text input and use structured choices and buttons for later decisions. Let the model produce
+free-text explanations of inference, evidence, failure, and next action, but never let prose approve
+a repair, alter the Job Contract, or override a deterministic result.
+
+Keep stable role, authority, tone, cross-tool order, stop conditions, topic limits, and private
+content boundaries in the system prompt. Put exact tool behavior in concise tool descriptions. Append
+the confirmed target and frozen policy as delimited JSON job data, explicitly untrusted as
+instructions. Share the same prompt-injection and content boundary with the interim semantic-intake
+model. New runs record prompt version 2 while old version-1 results remain loadable.
+
+**Evidence and consequences**
+
+Focused zero-network tests prove version provenance, stable/dynamic separation, confirmed intent and
+policy delivery, prompt-injection treatment, shared refusal behavior, and the unchanged native
+Strands approve/reject/verify flow. The public artifact schema accepts prompt versions 1 and 2 and
+defaults new records to 2.
+
+This establishes the contract a live Bedrock model must follow; it does not claim that the current
+scripted hosted harness produces model-authored prose or that live conversational quality has passed
+evaluation. Representative live traces remain required at the existing AWS checkpoint.
+
 ### D033 — The Job Contract owns conversation state across model providers
 
 **Date:** 2026-08-23

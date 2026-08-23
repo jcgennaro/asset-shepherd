@@ -23,7 +23,11 @@ from strands.types.streaming import StreamEvent
 from strands.types.tools import ToolChoice, ToolSpec
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
-from asset_shepherd.agent_prompt import AGENT_PROMPT_VERSION, AGENT_SYSTEM_PROMPT_V1
+from asset_shepherd.agent_prompt import (
+    AGENT_PROMPT_VERSION,
+    AGENT_SYSTEM_PROMPT_V2,
+    build_agent_start_prompt,
+)
 from asset_shepherd.agent_tools import AssetShepherdTools
 from asset_shepherd.models import (
     AgentMetrics,
@@ -220,7 +224,7 @@ class AssetShepherdAgent:
         self.agent = Agent(
             model=model,
             tools=self.tools.as_list(),
-            system_prompt=AGENT_SYSTEM_PROMPT_V1,
+            system_prompt=AGENT_SYSTEM_PROMPT_V2,
             callback_handler=None,
             load_tools_from_directory=False,
             agent_id=f"asset-shepherd-{job.source.stem}",
@@ -253,7 +257,11 @@ class AssetShepherdAgent:
     def start(self) -> AgentResult:
         """Start the live Strands loop and surface its approval interrupt."""
         result = self._invoke(
-            "Inspect the configured GLB, select registered repairs, and complete the workflow."
+            build_agent_start_prompt(
+                self.job.profile,
+                asset_intent=self.job.asset_intent,
+                profile_policy=self.job.profile_policy,
+            )
         )
         if result.stop_reason == "interrupt":
             self._capture_interrupt(result)

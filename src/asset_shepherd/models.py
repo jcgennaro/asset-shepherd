@@ -674,7 +674,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1] = 1
+    prompt_version: Literal[1, 2] = 2
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics
