@@ -4,6 +4,51 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D031 — Repaired assets share one spatial before/after viewer
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 conversation and web product
+
+**Context**
+
+Completed repairs were shown in two unrelated viewers. Separate cameras obscured the physical
+scale change and made visual comparison harder, especially when normalization made one model tiny
+relative to the other.
+
+**Decision**
+
+When at least one repair executes and the candidate passes verification, show source and candidate
+in one `<model-viewer>` scene. Preserve each model's real scale and place the candidate to the
+right of the source with a scale-relative gap. Provide three explicit fit targets—both, before, and
+after—using the same orbit, pan, and zoom camera.
+
+Project each model's world-space bounds into a minimal screen-space schematic overlay. Camera
+changes update targeting corners, labels, and leader lines. If either model's longest dimension is
+less than 18% of the other's, identify it as **Before model here** or **After model here** rather
+than allowing it to disappear visually.
+
+Add two optional scale aids. Metric X/Y/Z rulers follow the selected fit bounds and use 1/2/5
+intervals with five major ticks per axis. **Banana for scale** loads a deterministic stylized GLB
+at ordinary banana size (approximately 20 cm along its curve). Both aids are display-only and do
+not enter repair or verification artifacts.
+
+Serve the existing Google `<model-viewer>` 4.3.1 dependency from the application instead of a
+public CDN. Preserve its Apache 2.0 license beside the unchanged distribution.
+
+**Evidence and consequences**
+
+Route acceptance covers the single shared scene, three fit modes, projected HUD hooks, local
+viewer dependency, metric ruler logic, and the banana asset's measured size. Browser evidence
+covers the very large source versus 1.8-meter candidate: the small candidate remains targeted in
+the combined view; After fit recenters it; the axes change to 0.5-meter intervals; and the banana
+overlay reports 20 cm. The source GLB, repaired GLB, contracted ZIP, repair authority, and
+verification gates are unchanged.
+
 ### D030 — Public help explains the task, not the release
 
 **Date:** 2026-08-23

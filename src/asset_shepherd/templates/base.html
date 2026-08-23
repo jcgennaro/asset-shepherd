@@ -7,7 +7,7 @@
     <title>Asset Shepherd -- {{ active_style }}</title>
     <link rel="icon" href="{{ url_for('static', path='/favicon.svg') }}?v={{ static_version }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}?v={{ static_version }}">
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"></script>
+    <script type="module" src="{{ url_for('static', path='/vendor/model-viewer.min.js') }}?v={{ static_version }}"></script>
   </head>
   <body class="mode-{{ active_mode }}">
     <div class="app-shell">

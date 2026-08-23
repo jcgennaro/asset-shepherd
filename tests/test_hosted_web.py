@@ -114,6 +114,9 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     completed = restarted.get(workspace_path)
     assert "The verified package is ready." in completed.text
     assert "Download result ZIP" in completed.text
+    assert "data-model-comparison" in completed.text
+    assert completed.text.count("<model-viewer") == 1
+    assert "normal-size 20 cm banana" in completed.text
 
     archive_response = restarted.get(f"{workspace_path}/download")
     assert archive_response.status_code == 200

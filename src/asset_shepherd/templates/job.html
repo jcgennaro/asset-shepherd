@@ -125,30 +125,36 @@
           </a>
         {% endif %}
 
-        <div class="preview-grid{% if not job.ready_candidate %} single{% endif %}">
-          <article class="preview-card">
-            <div class="preview-label"><strong>{{ story.source_label }}</strong><span>Original</span></div>
-            <model-viewer
-              src="{{ url_for('source_asset', job_id=job.job_id) }}"
-              alt="Interactive preview of the uploaded model"
-              camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
-              environment-image="neutral" exposure="1" interaction-prompt="none">
-              <div class="viewer-fallback" slot="poster">Loading source preview…</div>
-            </model-viewer>
-          </article>
-          {% if job.ready_candidate %}
-            <article class="preview-card after-card">
-              <div class="preview-label"><strong>{{ story.candidate_label }}</strong><span>Verified</span></div>
+        {% if comparison_scene %}
+          {% set comparison_source_url = url_for('source_asset', job_id=job.job_id) %}
+          {% set comparison_after_url = url_for('repaired_asset', job_id=job.job_id) %}
+          {% include "_model_comparison.html" %}
+        {% else %}
+          <div class="preview-grid{% if not job.ready_candidate %} single{% endif %}">
+            <article class="preview-card">
+              <div class="preview-label"><strong>{{ story.source_label }}</strong><span>Original</span></div>
               <model-viewer
-                src="{{ url_for('repaired_asset', job_id=job.job_id) }}"
-                alt="Interactive preview of the verified repaired model"
+                src="{{ url_for('source_asset', job_id=job.job_id) }}"
+                alt="Interactive preview of the uploaded model"
                 camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
                 environment-image="neutral" exposure="1" interaction-prompt="none">
-                <div class="viewer-fallback" slot="poster">Loading verified preview…</div>
+                <div class="viewer-fallback" slot="poster">Loading source preview…</div>
               </model-viewer>
             </article>
-          {% endif %}
-        </div>
+            {% if job.ready_candidate %}
+              <article class="preview-card after-card">
+                <div class="preview-label"><strong>{{ story.candidate_label }}</strong><span>Verified</span></div>
+                <model-viewer
+                  src="{{ url_for('repaired_asset', job_id=job.job_id) }}"
+                  alt="Interactive preview of the verified repaired model"
+                  camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
+                  environment-image="neutral" exposure="1" interaction-prompt="none">
+                  <div class="viewer-fallback" slot="poster">Loading verified preview…</div>
+                </model-viewer>
+              </article>
+            {% endif %}
+          </div>
+        {% endif %}
 
         <details class="technical-details">
           <summary><span>Verification and package details</span><small>{% if verification %}{{ verification.state }}{% else %}Not available{% endif %}</small></summary>

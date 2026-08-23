@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import mimetypes
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -22,6 +23,7 @@ from strands.agent import AgentResult
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
 from asset_shepherd.agent_runtime import AssetShepherdAgent, build_scripted_agent
+from asset_shepherd.glb import load_glb, world_bounds
 from asset_shepherd.hosted_workspace import (
     HostedWorkspace,
     HostedWorkspaceError,
@@ -64,12 +66,19 @@ MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
 _DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
+mimetypes.add_type("model/gltf-binary", ".glb")
 
 
 def _static_asset_version() -> str:
     """Return a content fingerprint so browsers cannot retain stale UI assets."""
     digest = sha256()
-    for asset_name in ("app.css", "app.js", "favicon.svg"):
+    for asset_name in (
+        "app.css",
+        "app.js",
+        "banana-scale.glb",
+        "favicon.svg",
+        "vendor/model-viewer.min.js",
+    ):
         digest.update((_PACKAGE_ROOT / "static" / asset_name).read_bytes())
     return digest.hexdigest()[:12]
 
@@ -115,6 +124,50 @@ class ExpectationGroupView:
     label: str
     summary: str
     items: tuple[ExpectationView, ...]
+
+
+@dataclass(frozen=True)
+class ComparisonBoundsView:
+    """One model's placed bounds in the shared comparison scene."""
+
+    minimum_m: tuple[float, float, float]
+    maximum_m: tuple[float, float, float]
+    dimensions_m: tuple[float, float, float]
+    center_m: tuple[float, float, float]
+    longest_m: float
+    corners_m: tuple[tuple[float, float, float], ...]
+
+
+@dataclass(frozen=True)
+class MetricAxisTickView:
+    """One projected meter tick anchored in the 3D scene."""
+
+    slot_name: str
+    label: str
+    position_m: tuple[float, float, float]
+
+
+@dataclass(frozen=True)
+class MetricAxisView:
+    """One X, Y, or Z metric ruler with approximately five major ticks."""
+
+    axis: str
+    ticks: tuple[MetricAxisTickView, ...]
+
+
+@dataclass(frozen=True)
+class ComparisonSceneView:
+    """Geometry needed to stage before and after assets in one viewer."""
+
+    before: ComparisonBoundsView
+    after: ComparisonBoundsView
+    combined: ComparisonBoundsView
+    after_offset_m: tuple[float, float, float]
+    after_offset_css: str
+    banana_offset_css: str
+    banana_anchor_m: tuple[float, float, float]
+    axes: tuple[MetricAxisView, ...]
+    client_data: dict[str, JsonValue]
 
 
 @dataclass(frozen=True)
@@ -1513,6 +1566,188 @@ def _workflow_steps(job: WebJob) -> tuple[WorkflowStepView, ...]:
     )
 
 
+def _comparison_bounds(
+    minimum_m: tuple[float, float, float],
+    maximum_m: tuple[float, float, float],
+) -> ComparisonBoundsView:
+    """Derive centers and corner anchors from one finite world-space AABB."""
+    dimensions_m = tuple(maximum_m[index] - minimum_m[index] for index in range(3))
+    center_m = tuple((minimum_m[index] + maximum_m[index]) / 2.0 for index in range(3))
+    corners_m = tuple(
+        (x_value, y_value, z_value)
+        for x_value in (minimum_m[0], maximum_m[0])
+        for y_value in (minimum_m[1], maximum_m[1])
+        for z_value in (minimum_m[2], maximum_m[2])
+    )
+    return ComparisonBoundsView(
+        minimum_m=minimum_m,
+        maximum_m=maximum_m,
+        dimensions_m=cast(tuple[float, float, float], dimensions_m),
+        center_m=cast(tuple[float, float, float], center_m),
+        longest_m=max(dimensions_m),
+        corners_m=corners_m,
+    )
+
+
+def _nice_meter_step(span_m: float) -> float:
+    """Choose a 1/2/5 meter interval that yields about five major ticks."""
+    raw_step = max(span_m, 1e-9) / 4.0
+    magnitude = 10.0 ** math.floor(math.log10(raw_step))
+    fraction = raw_step / magnitude
+    if fraction <= 1.0:
+        multiplier = 1.0
+    elif fraction <= 2.0:
+        multiplier = 2.0
+    elif fraction <= 5.0:
+        multiplier = 5.0
+    else:
+        multiplier = 10.0
+    return multiplier * magnitude
+
+
+def _metric_axis(
+    axis: str,
+    axis_index: int,
+    origin_m: tuple[float, float, float],
+    span_m: float,
+    fallback_span_m: float,
+) -> MetricAxisView:
+    """Create one meter ruler beginning at the comparison bounds corner."""
+    displayed_span = span_m if span_m > 1e-9 else fallback_span_m
+    step_m = _nice_meter_step(displayed_span)
+    ticks: list[MetricAxisTickView] = []
+    for index in range(5):
+        value_m = index * step_m
+        position = list(origin_m)
+        position[axis_index] += value_m
+        label = f"{value_m:.3g} m"
+        if index == 0:
+            label = f"{axis.upper()} · {label}"
+        ticks.append(
+            MetricAxisTickView(
+                slot_name=f"hotspot-axis-{axis}-{index}",
+                label=label,
+                position_m=(position[0], position[1], position[2]),
+            )
+        )
+    return MetricAxisView(axis=axis, ticks=tuple(ticks))
+
+
+def _comparison_scene(source_path: Path, candidate_path: Path) -> ComparisonSceneView:
+    """Place source and candidate side by side without changing either model's scale."""
+    source_bounds = world_bounds(load_glb(source_path))
+    candidate_bounds = world_bounds(load_glb(candidate_path))
+    before_minimum = tuple(float(source_bounds.minimum[index]) for index in range(3))
+    before_maximum = tuple(float(source_bounds.maximum[index]) for index in range(3))
+    candidate_minimum = tuple(float(candidate_bounds.minimum[index]) for index in range(3))
+    candidate_maximum = tuple(float(candidate_bounds.maximum[index]) for index in range(3))
+    before = _comparison_bounds(
+        cast(tuple[float, float, float], before_minimum),
+        cast(tuple[float, float, float], before_maximum),
+    )
+    candidate = _comparison_bounds(
+        cast(tuple[float, float, float], candidate_minimum),
+        cast(tuple[float, float, float], candidate_maximum),
+    )
+
+    comparison_scale = max(before.longest_m, candidate.longest_m, 1e-6)
+    gap_m = comparison_scale * 0.15
+    after_offset_m = (
+        before.maximum_m[0] - candidate.minimum_m[0] + gap_m,
+        0.0,
+        0.0,
+    )
+    after = _comparison_bounds(
+        (
+            candidate.minimum_m[0] + after_offset_m[0],
+            candidate.minimum_m[1],
+            candidate.minimum_m[2],
+        ),
+        (
+            candidate.maximum_m[0] + after_offset_m[0],
+            candidate.maximum_m[1],
+            candidate.maximum_m[2],
+        ),
+    )
+    combined = _comparison_bounds(
+        (
+            min(before.minimum_m[0], after.minimum_m[0]),
+            min(before.minimum_m[1], after.minimum_m[1]),
+            min(before.minimum_m[2], after.minimum_m[2]),
+        ),
+        (
+            max(before.maximum_m[0], after.maximum_m[0]),
+            max(before.maximum_m[1], after.maximum_m[1]),
+            max(before.maximum_m[2], after.maximum_m[2]),
+        ),
+    )
+    fallback_axis_span = max(combined.longest_m * 0.1, 1e-6)
+    axes = tuple(
+        _metric_axis(
+            axis,
+            index,
+            combined.minimum_m,
+            combined.dimensions_m[index],
+            fallback_axis_span,
+        )
+        for index, axis in enumerate(("x", "y", "z"))
+    )
+
+    banana_minimum_y = -0.015916550531983376
+    banana_maximum_z = 0.015987513586878777
+    banana_gap_m = max(combined.longest_m * 0.08, 0.02)
+    banana_offset_m = (
+        combined.center_m[0],
+        combined.minimum_m[1] - banana_minimum_y,
+        combined.minimum_m[2] - banana_gap_m - banana_maximum_z,
+    )
+    banana_anchor_m = (
+        banana_offset_m[0],
+        banana_offset_m[1] + 0.025,
+        banana_offset_m[2],
+    )
+    client_data: dict[str, JsonValue] = {
+        "before": cast(
+            JsonValue,
+            {
+                "minimum": list(before.minimum_m),
+                "maximum": list(before.maximum_m),
+                "center": list(before.center_m),
+                "longest": before.longest_m,
+            },
+        ),
+        "after": cast(
+            JsonValue,
+            {
+                "minimum": list(after.minimum_m),
+                "maximum": list(after.maximum_m),
+                "center": list(after.center_m),
+                "longest": after.longest_m,
+            },
+        ),
+        "both": cast(
+            JsonValue,
+            {
+                "minimum": list(combined.minimum_m),
+                "maximum": list(combined.maximum_m),
+                "center": list(combined.center_m),
+                "longest": combined.longest_m,
+            },
+        ),
+    }
+    return ComparisonSceneView(
+        before=before,
+        after=after,
+        combined=combined,
+        after_offset_m=after_offset_m,
+        after_offset_css=" ".join(f"{value:.9g}m" for value in after_offset_m),
+        banana_offset_css=" ".join(f"{value:.9g}m" for value in banana_offset_m),
+        banana_anchor_m=banana_anchor_m,
+        axes=axes,
+        client_data=client_data,
+    )
+
+
 def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, object]:
     """Build the template context solely from structured job state."""
     core = job.runtime.job
@@ -1540,6 +1775,12 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         )
     )
     inspection_checks = _inspection_checks(job)
+    comparison_scene = None
+    if job.ready_candidate and core.outcome is not None and core.outcome.executed_action_ids:
+        comparison_scene = _comparison_scene(
+            job.source_path,
+            job.output_dir / "repaired.glb",
+        )
     return {
         "job": job,
         "story": job.story,
@@ -1573,6 +1814,7 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "plan": plan,
         "verification": verification,
         "workflow_result": job.workflow_result,
+        "comparison_scene": comparison_scene,
         "decision_records": decision_records,
         "is_blocked": bool(
             verification is not None and verification.state is VerificationState.BLOCKED
@@ -1683,6 +1925,17 @@ def create_app(
         approval_card = None
         if runtime_job is not None and runtime_job.pending_interrupt_id is not None:
             approval_card = runtime_job.approval_card()
+        comparison_scene = None
+        if (
+            workspace.ready_candidate
+            and runtime_job is not None
+            and runtime_job.outcome is not None
+            and runtime_job.outcome.executed_action_ids
+        ):
+            comparison_scene = _comparison_scene(
+                workspace.source_path,
+                workspace.output_dir / "repaired.glb",
+            )
         expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
         if target_draft is not None and target_draft.ready_for_confirmation:
@@ -1718,6 +1971,7 @@ def create_app(
                 "verification": (
                     runtime_job.last_verification if runtime_job is not None else None
                 ),
+                "comparison_scene": comparison_scene,
                 "approval_card": approval_card,
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,

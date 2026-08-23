@@ -178,6 +178,18 @@ served through the repaired-asset route. A structurally unsupported input receiv
 inspection-only package without `repaired.glb`. A clean input is packaged without unnecessary GLB
 reserialization or mutation.
 
+If at least one repair executed, Download presents source and verified candidate in one shared 3D
+scene at their actual relative scales. The user can orbit, pan, zoom, or fit both, before, or after.
+Projected world-bounds corners drive persistent **Before** and **After** targeting brackets and
+leader lines; a model less than 18% of the other's longest dimension receives an explicit
+**model here** label. Optional X/Y/Z rulers retarget to the selected fit bounds with five
+human-readable meter ticks, and an optional approximately 20-centimeter banana provides a playful
+physical reference. These are display-only scene additions. The source, candidate, repair plan,
+verification, and package remain byte-for-byte independent of the viewer.
+
+The Apache-licensed Google `<model-viewer>` 4.3.1 browser distribution is served from the package,
+so previews do not rely on a public CDN at runtime.
+
 The successful ZIP still contains exactly:
 
 ```text

@@ -79,14 +79,20 @@
           <a class="download-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">
             <span><small>Contracted evidence package</small><strong>Download result ZIP</strong></span><b aria-hidden="true">↓</b>
           </a>
-          <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
-            <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
-              <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
-            </article>
-            {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
-              <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
-            </article>{% endif %}
-          </div>
+          {% if comparison_scene %}
+            {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
+            {% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}
+            {% include "_model_comparison.html" %}
+          {% else %}
+            <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
+              <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
+                <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+              </article>
+              {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
+                <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+              </article>{% endif %}
+            </div>
+          {% endif %}
         {% endif %}
 
         {% if record.last_answer %}

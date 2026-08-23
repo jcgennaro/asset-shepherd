@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** User-oriented three-step help and public version-copy cleanup (this file is included)
+**Current commit:** Shared spatial before/after comparison and scale aids (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -45,6 +45,15 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
+- Spatial repair comparison: completed jobs with executed repairs now load source and candidate in
+  one locally served 3D scene at their real relative scales. One camera supplies orbit, pan, zoom,
+  and Both/Before/After fit modes. Projected AABB corners drive minimal HUD target boxes, labels,
+  and leader lines on every camera change; a model below 18% of its counterpart's longest dimension
+  receives an explicit **model here** callout. Optional metric axes use five 1/2/5-spaced meter
+  ticks for the selected fit bounds. A toggleable generated banana measures approximately 20 cm
+  along its curve. The unchanged Apache-licensed `<model-viewer>` 4.3.1 distribution is now local,
+  eliminating the runtime CDN dependency. D031 route and browser evidence covers the 182-meter
+  source versus 1.8-meter result, focused fit, meter-axis retargeting, and banana overlay.
 - User-oriented help: **How it works** now contains three actions only—describe and upload,
   review what was found, and download the result—followed by one start action. Public release
   numbers, implementation scope inventory, internal tool/provenance terms, and generic caveats are
@@ -66,7 +75,7 @@ before any AWS invocation or resource creation.
   pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
   at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
   scrolls inside its own container. Browser console warnings and errors are empty.
-- Tests: `uv run pytest` — 105 passed and the opt-in live-provider test skipped. D019–D029 acceptance
+- Tests: `uv run pytest` — 106 passed and the opt-in live-provider test skipped. D019–D031 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.

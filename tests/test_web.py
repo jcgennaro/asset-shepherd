@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pygltflib import Skin
 
-from asset_shepherd.glb import load_glb, save_glb
+from asset_shepherd.glb import load_glb, save_glb, world_bounds
 from asset_shepherd.intake_analyzer import (
     INTAKE_REFUSAL_MESSAGE,
     TargetIntakeContentRefusal,
@@ -727,6 +727,15 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert "Ready-to-import proof" in completed.text
     assert "PASSED_WITH_REMAINING_WARNINGS" in completed.text
     assert "Download result ZIP" in completed.text
+    assert "data-model-comparison" in completed.text
+    assert completed.text.count("<model-viewer") == 1
+    assert completed.text.count("<extra-model") == 2
+    assert 'data-comparison-fit="both"' in completed.text
+    assert 'data-comparison-fit="before"' in completed.text
+    assert 'data-comparison-fit="after"' in completed.text
+    assert "Show metric X, Y, and Z axes" in completed.text
+    assert "normal-size 20 cm banana" in completed.text
+    assert "BEFORE MODEL HERE" not in completed.text
     _assert_focus_area_budget(completed.text)
     assert client.get(f"{job_path}/repaired.glb").status_code == 200
 
@@ -944,6 +953,7 @@ def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path)
         assert "Import-ready candidate" in completed.text
         assert "Approval needed" not in completed.text
         assert "PASSED_PROJECT_READY" in completed.text
+        assert "data-model-comparison" not in completed.text
         _assert_focus_area_budget(completed.text)
         inspected = client.get(f"{job_path}?view=inspect")
         assert "No changes are needed." in inspected.text
@@ -996,6 +1006,34 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
     archive_path.write_bytes(archive_response.content)
     with ZipFile(archive_path) as archive:
         assert set(archive.namelist()) == PACKAGE_NAMES - {"repaired.glb"}
+
+
+def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Path) -> None:
+    """The shared viewer has a normal-size local banana and camera-tracking HUD logic."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+
+    banana_response = client.get("/static/banana-scale.glb")
+    assert banana_response.status_code == 200
+    assert banana_response.headers["content-type"] == "model/gltf-binary"
+    entry = client.get("/workspace")
+    assert "/static/vendor/model-viewer.min.js" in entry.text
+    assert "ajax.googleapis.com" not in entry.text
+    assert client.get("/static/vendor/model-viewer.min.js").status_code == 200
+    assert (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "static" / "vendor" / "model-viewer.LICENSE"
+    ).is_file()
+    banana_path = PROJECT_ROOT / "src" / "asset_shepherd" / "static" / "banana-scale.glb"
+    banana_bounds = world_bounds(load_glb(banana_path))
+    assert 0.16 <= max(banana_bounds.dimensions) <= 0.21
+
+    script = client.get("/static/app.js")
+    assert script.status_code == 200
+    assert 'viewer.addEventListener("camera-change", scheduleHud)' in script.text
+    assert "viewer.queryHotspot(name)" in script.text
+    assert "viewer.updateHotspot({" in script.text
+    assert "function niceMeterStep(span)" in script.text
+    assert 'bananaModel?.setAttribute("scale"' in script.text
+    assert 'axisLayer.toggleAttribute("hidden"' in script.text
 
 
 def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:
