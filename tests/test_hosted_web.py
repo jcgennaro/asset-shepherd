@@ -64,6 +64,9 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "<summary>No</summary>" in measured.text
     assert ">Yes</button>" in measured.text
     assert 'textarea class="asset-description-input"' in measured.text
+    assert 'class="asset-description-field"' in measured.text
+    assert "data-confirmation-decision" in measured.text
+    assert "&amp;amp;" not in measured.text
     assert "Job Contract" in measured.text
     assert "Rules are derived only after target confirmation." in measured.text
     assert not (work_root / "hosted" / workspace_id / "output").exists()

@@ -97,8 +97,12 @@ before any AWS invocation or resource creation.
   collapsed groups with no more than three facts per expanded group. The only decision is whether
   the agent got it right; its controls are simply **Yes** and **No**. **No** reveals one prefilled
   description for another attempt, using the same 16-pixel regular-weight field styling as entry
-  and clarification. Full-page browser comparison at 1366 × 768 and 390 × 844 confirms identical
-  panel bounds, heading typography/position, and active description-field geometry and styling;
+  and clarification. A shared workflow-stage renderer, description-field renderer, and
+  confirmation-decision renderer now own those repeated display areas across the form-led and
+  hosted routes; acceptance rejects duplicate textarea or decision markup outside that component.
+  Full-page browser comparison at 1366 × 768 and 390 × 844 confirms identical panel bounds,
+  heading typography/position, and active description-field geometry and styling; mobile has no
+  horizontal overflow, hosted entry uses the shared field, browser diagnostics are empty, and
   stable scrollbar space prevents width shifts between steps.
 - Shared feedback: `/feedback` accepts context from any workflow surface, offers four bounded
   reasons and an optional 1,000-character note, and records a local atomic JSON artifact without an

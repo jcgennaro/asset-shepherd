@@ -1,0 +1,38 @@
+{% macro workflow_stage(variant, focus_area, title_id, title, note="") -%}
+  <section class="intent-stage {{ variant }}" data-focus-area="{{ focus_area }}" aria-labelledby="{{ title_id }}">
+    <header class="intent-heading">
+      <h2 id="{{ title_id }}">{{ title }}</h2>
+      {% if note %}<p>{{ note }}</p>{% endif %}
+    </header>
+    {{ caller() }}
+  </section>
+{%- endmacro %}
+
+{% macro asset_description(value="", label="Model description", placeholder="", autofocus=false) -%}
+  <label class="asset-description-field">
+    <span>{{ label }}</span>
+    <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required{% if autofocus %} autofocus{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}>{{ value }}</textarea>
+  </label>
+{%- endmacro %}
+
+{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false) -%}
+  <section class="confirmation-question" aria-labelledby="{{ question_id }}" data-confirmation-decision>
+    <h3 id="{{ question_id }}">Did I get it right?</h3>
+    <div class="confirmation-actions">
+      <form action="{{ confirm_url }}" method="post" data-busy-form>
+        {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
+        {% if accept_supported_goal %}<input type="hidden" name="accept_supported_goal" value="true">{% endif %}
+        <button class="primary-button" type="submit" data-submit-button>Yes</button>
+      </form>
+      <details class="intent-adjust">
+        <summary>No</summary>
+        <form action="{{ revise_url }}" method="post" class="intent-form" data-busy-form>
+          {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
+          {{ asset_description(description) }}
+          <button class="secondary-button" type="submit" data-submit-button>Try again</button>
+        </form>
+      </details>
+    </div>
+    <a class="feedback-link" href="{{ feedback_url }}">It’s not working for me</a>
+  </section>
+{%- endmacro %}

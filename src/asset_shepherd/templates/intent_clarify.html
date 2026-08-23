@@ -1,21 +1,26 @@
 {% extends "base.html" %}
+{% from "_workflow_components.html" import asset_description, workflow_stage %}
 {% block content %}
-  <section class="intent-confirmation" data-focus-area="clarify intent" aria-labelledby="clarify-title">
-    <header class="intent-heading">
-      <h2 id="clarify-title">{% if "target_use" in intent.target.missing_fields %}Tell me the missing intent in your own words.{% else %}About how tall should it be?{% endif %}</h2>
-      {% if target_use_label %}<p>I’m treating it as {{ target_use_label }}; I only need the size.</p>{% elif intent.target.target_height_cm %}<p>I have the {{ "%g"|format(intent.target.target_height_cm / 100) }} m height; I only need its use.</p>{% endif %}
-    </header>
-
+  {% if "target_use" in intent.target.missing_fields %}
+    {% set clarify_title = "Tell me the missing intent in your own words." %}
+  {% else %}
+    {% set clarify_title = "About how tall should it be?" %}
+  {% endif %}
+  {% if target_use_label %}
+    {% set clarify_note = "I’m treating it as " ~ target_use_label ~ "; I only need the size." %}
+  {% elif intent.target.target_height_cm %}
+    {% set clarify_note = "I have the " ~ ("%g"|format(intent.target.target_height_cm / 100)) ~ " m height; I only need its use." %}
+  {% else %}
+    {% set clarify_note = "" %}
+  {% endif %}
+  {% call workflow_stage("intent-confirmation", "clarify intent", "clarify-title", clarify_title, clarify_note) %}
     {% if error %}
       <div class="alert danger" role="alert"><strong>Target still incomplete</strong><span>{{ error }}</span></div>
     {% endif %}
 
     <form action="{{ url_for('clarify_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form clarification-form" data-busy-form>
       {% if "target_use" in intent.target.missing_fields %}
-        <label>
-          <span>Add what this should be, how it will be used, and any scale clue you know</span>
-          <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea>
-        </label>
+        {{ asset_description(intent.original_description, label="Add what this should be, how it will be used, and any scale clue you know") }}
       {% elif "target_height_cm" in intent.target.missing_fields %}
         <label>
           <span>What real-world height should it have?</span>
@@ -27,5 +32,5 @@
         <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
       </div>
     </form>
-  </section>
+  {% endcall %}
 {% endblock %}

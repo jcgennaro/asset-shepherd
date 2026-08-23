@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_workflow_components.html" import asset_description, confirmation_decision %}
 {% block content %}
   <section class="hosted-workspace" data-focus-area="asset conversation">
     <header class="hosted-context">
@@ -33,9 +34,7 @@
             <form action="{{ url_for('clarify_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-card" data-busy-form>
               <input type="hidden" name="command_id" value="{{ command_id }}">
               {% if target_draft.target_use %}<p class="fine-print">I’m treating it as {{ target_use_label }}; I only need the size.</p>{% elif target_draft.target_height_cm %}<p class="fine-print">I have the {{ target_height_label }} height; I need clearer intended use.</p>{% endif %}
-              {% if "target_use" in target_draft.missing_fields %}<label><span>Add what this should be, how it will be used, and any scale clue you know</span>
-                <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea>
-              </label>{% elif "target_height_cm" in target_draft.missing_fields %}<label><span>What real-world height should it have?</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>{% endif %}
+              {% if "target_use" in target_draft.missing_fields %}{{ asset_description(record.private_description, label="Add what this should be, how it will be used, and any scale clue you know") }}{% elif "target_height_cm" in target_draft.missing_fields %}<label><span>What real-world height should it have?</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>{% endif %}
               <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
             </form>
           {% elif target_draft %}
@@ -43,25 +42,15 @@
               <section class="expectation-sheet compact" aria-label="Review the proposed target">
                 {% include "_expectation_groups.html" %}
               </section>
-              <section class="confirmation-question" aria-labelledby="hosted-confirmation-question-title">
-                <h3 id="hosted-confirmation-question-title">Did I get it right?</h3>
-                <div class="confirmation-actions">
-                  <form action="{{ url_for('confirm_hosted_target', workspace_id=record.workspace_id) }}" method="post" data-busy-form>
-                    <input type="hidden" name="command_id" value="{{ command_id }}">
-                    <input type="hidden" name="accept_supported_goal" value="true">
-                    <button class="primary-button" type="submit" data-submit-button>Yes</button>
-                  </form>
-                  <details class="intent-adjust">
-                    <summary>No</summary>
-                    <form action="{{ url_for('revise_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="intent-form" data-busy-form>
-                      <input type="hidden" name="command_id" value="{{ command_id }}">
-                      <label><span>Asset description</span><textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea></label>
-                      <button class="secondary-button" type="submit" data-submit-button>Try again</button>
-                    </form>
-                  </details>
-                </div>
-                <a class="feedback-link" href="{{ url_for('feedback_page') }}?context=target-confirmation&amp;reference_id={{ record.workspace_id }}&amp;return_path={{ request.url.path }}">It’s not working for me</a>
-              </section>
+              {{ confirmation_decision(
+                url_for('confirm_hosted_target', workspace_id=record.workspace_id),
+                url_for('revise_hosted_target', workspace_id=record.workspace_id),
+                record.private_description,
+                url_for('feedback_page') ~ "?context=target-confirmation&reference_id=" ~ record.workspace_id ~ "&return_path=" ~ request.url.path,
+                question_id="hosted-confirmation-question-title",
+                command_id=command_id,
+                accept_supported_goal=true
+              ) }}
             </div>
           {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}

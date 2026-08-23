@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_workflow_components.html" import asset_description %}
 {% block content %}
   <section class="conversation-start" data-focus-area="start conversation" aria-labelledby="conversation-title">
     <header class="intent-heading">
@@ -10,10 +11,7 @@
     {% endif %}
 
     <form action="{{ url_for('create_hosted_workspace') }}" method="post" enctype="multipart/form-data" class="conversation-start-form" data-busy-form>
-      <label>
-        <span>Model description</span>
-        <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" rows="4" required autofocus placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.">{{ description }}</textarea>
-      </label>
+      {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true) }}
       <label class="drop-zone compact" for="hosted-asset">
         <input id="hosted-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
         <strong data-file-label>Choose the untouched GLB</strong>

@@ -1,31 +1,18 @@
 {% extends "base.html" %}
+{% from "_workflow_components.html" import confirmation_decision, workflow_stage %}
 {% block content %}
-  <section class="intent-confirmation" data-focus-area="confirm intent" aria-labelledby="confirm-title">
-    <header class="intent-heading">
-      <h2 id="confirm-title">I’d inspect this as a {{ target_height_label }} {{ target_use_label|lower }}.</h2>
-    </header>
-
+  {% call workflow_stage("intent-confirmation", "confirm intent", "confirm-title", "I’d inspect this as a " ~ target_height_label ~ " " ~ target_use_label|lower ~ ".") %}
     {% if error %}<div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>{% endif %}
 
     <section class="expectation-sheet" aria-label="Review the proposed target">
       {% include "_expectation_groups.html" %}
     </section>
 
-    <section class="confirmation-question" aria-labelledby="confirmation-question-title">
-      <h3 id="confirmation-question-title">Did I get it right?</h3>
-      <div class="confirmation-actions">
-        <form action="{{ url_for('confirm_intent', intent_id=intent.intent_id) }}" method="post" data-busy-form>
-          <button class="primary-button" type="submit" data-submit-button>Yes</button>
-        </form>
-        <details class="intent-adjust">
-          <summary>No</summary>
-          <form action="{{ url_for('revise_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form" data-busy-form>
-            <label><span>Asset description</span><textarea class="asset-description-input" name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea></label>
-            <button class="secondary-button" type="submit" data-submit-button>Try again</button>
-          </form>
-        </details>
-      </div>
-      <a class="feedback-link" href="{{ url_for('feedback_page') }}?context=target-confirmation&amp;reference_id={{ intent.intent_id }}&amp;return_path={{ request.url.path }}">It’s not working for me</a>
-    </section>
-  </section>
+    {{ confirmation_decision(
+      url_for('confirm_intent', intent_id=intent.intent_id),
+      url_for('revise_intent', intent_id=intent.intent_id),
+      intent.original_description,
+      url_for('feedback_page') ~ "?context=target-confirmation&reference_id=" ~ intent.intent_id ~ "&return_path=" ~ request.url.path
+    ) }}
+  {% endcall %}
 {% endblock %}

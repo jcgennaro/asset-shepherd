@@ -1,21 +1,14 @@
 {% extends "base.html" %}
+{% from "_workflow_components.html" import asset_description, workflow_stage %}
 {% block content %}
-  <section class="intent-panel" data-focus-area="describe intent" aria-labelledby="intent-title">
-    <header class="intent-heading">
-      <h2 id="intent-title">Describe the model you’re working on.</h2>
-    </header>
-
+  {% call workflow_stage("intent-panel", "describe intent", "intent-title", "Describe the model you’re working on.") %}
     {% if error %}
       <div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>
     {% endif %}
 
     <form action="{{ url_for('create_intent') }}" method="post" class="intent-form" data-busy-form>
-      <label class="intent-description">
-        <span>Model description</span>
-        <textarea class="asset-description-input" name="description" minlength="12" maxlength="600" rows="6" required autofocus placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.">{{ values.get('description', '') }}</textarea>
-      </label>
-
+      {{ asset_description(values.get('description', ''), placeholder="A 1.2 m hanging lantern used as a static environment prop, with warm emissive panels.", autofocus=true) }}
       <button class="primary-button" type="submit" data-submit-button>Propose a target <span aria-hidden="true">→</span></button>
     </form>
-  </section>
+  {% endcall %}
 {% endblock %}

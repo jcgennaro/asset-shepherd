@@ -170,19 +170,21 @@ def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: 
 
 
 def test_describe_and_confirm_share_layout_and_description_field_rules(tmp_path: Path) -> None:
-    """Forward and backward target entry use one width, type scale, and field geometry."""
+    """Forward and backward target entry render from shared stage and field components."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     css = client.get("/static/app.css")
+    describe = client.get("/")
+    intent_path = _draft_intent(client)
+    confirm = client.get(intent_path)
 
     assert css.status_code == 200
     assert re.search(
-        r"\.intent-panel,\s*\.intent-confirmation\s*\{[^}]*width: 100%;[^}]*margin:",
+        r"\.intent-stage\s*\{[^}]*width: 100%;[^}]*margin:",
         css.text,
         re.DOTALL,
     )
     assert re.search(
-        r"\.intent-panel \.intent-heading h2,\s*"
-        r"\.intent-confirmation \.intent-heading h2\s*\{[^}]*"
+        r"\.intent-stage \.intent-heading h2\s*\{[^}]*"
         r"font-size: clamp\(1\.75rem, 2\.4vw, 2\.5rem\);",
         css.text,
         re.DOTALL,
@@ -197,6 +199,23 @@ def test_describe_and_confirm_share_layout_and_description_field_rules(tmp_path:
         r"\.confirmation-actions \.intent-adjust \.intent-form\s*\{\s*width: 100%;",
         css.text,
     )
+    assert 'class="intent-stage intent-panel"' in describe.text
+    assert 'class="intent-stage intent-confirmation"' in confirm.text
+    assert 'class="asset-description-field"' in describe.text
+    assert 'class="asset-description-field"' in confirm.text
+    assert "data-confirmation-decision" in confirm.text
+    assert "&amp;amp;" not in confirm.text
+
+    component_source = (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_workflow_components.html"
+    ).read_text(encoding="utf-8")
+    assert component_source.count('<textarea class="asset-description-input"') == 1
+    assert component_source.count('<section class="confirmation-question"') == 1
+    for template in (PROJECT_ROOT / "src" / "asset_shepherd" / "templates").glob("*.html"):
+        if template.name != "_workflow_components.html":
+            source = template.read_text(encoding="utf-8")
+            assert '<textarea class="asset-description-input"' not in source
+            assert '<section class="confirmation-question"' not in source
 
 
 def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
