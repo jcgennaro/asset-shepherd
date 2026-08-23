@@ -141,7 +141,7 @@ class ScriptedWorkflowModel(Model):
             return "execute_selected_repairs", {}
         if self.job.result is None:
             if self.job.last_verification is not None and self.job.correction_attempts == 0:
-                return "retry_once_after_verification_failure", {}
+                return "reassess_candidate_after_verification_failure", {}
             return "verify_and_package", {}
         return None
 
@@ -360,14 +360,36 @@ class AssetShepherdAgent:
         return self.complete(result)
 
 
-def build_live_agent(job: AgentJob) -> AssetShepherdAgent:
-    """Build a live environment-configured agent without invoking it."""
+def _snapshot_session_manager(
+    session_id: str | None,
+    session_root: Path | None,
+) -> SessionManager | None:
+    """Build one provider-neutral durable Strands session when requested."""
+    if session_id is None and session_root is None:
+        return None
+    if session_id is None or session_root is None:
+        raise AgentWorkflowError("A persistent session requires both an ID and isolated storage")
+    return SnapshotSessionManager(
+        session_id,
+        storage=LocalFileStorage(str(session_root.resolve(strict=False))),
+        save_latest_on="invocation",
+    )
+
+
+def build_live_agent(
+    job: AgentJob,
+    *,
+    session_id: str | None = None,
+    session_root: Path | None = None,
+) -> AssetShepherdAgent:
+    """Build a live environment-configured agent with optional durable session state."""
     model, configuration = build_environment_model()
     return AssetShepherdAgent(
         job,
         model,
         provider=configuration.provider,
         model_id=configuration.model_id,
+        session_manager=_snapshot_session_manager(session_id, session_root),
     )
 
 
@@ -379,19 +401,10 @@ def build_scripted_agent(
 ) -> AssetShepherdAgent:
     """Build the zero-network harness over the real Strands agent runtime."""
     model = ScriptedWorkflowModel(job)
-    session_manager: SessionManager | None = None
-    if session_id is not None:
-        if session_root is None:
-            raise AgentWorkflowError("A persistent session requires an isolated storage root")
-        session_manager = SnapshotSessionManager(
-            session_id,
-            storage=LocalFileStorage(str(session_root.resolve(strict=False))),
-            save_latest_on="invocation",
-        )
     return AssetShepherdAgent(
         job,
         model,
         provider="scripted",
         model_id="asset-shepherd-scripted-v1",
-        session_manager=session_manager,
+        session_manager=_snapshot_session_manager(session_id, session_root),
     )

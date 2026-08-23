@@ -202,6 +202,7 @@ function initializeModelComparison(comparison) {
   }
 
   const config = JSON.parse(configElement.textContent || "{}");
+  const afterLabel = comparison.dataset.afterLabel || "After";
   let activeFitMode = "both";
   let axesVisible = false;
   let bananaVisible = false;
@@ -301,7 +302,8 @@ function initializeModelComparison(comparison) {
 
     const other = target === "before" ? "after" : "before";
     const tiny = config[target].longest / config[other].longest < 0.18;
-    graphics.label.textContent = tiny ? `${target.toUpperCase()} MODEL HERE` : target.toUpperCase();
+    const targetLabel = target === "after" ? afterLabel : "Before";
+    graphics.label.textContent = tiny ? `${targetLabel.toUpperCase()} MODEL HERE` : targetLabel.toUpperCase();
     const labelAbove = top > 34;
     const labelY = clamp(labelAbove ? top - 14 : bottom + 22, 14, height - 8);
     const labelX = target === "before" ? left : right;

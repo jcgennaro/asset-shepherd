@@ -3270,6 +3270,66 @@ model-viewer {
   color: var(--muted);
 }
 
+.result-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.result-status > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px;
+}
+
+.result-status > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.result-status small {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.result-status strong {
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.result-status p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.result-status.failed {
+  border-color: rgba(239, 119, 119, 0.48);
+}
+
+.model-comparison.candidate-rejected {
+  border-color: rgba(239, 119, 119, 0.46);
+}
+
+.model-comparison.candidate-rejected .comparison-target-box.after,
+.model-comparison.candidate-rejected .comparison-leader.after {
+  stroke: #ef9a77;
+}
+
+.model-comparison.candidate-rejected .comparison-target-label.after {
+  fill: #f2ae90;
+}
+
 .target-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(190px, 0.55fr);
@@ -3570,6 +3630,15 @@ textarea.asset-description-input:focus {
   .conversation-message strong,
   .hosted-context code {
     overflow-wrap: anywhere;
+  }
+
+  .result-status {
+    grid-template-columns: 1fr;
+  }
+
+  .result-status > div + div {
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .inspection-details-body {

@@ -1,0 +1,16 @@
+<section class="result-status {{ result_presentation.kind }}" aria-label="Workflow result">
+  <div>
+    <small>What passed</small>
+    <strong>{{ result_presentation.passed_title }}</strong>
+    <p>{{ result_presentation.passed }}</p>
+  </div>
+  <div>
+    <small>What needs attention</small>
+    <strong>{{ result_presentation.attention_title }}</strong>
+    <p>{{ result_presentation.attention_detail }}</p>
+  </div>
+  <div>
+    <small>What happens next</small>
+    <strong>{{ result_presentation.next_step }}</strong>
+  </div>
+</section>

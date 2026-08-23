@@ -234,8 +234,8 @@ class _FailOnceVerifier:
         )
 
 
-def test_agent_allows_exactly_one_bounded_correction(tmp_path: Path) -> None:
-    """A failed verification triggers one same-plan retry and cannot trigger a second."""
+def test_agent_reassesses_once_without_reapplying_the_failed_plan(tmp_path: Path) -> None:
+    """A failed verification gets one fresh plan assessment and no silent mutation."""
     verifier = _FailOnceVerifier()
     job = _job(tmp_path / "correction", verifier=verifier)
     runtime = build_scripted_agent(job)
@@ -243,13 +243,17 @@ def test_agent_allows_exactly_one_bounded_correction(tmp_path: Path) -> None:
     interrupt_id, _ = _approval_card(interrupted)
     completed = runtime.complete(runtime.resume(interrupt_id, approved=True))
 
-    assert verifier.calls == 2
+    assert verifier.calls == 1
     assert completed.metrics.correction_attempts == 1
     metrics = {metric.name: metric for metric in completed.metrics.tool_calls}
-    assert metrics["retry_once_after_verification_failure"].call_count == 1
+    assert metrics["reassess_candidate_after_verification_failure"].call_count == 1
     assert metrics["verify_and_package"].call_count == 2
+    assert not completed.job_result.ready_candidate
+    assert completed.job_result.verification_state is VerificationState.FAILED
     assert job.outcome is not None
     outcome = job.outcome
+    assert job.provenance is not None
+    assert job.provenance.output_sha256 == outcome.output_sha256
     job.last_verification = VerificationResult(
         verification_id="verification-forced-second-failure-v1",
         source_sha256=outcome.source_sha256,
@@ -260,7 +264,7 @@ def test_agent_allows_exactly_one_bounded_correction(tmp_path: Path) -> None:
         second_plan_candidate_count=1,
     )
     with pytest.raises(AgentWorkflowError, match="already been used"):
-        job.retry_once()
+        job.reassess_candidate_after_failure()
 
 
 def test_live_model_configuration_is_explicit_and_offline_tests_need_no_credentials() -> None:
@@ -279,13 +283,26 @@ def test_live_model_configuration_is_explicit_and_offline_tests_need_no_credenti
     assert configuration.aws_profile == "asset-shepherd"
 
 
+def test_persistent_session_requires_both_identity_and_storage(tmp_path: Path) -> None:
+    """Scripted and future Bedrock agents share the same explicit session-state contract."""
+    job = _job(tmp_path / "session-contract")
+    with pytest.raises(AgentWorkflowError, match="both an ID and isolated storage"):
+        build_scripted_agent(job, session_id="asset-session")
+    with pytest.raises(AgentWorkflowError, match="both an ID and isolated storage"):
+        build_scripted_agent(job, session_root=tmp_path / "strands-state")
+
+
 @pytest.mark.live
 def test_opt_in_live_strands_provider_workflow(tmp_path: Path) -> None:
     """Run the same approval flow through the environment-configured live provider when opted in."""
     if os.environ.get("ASSET_SHEPHERD_RUN_LIVE") != "1":
         pytest.skip("set ASSET_SHEPHERD_RUN_LIVE=1 with model configuration to opt in")
     output = tmp_path / "live"
-    runtime = build_live_agent(_job(output))
+    runtime = build_live_agent(
+        _job(output),
+        session_id="live-bedrock-test",
+        session_root=tmp_path / "live-strands-state",
+    )
     interrupted = runtime.start()
     interrupt_id, _ = _approval_card(interrupted)
     completed = runtime.complete(runtime.resume(interrupt_id, approved=True))

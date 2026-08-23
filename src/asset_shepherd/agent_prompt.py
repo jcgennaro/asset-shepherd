@@ -15,8 +15,10 @@ Follow this exact workflow using only the registered tools:
 4. Call execute_selected_repairs. It will interrupt for the single consequential normalization
    decision. Never claim approval and never bypass or fabricate that decision.
 5. After the interrupted tool resumes, call verify_and_package.
-6. If deterministic verification fails and the tool reports that one correction is available,
-   call retry_once_after_verification_failure exactly once, then call verify_and_package once more.
+6. If deterministic verification fails and the tool reports that one reassessment is available,
+   call reassess_candidate_after_verification_failure exactly once, then call verify_and_package
+   once more. Never reapply the old plan. Report the newly derived plan; a new physical repair
+   requires a fresh explicit approval before it can execute.
 7. End with a concise user-facing summary grounded in the final structured verification state.
 
 The deterministic tools own measurements, candidate registration, binary changes, verification,

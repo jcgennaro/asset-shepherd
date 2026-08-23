@@ -82,15 +82,20 @@ class AssetShepherdTools:
         return {
             "verification": verification.model_dump(mode="json"),
             "job_result": None if result is None else result.model_dump(mode="json"),
-            "correction_available": (
+            "reassessment_available": (
                 verification.state is VerificationState.FAILED and self.job.correction_attempts == 0
             ),
         }
 
-    @tool(name="retry_once_after_verification_failure")
-    def retry_once_after_verification_failure(self) -> dict[str, Any]:
-        """Reapply the same authorized plan once after deterministic verification failure."""
-        return _outcome_json(self.job.retry_once())
+    @tool(name="reassess_candidate_after_verification_failure")
+    def reassess_candidate_after_verification_failure(self) -> dict[str, Any]:
+        """Reinspect a failed candidate and derive a fresh, unexecuted repair plan."""
+        plan = self.job.reassess_candidate_after_failure()
+        return {
+            "repair_plan": plan.model_dump(mode="json"),
+            "requires_new_approval": bool(plan.approval_action_ids),
+            "executed": False,
+        }
 
     def as_list(self) -> list[Any]:
         """Return only the six contracted tools available to the primary agent."""
@@ -100,5 +105,5 @@ class AssetShepherdTools:
             self.select_repair_candidates,
             self.execute_selected_repairs,
             self.verify_and_package,
-            self.retry_once_after_verification_failure,
+            self.reassess_candidate_after_verification_failure,
         ]

@@ -29,6 +29,7 @@ from asset_shepherd.hosted_workspace import (
     HostedWorkspaceError,
     HostedWorkspaceStore,
 )
+from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.intake_analyzer import (
     DeterministicTargetIntakeAnalyzer,
     TargetIntakeAnalyzer,
@@ -187,6 +188,23 @@ class InspectionSummaryView:
     basics: str
     normal: str
     attention: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ResultPresentationView:
+    """Concise result copy derived from verification and post-repair evidence."""
+
+    kind: str
+    headline: str
+    state_label: str
+    summary: str
+    passed_title: str
+    passed: str
+    attention_title: str
+    attention_detail: str
+    next_step: str
+    package_label: str
+    download_label: str
 
 
 @dataclass(frozen=True)
@@ -1536,6 +1554,137 @@ def _default_job_view(job: WebJob) -> str:
     return "inspect"
 
 
+def _failed_candidate_path(job: AgentJob) -> Path | None:
+    """Return a view-only rejected candidate after deterministic verification fails."""
+    candidate_path = job.output_dir / "candidate.glb"
+    if (
+        job.last_verification is not None
+        and job.last_verification.state is VerificationState.FAILED
+        and job.outcome is not None
+        and job.outcome.executed_action_ids
+        and candidate_path.is_file()
+    ):
+        return candidate_path
+    return None
+
+
+def _decision_summary(job: AgentJob) -> str:
+    """Describe recorded physical authorization without exposing interrupt internals."""
+    if job.decisions is None:
+        return "pending"
+    user_records = tuple(
+        record
+        for record in job.decisions.records
+        if record.decision is not DecisionValue.AUTO_AUTHORIZED
+    )
+    if not user_records:
+        return "No physical decision needed"
+    approved = sum(record.decision is DecisionValue.APPROVED for record in user_records)
+    rejected = sum(record.decision is DecisionValue.REJECTED for record in user_records)
+    if approved and not rejected:
+        return "Physical plan approved"
+    if rejected and not approved:
+        return "Physical plan rejected"
+    return f"{approved} approved · {rejected} rejected"
+
+
+def _result_presentation(job: AgentJob) -> ResultPresentationView | None:
+    """Translate structured verification into a concise, evidence-backed result."""
+    verification = job.last_verification
+    if verification is None or job.result is None:
+        return None
+
+    if verification.state is VerificationState.FAILED:
+        failed_checks = tuple(
+            check for check in verification.checks if check.status.value != "PASS"
+        )
+        candidate_path = _failed_candidate_path(job)
+        candidate_findings: tuple[Finding, ...] = ()
+        if candidate_path is not None:
+            candidate_findings = inspect_asset(
+                candidate_path,
+                job.profile,
+                policy=job.profile_policy,
+            ).findings
+        attention_title = "Independent verification rejected the candidate."
+        attention_detail = (
+            failed_checks[0].description
+            if failed_checks
+            else "The repaired GLB did not satisfy every required check."
+        )
+        grounding = next(
+            (finding for finding in candidate_findings if finding.code == "NOT_GROUNDED"),
+            None,
+        )
+        if grounding is not None:
+            observation = (
+                grounding.evidence[0].observation if grounding.evidence else grounding.title
+            )
+            attention_title = "Grounding is still wrong."
+            attention_detail = (
+                f"{observation} The lowest point must land on Y=0 within "
+                f"{job.profile.orientation.ground_tolerance_cm:g} cm."
+            )
+        if failed_checks:
+            first_failed = failed_checks[0]
+            attention_detail += (
+                f" Verification failed {first_failed.code}: expected "
+                f"{first_failed.expected}, observed {first_failed.actual}."
+            )
+        passed_count = sum(check.status.value == "PASS" for check in verification.checks)
+        return ResultPresentationView(
+            kind="failed",
+            headline="Repair ran, but the candidate is not ready.",
+            state_label="Candidate rejected",
+            summary="The requested changes were applied, then checked from a fresh disk reload.",
+            passed_title=f"{passed_count} checks passed",
+            passed="GLB validity, geometry, materials, and textures were preserved.",
+            attention_title=attention_title,
+            attention_detail=attention_detail,
+            next_step=(
+                "The candidate is withheld. A newly derived physical correction must be "
+                "shown to you and approved before another repair."
+            ),
+            package_label="Diagnostics and recorded evidence",
+            download_label="Download diagnostics ZIP",
+        )
+
+    if verification.state is VerificationState.BLOCKED:
+        reason = (
+            job.selected_plan.blocked_reasons[0]
+            if job.selected_plan is not None and job.selected_plan.blocked_reasons
+            else "The asset is outside the supported deterministic repair set."
+        )
+        return ResultPresentationView(
+            kind="blocked",
+            headline="This asset could not be repaired here.",
+            state_label="Inspection only",
+            summary="Inspection completed without creating a repair candidate.",
+            passed_title="Inspection completed",
+            passed="The measured source facts and policy findings are recorded in the package.",
+            attention_title="Why repair stopped",
+            attention_detail=reason,
+            next_step="Correct the source in its creation or export tool, then inspect a new GLB.",
+            package_label="Inspection and diagnostics",
+            download_label="Download diagnostics ZIP",
+        )
+
+    warning = verification.remaining_warnings[0] if verification.remaining_warnings else None
+    return ResultPresentationView(
+        kind="ready",
+        headline="The verified package is ready.",
+        state_label="Verified",
+        summary="Independent verification accepted the repaired model.",
+        passed_title="All required checks passed",
+        passed="Size, orientation, names, geometry, materials, and textures passed.",
+        attention_title="Report-only note" if warning else "Ready to use",
+        attention_detail=warning or "No repairable issue remains.",
+        next_step="Compare the models, then download the repaired GLB and its evidence.",
+        package_label="Verified model and evidence",
+        download_label="Download result ZIP",
+    )
+
+
 def _workflow_steps(job: WebJob) -> tuple[WorkflowStepView, ...]:
     """Summarize inspect, decide, and download progress without duplicating content."""
     core = job.runtime.job
@@ -1776,10 +1925,17 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
     )
     inspection_checks = _inspection_checks(job)
     comparison_scene = None
-    if job.ready_candidate and core.outcome is not None and core.outcome.executed_action_ids:
+    comparison_candidate_path = (
+        job.output_dir / "repaired.glb" if job.ready_candidate else _failed_candidate_path(core)
+    )
+    if (
+        comparison_candidate_path is not None
+        and core.outcome is not None
+        and core.outcome.executed_action_ids
+    ):
         comparison_scene = _comparison_scene(
             job.source_path,
-            job.output_dir / "repaired.glb",
+            comparison_candidate_path,
         )
     return {
         "job": job,
@@ -1815,6 +1971,9 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "verification": verification,
         "workflow_result": job.workflow_result,
         "comparison_scene": comparison_scene,
+        "comparison_candidate_ready": job.ready_candidate,
+        "result_presentation": _result_presentation(core),
+        "decision_summary": _decision_summary(core),
         "decision_records": decision_records,
         "is_blocked": bool(
             verification is not None and verification.state is VerificationState.BLOCKED
@@ -1926,16 +2085,23 @@ def create_app(
         if runtime_job is not None and runtime_job.pending_interrupt_id is not None:
             approval_card = runtime_job.approval_card()
         comparison_scene = None
+        comparison_candidate_ready = False
         if (
-            workspace.ready_candidate
-            and runtime_job is not None
+            runtime_job is not None
             and runtime_job.outcome is not None
             and runtime_job.outcome.executed_action_ids
         ):
-            comparison_scene = _comparison_scene(
-                workspace.source_path,
-                workspace.output_dir / "repaired.glb",
+            comparison_candidate_path = (
+                workspace.output_dir / "repaired.glb"
+                if workspace.ready_candidate
+                else _failed_candidate_path(runtime_job)
             )
+            if comparison_candidate_path is not None:
+                comparison_scene = _comparison_scene(
+                    workspace.source_path,
+                    comparison_candidate_path,
+                )
+                comparison_candidate_ready = workspace.ready_candidate
         expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
         if target_draft is not None and target_draft.ready_for_confirmation:
@@ -1972,6 +2138,13 @@ def create_app(
                     runtime_job.last_verification if runtime_job is not None else None
                 ),
                 "comparison_scene": comparison_scene,
+                "comparison_candidate_ready": comparison_candidate_ready,
+                "result_presentation": (
+                    _result_presentation(runtime_job) if runtime_job is not None else None
+                ),
+                "decision_summary": (
+                    _decision_summary(runtime_job) if runtime_job is not None else "pending"
+                ),
                 "approval_card": approval_card,
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,
@@ -2457,6 +2630,18 @@ def create_app(
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
+    def rejected_candidate_asset(job_id: str) -> Response:
+        """Serve a failed candidate only for an explicitly labeled comparison preview."""
+        job = store.get(job_id)
+        candidate_path = _failed_candidate_path(job.runtime.job) if job is not None else None
+        if candidate_path is None:
+            return Response(status_code=404)
+        return FileResponse(
+            candidate_path,
+            media_type="model/gltf-binary",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
     def download_result(job_id: str) -> Response:
         """Download the contracted result ZIP after packaging."""
         job = store.get(job_id)
@@ -2706,6 +2891,22 @@ def create_app(
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
+    def hosted_rejected_candidate_asset(workspace_id: str) -> Response:
+        """Serve one rejected hosted candidate as a view-only diagnostic."""
+        workspace = hosted_store.get(workspace_id)
+        candidate_path = (
+            _failed_candidate_path(workspace.runtime.job)
+            if workspace is not None and workspace.runtime is not None
+            else None
+        )
+        if candidate_path is None:
+            return Response(status_code=404)
+        return FileResponse(
+            candidate_path,
+            media_type="model/gltf-binary",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
     def download_hosted_result(workspace_id: str) -> Response:
         """Serve the contracted package from a completed durable workspace."""
         workspace = hosted_store.get(workspace_id)
@@ -2831,6 +3032,12 @@ def create_app(
         name="repaired_asset",
     )
     app.add_api_route(
+        "/jobs/{job_id}/candidate-preview.glb",
+        rejected_candidate_asset,
+        methods=["GET"],
+        name="rejected_candidate_asset",
+    )
+    app.add_api_route(
         "/jobs/{job_id}/download",
         download_result,
         methods=["GET"],
@@ -2897,6 +3104,12 @@ def create_app(
         hosted_repaired_asset,
         methods=["GET"],
         name="hosted_repaired_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/candidate-preview.glb",
+        hosted_rejected_candidate_asset,
+        methods=["GET"],
+        name="hosted_rejected_candidate_asset",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/download",

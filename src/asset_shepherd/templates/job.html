@@ -102,12 +102,17 @@
             <div><p class="section-label">Stopped</p><h2 id="download-title">No output was marked ready.</h2></div>
             <p>{{ job.error }} Return to the model creation or export tool if the GLB cannot be corrected with the listed actions.</p>
           </header>
-        {% elif is_blocked %}
+        {% elif result_presentation and result_presentation.kind == 'blocked' %}
           <header class="panel-heading">
             <div><p class="section-label">Inspection complete</p><h2 id="download-title">Inspection-only result</h2></div>
-            <p>This asset is not eligible for structural repair. Diagnostics are packaged without a ready candidate; correct the source in its creation tool and export a new static GLB.</p>
+            <p>{{ result_presentation.summary }}</p>
           </header>
-        {% elif workflow_result %}
+        {% elif result_presentation and result_presentation.kind == 'failed' %}
+          <header class="panel-heading danger-copy">
+            <div><p class="section-label">Candidate rejected</p><h2 id="download-title">{{ result_presentation.headline }}</h2></div>
+            <p>{{ result_presentation.summary }}</p>
+          </header>
+        {% elif result_presentation %}
           <header class="panel-heading success-copy">
             <div><p class="section-label">Verified and packaged</p><h2 id="download-title">{{ story.candidate_label }}</h2></div>
             <p><strong>{{ verification.state }}</strong> · {{ story.verification_heading }}</p>
@@ -119,15 +124,16 @@
         {% endif %}
 
         {% if job.runtime.job.result %}
+          {% include "_result_status.html" %}
           <a class="download-button" href="{{ url_for('download_result', job_id=job.job_id) }}">
-            <span><small>Contracted evidence package</small><strong>Download result ZIP</strong></span>
+            <span><small>{{ result_presentation.package_label }}</small><strong>{{ result_presentation.download_label }}</strong></span>
             <b aria-hidden="true">↓</b>
           </a>
         {% endif %}
 
         {% if comparison_scene %}
           {% set comparison_source_url = url_for('source_asset', job_id=job.job_id) %}
-          {% set comparison_after_url = url_for('repaired_asset', job_id=job.job_id) %}
+          {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('repaired_asset', job_id=job.job_id) %}{% else %}{% set comparison_after_url = url_for('rejected_candidate_asset', job_id=job.job_id) %}{% endif %}
           {% include "_model_comparison.html" %}
         {% else %}
           <div class="preview-grid{% if not job.ready_candidate %} single{% endif %}">

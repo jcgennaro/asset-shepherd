@@ -404,48 +404,31 @@ class AgentJob:
         self._persist_runtime_state()
         return self.outcome
 
-    def retry_once(self) -> RepairOutcome:
-        """Reapply the same authorized deterministic plan after one verification failure."""
+    def reassess_candidate_after_failure(self) -> RepairPlan:
+        """Reinspect a failed candidate and derive, but never execute, a fresh plan."""
         if (
             self.last_verification is None
             or self.last_verification.state is not VerificationState.FAILED
         ):
             raise AgentWorkflowError(
-                "A correction is allowed only after deterministic verification fails"
+                "Candidate reassessment is allowed only after deterministic verification fails"
             )
         if self.correction_attempts >= 1:
-            raise AgentWorkflowError("The single bounded correction attempt has already been used")
-        if self.selected_plan is None or self.decisions is None or self.started_at is None:
-            raise AgentWorkflowError(
-                "Correction requires the existing selected and authorized plan"
-            )
+            raise AgentWorkflowError("The single bounded reassessment has already been used")
+        if not self.candidate_path.is_file():
+            raise AgentWorkflowError("Candidate reassessment requires the failed on-disk GLB")
         self.correction_attempts += 1
-        self.outcome = apply_repairs(
-            self.source,
+        candidate_inspection = inspect_asset(
             self.candidate_path,
-            self.selected_plan,
-            self.decisions,
-        )
-        self.provenance = build_provenance(
             self.profile,
-            self.selected_plan,
-            self.decisions,
-            self.outcome,
-            started_at=self.started_at,
-            completed_at=self.clock(),
-            profile_policy=self.profile_policy,
-            asset_intent=self.asset_intent,
+            policy=self.profile_policy,
         )
-        self.last_verification = None
-        _write_json(
-            self.output_dir / "provenance.json",
-            self.provenance.model_dump(mode="json"),
-        )
+        correction_plan = plan_repairs(candidate_inspection, self.profile)
         self._persist_runtime_state()
-        return self.outcome
+        return correction_plan
 
     def verify_and_package(self) -> tuple[VerificationResult, JobResult | None]:
-        """Independently verify and finalize, allowing at most one pre-final retry."""
+        """Independently verify and finalize after at most one candidate reassessment."""
         if self.inspection is None or self.selected_plan is None or self.started_at is None:
             raise AgentWorkflowError("Inspection and a selected plan are required for verification")
         if self.selected_plan.blocked:
@@ -514,17 +497,24 @@ class AgentJob:
             raise AgentWorkflowError("Repair must complete before verification")
         if self.result is not None and self.last_verification is not None:
             return self.last_verification, self.result
-        verification = self.verification_function(
-            self.source,
-            self.candidate_path,
-            self.profile,
-            self.inspection,
-            self.selected_plan,
-            self.decisions,
-            self.outcome,
-            self.provenance,
-        )
-        self.last_verification = verification
+        if (
+            self.last_verification is not None
+            and self.last_verification.state is VerificationState.FAILED
+            and self.correction_attempts >= 1
+        ):
+            verification = self.last_verification
+        else:
+            verification = self.verification_function(
+                self.source,
+                self.candidate_path,
+                self.profile,
+                self.inspection,
+                self.selected_plan,
+                self.decisions,
+                self.outcome,
+                self.provenance,
+            )
+            self.last_verification = verification
         repaired_inspection = inspect_asset(
             self.candidate_path,
             self.profile,

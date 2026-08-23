@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** Shared spatial before/after comparison and scale aids (this file is included)
+**Current commit:** Derived grounding, evidence-backed failure UI, and bounded reassessment (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -45,6 +45,31 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
+- Derived normalization postconditions: grounding is now calculated from the bounds produced by
+  the proposed scale-and-orientation matrix. A grounded Z-up regression proves the grouped plan
+  includes scale, orientation, and newly required grounding; the repaired asset is Y-up, 3.5 m
+  tall, grounded at Y=0, and produces an empty second plan.
+- Exact failure reproduction: the persisted elephant-scale quadruped originally passed 30
+  preservation/readiness checks but failed `SECOND_PLAN_EMPTY` because its rotated candidate
+  extended to -1.75 m on Y. Re-running that exact source and frozen profile with the corrected
+  planner completes `PASSED_PROJECT_READY`, passes grounding within tolerance, and leaves no
+  second-plan candidate.
+- Failed-result presentation: verification failure no longer masquerades as inspection-only or a
+  successful package. The workspace shows what passed, the exact post-repair finding and failed
+  assertion, and the fresh-approval boundary. The ZIP is labeled diagnostics. The rejected GLB is
+  view-only and explicitly marked **candidate not ready** in the shared before/candidate viewer;
+  fit modes, HUD targets, metric axes, and banana remain available for diagnosis.
+- Bounded agent correction: Strands still orchestrates the typed deterministic tools, while Python
+  owns measurement, planning, mutation, verification, and packaging. The former same-matrix retry
+  is replaced by one fresh deterministic reinspection and plan derivation. It does not mutate the
+  candidate or reuse prior approval; a newly proposed physical correction requires a new approval
+  turn and versioned provenance before execution.
+- Provider-neutral conversation state: Luna currently uses the Responses API for one
+  non-persistent structured intake call only; it is not the full workflow conversation. Durable
+  coherence lives in the Job Contract, artifacts, minimized events, exact approval state, and
+  Strands snapshots. Both scripted and Bedrock agent factories now accept the same required
+  session ID plus isolated storage contract, so a provider swap can retain state across turns and
+  restarts.
 - Spatial repair comparison: completed jobs with executed repairs now load source and candidate in
   one locally served 3D scene at their real relative scales. One camera supplies orbit, pan, zoom,
   and Both/Before/After fit modes. Projected AABB corners drive minimal HUD target boxes, labels,
@@ -75,7 +100,7 @@ before any AWS invocation or resource creation.
   pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
   at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
   scrolls inside its own container. Browser console warnings and errors are empty.
-- Tests: `uv run pytest` — 106 passed and the opt-in live-provider test skipped. D019–D031 acceptance
+- Tests: `uv run pytest` — 108 passed and the opt-in live-provider test skipped. D019–D033 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.

@@ -52,6 +52,10 @@ One primary Strands agent receives six narrow tools bound to one trusted job wor
 5. `verify_and_package`
 6. `retry_once_after_verification_failure`
 
+> Update (2026-08-23): D032 supersedes the historical sixth-tool behavior. The current tool is
+> `reassess_candidate_after_verification_failure`; it reinspects the failed candidate and derives
+> a fresh plan without reapplying the old matrix or reusing its approval.
+
 The model never supplies filesystem paths, transform matrices, binary content, or unregistered
 repair definitions. The deterministic core owns those values. The version-1 system prompt enforces
 the stage order, one combined approval, deterministic verification authority, and at most one

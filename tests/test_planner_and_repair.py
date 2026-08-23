@@ -11,10 +11,10 @@ from typing import cast
 
 import numpy as np
 import pytest
-from pygltflib import GLTF2
+from pygltflib import GLTF2, Node
 
 from asset_shepherd.cli import run_cli
-from asset_shepherd.glb import geometry_counts, load_glb, world_bounds
+from asset_shepherd.glb import geometry_counts, load_glb, save_glb, world_bounds
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     Decisions,
@@ -36,6 +36,7 @@ from asset_shepherd.repair import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = PROJECT_ROOT / "profiles" / "unreal_indie_robot.json"
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
+CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
 DECIDED_AT = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
 
 
@@ -92,6 +93,78 @@ def test_plan_contains_only_registered_rename_and_normalization_candidates() -> 
     }
     assert normalization.expected_after_bounds.dimensions_m[1] == pytest.approx(1.8)
     assert normalization.expected_after_bounds.minimum_m[1] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_y_up_rotation_preserves_grounding_as_a_derived_postcondition(tmp_path: Path) -> None:
+    """A grounded Z-up source receives grounding derived from its transformed bounds."""
+    source = tmp_path / "grounded-z-up.glb"
+    gltf = load_glb(CLEAN_PATH)
+    bounds = world_bounds(gltf)
+    rotation = np.asarray(
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0, float(bounds.maximum[2])],
+            [
+                0.0,
+                1.0,
+                0.0,
+                -float((bounds.minimum[1] + bounds.maximum[1]) / 2.0),
+            ],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    scene = gltf.scenes[gltf.scene or 0]
+    original_roots = list(scene.nodes or [])
+    wrapper_index = len(gltf.nodes)
+    gltf.nodes.append(
+        Node(
+            name="ZUpRoot",
+            matrix=[float(value) for value in rotation.T.reshape(-1)],
+            children=original_roots,
+        )
+    )
+    scene.nodes = [wrapper_index]
+    save_glb(gltf, source)
+
+    profile = _profile()
+    profile = profile.model_copy(
+        update={
+            "expected_height_cm": profile.expected_height_cm.model_copy(update={"target": 350.0})
+        }
+    )
+    inspection = inspect_asset(source, profile)
+    assert inspection.geometry is not None
+    assert inspection.geometry.dominant_dimension_axis == "Z"
+    assert inspection.geometry.ground_relationship == "GROUNDED"
+    assert "NOT_GROUNDED" not in {finding.code for finding in inspection.findings}
+
+    plan = plan_repairs(inspection, profile)
+    normalization = next(
+        candidate.payload
+        for candidate in plan.candidates
+        if isinstance(candidate.payload, NormalizationPayload)
+    )
+    assert {component.component for component in normalization.components} == {
+        "scale",
+        "orientation",
+        "grounding",
+    }
+    assert normalization.expected_after_bounds.minimum_m[1] == pytest.approx(0.0, abs=1e-9)
+
+    decisions = create_decisions(
+        plan,
+        {"normalize-root-v1": True},
+        decided_at=DECIDED_AT,
+    )
+    candidate_path = tmp_path / "candidate.glb"
+    apply_repairs(source, candidate_path, plan, decisions)
+    repaired = inspect_asset(candidate_path, profile)
+    assert repaired.geometry is not None
+    assert repaired.geometry.dominant_dimension_axis == "Y"
+    assert repaired.geometry.ground_relationship == "GROUNDED"
+    assert repaired.geometry.bounds.dimensions_m[1] == pytest.approx(3.5)
+    assert plan_repairs(repaired, profile).candidates == ()
 
 
 def test_missing_or_policy_forged_approval_is_rejected() -> None:

@@ -4,7 +4,7 @@
   <section class="hosted-workspace" data-focus-area="asset conversation">
     <header class="hosted-context">
       <a class="back-link" href="{{ url_for('hosted_home') }}">← New asset</a>
-      <p><strong>{{ record.original_filename }}</strong><span>{{ record.phase|replace('_', ' ')|title }}</span></p>
+      <p><strong>{{ record.original_filename }}</strong><span>{{ result_presentation.state_label if result_presentation else record.phase|replace('_', ' ')|title }}</span></p>
       <code>{{ record.workspace_id[:12] }}</code>
     </header>
 
@@ -23,8 +23,7 @@
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' %}About how tall should it be?
             {% elif record.phase.value == 'APPROVAL' %}One physical change needs your decision.
-            {% elif record.phase.value == 'COMPLETE' %}The verified package is ready.
-            {% elif record.phase.value == 'BLOCKED' %}The inspection-only package is ready.
+            {% elif result_presentation %}{{ result_presentation.headline }}
             {% else %}The workflow stopped.{% endif %}
           </h2>
         </header>
@@ -73,15 +72,16 @@
           </form>
         {% elif job and job.result %}
           <article class="conversation-message shepherd">
-            <p><strong>{{ verification.state if verification else record.phase }}</strong></p>
-            <p>{% if workspace.ready_candidate %}Independent verification passed. The package contains the verified candidate and contracted evidence.{% else %}No candidate was marked project-ready. The diagnostics and recorded decision are packaged.{% endif %}</p>
+            <p><strong>{{ result_presentation.state_label }}</strong></p>
+            <p>{{ result_presentation.summary }}</p>
           </article>
+          {% include "_result_status.html" %}
           <a class="download-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">
-            <span><small>Contracted evidence package</small><strong>Download result ZIP</strong></span><b aria-hidden="true">↓</b>
+            <span><small>{{ result_presentation.package_label }}</small><strong>{{ result_presentation.download_label }}</strong></span><b aria-hidden="true">↓</b>
           </a>
           {% if comparison_scene %}
             {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
-            {% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}
+            {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}{% else %}{% set comparison_after_url = url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) %}{% endif %}
             {% include "_model_comparison.html" %}
           {% else %}
             <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
@@ -162,12 +162,15 @@
           {% elif plan %}<p>{{ plan.candidates|length }} registered candidate(s); {{ plan.approval_action_ids|length }} require approval.</p>{% for candidate in plan.candidates %}<p class="contract-finding"><code>{{ candidate.action_class }}</code><span>{{ candidate.description }}</span></p>{% endfor %}{% endif %}
         </details>
         <details>
-          <summary>Decision, verification, package <span>{{ record.phase|replace('_', ' ')|lower }}</span></summary>
+          <summary>Decision, verification, package <span>{{ result_presentation.state_label|lower if result_presentation else record.phase|replace('_', ' ')|lower }}</span></summary>
           <dl>
-            <div><dt>Interrupt</dt><dd>{{ record.pending_interrupt_id[:12] if record.pending_interrupt_id else "none" }}</dd></div>
+            <div><dt>Decision</dt><dd>{{ decision_summary }}</dd></div>
             <div><dt>Verification</dt><dd>{{ verification.state if verification else "pending" }}</dd></div>
-            <div><dt>Package</dt><dd>{{ "ready" if job and job.result else "pending" }}</dd></div>
+            <div><dt>Package</dt><dd>{% if result_presentation and result_presentation.kind == "ready" %}verified result{% elif result_presentation %}diagnostics only{% else %}pending{% endif %}</dd></div>
           </dl>
+          {% if verification and verification.state.value == 'FAILED' %}
+            {% for check in verification.checks if check.status.value != 'PASS' %}<p class="contract-finding"><code>{{ check.code }}</code><span>expected {{ check.expected }} · observed {{ check.actual }}</span></p>{% endfor %}
+          {% endif %}
         </details>
         <p class="contract-retention">Private workspace state expires {{ record.retention_expires_at.strftime('%Y-%m-%d') }} · no raw transcript is packaged.</p>
       </aside>

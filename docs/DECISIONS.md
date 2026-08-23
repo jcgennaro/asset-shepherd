@@ -4,6 +4,110 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D033 — The Job Contract owns conversation state across model providers
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation
+
+**Context**
+
+The interim Luna integration uses OpenAI's Responses API, but an API endpoint and a coherent
+multi-turn product are different things. The current intake request has `store: false`, supplies no
+previous response or conversation identifier, and sends only the normalized asset description.
+Luna proposes the typed intake fields once; it does not see GLB measurements, findings, plans,
+decisions, verification, or later evidence questions. Meanwhile, the hosted scripted Strands path
+already persists snapshots, but the Bedrock factory did not accept the same session configuration.
+
+**Decision**
+
+Keep provider conversation storage non-authoritative. The durable Job Contract, typed artifacts,
+minimized event ledger, exact approval state, and Strands snapshot are the coherent picture of the
+job. Model turns may consume that state and produce explanations or tool choices, but neither an
+OpenAI response chain nor Bedrock-side history may replace it.
+
+Keep Luna's current role explicitly limited to one-shot semantic intake. A future Luna-based full
+conversation test must pass forward the relevant structured Job Contract and bounded recent turn
+state; merely adding `previous_response_id` is not sufficient. When moving the workflow model to
+Strands/Bedrock, construct the live agent with the same explicit session ID and isolated snapshot
+storage contract used by the offline hosted runtime.
+
+**Evidence and consequences**
+
+Both scripted and live-agent factories now use one provider-neutral snapshot-session builder. It
+requires both a session identity and an isolated storage root or fails closed. The opt-in Bedrock
+test supplies those values, while zero-network tests validate the configuration contract without
+credentials or model calls.
+
+This wiring makes durable Bedrock conversation available, but the hosted application still uses
+the scripted model until the contract's AWS profile, model access, region, cost, and live acceptance
+conditions are satisfied. The current Luna intake must not be described as an end-to-end agent
+conversation.
+
+### D032 — Post-transform rules are planned up front; failed candidates are reassessed
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M7 agent correction / M9 conversation and web product
+
+**Context**
+
+A grounded Z-up asset could receive an approved scale-and-orientation normalization whose rotated
+bounds crossed below Y=0. The planner considered grounding only when the source inspection already
+contained `NOT_GROUNDED`, so it omitted the translation created by its own rotation. Verification
+correctly rejected the candidate when a fresh planning pass found one remaining repair. The
+scripted agent then called its nominal correction tool, but that tool only reapplied the identical
+authorized matrix and could never resolve a newly discovered post-repair condition. The final web
+screen collapsed this verification failure into the same **Blocked / inspection-only** copy used
+for unsupported source content.
+
+**Decision**
+
+Derive grounding from the bounds produced by the complete proposed scale-and-orientation matrix.
+When ground contact is required, include grounding in the one grouped normalization whenever those
+post-transform bounds fall outside tolerance, even if the original asset was grounded.
+
+Replace the same-plan retry with one bounded candidate reassessment. The Strands agent calls a
+deterministic tool that reloads the failed candidate, runs inspection again, and derives a fresh
+registered plan. It never reuses the earlier approval and never executes the new plan silently. A
+new consequential transform must be presented through a new explicit approval turn before a future
+repair iteration may run. The deterministic core continues to own measurements, matrices, binary
+mutation, verification, and packaging; the model owns tool sequencing, explanation, and approval
+pause/resume.
+
+Render verification failure as its own result state. Show the exact failed check and measured
+post-repair finding, label the ZIP as diagnostics, and expose the failed GLB only as a clearly
+marked **candidate not ready** comparison preview. Keep the shared camera, targeting HUD, fit modes,
+metric axes, and banana scale aid available for diagnosis. Never package or label that GLB as
+project-ready.
+
+**Evidence and consequences**
+
+The exact elephant-scale quadruped source now produces a normalization containing scale,
+orientation, and derived grounding. A local rerun completes `PASSED_PROJECT_READY`, measures 3.5 m
+on Y, places minimum Y at exactly 0, and produces an empty second plan. A regression fixture starts
+grounded and Z-up, proves the source has no `NOT_GROUNDED`, and verifies the repaired result is
+Y-up, grounded, and idempotent.
+
+The previously persisted failed workspace remains useful negative evidence. Browser acceptance now
+states that 30 checks passed, grounding remained at -1.75 m, and `SECOND_PLAN_EMPTY` expected 0 but
+observed 1. It labels the candidate rejected, withholds it from the ZIP, and renders source plus the
+rejected candidate in the shared viewer. The bounded-agent test proves verification runs once, the
+failed candidate is reassessed once, the old plan is not reapplied, and the job remains failed.
+
+This change does not authorize chained physical mutation under an old decision. A complete second
+repair iteration still needs a versioned approval/provenance link before execution; until that
+exists, reassessment ends with diagnostics and an explicit fresh-approval requirement rather than
+a false retry.
+
 ### D031 — Repaired assets share one spatial before/after viewer
 
 **Date:** 2026-08-23
@@ -1359,7 +1463,8 @@ through environment variables and keep its integration test opt-in.
 Approve and reject runs both traverse the real Strands loop, stop once, resume the interrupted tool,
 and produce the exact seven-file deterministic package. The approved GLB is byte-identical to the M6
 output. Missing or mismatched approval records fail before mutation. A controlled first verification
-failure causes exactly one same-plan retry. Strands metrics expose tokens, duration, tool outcomes,
+failure originally caused one same-plan retry; D032 supersedes that behavior with one fresh
+candidate inspection and unexecuted plan assessment. Strands metrics expose tool outcomes,
 interrupts, and final state in `agent_result.json` outside the contracted ZIP.
 
 The offline harness does not prove paid-model behavior; the environment-configured Bedrock test is

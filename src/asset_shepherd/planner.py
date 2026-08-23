@@ -135,9 +135,14 @@ def _normalization_candidate(
     corners = _bounds_corners(bounds)
     homogeneous = np.column_stack((corners, np.ones(len(corners), dtype=np.float64)))
     transformed = (matrix @ homogeneous.T).T[:, :3]
-    if "NOT_GROUNDED" in codes:
+    minimum_y_before_grounding = float(transformed[:, 1].min())
+    ground_tolerance_m = profile.orientation.ground_tolerance_cm / 100.0
+    transformed_breaks_ground_rule = not (0.0 <= minimum_y_before_grounding <= ground_tolerance_m)
+    grounding_required = "NOT_GROUNDED" in codes or (
+        profile.orientation.require_ground_contact and transformed_breaks_ground_rule
+    )
+    if grounding_required:
         translation = np.eye(4, dtype=np.float64)
-        minimum_y_before_grounding = float(transformed[:, 1].min())
         translation[1, 3] = -minimum_y_before_grounding
         matrix = translation @ matrix
         transformed = (matrix @ homogeneous.T).T[:, :3]
