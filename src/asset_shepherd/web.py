@@ -6,9 +6,10 @@ import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from hashlib import sha256
 from pathlib import Path
 from threading import RLock
-from typing import Annotated, BinaryIO
+from typing import Annotated, BinaryIO, cast
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -62,6 +63,14 @@ MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
 _DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
+
+
+def _static_asset_version() -> str:
+    """Return a content fingerprint so browsers cannot retain stale UI assets."""
+    digest = sha256()
+    for asset_name in ("app.css", "app.js", "favicon.svg"):
+        digest.update((_PACKAGE_ROOT / "static" / asset_name).read_bytes())
+    return digest.hexdigest()[:12]
 
 
 class UploadValidationError(ValueError):
@@ -1263,6 +1272,7 @@ def create_app(
         analyzer,
     )
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
+    cast(dict[str, object], templates.env.globals)["static_version"] = _static_asset_version()
     app = FastAPI(
         title="Asset Shepherd",
         description="Inspect, approve, repair, verify, and package one static GLB.",

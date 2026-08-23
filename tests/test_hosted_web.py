@@ -38,7 +38,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
 
     entry = client.get("/workspace")
     assert entry.status_code == 200
-    assert "Describe your model, how it will be used, and its intended scale." in entry.text
+    assert "Describe the model you\u2019re working on." in entry.text
     assert "Use the form-led reference workflow instead" not in entry.text
     assert "durable workspace" not in entry.text
     assert "only your description is sent" not in entry.text

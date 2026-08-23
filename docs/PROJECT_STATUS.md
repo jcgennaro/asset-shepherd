@@ -83,9 +83,10 @@ before any AWS invocation or resource creation.
   separately from universal invariants, then presents deterministic GLB observations and the
   bounded action plan. Assembly reports roots/nodes/meshes/primitives without inventing semantic
   piece count, and blocked jobs direct users back to the creation/export tool with recorded reasons.
-- Asset-in-hand entry language: both entry points now use one instruction: describe the model, how
-  it will be used, and its intended scale. The primary surface contains no implementation notes,
-  workflow comparison links, or repeated explanatory sentence.
+- Asset-in-hand entry language: both entry points now use one short instruction: describe the model
+  you are working on. Use and scale guidance stays in the example inside the full-width input. The
+  primary surface contains no implementation notes, workflow comparison links, or repeated
+  explanatory sentence, and fingerprinted static URLs prevent stale layout CSS after an update.
 - Local key handling: two one-line PowerShell entry points save the key through a hidden prompt as
   Windows current-user protected ciphertext outside the repository, then unlock it only around the
   web command and restore process state on exit. Windows PowerShell 5.1 parser, DPAPI round-trip,
