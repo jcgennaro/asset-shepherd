@@ -23,7 +23,7 @@
   </nav>
 
   <section id="intake-rules" class="intake-panel" data-intake-panel="rules" aria-labelledby="rules-title">
-    <header class="panel-heading" title="These rules define ready. They do not choose or alter the source model.">
+    <header class="panel-heading" title="These rules define ready.">
       <div>
         <p class="section-label">Step 1 of 2</p>
         <h2 id="rules-title">Review the rules I derived</h2>
@@ -95,7 +95,7 @@
           <fieldset>
             <legend>Naming</legend>
             <label>Name pattern <input type="text" name="custom_naming_pattern" maxlength="128" spellcheck="false" data-custom-field="custom_naming_pattern" disabled></label>
-            <small>Must allow deterministic safe names such as <code>Node_000</code> and <code>Mesh_000</code>.</small>
+            <small>Must allow generated names such as <code>Node_000</code> and <code>Mesh_000</code>.</small>
           </fieldset>
           <fieldset>
             <legend>Report-only budgets</legend>
@@ -104,7 +104,6 @@
             <label>Maximum textures <input type="number" name="custom_max_textures" min="0" step="1" data-custom-field="custom_max_textures" disabled></label>
             <label>Maximum texture dimension <span><input type="number" name="custom_max_texture_dimension" min="1" step="1" data-custom-field="custom_max_texture_dimension" disabled> px</span></label>
           </fieldset>
-          <p class="custom-policy-boundary"><strong>Fixed safety boundary:</strong> automatic safe-name handling, grouped physical approval, verification invariants, unsupported repair domains, and source preservation cannot be changed here.</p>
         </div>
       </div>
     </details>
@@ -118,7 +117,7 @@
   </section>
 
   <section id="intake-upload" class="intake-panel upload-panel" data-intake-panel="upload" aria-labelledby="upload-title" hidden>
-    <header class="panel-heading" title="This is the actual 3D model. The source stays unchanged.">
+    <header class="panel-heading">
       <div>
         <p class="section-label">Step 2 of 2</p>
         <h2 id="upload-title">Upload the GLB you want checked</h2>
@@ -130,10 +129,11 @@
       <strong data-selected-policy>Agent-resolved rules</strong>
     </div>
 
-    <label class="drop-zone" for="asset">
+    <label class="drop-zone" for="asset" data-drop-zone>
       <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
-      <strong data-file-label>Choose your GLB file</strong>
-      <span>One static GLB · up to {{ max_upload_mb }} MB</span>
+      <strong data-file-label>Choose or drop your GLB</strong>
+      <span>One GLB · up to {{ max_upload_mb }} MB</span>
+      <span class="drop-zone-error" data-file-error aria-live="polite"></span>
     </label>
 
     <div class="step-actions split">

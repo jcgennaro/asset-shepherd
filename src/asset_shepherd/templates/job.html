@@ -10,121 +10,23 @@
       <span class="state-pill {{ job.state_class }}"><i></i>{{ job.state_label }}</span>
     </header>
 
-    <details class="job-intent">
-      <summary>Confirmed target story</summary>
-      <p>{{ job.intent.confirmed_story }}</p>
-      <small><code>{{ job.intent.canonical_sha256[:12] }}</code> · changing intent starts a new job</small>
-    </details>
-
-    <nav class="workflow-nav job-workflow-nav" aria-label="Inspection workflow">
-      {% for step in workflow_steps %}
-        <a
-          class="{{ step.status }}{% if active_view == step.slug %} active{% endif %}"
-          href="{{ url_for('job_page', job_id=job.job_id) }}?view={{ step.slug }}"
-          {% if active_view == step.slug %}aria-current="step"{% endif %}>
-          <span>{{ loop.index }}</span><strong>{{ step.label }}</strong>
-        </a>
-        {% if not loop.last %}<i aria-hidden="true"></i>{% endif %}
-      {% endfor %}
-    </nav>
+    {% if active_view != "inspect" %}
+      <nav class="workflow-nav job-workflow-nav" aria-label="Inspection workflow">
+        {% for step in workflow_steps %}
+          <a
+            class="{{ step.status }}{% if active_view == step.slug %} active{% endif %}"
+            href="{{ url_for('job_page', job_id=job.job_id) }}?view={{ step.slug }}"
+            {% if active_view == step.slug %}aria-current="step"{% endif %}>
+            <span>{{ loop.index }}</span><strong>{{ step.label }}</strong>
+          </a>
+          {% if not loop.last %}<i aria-hidden="true"></i>{% endif %}
+        {% endfor %}
+      </nav>
+    {% endif %}
 
     {% if active_view == "inspect" %}
-      <section class="workflow-panel inspect-panel" data-focus-area="inspect" aria-labelledby="inspect-title">
-        <header class="panel-heading">
-          <div>
-            <p class="section-label">Inspect</p>
-            <h2 id="inspect-title">{{ story.job_question }}</h2>
-          </div>
-        </header>
-
-        <div class="inspect-storyboard">
-          <article class="inspect-story-card expectation-pane">
-            <header><span>1</span><div><small>Assumptions</small><h3>What I expected</h3></div></header>
-            <div class="inspect-expectation-list">
-              {% for expectation in target_expectations %}
-                <div><small>{{ expectation.label }}</small><strong>{{ expectation.value }}</strong><span>{{ expectation.source }}</span></div>
-              {% endfor %}
-            </div>
-            <details class="universal-expectations">
-              <summary>Always-required checks</summary>
-              <dl>{% for label, detail in universal_expectations %}<div><dt>{{ label }}</dt><dd>{{ detail }}</dd></div>{% endfor %}</dl>
-            </details>
-          </article>
-
-          <article class="inspect-story-card observed-pane">
-            <header><span>2</span><div><small>Deterministic tools</small><h3>What the GLB contains</h3></div></header>
-            <div class="observed-preview">
-              <model-viewer
-                src="{{ url_for('source_asset', job_id=job.job_id) }}"
-                alt="Interactive preview of the untouched uploaded model"
-                camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
-                environment-image="neutral" exposure="1" interaction-prompt="none">
-                <div class="viewer-fallback" slot="poster">Loading source preview…</div>
-              </model-viewer>
-            </div>
-            {% if inspection %}
-              <dl class="observation-list">
-                {% if inspection.geometry %}<div><dt>Measured size</dt><dd>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} × {{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} × {{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[2]) }} m</dd></div>{% endif %}
-                <div><dt>Assembly</dt><dd>{{ inspection.package.node_count }} nodes · {{ inspection.package.mesh_count }} meshes · {{ inspection.package.primitive_count }} primitives{% if inspection.transforms %} · {{ inspection.transforms.root_nodes|length }} roots{% endif %}</dd></div>
-                {% if inspection.geometry %}<div><dt>Geometry</dt><dd>{{ "{:,}".format(inspection.geometry.vertex_count) }} vertices · {{ "{:,}".format(inspection.geometry.triangle_count) }} triangles</dd></div>{% endif %}
-                <div><dt>Resources</dt><dd>{{ inspection.package.material_count }} materials · {{ inspection.package.texture_count }} textures · {{ inspection.package.image_count }} images</dd></div>
-                {% if inspection.geometry %}<div><dt>Pose facts</dt><dd>{{ inspection.geometry.dominant_dimension_axis }} dominant · {{ inspection.geometry.ground_relationship|replace('_', ' ')|lower }}</dd></div>{% endif %}
-                <div><dt>Repair eligibility</dt><dd>{{ inspection.repair_eligibility|replace('_', ' ')|lower }}</dd></div>
-              </dl>
-              <p class="piece-boundary">These are structural counts, not a guess at semantic “pieces.” Splitting and merging are outside the safe repair domain.</p>
-            {% else %}<p class="empty-state">No inspection is available.</p>{% endif %}
-          </article>
-
-          <article class="inspect-story-card action-pane">
-            <header><span>3</span><div><small>Comparison and plan</small><h3>What should happen next</h3></div></header>
-            {% if cannot_repair %}
-              <div class="plan-callout blocked"><strong>This GLB cannot be repaired safely here.</strong><p>Return to the model creation or export tool, correct the source issue, and export a new static GLB.</p></div>
-              {% if plan and plan.blocked_reasons %}<ul class="plan-list">{% for reason in plan.blocked_reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
-            {% elif plan and plan.candidates %}
-              <div class="plan-callout"><strong>{{ plan.candidates|length }} bounded repair{{ '' if plan.candidates|length == 1 else 's' }} proposed.</strong><p>Only registered deterministic actions can execute.</p></div>
-              <ol class="plan-list">
-                {% for candidate in plan.candidates %}<li><span>{{ candidate.action_class|replace('_', ' ')|lower }}</span><strong>{{ candidate.description }}</strong></li>{% endfor %}
-              </ol>
-            {% elif inspection %}
-              <div class="plan-callout clear"><strong>No repair is proposed.</strong><p>The asset already satisfies the enforceable target and universal checks.</p></div>
-            {% endif %}
-            {% if report_only_findings %}
-              <details class="report-only-list" open><summary>Unresolved report-only warnings · {{ report_only_findings|length }}</summary>{% for finding in report_only_findings %}<p><code>{{ finding.code }}</code> {{ finding.title }}</p>{% endfor %}</details>
-            {% endif %}
-            <section class="findings-block" aria-labelledby="findings-title">
-              <div class="section-heading"><h3 id="findings-title">Findings</h3><span>{% if inspection %}{{ inspection.findings|length }} total{% endif %}</span></div>
-              {% if finding_groups %}
-                <div class="finding-list">
-                  {% for severity, findings in finding_groups %}{% for finding in findings %}
-                    <article class="finding">
-                      <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
-                      <h4>{{ finding.title }}</h4>
-                      <small class="basis-label">{{ basis_labels[finding.basis.value] }}</small>
-                      <details class="finding-detail"><summary>Evidence and rule</summary>
-                        <p>{{ finding.description }}</p>
-                        {% if finding.id in rule_explanations %}<p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>{% endif %}
-                        {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
-                      </details>
-                    </article>
-                  {% endfor %}{% endfor %}
-                </div>
-              {% elif inspection %}<p class="empty-state"><strong>No findings.</strong> Nothing conflicts with the target.</p>{% endif %}
-            </section>
-          </article>
-        </div>
-
-        <details class="technical-details">
-          <summary><span>Seven-stage execution detail</span><small>Structured evidence</small></summary>
-          <div class="details-body">
-            <ol class="stage-list">
-              {% for stage in stages %}<li class="{{ stage.status }}">{{ stage.name }}</li>{% endfor %}
-            </ol>
-            <p class="session-note">Frozen policy <code>{{ job.profile.profile_id }}</code> · <code>{{ job.profile.policy_provenance.canonical_sha256[:12] }}</code>. Changing rules starts a new inspection and job.</p>
-            {% if inspection and inspection.diagnostics %}
-              <p class="session-note">Objective source diagnostics · {{ inspection.diagnostics.primitives|length }} primitives · {{ inspection.diagnostics.empty_leaf_node_indices|length }} empty leaf nodes · {{ inspection.diagnostics.unused_material_indices|length }} unused materials · {{ inspection.diagnostics.duplicate_material_groups|length }} apparent duplicate material groups.</p>
-            {% endif %}
-          </div>
-        </details>
+      <section class="workflow-panel inspect-panel" data-focus-area="inspect" aria-label="Inspection results">
+        {% include "_inspection_view.html" %}
       </section>
 
     {% elif active_view == "decide" %}
@@ -197,8 +99,8 @@
       <section class="workflow-panel download-panel" data-focus-area="download" aria-labelledby="download-title">
         {% if job.error %}
           <header class="panel-heading danger-copy">
-            <div><p class="section-label">Stopped safely</p><h2 id="download-title">No output was marked ready.</h2></div>
-            <p>{{ job.error }} Return to the model creation or export tool if the source GLB cannot be corrected within the listed safe actions.</p>
+            <div><p class="section-label">Stopped</p><h2 id="download-title">No output was marked ready.</h2></div>
+            <p>{{ job.error }} Return to the model creation or export tool if the GLB cannot be corrected with the listed actions.</p>
           </header>
         {% elif is_blocked %}
           <header class="panel-heading">
@@ -213,7 +115,6 @@
         {% else %}
           <header class="panel-heading">
             <div><p class="section-label">Not ready</p><h2 id="download-title">Finish the current workflow first.</h2></div>
-            <p>The source remains unchanged.</p>
           </header>
         {% endif %}
 
@@ -229,7 +130,7 @@
             <div class="preview-label"><strong>{{ story.source_label }}</strong><span>Original</span></div>
             <model-viewer
               src="{{ url_for('source_asset', job_id=job.job_id) }}"
-              alt="Interactive preview of the untouched uploaded model"
+              alt="Interactive preview of the uploaded model"
               camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
               environment-image="neutral" exposure="1" interaction-prompt="none">
               <div class="viewer-fallback" slot="poster">Loading source preview…</div>
@@ -272,7 +173,6 @@
                 <div><dt>Corrections</dt><dd>{{ workflow_result.metrics.correction_attempts }}</dd></div>
               </dl>
             {% endif %}
-            <p class="session-note">Refresh preserves this job while the local server is running. Restarting the server ends the in-memory session.</p>
           </div>
         </details>
       </section>

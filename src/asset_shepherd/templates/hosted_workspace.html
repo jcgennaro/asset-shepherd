@@ -11,7 +11,7 @@
     {% if error %}
       <div class="alert danger" role="alert"><strong>Could not continue</strong><span>{{ error }}</span></div>
     {% elif record.error %}
-      <div class="alert danger" role="alert"><strong>Stopped safely</strong><span>{{ record.error }}</span></div>
+      <div class="alert danger" role="alert"><strong>Stopped</strong><span>{{ record.error }}</span></div>
     {% endif %}
 
     <div class="hosted-columns">
@@ -25,7 +25,7 @@
             {% elif record.phase.value == 'APPROVAL' %}One physical change needs your decision.
             {% elif record.phase.value == 'COMPLETE' %}The verified package is ready.
             {% elif record.phase.value == 'BLOCKED' %}The inspection-only package is ready.
-            {% else %}The workflow stopped safely.{% endif %}
+            {% else %}The workflow stopped.{% endif %}
           </h2>
         </header>
 
@@ -71,18 +71,17 @@
             <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
             <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve exact plan <span aria-hidden="true">→</span></button>
           </form>
-          <p class="fine-print">Typing approval language cannot authorize this action. Only these interrupt-bound controls can.</p>
         {% elif job and job.result %}
           <article class="conversation-message shepherd">
             <p><strong>{{ verification.state if verification else record.phase }}</strong></p>
-            <p>{% if workspace.ready_candidate %}Independent verification passed. The package contains the verified candidate and contracted evidence.{% else %}No candidate was marked project-ready. The diagnostics and preserved decision are packaged.{% endif %}</p>
+            <p>{% if workspace.ready_candidate %}Independent verification passed. The package contains the verified candidate and contracted evidence.{% else %}No candidate was marked project-ready. The diagnostics and recorded decision are packaged.{% endif %}</p>
           </article>
           <a class="download-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">
             <span><small>Contracted evidence package</small><strong>Download result ZIP</strong></span><b aria-hidden="true">↓</b>
           </a>
           <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
-            <article class="preview-card"><div class="preview-label"><strong>Source</strong><span>Untouched</span></div>
-              <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Untouched source asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+            <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
+              <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
             </article>
             {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
               <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
@@ -153,7 +152,7 @@
           {% if finding_groups %}{% for severity, findings in finding_groups %}{% for finding in findings %}
             <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }} · {{ basis_labels[finding.basis.value] }}</span></p>
           {% endfor %}{% endfor %}{% elif inspection %}<p>No policy findings.</p>{% else %}<p>No inspection exists before confirmation.</p>{% endif %}
-          {% if plan and plan.blocked %}<p><strong>Cannot safely repair this GLB.</strong> Return to its creation or export tool and use the recorded blockers to produce a new static GLB.</p>
+          {% if plan and plan.blocked %}<p><strong>Cannot repair this GLB here.</strong> Return to its creation or export tool and use the recorded blockers to produce a new static GLB.</p>
           {% elif plan %}<p>{{ plan.candidates|length }} registered candidate(s); {{ plan.approval_action_ids|length }} require approval.</p>{% for candidate in plan.candidates %}<p class="contract-finding"><code>{{ candidate.action_class }}</code><span>{{ candidate.description }}</span></p>{% endfor %}{% endif %}
         </details>
         <details>

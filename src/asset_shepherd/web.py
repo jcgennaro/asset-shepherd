@@ -30,6 +30,7 @@ from asset_shepherd.hosted_workspace import (
 from asset_shepherd.intake_analyzer import (
     DeterministicTargetIntakeAnalyzer,
     TargetIntakeAnalyzer,
+    TargetIntakeContentRefusal,
 )
 from asset_shepherd.intent import (
     TARGET_USE_LABELS,
@@ -38,7 +39,6 @@ from asset_shepherd.intent import (
     validate_asset_intent,
 )
 from asset_shepherd.models import (
-    ActionClass,
     AgentWorkflowResult,
     ApprovalCard,
     AssetIntentProvenance,
@@ -118,6 +118,25 @@ class ExpectationGroupView:
 
 
 @dataclass(frozen=True)
+class InspectionCheckView:
+    """One concise inspection-progress row backed by deterministic results."""
+
+    label: str
+    status: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class InspectionSummaryView:
+    """Agent-facing summary that foregrounds only measured basics and attention items."""
+
+    headline: str
+    basics: str
+    normal: str
+    attention: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class FrozenProfile:
     """Resolved immutable policy copy bound to one job workspace."""
 
@@ -148,7 +167,7 @@ def _profile_summary(profile: ProjectProfile) -> tuple[tuple[str, str], ...]:
     unique_text = f"unique {' + '.join(uniqueness)} names" if uniqueness else "duplicates allowed"
     authorization: list[str] = []
     if profile.repair_policy.auto_rename:
-        authorization.append("safe names automatic")
+        authorization.append("display-name fixes automatic")
     if profile.repair_policy.require_approval_for_normalization_transform:
         authorization.append("physical normalization needs approval")
     return (
@@ -195,7 +214,7 @@ def _profile_review_rules(
         ("Maximum materials", str(profile.budgets.max_materials)),
         ("Maximum textures", str(profile.budgets.max_textures)),
         ("Maximum texture dimension", f"{profile.budgets.max_texture_dimension}px"),
-        ("Automatic safe renaming", _yes_no(profile.repair_policy.auto_rename)),
+        ("Automatic display-name repair", _yes_no(profile.repair_policy.auto_rename)),
         (
             "Approval for physical normalization",
             _yes_no(profile.repair_policy.require_approval_for_normalization_transform),
@@ -371,19 +390,18 @@ STORIES = (
         intake_eyebrow="Start your import check",
         intake_title="Where should this asset work?",
         profile_label="Choose the target convention",
-        upload_label="Add the original GLB",
-        upload_hint="One static mesh · embedded resources · source stays untouched",
+        upload_label="Add the GLB",
+        upload_hint="One static mesh · embedded resources",
         submit_label="Check import readiness",
         job_kicker="Import readiness run",
-        job_question="Can this asset enter the project safely?",
+        job_question="What did I find?",
         source_label="Downloaded asset",
         candidate_label="Import-ready candidate",
         findings_heading="What needs attention",
         verification_heading="Ready-to-import proof",
         approval_eyebrow="Your one project-impact decision",
         rejection_note=(
-            "Rejecting keeps the original physical setup, preserves the unresolved findings, "
-            "and still packages safe name repairs."
+            "Rejecting leaves the physical normalization unresolved and records the decision."
         ),
         landing_template="story.html",
         steps=(
@@ -392,8 +410,8 @@ STORIES = (
             ),
             JourneyStep(
                 "02",
-                "Upload the original",
-                "Hand over one untouched static GLB; the source is preserved.",
+                "Upload the GLB",
+                "Add one static GLB for inspection.",
             ),
             JourneyStep(
                 "03",
@@ -424,18 +442,18 @@ STORIES = (
         promise=(
             "Keep the art direction. Let deterministic tools handle the reversible intake work."
         ),
-        intake_eyebrow="Open a protected handoff",
-        intake_title="Bring the untouched work",
+        intake_eyebrow="Start a technical handoff",
+        intake_title="Bring the model",
         profile_label="Choose the delivery target",
         upload_label="Choose your source GLB",
-        upload_hint="No topology, UV, material, texture, or artistic edits",
+        upload_hint="GLB 2.0 · static mesh · embedded resources",
         submit_label="Preview the handoff",
-        job_kicker="Protected artist handoff",
-        job_question="What changes before delivery—and what remains untouched?",
-        source_label="Your untouched work",
+        job_kicker="Artist handoff",
+        job_question="What did I find?",
+        source_label="Uploaded model",
         candidate_label="Verified delivery copy",
         findings_heading="Technical handoff notes",
-        verification_heading="Preservation checks",
+        verification_heading="Verification checks",
         approval_eyebrow="Your artistic-intent checkpoint",
         rejection_note=(
             "Rejecting keeps your scale and orientation exactly as delivered. The decision and any "
@@ -443,9 +461,7 @@ STORIES = (
         ),
         landing_template="story.html",
         steps=(
-            JourneyStep(
-                "01", "Share the untouched work", "The original export is retained byte-for-byte."
-            ),
+            JourneyStep("01", "Share the model", "Upload one static GLB."),
             JourneyStep(
                 "02",
                 "Inspect without editing",
@@ -454,7 +470,7 @@ STORIES = (
             JourneyStep(
                 "03",
                 "Review every proposed change",
-                "Safe names are separated from physical, intent-sensitive changes.",
+                "Display-name fixes are separated from physical changes.",
             ),
             JourneyStep(
                 "04",
@@ -483,7 +499,7 @@ STORIES = (
         intake_eyebrow="Create a policy run",
         intake_title="Bind an asset to a profile",
         profile_label="Versioned project profile",
-        upload_label="Unmodified source artifact",
+        upload_label="GLB file",
         upload_hint="GLB 2.0 · static mesh · isolated job workspace",
         submit_label="Run deterministic intake",
         job_kicker="Policy-bound intake",
@@ -535,7 +551,7 @@ ADVANCED_STORY = StoryDefinition(
         "I already know the target policy and want direct access to every supported rule before "
         "I submit an asset."
     ),
-    headline="Set the policy, then run the same guarded workflow.",
+    headline="Set the policy, then run the same workflow.",
     promise=(
         "Customize only rules the deterministic engine enforces; authorization and verification "
         "boundaries stay fixed."
@@ -543,7 +559,7 @@ ADVANCED_STORY = StoryDefinition(
     intake_eyebrow="Advanced policy intake",
     intake_title="Choose or customize the target rules",
     profile_label="Versioned project policy",
-    upload_label="Unmodified source artifact",
+    upload_label="GLB file",
     upload_hint="GLB 2.0 · static mesh · isolated job workspace",
     submit_label="Run policy-bound inspection",
     job_kicker="Advanced policy run",
@@ -564,7 +580,7 @@ ADVANCED_STORY = StoryDefinition(
             "Review policy",
             "Review the intent-derived family proposal or adjust supported target state.",
         ),
-        JourneyStep("02", "Upload source", "Bind one untouched GLB to the frozen policy copy."),
+        JourneyStep("02", "Upload model", "Bind one GLB to the frozen policy copy."),
         JourneyStep("03", "Inspect", "Review deterministic facts and policy provenance."),
         JourneyStep("04", "Authorize", "Approve or reject the one grouped physical change."),
         JourneyStep("05", "Package", "Download the verified candidate and evidence trail."),
@@ -633,6 +649,7 @@ class WebJob:
     latest_result: AgentResult | None = None
     workflow_result: AgentWorkflowResult | None = None
     error: str | None = None
+    inspection_acknowledged: bool = False
     lock: RLock = field(default_factory=RLock, repr=False)
 
     @property
@@ -658,7 +675,7 @@ class WebJob:
     def state_label(self) -> str:
         """Return a concise user-facing job state."""
         if self.error is not None:
-            return "Stopped safely"
+            return "Stopped"
         if self.waiting_for_approval:
             return "Approval needed"
         if self.workflow_result is None:
@@ -784,7 +801,7 @@ def _public_workflow_error(error: Exception) -> str:
         return str(error)
     if isinstance(error, ValueError):
         return str(error)
-    return "The workflow stopped unexpectedly. The source is preserved and no output is ready."
+    return "The workflow stopped unexpectedly. No output is ready."
 
 
 def _display_target_height(height_cm: float) -> str:
@@ -806,17 +823,12 @@ UNIVERSAL_EXPECTATIONS: tuple[tuple[str, str], ...] = (
         "Positions, normals, tangents, UVs, and indices must be finite and internally consistent.",
     ),
     (
-        "Static repair boundary",
-        "Skins, animation, morph targets, topology, UVs, and artistic edits are inspection-only.",
+        "Supported repairs",
+        "Version 1 handles display names and reversible root normalization.",
     ),
     (
-        "Content preservation",
-        "Geometry, materials, textures, and binary payloads must survive any supported repair.",
-    ),
-    (
-        "Exact authorization",
-        "Names may be repaired safely; physical normalization requires approval and independent "
-        "verification.",
+        "Normalization decision",
+        "You decide whether to apply the proposed physical normalization.",
     ),
 )
 
@@ -1014,16 +1026,6 @@ def _expectation_groups(
             "values."
         ),
     )
-    preservation = ExpectationView(
-        label="Preservation and permission",
-        value="Source content preserved; physical changes require approval",
-        source="Always required",
-        detail=(
-            "I won\u2019t make artistic or unsupported structural edits. "
-            "I\u2019ll independently verify "
-            "any authorized physical change."
-        ),
-    )
     return (
         ExpectationGroupView(
             label="Purpose",
@@ -1036,9 +1038,9 @@ def _expectation_groups(
             items=expectations[2:5],
         ),
         ExpectationGroupView(
-            label="Structure and safety",
-            summary="Piece count unspecified · source content protected",
-            items=(expectations[5], file_validity, preservation),
+            label="Structure",
+            summary="Piece count unspecified · valid GLB required",
+            items=(expectations[5], file_validity),
         ),
     )
 
@@ -1287,10 +1289,195 @@ def _finding_groups(job: WebJob) -> tuple[tuple[str, tuple[Finding, ...]], ...]:
     return tuple(groups)
 
 
+_SIZE_POSE_CODES = {"HEIGHT_OUT_OF_RANGE", "ORIENTATION_NOT_Y_UP", "NOT_GROUNDED"}
+_TOPOLOGY_CODES = {
+    "UNSUPPORTED_REPAIR_FEATURES",
+    "MALFORMED_GEOMETRY_ATTRIBUTES",
+    "DEGENERATE_TRIANGLES_DETECTED",
+    "TRIANGLE_BUDGET_EXCEEDED",
+}
+_MATERIAL_CODES = {
+    "MATERIAL_BUDGET_EXCEEDED",
+    "TEXTURE_BUDGET_EXCEEDED",
+    "TEXTURE_DIMENSION_EXCEEDED",
+    "IMAGE_UNREADABLE",
+}
+_NAME_CODES = {
+    "NODE_NAME_MISSING",
+    "NODE_NAME_INVALID",
+    "NODE_NAME_DUPLICATE",
+    "MESH_NAME_MISSING",
+    "MESH_NAME_INVALID",
+    "MESH_NAME_DUPLICATE",
+}
+
+
+def _inspection_checks(job: WebJob) -> tuple[InspectionCheckView, ...]:
+    """Reduce the full inspection into one progressive list of user-meaningful checks."""
+    core = job.runtime.job
+    inspection = core.inspection
+    plan = core.selected_plan
+    if inspection is None:
+        return (InspectionCheckView("GLB structure", "checking", "Inspection is running."),)
+    codes = {finding.code for finding in inspection.findings}
+
+    def result(
+        label: str,
+        relevant_codes: set[str],
+        passed: str,
+        attention: str,
+    ) -> InspectionCheckView:
+        has_attention = bool(codes & relevant_codes)
+        return InspectionCheckView(
+            label,
+            "attention" if has_attention else "pass",
+            attention if has_attention else passed,
+        )
+
+    checks = [
+        InspectionCheckView("GLB structure", "pass", "The GLB parsed successfully."),
+        result(
+            "Size and pose",
+            _SIZE_POSE_CODES,
+            "Scale, orientation, and grounding match the target.",
+            "One or more target dimensions need attention.",
+        ),
+        result(
+            "Topology",
+            _TOPOLOGY_CODES,
+            "Geometry structure passed the supported checks.",
+            "Geometry structure needs attention.",
+        ),
+        result(
+            "Materials and textures",
+            _MATERIAL_CODES,
+            "Material and texture checks passed.",
+            "A material or texture check needs attention.",
+        ),
+        result(
+            "Display names",
+            _NAME_CODES,
+            "Display names match the project pattern.",
+            "One or more display names need cleanup.",
+        ),
+    ]
+    if plan is None:
+        checks.append(InspectionCheckView("Repair plan", "checking", "Planning is running."))
+    elif plan.blocked:
+        checks.append(
+            InspectionCheckView("Repair plan", "blocked", "No supported repair plan is available.")
+        )
+    elif plan.candidates:
+        checks.append(
+            InspectionCheckView(
+                "Repair plan",
+                "attention",
+                f"{len(plan.candidates)} proposed change"
+                f"{'s' if len(plan.candidates) != 1 else ''} need review.",
+            )
+        )
+    else:
+        checks.append(InspectionCheckView("Repair plan", "pass", "No changes are needed."))
+    return tuple(checks)
+
+
+def _inspection_summary(job: WebJob, cannot_repair: bool) -> InspectionSummaryView:
+    """Create concise agent copy from structured measurements and findings."""
+    inspection = job.runtime.job.inspection
+    plan = job.runtime.job.selected_plan
+    if inspection is None:
+        return InspectionSummaryView(
+            headline="I\u2019m checking the model.",
+            basics="Measurements will appear here.",
+            normal="",
+            attention=(),
+        )
+    if inspection.geometry is None:
+        basics = "The GLB did not provide usable geometry measurements."
+    else:
+        dimensions = inspection.geometry.bounds.dimensions_m
+        basics = (
+            f"{dimensions[0]:.3f} \u00d7 {dimensions[1]:.3f} \u00d7 {dimensions[2]:.3f} m · "
+            f"{inspection.geometry.triangle_count:,} triangles · "
+            f"{inspection.package.material_count} material"
+            f"{'s' if inspection.package.material_count != 1 else ''} · "
+            f"{inspection.package.texture_count} texture"
+            f"{'s' if inspection.package.texture_count != 1 else ''}."
+        )
+    findings = inspection.findings
+    codes = {finding.code for finding in findings}
+    normal_labels: list[str] = []
+    if not codes & _SIZE_POSE_CODES:
+        normal_labels.append("size and pose")
+    if not codes & _TOPOLOGY_CODES:
+        normal_labels.append("topology")
+    if not codes & _MATERIAL_CODES:
+        normal_labels.append("materials and textures")
+    if len(normal_labels) == 1:
+        normal = f"{normal_labels[0].capitalize()} looks good."
+    elif len(normal_labels) == 2:
+        normal = f"{normal_labels[0].capitalize()} and {normal_labels[1]} look good."
+    elif normal_labels:
+        normal = f"{', '.join(normal_labels[:-1]).capitalize()}, and {normal_labels[-1]} look good."
+    else:
+        normal = ""
+
+    attention: list[str] = []
+    size_findings = [finding for finding in findings if finding.code in _SIZE_POSE_CODES]
+    if size_findings:
+        attention.append(
+            "Size and pose: "
+            + "; ".join(finding.title.rstrip(".").lower() for finding in size_findings)
+            + "."
+        )
+    data_findings = [
+        finding
+        for finding in findings
+        if finding.code in _TOPOLOGY_CODES or finding.code in _MATERIAL_CODES
+    ]
+    if data_findings:
+        attention.append(
+            "Geometry and resources: "
+            + "; ".join(finding.title.rstrip(".").lower() for finding in data_findings)
+            + "."
+        )
+    name_findings = [finding for finding in findings if finding.code in _NAME_CODES]
+    if name_findings:
+        node_names = any(finding.code.startswith("NODE_") for finding in name_findings)
+        mesh_names = any(finding.code.startswith("MESH_") for finding in name_findings)
+        subject = "Node and mesh" if node_names and mesh_names else "Node" if node_names else "Mesh"
+        attention.append(f"{subject} display names need cleanup.")
+    known_codes = _SIZE_POSE_CODES | _TOPOLOGY_CODES | _MATERIAL_CODES | _NAME_CODES
+    other_findings = [finding for finding in findings if finding.code not in known_codes]
+    if other_findings:
+        other_summary = "; ".join(finding.title.rstrip(".").lower() for finding in other_findings)
+        if len(attention) < 3:
+            attention.append(f"Other: {other_summary}.")
+        else:
+            attention[-1] = f"{attention[-1]} Other: {other_summary}."
+
+    if cannot_repair:
+        headline = "This model needs another export."
+    elif attention:
+        headline = f"I found {len(attention)} area{'s' if len(attention) != 1 else ''} to review."
+    elif plan is not None and not plan.candidates:
+        headline = "No changes are needed."
+    else:
+        headline = "The inspection is complete."
+    return InspectionSummaryView(
+        headline=headline,
+        basics=basics,
+        normal=normal,
+        attention=tuple(attention),
+    )
+
+
 def _default_job_view(job: WebJob) -> str:
     """Choose the one workflow step that needs the user's attention now."""
-    if job.waiting_for_approval:
+    if job.waiting_for_approval and job.inspection_acknowledged:
         return "decide"
+    if job.waiting_for_approval:
+        return "inspect"
     if job.workflow_result is not None or job.error is not None:
         return "download"
     return "inspect"
@@ -1330,6 +1517,8 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
     """Build the template context solely from structured job state."""
     core = job.runtime.job
     verification = core.last_verification
+    if requested_view == "decide" and job.waiting_for_approval and not job.inspection_acknowledged:
+        requested_view = "inspect"
     active_view = (
         requested_view
         if requested_view in {"inspect", "decide", "download"}
@@ -1343,11 +1532,6 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
             if record.decision is not DecisionValue.AUTO_AUTHORIZED
         )
     plan = core.selected_plan
-    report_only_findings = tuple(
-        finding
-        for finding in (core.inspection.findings if core.inspection is not None else ())
-        if finding.action_class is ActionClass.REPORT_ONLY
-    )
     cannot_repair = bool(
         (plan is not None and plan.blocked)
         or (
@@ -1355,6 +1539,7 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
             and core.inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH
         )
     )
+    inspection_checks = _inspection_checks(job)
     return {
         "job": job,
         "story": job.story,
@@ -1363,6 +1548,11 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "active_view": active_view,
         "workflow_steps": _workflow_steps(job),
         "stages": job.stages(),
+        "inspection_checks": inspection_checks,
+        "inspection_summary": _inspection_summary(job, cannot_repair),
+        "inspection_needs_confirmation": bool(
+            job.waiting_for_approval and not job.inspection_acknowledged
+        ),
         "finding_groups": _finding_groups(job),
         "basis_labels": BASIS_LABELS,
         "target_expectations": _target_expectations(
@@ -1371,7 +1561,6 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
             job.profile.policy_provenance.rule_sources,
         ),
         "universal_expectations": UNIVERSAL_EXPECTATIONS,
-        "report_only_findings": report_only_findings,
         "cannot_repair": cannot_repair,
         "rule_explanations": {
             finding.id: explanation
@@ -1422,6 +1611,8 @@ def create_app(
         error: str | None = None,
         status_code: int = 200,
         values: Mapping[str, str] | None = None,
+        *,
+        refusal: bool = False,
     ) -> Response:
         """Render the single intent-first entry point."""
         return templates.TemplateResponse(
@@ -1429,6 +1620,7 @@ def create_app(
             name="index.html",
             context={
                 "error": error,
+                "refusal": refusal,
                 "values": values or {},
                 "active_mode": "describe",
                 "active_style": "Describe",
@@ -1442,6 +1634,8 @@ def create_app(
         error: str | None = None,
         status_code: int = 200,
         description: str = "",
+        *,
+        refusal: bool = False,
     ) -> Response:
         """Render the versioned D019 conversation-led entry point."""
         return templates.TemplateResponse(
@@ -1449,6 +1643,7 @@ def create_app(
             name="hosted_home.html",
             context={
                 "error": error,
+                "refusal": refusal,
                 "description": description,
                 "active_mode": "conversation",
                 "active_style": "New asset",
@@ -1653,7 +1848,7 @@ def create_app(
         return render_intent_home(request)
 
     def how_it_works(request: Request) -> Response:
-        """Explain the complete workflow and its safety boundary."""
+        """Explain the complete workflow and current repair scope."""
         return templates.TemplateResponse(
             request=request,
             name="how_it_works.html",
@@ -1754,6 +1949,13 @@ def create_app(
         values = {"description": description}
         try:
             intent = store.create_intent(description)
+        except TargetIntakeContentRefusal as error:
+            return render_intent_home(
+                request,
+                str(error),
+                status_code=400,
+                refusal=True,
+            )
         except (UploadValidationError, ValueError) as error:
             return render_intent_home(request, str(error), status_code=400, values=values)
         return RedirectResponse(
@@ -1927,6 +2129,24 @@ def create_app(
             headers={"Cache-Control": "no-store"},
         )
 
+    def confirm_inspection(request: Request, job_id: str) -> Response:
+        """Acknowledge the inspection summary before exposing the repair decision."""
+        try:
+            job = require_job(job_id)
+        except UploadValidationError as error:
+            return render_intent_home(request, str(error), status_code=404)
+        if job.runtime.job.inspection is None or job.runtime.job.selected_plan is None:
+            return RedirectResponse(
+                f"{request.url_for('job_page', job_id=job.job_id)}?view=inspect",
+                status_code=303,
+            )
+        job.inspection_acknowledged = True
+        next_view = "decide" if job.waiting_for_approval else "download"
+        return RedirectResponse(
+            f"{request.url_for('job_page', job_id=job.job_id)}?view={next_view}",
+            status_code=303,
+        )
+
     def decide_job(
         request: Request,
         job_id: str,
@@ -1937,6 +2157,11 @@ def create_app(
         job: WebJob | None = None
         try:
             job = require_job(job_id)
+            if job.waiting_for_approval and not job.inspection_acknowledged:
+                return RedirectResponse(
+                    f"{request.url_for('job_page', job_id=job.job_id)}?view=inspect",
+                    status_code=303,
+                )
             if decision not in {"approve", "reject"}:
                 raise UploadValidationError("Choose approve or reject for this repair.")
             store.resume(job, interrupt_id, approved=decision == "approve")
@@ -1979,7 +2204,7 @@ def create_app(
         )
 
     def download_result(job_id: str) -> Response:
-        """Download the safe contracted result ZIP after packaging."""
+        """Download the contracted result ZIP after packaging."""
         job = store.get(job_id)
         if job is None:
             return Response(status_code=404)
@@ -2006,6 +2231,13 @@ def create_app(
         filename = asset.filename or ""
         try:
             workspace = hosted_store.create(description, filename, asset.file)
+        except TargetIntakeContentRefusal as error:
+            return render_hosted_home(
+                request,
+                str(error),
+                status_code=400,
+                refusal=True,
+            )
         except (HostedWorkspaceError, ValueError) as error:
             return render_hosted_home(
                 request,
@@ -2319,6 +2551,12 @@ def create_app(
         methods=["GET"],
         response_class=HTMLResponse,
         name="job_page",
+    )
+    app.add_api_route(
+        "/jobs/{job_id}/inspection/confirm",
+        confirm_inspection,
+        methods=["POST"],
+        name="confirm_inspection",
     )
     app.add_api_route(
         "/jobs/{job_id}/decision",

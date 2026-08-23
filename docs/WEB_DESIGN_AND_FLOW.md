@@ -1,7 +1,7 @@
 # Asset Shepherd Web Design and Flow
 
 This is the current local web-product handoff. It documents the implemented intent-first flow and
-its safety boundary; it is not a proposal to expand repair scope.
+its authorization boundary; it is not a proposal to expand repair scope.
 
 ## Product mental model
 
@@ -76,7 +76,10 @@ The interim OpenAI analyzer emits a strict `TargetIntakeInference`; server code 
 applies the 0.8 confidence gate, and constructs the contract. The proposal records provider/model
 identity and inference evidence. The user can edit the natural-language description and ask the
 analyzer to reinterpret both target fields, then must confirm once. Intended-use categories are not
-exposed as a selector or repair mode.
+exposed as a selector or repair mode. The inference must also return `PROCEED` or `REFUSE`. A
+decline has no target fields, creates no job or uploaded-file copy, and renders only a concise
+response such as: **Sorry, I can't engage with this type of content. Let's work on something
+else.** Exact punctuation is not part of the contract.
 Measured GLB bounds can inform evidence and questions but can never stand in for intended height.
 The draft is stored as `target_intake.json`; it is not repair authorization. The offline extractor
 and future Bedrock implementation emit the same schema.
@@ -121,27 +124,33 @@ fields already enforced by `ProjectProfile`: height tolerance, Y-up and ground-c
 and tolerance, naming pattern, and report-only triangle/material/texture budgets. The confirmed
 height is displayed but is not requested again or replaceable by a raw operation.
 
-Safety classes, grouped approval behavior, vertical inference, uniqueness guarantees, verification
-invariants, unsupported repair domains, engine/type, and source preservation are fixed. Repository
+Action classes, grouped approval behavior, vertical inference, uniqueness guarantees, verification
+invariants, unsupported repair domains, engine/type, and mutation boundaries are fixed. Repository
 profiles and the family remain byte-for-byte immutable. Each job receives a validated
 `profile.json` snapshot plus frozen/family identifiers, explicit differences, per-rule sources,
 version, and canonical hash in provenance. The legacy `base_preset_id` field mirrors the family ID.
 
-Upload accepts one GLB 2.0 binary up to 50 MB. The server validates the filename extension, GLB
-magic, size, intent hash, and trusted policy family before creating an isolated job. The copied source
-is never mutated.
+Upload accepts one GLB 2.0 binary up to 50 MB. The same control accepts a click-to-choose action or
+a Windows Explorer drop and visibly updates to the selected filename. A drop must contain exactly
+one `.glb`. The server validates the filename extension, GLB magic, size, intent hash, and trusted
+policy family before creating an isolated job.
 
 ## Inspect, decide, verify, and package
 
 ### Inspect
 
-Inspect uses three primary areas: **What I expected**, **What the GLB contains**, and **What should
-happen next**. The first separates description-derived target assumptions from universal
-invariants. The second shows the untouched preview and deterministic dimensions, hierarchy,
-geometry, resource, pose, and eligibility facts. The third compares those facts with the target,
-lists findings by authority, and shows the bounded repair plan or a clear return-to-source-tool
-handoff. Every profile-caused finding cites the frozen rule parameter and profile identifier that
-caused it. Free text cannot create a finding or candidate action.
+Inspect uses three sequential areas. **Checking your GLB** replays six deterministic domains in one
+compact log and resolves each to a pass or attention marker. **Summary** reports only measured size,
+topology, and resources; compresses normal domains into one sentence; and groups every attention
+finding into no more than three readable areas. **Do these issues look fixable?** gates entry to the
+repair decision. The server rejects a direct Decide navigation or submission until that summary has
+been acknowledged.
+
+One closed **More details** disclosure retains the preview plus the full check log, target
+expectations, universal invariants, measurements, findings, finding authority, exact rule
+provenance, repair candidates, execution stages, and frozen policy in a scrollable table. The
+default view does not repeat the target story, a second workflow rail, or per-check explanatory
+paragraphs. Free text cannot create a finding or candidate action.
 
 Intended use is context and a support-boundary check, not a preset. Static-asset intent receives the
 complete supported workflow. Character intent is retained, but the current product offers only
@@ -153,7 +162,7 @@ pretend those structural counts identify artistic pieces and does not merge or s
 
 If the deterministic plan proposes scale/orientation/grounding normalization, Decide presents one
 grouped consequential action. Approve or Reject is bound to the exact Strands interrupt ID.
-Policy-safe display-name repairs remain separate. Rejection is preserved in decisions and
+Automatic display-name repairs remain separate. Rejection is recorded in decisions and
 provenance, the physical operation is not executed, and unresolved findings remain explicit.
 
 ### Verify and download
@@ -186,15 +195,14 @@ not change.
   title, and full workspace.
 - Primary questions and actions use large type and available whitespace.
 - Target confirmation uses a wider canvas, human-readable metric units, and exactly three collapsed
-  groups: purpose, scale and pose, and structure and safety. Each group exposes at most three
+  groups: purpose, scale and pose, and structure. Each group exposes at most three
   supporting facts only after the user opens it.
 - The only target decision is **Did I get it right?** The user either continues or edits the same
   description and asks for another interpretation; resubmitting unchanged text is also a retake.
 - **It’s not working for me** opens one reusable feedback page with the originating workflow
   context, four bounded reasons, and an optional note of at most 1,000 characters.
-- Policy parameters, finding evidence, the confirmed story on job pages, upload notes, and
-  verification details stay available through disclosures instead of competing with the next
-  action.
+- Policy parameters, finding evidence, upload notes, and verification details stay available
+  through disclosures instead of competing with the next action.
 - The dark workshop palette, responsive left rail, keyboard-visible controls, and reduced-motion
   behavior remain.
 - Interactive previews use pinned `<model-viewer>` 4.3.1. The viewer is a browser dependency, not
@@ -234,9 +242,10 @@ not change.
 - The approved flow still packages the exact seven artifacts, preserves source bytes, cites rule
   provenance, and requires the exact interrupt-bound decision.
 - Former role routes redirect to the intent entry point.
-- Confirmation and clarification contain no target-use dropdown. Inspection presents assumptions,
-  measured GLB facts, and the action plan as three explicit areas; blocked inputs direct the user
-  back to the creation/export tool with recorded reasons.
+- Confirmation and clarification contain no target-use dropdown. Inspection presents one compact
+  check log, one summary with at most three attention groups, and one confirmation question; the
+  complete evidence remains closed by default. Blocked inputs direct the user back to the
+  creation/export tool with recorded reasons.
 
 ## Next hosted step
 

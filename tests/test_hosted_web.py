@@ -42,8 +42,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Use the form-led reference workflow instead" not in entry.text
     assert "durable workspace" not in entry.text
     assert "only your description is sent" not in entry.text
-    assert "Static GLB · up to 50 MB" in entry.text
-    assert "Choose the untouched GLB" in entry.text
+    assert "One GLB · up to 50 MB" in entry.text
+    assert "Choose or drop your GLB" in entry.text
     assert entry.text.count('data-focus-area="') == 1
 
     created = client.post(
@@ -83,7 +83,6 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     pending = client.get(workspace_path)
     assert "One physical change needs your decision." in pending.text
     assert "Approve exact plan" in pending.text
-    assert "Typing approval language cannot authorize this action." in pending.text
     interrupt_id = _hidden(pending.text, "interrupt_id")
     decision_command = _hidden(pending.text, "command_id")
 

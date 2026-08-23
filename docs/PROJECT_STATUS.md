@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-22
-**Current commit:** Asset-in-hand intro language (this file is included)
+**Last updated:** 2026-08-23
+**Current commit:** Simplified inspection review and shared GLB drop control (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 semantic intake; D024 protected one-command local launcher; D027 expectation-to-evidence UI |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 semantic intake; D024 protected one-command local launcher; D027 expectation-to-evidence UI; D029 progressive inspection review |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -45,7 +45,22 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 100 passed and the opt-in live-provider test skipped. D019–D027 acceptance
+- Simplified inspection review: the former three-column evidence dashboard is replaced by one
+  progressive six-check log, one structured summary with at most three attention groups, and one
+  **Do these issues look fixable?** acknowledgement before Decide. Complete measurements,
+  expectations, findings, rule provenance, plan candidates, stages, preview, and frozen policy are
+  retained in a closed 48-row **More details** table. The Inspect view no longer repeats the target
+  story, a second workflow rail, or public implementation-boundary copy. Direct Decide navigation
+  and submission remain gated until acknowledgement.
+- Upload and intake boundary: both upload surfaces share **Choose or drop your GLB** behavior.
+  Click-to-choose remains functional; Explorer drop accepts exactly one `.glb`, updates the visible
+  filename, and reports invalid drops in place. A structured intake decline stores no description or
+  GLB and renders only a concise response without policy commentary.
+- D029 browser evidence: the broken fixture replay visibly transitions from **Checking …** rows to
+  pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
+  at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
+  scrolls inside its own container. Browser console warnings and errors are empty.
+- Tests: `uv run pytest` — 105 passed and the opt-in live-provider test skipped. D019–D029 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -94,7 +109,7 @@ before any AWS invocation or resource creation.
   echo a key.
 - Target confirmation presentation: the proposal uses the wider workspace, a restrained headline,
   and human-readable metric units. Six assumptions and five invariants are compressed into three
-  collapsed groups with no more than three facts per expanded group. The only decision is whether
+  collapsed groups—Purpose, Scale and pose, and Structure—with no more than three facts per expanded group. The only decision is whether
   the agent got it right; its controls are simply **Yes** and **No**. **No** reveals one prefilled
   description for another attempt, using the same 16-pixel regular-weight field styling as entry
   and clarification. A shared workflow-stage renderer, description-field renderer, and
@@ -138,7 +153,7 @@ before any AWS invocation or resource creation.
   standing/hanging/hovering language may set grounding; and unspecified rules retain family
   defaults. Advanced values remain schema-validated and changing intent or any rule creates a
   separate inspection/job.
-- Existing web safety acceptance remains: broken-fixture refresh/approve/resume/download; clean
+- Existing web workflow acceptance remains: broken-fixture refresh/approve/resume/download; clean
   no-approval completion twice from independent app starts; invalid GLB rejection; unsupported
   inspection-only packaging; exact ZIP audit; source preservation; trusted family baseline; 50 MB
   and GLB magic boundaries; finding-level rule provenance.
@@ -155,7 +170,7 @@ before any AWS invocation or resource creation.
   a collapsed disclosure during intake so policy controls stay near the fold. At 390 × 844 the left
   workflow rail remains visible, content uses one column, horizontal overflow is absent, and browser
   diagnostics contain no warnings or errors.
-- D027/D028 browser review confirms the three-group confirmation and shared feedback page at the
+- D027–D029 browser review confirms the three-group confirmation, simplified inspection, and shared feedback page at the
   default desktop viewport and 390 × 844. The compact document width is 375 pixels within the
   390-pixel viewport, all decisions and the feedback link remain visible, navigation starts at the
   top, and browser diagnostics contain no warnings or errors.
@@ -168,7 +183,7 @@ before any AWS invocation or resource creation.
 - Web design handoff: `docs/WEB_DESIGN_AND_FLOW.md` records the intent-first information
   architecture, target-story contract, policy derivation, single-step workflow, Bedrock boundary,
   evidence, and limitations. D018 supersedes the primary audience-selector modality while retaining
-  the established layout, disclosure, authorization, and deterministic safety decisions.
+  the established layout, disclosure, authorization, and deterministic invariant decisions.
 - Product inflection review: `docs/INFLECTION_POINT.md` is the single current-versus-envisioned
   handoff. It preserves the existing form-led product as the executable baseline, defines the
   proposed persistent Bedrock/Strands asset conversation, fixes the authority boundary, surfaces ten

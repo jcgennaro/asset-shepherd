@@ -1,0 +1,94 @@
+<div class="inspection-experience" data-inspection-experience>
+  <section class="inspection-progress" aria-labelledby="inspection-progress-title">
+    <header>
+      <h2 id="inspection-progress-title">Checking your GLB</h2>
+      <span data-inspection-count>{{ inspection_checks|length }} complete</span>
+    </header>
+    <div class="inspection-stream" role="log" aria-live="polite" data-inspection-stream>
+      {% for check in inspection_checks %}
+        <div class="inspection-check {{ check.status }}" data-inspection-check data-status="{{ check.status }}" data-label="{{ check.label }}">
+          <span class="inspection-check-icon" aria-hidden="true">{% if check.status == 'pass' %}✓{% elif check.status == 'blocked' %}×{% elif check.status == 'checking' %}…{% else %}!{% endif %}</span>
+          <strong>{{ check.label }}</strong>
+          <span class="visually-hidden">{{ check.detail }}</span>
+        </div>
+      {% endfor %}
+    </div>
+
+    <details class="inspection-details">
+      <summary>More details</summary>
+      <div class="inspection-details-body">
+        <model-viewer
+          src="{{ url_for('source_asset', job_id=job.job_id) }}"
+          alt="Uploaded model"
+          camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
+          environment-image="neutral" exposure="1" interaction-prompt="none">
+          <div class="viewer-fallback" slot="poster">Loading model preview…</div>
+        </model-viewer>
+        <div class="inspection-table-wrap">
+          <table class="inspection-table">
+            <thead><tr><th>Item</th><th>Result</th><th>Notes</th></tr></thead>
+            <tbody>
+            {% for check in inspection_checks %}
+              <tr><td>{{ check.label }}</td><td>{{ check.status|title }}</td><td>{{ check.detail }}</td></tr>
+            {% endfor %}
+            {% for expectation in target_expectations %}
+              <tr><td>{{ expectation.label }}</td><td>{{ expectation.value }}</td><td>{{ expectation.source }}</td></tr>
+            {% endfor %}
+            {% for label, detail in universal_expectations %}
+              <tr><td>{{ label }}</td><td>Required</td><td>{{ detail }}</td></tr>
+            {% endfor %}
+            {% if inspection and inspection.geometry %}
+              <tr><td>Measured size</td><td>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} × {{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} × {{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[2]) }} m</td><td>{{ inspection.geometry.dominant_dimension_axis }} dominant · {{ inspection.geometry.ground_relationship|replace('_', ' ')|lower }}</td></tr>
+              <tr><td>Topology</td><td>{{ "{:,}".format(inspection.geometry.vertex_count) }} vertices · {{ "{:,}".format(inspection.geometry.triangle_count) }} triangles</td><td>{{ inspection.package.node_count }} nodes · {{ inspection.package.mesh_count }} meshes · {{ inspection.package.primitive_count }} primitives</td></tr>
+            {% endif %}
+            {% if inspection %}
+              <tr><td>Materials</td><td>{{ inspection.package.material_count }} materials · {{ inspection.package.texture_count }} textures</td><td>{{ inspection.package.image_count }} images</td></tr>
+              <tr><td>Repair eligibility</td><td>{{ inspection.repair_eligibility|replace('_', ' ')|lower }}</td><td>Measured from supported GLB features</td></tr>
+            {% endif %}
+            {% for severity, findings in finding_groups %}{% for finding in findings %}
+              <tr><td>{{ finding.code }}</td><td>{{ finding.title }}</td><td>{{ severity|lower }} · {{ basis_labels[finding.basis.value] }} · {{ finding.description }}{% if finding.id in rule_explanations %} · Policy rule: {{ rule_explanations[finding.id] }}{% endif %}</td></tr>
+            {% endfor %}{% endfor %}
+            {% if plan %}{% for candidate in plan.candidates %}
+              <tr><td>{% if candidate.action_class.value == 'AUTO_SAFE' %}Automatic{% else %}Approval required{% endif %}</td><td>{{ candidate.description }}</td><td>Proposed change</td></tr>
+            {% endfor %}{% endif %}
+            {% for stage in stages %}
+              <tr><td>{{ stage.eyebrow }} · {{ stage.name }}</td><td>{{ stage.status|title }}</td><td>Workflow stage</td></tr>
+            {% endfor %}
+            <tr><td>Frozen policy</td><td>{{ job.profile.profile_id }}</td><td>Changing rules starts a new inspection and job.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="inspection-summary" aria-labelledby="inspection-summary-title" data-inspection-result>
+    <p class="section-label">Summary</p>
+    <h3 id="inspection-summary-title">{{ inspection_summary.headline }}</h3>
+    <p class="inspection-basics">{{ inspection_summary.basics }}{% if inspection_summary.normal %} {{ inspection_summary.normal }}{% endif %}</p>
+    {% if inspection_summary.attention %}
+      <ul>{% for item in inspection_summary.attention %}<li>{{ item }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+
+  <section class="inspection-next" aria-labelledby="inspection-next-title" data-inspection-result>
+    {% if inspection_needs_confirmation %}
+      <h3 id="inspection-next-title">Do these issues look fixable?</h3>
+      <div class="inspection-next-actions">
+        <form action="{{ url_for('confirm_inspection', job_id=job.job_id) }}" method="post" data-busy-form>
+          <button class="primary-button" type="submit" data-submit-button>Yes</button>
+        </form>
+        <a class="secondary-button" href="{{ url_for('feedback_page') }}?context=inspection&amp;reference_id={{ job.job_id }}&amp;return_path={{ request.url.path }}?view=inspect">No</a>
+      </div>
+    {% elif cannot_repair %}
+      <h3 id="inspection-next-title">Try another export.</h3>
+      <p>Return to your model creation tool, correct the listed issues, and export a new GLB.</p>
+      <a class="primary-button" href="{{ url_for('home') }}">New asset</a>
+    {% elif workflow_result %}
+      <h3 id="inspection-next-title">Ready to download.</h3>
+      <a class="primary-button" href="{{ url_for('job_page', job_id=job.job_id) }}?view=download">Continue</a>
+    {% else %}
+      <h3 id="inspection-next-title">Inspection is still running.</h3>
+    {% endif %}
+  </section>
+</div>

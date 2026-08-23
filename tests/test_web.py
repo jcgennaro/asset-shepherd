@@ -5,6 +5,7 @@
 
 import json
 import re
+from html import unescape
 from pathlib import Path
 from urllib.parse import urlparse
 from zipfile import ZipFile
@@ -14,7 +15,12 @@ from fastapi.testclient import TestClient
 from pygltflib import Skin
 
 from asset_shepherd.glb import load_glb, save_glb
-from asset_shepherd.intake_analyzer import TargetIntakeInference, contract_from_inference
+from asset_shepherd.intake_analyzer import (
+    INTAKE_REFUSAL_MESSAGE,
+    TargetIntakeContentRefusal,
+    TargetIntakeInference,
+    contract_from_inference,
+)
 from asset_shepherd.intent import validate_asset_intent
 from asset_shepherd.models import (
     AssetIntentProvenance,
@@ -218,6 +224,27 @@ def test_describe_and_confirm_share_layout_and_description_field_rules(tmp_path:
             assert '<section class="confirmation-question"' not in source
 
 
+def test_upload_controls_support_click_and_drag_drop(tmp_path: Path) -> None:
+    """Both upload surfaces share one GLB chooser-and-drop interaction."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    _, intake_path = _confirmed_intent(client)
+
+    for response in (client.get(intake_path), client.get("/workspace")):
+        assert response.status_code == 200
+        assert "Choose or drop your GLB" in response.text
+        assert "data-drop-zone" in response.text
+        assert "data-file-input" in response.text
+        assert "data-file-error" in response.text
+
+    script = client.get("/static/app.js")
+    assert script.status_code == 200
+    assert 'addEventListener("dragover"' not in script.text
+    assert 'for (const eventName of ["dragenter", "dragover"])' in script.text
+    assert 'dropZone.addEventListener("drop"' in script.text
+    assert "fileInput.files = dropped" in script.text
+    assert 'endsWith(".glb")' in script.text
+
+
 def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
     tmp_path: Path,
 ) -> None:
@@ -237,10 +264,12 @@ def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
     assert "<title>Asset Shepherd -- How it works</title>" in help_page.text
     assert "One asset in." in help_page.text
     assert "Describe the target" in help_page.text
-    assert "Upload the untouched GLB" in help_page.text
+    assert "Upload the GLB" in help_page.text
     assert "Make one meaningful decision" in help_page.text
     assert "Download with proof" in help_page.text
-    assert "Your original stays untouched" in help_page.text
+    assert "Current scope" in help_page.text
+    assert "safety boundary" not in help_page.text.lower()
+    assert "original stays untouched" not in help_page.text.lower()
     assert "What can Asset Shepherd repair?" in help_page.text
     _assert_focus_area_budget(help_page.text)
 
@@ -264,6 +293,7 @@ def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
             return contract_from_inference(
                 description,
                 TargetIntakeInference(
+                    engagement_decision="PROCEED",
                     target_use=AssetTargetUse.STATIC_GAME_ASSET,
                     target_use_confidence=0.96,
                     target_use_evidence="The description identifies a static prop.",
@@ -312,7 +342,10 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     assert review.text.count('class="expectation-group"') == 3
     assert "Purpose" in review.text
     assert "Scale and pose" in review.text
-    assert "Structure and safety" in review.text
+    assert "Structure" in review.text
+    assert "Structure and safety" not in review.text
+    assert "source content protected" not in review.text.lower()
+    assert "source content preserved" not in review.text.lower()
     assert 'name="target_use"' not in review.text
     assert 'name="target_height_m"' not in review.text
     assert "Did I get it right?" in review.text
@@ -349,6 +382,45 @@ def test_web_validates_description_before_target_drafting(tmp_path: Path) -> Non
 
     assert response.status_code == 400
     assert "at least 12 characters" in response.text
+    assert not work_root.exists()
+
+
+def test_web_refuses_disallowed_intake_without_echoing_or_storing_it(tmp_path: Path) -> None:
+    """Both entry routes show one concise refusal and retain no request or uploaded file."""
+
+    class RefusalAnalyzer:
+        provider = "test"
+        model_id = "refusal-test"
+
+        def analyze(self, description: str) -> TargetIntakeContract:
+            del description
+            raise TargetIntakeContentRefusal(INTAKE_REFUSAL_MESSAGE)
+
+    work_root = tmp_path / "jobs"
+    client = TestClient(
+        create_app(
+            project_root=PROJECT_ROOT,
+            work_root=work_root,
+            intake_analyzer=RefusalAnalyzer(),
+        )
+    )
+    declined_description = "A sufficiently long description declined by the intake model."
+
+    form_led = client.post("/intents", data={"description": declined_description})
+    assert form_led.status_code == 400
+    assert unescape(form_led.text).count(INTAKE_REFUSAL_MESSAGE) == 1
+    assert "Check the target" not in form_led.text
+    assert declined_description not in form_led.text
+
+    hosted = client.post(
+        "/workspace",
+        data={"description": declined_description},
+        files={"asset": (CLEAN_PATH.name, CLEAN_PATH.read_bytes(), "model/gltf-binary")},
+    )
+    assert hosted.status_code == 400
+    assert unescape(hosted.text).count(INTAKE_REFUSAL_MESSAGE) == 1
+    assert "Workspace not started" not in hosted.text
+    assert declined_description not in hosted.text
     assert not work_root.exists()
 
 
@@ -430,6 +502,7 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
             return contract_from_inference(
                 description,
                 TargetIntakeInference(
+                    engagement_decision="PROCEED",
                     target_use=AssetTargetUse.STATIC_GAME_ASSET,
                     target_use_confidence=0.96,
                     target_use_evidence="A mountain is an environmental feature.",
@@ -544,7 +617,8 @@ def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_heig
     assert "Maximum triangles" in response.text
     assert "Approval for physical normalization" in response.text
     assert "Adjust supported rules" in response.text
-    assert "Fixed safety boundary" in response.text
+    assert "Fixed safety boundary" not in response.text
+    assert "source preservation" not in response.text.lower()
     assert "transform matrix" not in response.text.lower()
     assert 'data-intake-panel="rules"' in response.text
     assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in response.text
@@ -581,10 +655,17 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     pending = client.get(job_path)
     assert pending.status_code == 200
     assert "Approval needed" in pending.text
-    assert "Normalize physical scale, upright orientation, and grounding" in pending.text
-    assert "Confirmed target story" in pending.text
+    assert "Inspection results" in pending.text
+    assert "Checking your GLB" in pending.text
+    assert "Summary" in pending.text
+    assert "Do these issues look fixable?" in pending.text
+    assert "More details" in pending.text
+    assert "Normalize physical scale, upright orientation, and grounding" not in pending.text
+    assert 'class="inspect-storyboard"' not in pending.text
+    assert pending.text.count("data-inspection-check") == 6
+    assert "Confirmed target story" not in pending.text
+    assert 'class="job-workflow-nav"' not in pending.text
     _assert_focus_area_budget(pending.text)
-    interrupt_id = _interrupt_id(pending.text)
     job_id = job_path.rsplit("/", 1)[-1]
     job_root = work_root / job_id
     output = job_root / "output"
@@ -601,17 +682,30 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
 
     inspect_view = client.get(f"{job_path}?view=inspect")
     assert inspect_view.status_code == 200
-    assert "What I expected" in inspect_view.text
-    assert "What the GLB contains" in inspect_view.text
-    assert "What should happen next" in inspect_view.text
-    assert "Assembly" in inspect_view.text
+    assert "GLB structure" in inspect_view.text
+    assert "Size and pose" in inspect_view.text
+    assert "Topology" in inspect_view.text
+    assert "Materials and textures" in inspect_view.text
+    assert "Display names" in inspect_view.text
     assert "nodes" in inspect_view.text
     assert "meshes" in inspect_view.text
     assert "primitives" in inspect_view.text
     assert "Target-specific expectation" in inspect_view.text
-    assert "Policy rule" in inspect_view.text
     assert "Height target 180.0 cm ± 9.0 cm" in inspect_view.text
+    assert "safe" not in inspect_view.text.lower()
+    assert "source content" not in inspect_view.text.lower()
     _assert_focus_area_budget(inspect_view.text)
+
+    gated_decide = client.get(f"{job_path}?view=decide")
+    assert "Do these issues look fixable?" in gated_decide.text
+    assert "Normalize physical scale, upright orientation, and grounding" not in gated_decide.text
+
+    acknowledged = client.post(f"{job_path}/inspection/confirm", follow_redirects=False)
+    assert acknowledged.status_code == 303
+    assert acknowledged.headers["location"].endswith("?view=decide")
+    decision_view = client.get(acknowledged.headers["location"])
+    assert "Normalize physical scale, upright orientation, and grounding" in decision_view.text
+    interrupt_id = _interrupt_id(decision_view.text)
 
     source_response = client.get(f"{job_path}/source.glb")
     assert source_response.status_code == 200
@@ -848,8 +942,8 @@ def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path)
         assert "PASSED_PROJECT_READY" in completed.text
         _assert_focus_area_budget(completed.text)
         inspected = client.get(f"{job_path}?view=inspect")
-        assert "No findings." in inspected.text
-        assert "No repair is proposed." in inspected.text
+        assert "No changes are needed." in inspected.text
+        assert "Ready to download." in inspected.text
         assert client.get(f"{job_path}/download").status_code == 200
 
 
@@ -886,8 +980,9 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
     blocked_inspect = client.get(f"{job_path}?view=inspect")
     assert "inspection only unsupported features" in blocked_inspect.text
     assert "UNSUPPORTED_REPAIR_FEATURES" in blocked_inspect.text
-    assert "cannot be repaired safely here" in blocked_inspect.text
-    assert "Return to the model creation or export tool" in blocked_inspect.text
+    assert "This model needs another export." in blocked_inspect.text
+    assert "Return to your model creation tool" in blocked_inspect.text
+    assert "safety" not in blocked_inspect.text.lower()
     assert client.get(f"{job_path}/repaired.glb").status_code == 404
     assert skinned_path.read_bytes() == source_before
 

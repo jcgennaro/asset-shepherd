@@ -2,7 +2,9 @@
 {% from "_workflow_components.html" import asset_description, workflow_stage %}
 {% block content %}
   {% call workflow_stage("intent-panel", "describe intent", "intent-title", "Describe the model you’re working on.") %}
-    {% if error %}
+    {% if refusal %}
+      <div class="intake-refusal" role="status">{{ error }}</div>
+    {% elif error %}
       <div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>
     {% endif %}
 

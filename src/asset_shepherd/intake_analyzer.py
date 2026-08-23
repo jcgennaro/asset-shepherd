@@ -25,14 +25,22 @@ from asset_shepherd.target_intake import (
 OPENAI_INTAKE_MODEL = "gpt-5.6-luna"
 OPENAI_REASONING_EFFORT = "xhigh"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+INTAKE_REFUSAL_MESSAGE = (
+    "Sorry, I can't engage with this type of content. Let's work on something else."
+)
 
-TARGET_INTAKE_SYSTEM_PROMPT = """You define a proposed target for one uploaded 3D asset.
+TARGET_INTAKE_SYSTEM_PROMPT = f"""You define a proposed target for one uploaded 3D asset.
 Infer useful target state from the user's ordinary language instead of turning intake into a form.
 
 Return only the structured output. Choose exactly one supported intended use when an ordinary game
 developer would find the interpretation reasonable. Propose a plausible vertical real-world height
 in centimeters from the described object's semantic scale, even when the user did not provide a
 number. This is a proposal the user will explicitly confirm or adjust; it is not a measured fact.
+
+If the request is content you are not permitted to engage with, set engagement_decision to REFUSE,
+set both target values and evidence fields to null, and set both confidence values to 0. The
+application will respond only: "{INTAKE_REFUSAL_MESSAGE}" Otherwise set engagement_decision to
+PROCEED.
 
 Use confidence 0.8 or higher when a proposal is useful enough to confirm. Use null and confidence
 below 0.8 only when materially different interpretations are equally plausible and a question is
@@ -55,9 +63,14 @@ class TargetIntakeAnalysisError(ValueError):
     """Safe, user-facing failure to produce a validated semantic target proposal."""
 
 
+class TargetIntakeContentRefusal(TargetIntakeAnalysisError):
+    """Exact public refusal for content outside the intake model's allowed boundary."""
+
+
 class TargetIntakeInference(ContractModel):
     """Strict model-only output before server-owned contract construction."""
 
+    engagement_decision: Literal["PROCEED", "REFUSE"]
     target_use: AssetTargetUse | None
     target_use_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
     target_use_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
@@ -68,6 +81,22 @@ class TargetIntakeInference(ContractModel):
     @model_validator(mode="after")
     def evidence_matches_values(self) -> TargetIntakeInference:
         """Require evidence exactly when the model proposes a field value."""
+        if self.engagement_decision == "REFUSE":
+            if (
+                any(
+                    value is not None
+                    for value in (
+                        self.target_use,
+                        self.target_use_evidence,
+                        self.target_height_cm,
+                        self.target_height_evidence,
+                    )
+                )
+                or self.target_use_confidence != 0.0
+                or self.target_height_confidence != 0.0
+            ):
+                raise ValueError("A refused intake cannot include target fields")
+            return self
         pairs = (
             (
                 self.target_use,
@@ -120,6 +149,8 @@ def contract_from_inference(
     model_id: str,
 ) -> TargetIntakeContract:
     """Apply confidence gates and bind untrusted model output to the original description."""
+    if inference.engagement_decision == "REFUSE":
+        raise TargetIntakeContentRefusal(INTAKE_REFUSAL_MESSAGE)
     normalized = normalize_intent_description(description)
     target_use = (
         inference.target_use

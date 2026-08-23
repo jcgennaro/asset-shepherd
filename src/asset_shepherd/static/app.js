@@ -1,12 +1,55 @@
 window.scrollTo(0, 0);
 
-const fileInput = document.querySelector("[data-file-input]");
-const fileLabel = document.querySelector("[data-file-label]");
+for (const fileInput of document.querySelectorAll("[data-file-input]")) {
+  const dropZone = fileInput.closest("[data-drop-zone]");
+  const fileLabel = dropZone?.querySelector("[data-file-label]");
+  const fileError = dropZone?.querySelector("[data-file-error]");
+  if (!dropZone || !fileLabel) {
+    continue;
+  }
 
-if (fileInput && fileLabel) {
-  fileInput.addEventListener("change", () => {
+  function updateFileState() {
     const selected = fileInput.files?.[0];
-    fileLabel.textContent = selected ? selected.name : "Choose your GLB file";
+    const valid = Boolean(selected && selected.name.toLowerCase().endsWith(".glb"));
+    fileInput.setCustomValidity(valid || !selected ? "" : "Choose one GLB file.");
+    fileLabel.textContent = selected ? selected.name : "Choose or drop your GLB";
+    dropZone.classList.toggle("invalid", Boolean(selected && !valid));
+    if (fileError) {
+      fileError.textContent = selected && !valid ? "Choose one GLB file." : "";
+    }
+  }
+
+  fileInput.addEventListener("change", updateFileState);
+  for (const eventName of ["dragenter", "dragover"]) {
+    dropZone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "copy";
+      }
+      dropZone.classList.add("dragging");
+    });
+  }
+  dropZone.addEventListener("dragleave", (event) => {
+    if (!dropZone.contains(event.relatedTarget)) {
+      dropZone.classList.remove("dragging");
+    }
+  });
+  dropZone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    dropZone.classList.remove("dragging");
+    const dropped = event.dataTransfer?.files;
+    if (!dropped || dropped.length !== 1 || !dropped[0].name.toLowerCase().endsWith(".glb")) {
+      fileInput.value = "";
+      fileInput.setCustomValidity("Choose one GLB file.");
+      fileLabel.textContent = "Choose or drop your GLB";
+      dropZone.classList.add("invalid");
+      if (fileError) {
+        fileError.textContent = "Choose one GLB file.";
+      }
+      return;
+    }
+    fileInput.files = dropped;
+    updateFileState();
   });
 }
 
@@ -130,5 +173,43 @@ for (const viewer of document.querySelectorAll("model-viewer")) {
   viewer.addEventListener("error", () => {
     viewer.classList.add("viewer-error");
     viewer.setAttribute("aria-label", `${viewer.getAttribute("alt")} — preview unavailable`);
+  });
+}
+
+const inspectionExperience = document.querySelector("[data-inspection-experience]");
+
+if (inspectionExperience && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const rows = [...inspectionExperience.querySelectorAll("[data-inspection-check]")];
+  const results = [...document.querySelectorAll("[data-inspection-result]")];
+  const count = inspectionExperience.querySelector("[data-inspection-count]");
+  inspectionExperience.classList.add("replaying");
+  if (count) {
+    count.textContent = `0 of ${rows.length}`;
+  }
+  for (const row of rows) {
+    row.classList.remove(row.dataset.status);
+    row.classList.add("replaying");
+    row.querySelector(".inspection-check-icon").textContent = "…";
+    row.querySelector("strong").textContent = `Checking ${row.dataset.label}…`;
+  }
+  results.forEach((result) => result.setAttribute("aria-hidden", "true"));
+
+  rows.forEach((row, index) => {
+    window.setTimeout(() => {
+      const status = row.dataset.status;
+      row.classList.remove("replaying");
+      row.classList.add(status);
+      row.querySelector("strong").textContent = row.dataset.label;
+      row.querySelector(".inspection-check-icon").textContent =
+        status === "pass" ? "✓" : status === "blocked" ? "×" : status === "checking" ? "…" : "!";
+      if (count) {
+        count.textContent = `${index + 1} of ${rows.length}`;
+      }
+      if (index === rows.length - 1) {
+        inspectionExperience.classList.remove("replaying");
+        inspectionExperience.classList.add("replay-complete");
+        results.forEach((result) => result.removeAttribute("aria-hidden"));
+      }
+    }, 220 * (index + 1));
   });
 }

@@ -4,6 +4,54 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D029 — Inspect is one progressive result, one summary, and one question
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 conversation and web product
+
+**Context**
+
+Inspect exposed three dense columns containing target assumptions, measured facts, previews,
+findings, policy evidence, and proposed actions. The surrounding page then repeated the target
+story and workflow navigation. Accurate evidence was competing with the one conclusion and one
+decision the user actually needed.
+
+**Decision**
+
+Present Inspect as exactly three sequential areas. First, replay the completed deterministic work
+as one compact check log: each row briefly says **Checking …** and resolves to a green check or an
+attention marker. Second, generate a concise structured summary containing measured size,
+topology, and resources, one compressed sentence for normal domains, and no more than three grouped
+attention areas. Third, ask **Do these issues look fixable?** before exposing the repair decision.
+Direct navigation or submission to Decide remains gated until that acknowledgement.
+
+Keep the complete expectations, findings, rule provenance, measurements, plan candidates, stages,
+frozen policy, and preview in one closed **More details** table. Remove the repeated target-story
+panel, duplicate Inspect/Decide/Download rail, redundant section headings, and public copy about
+internal source or guardrail mechanics. Internal authorization, unsupported-domain, mutation, and
+verification invariants do not change.
+
+Both upload controls now say **Choose or drop your GLB**. Click-to-choose and Windows Explorer drop
+share one validated file state; a drop must contain exactly one `.glb`. If semantic intake is
+declined, create no job or uploaded-file copy and show only a concise refusal, such as **Sorry, I
+can't engage with this type of content. Let's work on something else.** Exact punctuation is not a
+contract.
+
+**Evidence and consequences**
+
+Route acceptance proves the three-area result hierarchy, closed details, acknowledgement gate,
+concise decline response, no declined-content storage, and shared chooser/drop implementation. A
+real-browser run with the broken fixture confirms the progressive check transition, three grouped
+attention areas, hidden 48-row detail table, preserved chooser path, and empty browser diagnostics.
+At 1366 × 900 the confirmation question appears in the same working view; at 390 × 844 the page has
+no horizontal overflow and the opened table scrolls within its own container. No repair operation,
+policy field, model authority, artifact contract, or acceptance behavior is added.
+
 ### D028 — Apply progressive rule-of-three disclosure and one contextual feedback path
 
 **Date:** 2026-08-23
@@ -17,13 +65,13 @@ Record decisions that materially affect architecture, product behavior, cost, se
 **Context**
 
 The target proposal rendered six assumption cards, provenance labels, explanatory text, a separate
-evidence disclosure, confirmation, correction, restart, and safety notes on one surface. Although
+evidence disclosure, confirmation, correction, restart, and implementation notes on one surface. Although
 the facts were accurate, the interface exposed the implementation taxonomy and required too much
 simultaneous reading and choice.
 
 **Decision**
 
-Present exactly three closed groups: **Purpose**, **Scale and pose**, and **Structure and safety**.
+Present exactly three closed groups: **Purpose**, **Scale and pose**, and **Structure**.
 Each group shows one agent-written conclusion and reveals at most three supporting facts only after
 the user opens it. Replace the competing controls with one question, **Did I get it right?**, and
 two answers: continue to inspection or edit the prefilled description and try again. The same text

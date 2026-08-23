@@ -276,6 +276,7 @@ class HostedWorkspaceStore:
         normalized = normalize_intent_description(description)
         if Path(original_filename).suffix.lower() != ".glb":
             raise HostedWorkspaceError("Choose exactly one file with a .glb extension.")
+        target_draft = self.intake_analyzer.analyze(normalized)
         workspace_id = uuid4().hex
         root = self.work_root / workspace_id
         root.mkdir(parents=True, exist_ok=False)
@@ -284,7 +285,6 @@ class HostedWorkspaceStore:
             _copy_validated_upload(stream, source_path)
             preflight = preflight_asset(source_path)
             _write_json_atomic(root / "preflight.json", preflight.model_dump(mode="json"))
-            target_draft = self.intake_analyzer.analyze(normalized)
             _write_json_atomic(
                 root / "target_intake.json",
                 target_draft.model_dump(mode="json"),

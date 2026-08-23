@@ -6,10 +6,12 @@ import httpx
 import pytest
 
 from asset_shepherd.intake_analyzer import (
+    INTAKE_REFUSAL_MESSAGE,
     OPENAI_INTAKE_MODEL,
     OpenAITargetIntakeAnalyzer,
     OpenAITargetIntakeConfiguration,
     TargetIntakeAnalysisError,
+    TargetIntakeContentRefusal,
     TargetIntakeInference,
     build_target_intake_analyzer,
     contract_from_inference,
@@ -40,6 +42,7 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
             200,
             json=_response(
                 {
+                    "engagement_decision": "PROCEED",
                     "target_use": "STATIC_GAME_ASSET",
                     "target_use_confidence": 0.96,
                     "target_use_evidence": "A mountain is an environmental game-world feature.",
@@ -79,6 +82,7 @@ def test_low_confidence_model_fields_become_questions() -> None:
     contract = contract_from_inference(
         "An abstract shape that could play several unrelated roles in the game.",
         TargetIntakeInference(
+            engagement_decision="PROCEED",
             target_use=None,
             target_use_confidence=0.4,
             target_use_evidence=None,
@@ -95,6 +99,7 @@ def test_low_confidence_model_fields_become_questions() -> None:
 
     with pytest.raises(ValueError, match="confidence gate"):
         TargetIntakeInference(
+            engagement_decision="PROCEED",
             target_use=None,
             target_use_confidence=0.9,
             target_use_evidence=None,
@@ -102,6 +107,39 @@ def test_low_confidence_model_fields_become_questions() -> None:
             target_height_confidence=0.3,
             target_height_evidence=None,
         )
+
+
+def test_disallowed_intake_returns_only_a_concise_refusal() -> None:
+    """The model can refuse without creating target fields or improvising public copy."""
+    assert "can't engage with this type of content" in INTAKE_REFUSAL_MESSAGE
+    assert "work on something else" in INTAKE_REFUSAL_MESSAGE
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        assert INTAKE_REFUSAL_MESSAGE in payload["instructions"]
+        return httpx.Response(
+            200,
+            json=_response(
+                {
+                    "engagement_decision": "REFUSE",
+                    "target_use": None,
+                    "target_use_confidence": 0.0,
+                    "target_use_evidence": None,
+                    "target_height_cm": None,
+                    "target_height_confidence": 0.0,
+                    "target_height_evidence": None,
+                }
+            ),
+        )
+
+    analyzer = OpenAITargetIntakeAnalyzer(
+        OpenAITargetIntakeConfiguration(api_key="test-key"),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(TargetIntakeContentRefusal) as caught:
+        analyzer.analyze("A sufficiently long description that the model declines.")
+    assert str(caught.value) == INTAKE_REFUSAL_MESSAGE
 
 
 def test_openai_failure_is_safe_and_does_not_expose_credentials() -> None:
