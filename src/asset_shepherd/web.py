@@ -824,7 +824,7 @@ UNIVERSAL_EXPECTATIONS: tuple[tuple[str, str], ...] = (
     ),
     (
         "Supported repairs",
-        "Version 1 handles display names and reversible root normalization.",
+        "Display names and reversible root normalization are available when needed.",
     ),
     (
         "Normalization decision",
@@ -919,7 +919,7 @@ def _policy_source_label(value: str | None) -> str:
         "FAMILY_DEFAULT": "Universal project-family rule",
         "USER_OVERRIDE": "Advanced user adjustment",
     }
-    return labels.get(value or "", "Fixed product boundary")
+    return labels.get(value or "", "Always applied")
 
 
 def _target_expectations(
@@ -952,13 +952,13 @@ def _target_expectations(
             detail=use_evidence.evidence if use_evidence else "",
         ),
         ExpectationView(
-            label="Supported outcome",
+            label="What happens here",
             value=(
                 "Full static inspect → repair → verify workflow"
                 if full_static
                 else "Static inspection and handoff; no rigging or animation repair"
             ),
-            source="Current product boundary",
+            source="Based on the model you described",
             detail=(
                 "I can complete the static repair workflow."
                 if full_static
@@ -1848,7 +1848,7 @@ def create_app(
         return render_intent_home(request)
 
     def how_it_works(request: Request) -> Response:
-        """Explain the complete workflow and current repair scope."""
+        """Explain the user journey in three concise steps."""
         return templates.TemplateResponse(
             request=request,
             name="how_it_works.html",

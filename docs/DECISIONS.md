@@ -4,6 +4,40 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D030 — Public help explains the task, not the release
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 conversation and web product
+
+**Context**
+
+The help page ended its workflow explanation with a product-version heading, an implementation
+scope inventory, and a repair-domain caveat. Those facts describe the prototype to its builders;
+they do not help a person understand what to do with an asset.
+
+**Decision**
+
+Public help is task-oriented and limited to three steps: describe and upload, review what was
+found, and download the result. It does not present release numbers, roadmap framing, internal
+tool names, provenance terminology, or a generic repair inventory. Limitations appear in the
+workflow only when a particular asset or requested outcome makes one relevant.
+
+Remove implementation version labels from the active-rule proposal and user-visible finding
+descriptions as well. Versioned policy and artifact metadata remain unchanged in durable records;
+only their unsolicited presentation is removed.
+
+**Evidence and consequences**
+
+Route acceptance requires exactly three help steps and rejects the removed scope, version, tool,
+and provenance copy. Desktop and mobile browser checks cover the rendered hierarchy and overflow.
+Deterministic checks, repair eligibility, authorization, verification, packaged evidence, and
+policy versioning are unaffected.
+
 ### D029 — Inspect is one progressive result, one summary, and one question
 
 **Date:** 2026-08-23

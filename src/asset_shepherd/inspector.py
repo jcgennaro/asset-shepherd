@@ -934,10 +934,7 @@ def _inspection_findings(
                 code="DEGENERATE_TRIANGLES_DETECTED",
                 domain="geometry",
                 title="Degenerate triangle indices detected",
-                description=(
-                    "Degenerate triangles are objective source diagnostics; version 1 does not "
-                    "alter topology."
-                ),
+                description="Degenerate triangles are reported for review and are not changed.",
                 severity=Severity.WARNING,
                 action_class=ActionClass.REPORT_ONLY,
                 confidence=1.0,
@@ -1060,7 +1057,7 @@ def _inspection_findings(
                 code="TRIANGLE_BUDGET_EXCEEDED",
                 domain="budgets",
                 title="Triangle budget exceeded",
-                description="Version 1 reports topology budgets but does not alter topology.",
+                description="Topology is reported for review and is not changed.",
                 severity=Severity.WARNING,
                 action_class=ActionClass.REPORT_ONLY,
                 confidence=1.0,
@@ -1100,7 +1097,7 @@ def _inspection_findings(
                 domain="budgets",
                 title=f"{resource_name.title()} budget exceeded",
                 description=(
-                    f"Version 1 reports {resource_name} budgets but does not merge resources."
+                    f"{resource_name.title()} counts are reported for review and are not changed."
                 ),
                 severity=Severity.WARNING,
                 action_class=ActionClass.REPORT_ONLY,
@@ -1131,7 +1128,7 @@ def _inspection_findings(
                 code="TEXTURE_DIMENSION_EXCEEDED",
                 domain="budgets",
                 title="Embedded image dimension budget exceeded",
-                description="Version 1 does not resize or modify textures.",
+                description="Texture dimensions are reported for review and are not changed.",
                 severity=Severity.WARNING,
                 action_class=ActionClass.REPORT_ONLY,
                 confidence=1.0,
@@ -1191,7 +1188,7 @@ def _inspection_findings(
                     domain="transforms",
                     title=title,
                     description=(
-                        "Version 1 reports this transform and does not bake it into geometry."
+                        "This transform is reported for review and is not baked into geometry."
                     ),
                     severity=Severity.WARNING,
                     action_class=ActionClass.REPORT_ONLY,

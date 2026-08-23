@@ -62,6 +62,12 @@ The persistent left pane is now a compact workflow orientation rail: **Describe 
 → Decide → Download**. The workspace still shows only one step at a time. The title reflects the
 current step, for example `Asset Shepherd -- Describe` or `Asset Shepherd -- Decide`.
 
+The persistent question-mark action opens a task-oriented **How it works** page. It presents only
+three steps: **Describe and upload**, **Review what we found**, and **Download the result**, plus one
+start action. Release numbers, roadmap framing, internal tool or provenance terminology, and a
+generic repair-scope inventory do not appear there. A limitation belongs in the active workflow
+only when the particular asset or intended result makes it relevant.
+
 ## Target-story contract
 
 Before a target story exists, the public version-2 `TargetIntakeContract` requires:

@@ -321,7 +321,7 @@ class AgentJob:
         if not self.selected_plan.approval_action_ids:
             return None
         if len(self.selected_plan.approval_action_ids) != 1:
-            raise AgentWorkflowError("Version 1 supports exactly one approval-required operation")
+            raise AgentWorkflowError("A plan must contain exactly one approval-required operation")
         candidate_id = self.selected_plan.approval_action_ids[0]
         candidate = next(
             candidate for candidate in self.selected_plan.candidates if candidate.id == candidate_id

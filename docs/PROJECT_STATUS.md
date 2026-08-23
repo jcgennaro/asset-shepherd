@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** Simplified inspection review and shared GLB drop control (this file is included)
+**Current commit:** User-oriented three-step help and public version-copy cleanup (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -45,6 +45,12 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
+- User-oriented help: **How it works** now contains three actions only—describe and upload,
+  review what was found, and download the result—followed by one start action. Public release
+  numbers, implementation scope inventory, internal tool/provenance terms, and generic caveats are
+  removed. Active-rule and finding copy also describe the user-visible fact rather than the
+  prototype version; durable versioned policy and artifact metadata are unchanged. D030 route and
+  browser evidence covers the exact three-step budget, desktop/mobile layout, and removed terms.
 - Simplified inspection review: the former three-column evidence dashboard is replaced by one
   progressive six-check log, one structured summary with at most three attention groups, and one
   **Do these issues look fixable?** acknowledgement before Decide. Complete measurements,

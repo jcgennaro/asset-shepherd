@@ -262,15 +262,19 @@ def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
     help_page = client.get("/how-it-works")
     assert help_page.status_code == 200
     assert "<title>Asset Shepherd -- How it works</title>" in help_page.text
-    assert "One asset in." in help_page.text
-    assert "Describe the target" in help_page.text
-    assert "Upload the GLB" in help_page.text
-    assert "Make one meaningful decision" in help_page.text
-    assert "Download with proof" in help_page.text
-    assert "Current scope" in help_page.text
+    assert "Understand it." in help_page.text
+    assert "Describe and upload" in help_page.text
+    assert "Review what we found" in help_page.text
+    assert "Download the result" in help_page.text
+    assert len(re.findall(r"<span>0[1-3]</span>", help_page.text)) == 3
+    assert "<span>04</span>" not in help_page.text
+    assert "Current scope" not in help_page.text
+    assert "Version 1" not in help_page.text
+    assert "What can Asset Shepherd repair?" not in help_page.text
+    assert "Deterministic tools" not in help_page.text
+    assert "provenance" not in help_page.text.lower()
     assert "safety boundary" not in help_page.text.lower()
     assert "original stays untouched" not in help_page.text.lower()
-    assert "What can Asset Shepherd repair?" in help_page.text
     _assert_focus_area_budget(help_page.text)
 
 
