@@ -2,7 +2,7 @@
 {% block content %}
   <section class="intent-confirmation" data-focus-area="clarify intent" aria-labelledby="clarify-title">
     <header class="intent-heading">
-      <h2 id="clarify-title">{% if "target_use" in intent.target.missing_fields and "target_height_cm" in intent.target.missing_fields %}What should this be in your game, and about how tall?{% elif "target_use" in intent.target.missing_fields %}What should this be in your game?{% else %}About how tall should it be?{% endif %}</h2>
+      <h2 id="clarify-title">{% if "target_use" in intent.target.missing_fields %}Tell me the missing intent in your own words.{% else %}About how tall should it be?{% endif %}</h2>
       {% if target_use_label %}<p>I’m treating it as {{ target_use_label }}; I only need the size.</p>{% elif intent.target.target_height_cm %}<p>I have the {{ "%g"|format(intent.target.target_height_cm / 100) }} m height; I only need its use.</p>{% endif %}
     </header>
 
@@ -13,14 +13,10 @@
     <form action="{{ url_for('clarify_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form clarification-form" data-busy-form>
       {% if "target_use" in intent.target.missing_fields %}
         <label>
-          <span>What should this asset become?</span>
-          <select name="target_use" required>
-            <option value="" disabled selected>Choose the intended use</option>
-            {% for value, label in target_uses %}<option value="{{ value }}">{{ label|capitalize }}</option>{% endfor %}
-          </select>
+          <span>Add what this should be, how it will be used, and any scale clue you know</span>
+          <textarea name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea>
         </label>
-      {% endif %}
-      {% if "target_height_cm" in intent.target.missing_fields %}
+      {% elif "target_height_cm" in intent.target.missing_fields %}
         <label>
           <span>What real-world height should it have?</span>
           <span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span>

@@ -71,7 +71,9 @@ Before a target story exists, the public version-2 `TargetIntakeContract` requir
 
 The interim OpenAI analyzer emits a strict `TargetIntakeInference`; server code validates it,
 applies the 0.8 confidence gate, and constructs the contract. The proposal records provider/model
-identity and inference evidence. The user can adjust both target fields and must confirm once.
+identity and inference evidence. The user can edit the natural-language description and ask the
+analyzer to reinterpret both target fields, then must confirm once. Intended-use categories are not
+exposed as a selector or repair mode.
 Measured GLB bounds can inform evidence and questions but can never stand in for intended height.
 The draft is stored as `target_intake.json`; it is not repair authorization. The offline extractor
 and future Bedrock implementation emit the same schema.
@@ -130,9 +132,19 @@ is never mutated.
 
 ### Inspect
 
-Inspect shows the untouched source preview, measured bounds, core counts, findings, and collapsed
-details. Every profile-caused finding cites the frozen rule parameter and profile identifier that
+Inspect uses three primary areas: **What I expected**, **What the GLB contains**, and **What should
+happen next**. The first separates description-derived target assumptions from universal
+invariants. The second shows the untouched preview and deterministic dimensions, hierarchy,
+geometry, resource, pose, and eligibility facts. The third compares those facts with the target,
+lists findings by authority, and shows the bounded repair plan or a clear return-to-source-tool
+handoff. Every profile-caused finding cites the frozen rule parameter and profile identifier that
 caused it. Free text cannot create a finding or candidate action.
+
+Intended use is context and a support-boundary check, not a preset. Static-asset intent receives the
+complete supported workflow. Character intent is retained, but the current product offers only
+static inspection/normalization and an external rigging or animation handoff. Semantic piece count
+is currently **unspecified**: inspection reports roots, nodes, meshes, and primitives, but does not
+pretend those structural counts identify artistic pieces and does not merge or split geometry.
 
 ### Decide
 
@@ -172,6 +184,8 @@ not change.
 - Primary questions and actions use large type and available whitespace.
 - Target confirmation uses a wider canvas, human-readable metric units, and one collapsed rationale
   sourced from the typed intake evidence.
+- Confirmation lists target-specific assumptions and keeps universal checks in one disclosure.
+  Corrections are ordinary-language edits that are reanalyzed, never a hidden mode or transform.
 - Policy parameters, finding evidence, the confirmed story on job pages, upload notes, and
   verification details stay available through disclosures instead of competing with the next
   action.
@@ -190,6 +204,8 @@ not change.
 - Job artifacts live below `build/web/jobs/{job_id}` and use opaque server-generated IDs.
 - Semantic intake proposes only supported use and intended vertical size. It does not infer project
   budgets, create transforms, or add unsupported repair goals from prose.
+- Assembly intent remains visibly unspecified until a typed, measurable contract exists; current
+  structural counts are objective observations only.
 - Bedrock must emit the same bounded schema and may not bypass deterministic inspection, explicit
   approval, or independent verification.
 - The current product remains static-GLB repair only. It does not add rigging, skinning, animation,
@@ -212,6 +228,9 @@ not change.
 - The approved flow still packages the exact seven artifacts, preserves source bytes, cites rule
   provenance, and requires the exact interrupt-bound decision.
 - Former role routes redirect to the intent entry point.
+- Confirmation and clarification contain no target-use dropdown. Inspection presents assumptions,
+  measured GLB facts, and the action plan as three explicit areas; blocked inputs direct the user
+  back to the creation/export tool with recorded reasons.
 
 ## Next hosted step
 

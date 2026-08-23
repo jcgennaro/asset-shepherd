@@ -251,3 +251,31 @@ def test_target_adjustment_is_durable_and_exactly_once(tmp_path: Path) -> None:
     assert restarted.record.target_draft.target_height_cm == 240.0
     assert restarted.record.events[-1].event_type == "TARGET_REVISED"
     assert sum(event.event_type == "TARGET_REVISED" for event in restarted.record.events) == 1
+
+
+def test_natural_language_reinterpretation_is_durable_and_exactly_once(tmp_path: Path) -> None:
+    """The visible correction path reanalyzes words without exposing use categories."""
+    root = tmp_path / "hosted"
+    store = HostedWorkspaceStore(root, _family())
+    workspace = _create(store, CLEAN_PATH)
+    corrected = "A friendly humanoid robot intended as a 2.4 m static game asset."
+
+    revised = store.reinterpret_target(
+        workspace,
+        description=corrected,
+        command_id="a" * 32,
+    )
+    duplicate = store.reinterpret_target(
+        revised,
+        description="A 3 m playable character that should replace the prior correction.",
+        command_id="a" * 32,
+    )
+    restarted = HostedWorkspaceStore(root, _family()).get(duplicate.record.workspace_id)
+
+    assert restarted is not None
+    assert restarted.record.private_description == corrected
+    assert restarted.record.target_draft is not None
+    assert restarted.record.target_draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    assert restarted.record.target_draft.target_height_cm == 240.0
+    assert restarted.record.events[-1].event_type == "TARGET_REINTERPRETED"
+    assert sum(event.event_type == "TARGET_REINTERPRETED" for event in restarted.record.events) == 1

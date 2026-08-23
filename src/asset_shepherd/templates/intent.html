@@ -2,22 +2,38 @@
 {% block content %}
   <section class="intent-confirmation" data-focus-area="confirm intent" aria-labelledby="confirm-title">
     <header class="intent-heading">
-      <h2 id="confirm-title">I’d treat this as a {{ target_use_label }}, about {{ target_height_label }} tall.</h2>
+      <p class="section-label">Target expectations · not GLB findings</p>
+      <h2 id="confirm-title">Here’s what I expect before I inspect.</h2>
       <p class="proposal-source">“{{ intent.original_description }}”</p>
     </header>
 
     {% if error %}<div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>{% endif %}
 
-    {% if intent.target_use.value != "STATIC_GAME_ASSET" %}
-      <div class="intent-scope-note">
-        <strong>Current boundary</strong>
-        <span>Asset Shepherd can inspect and normalize the static GLB, but rigging, skinning, and animation remain an external repair handoff.</span>
+    <section class="expectation-sheet" aria-labelledby="expectation-title">
+      <div class="expectation-sheet-heading">
+        <div><p class="section-label">From your description</p><h3 id="expectation-title">Target-specific assumptions</h3></div>
+        <span>Review before upload</span>
       </div>
-    {% endif %}
+      <div class="expectation-list">
+        {% for expectation in target_expectations %}
+          <article>
+            <div><small>{{ expectation.label }}</small><strong>{{ expectation.value }}</strong></div>
+            <span>{{ expectation.source }}</span>
+            <p>{{ expectation.detail }}</p>
+          </article>
+        {% endfor %}
+      </div>
+      <details class="universal-expectations">
+        <summary>Always checked for every GLB</summary>
+        <dl>
+          {% for label, detail in universal_expectations %}<div><dt>{{ label }}</dt><dd>{{ detail }}</dd></div>{% endfor %}
+        </dl>
+      </details>
+    </section>
 
     <div class="proposal-decision-row">
       <details class="proposal-evidence">
-        <summary>Why this target?</summary>
+        <summary>Show inference evidence</summary>
         <dl>
           {% for item in intent.target.evidence %}<div><dt>{{ "Use" if item.field == "target_use" else "Scale" }}</dt><dd>{{ item.evidence }}</dd></div>{% endfor %}
         </dl>
@@ -28,11 +44,11 @@
       </form>
     </div>
     <details class="intent-adjust">
-      <summary>Adjust</summary>
+      <summary>Tell me what I misunderstood</summary>
       <form action="{{ url_for('revise_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form" data-busy-form>
-        <label><span>Use</span><select name="target_use" required>{% for value, label in target_uses %}<option value="{{ value }}"{% if value == intent.target_use.value %} selected{% endif %}>{{ label|capitalize }}</option>{% endfor %}</select></label>
-        <label><span>Height</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" value="{{ "%g"|format(intent.target_height_cm / 100) }}" required><b>m</b></span></label>
-        <button class="secondary-button" type="submit" data-submit-button>Update proposal</button>
+        <label><span>Edit the description in your own words</span><textarea name="description" minlength="12" maxlength="600" required>{{ intent.original_description }}</textarea></label>
+        <p>I’ll infer the target again. You are not choosing a hidden repair mode.</p>
+        <button class="secondary-button" type="submit" data-submit-button>Reinterpret description</button>
       </form>
       <a class="back-link" href="{{ url_for('home') }}">Start over with a different description</a>
     </details>

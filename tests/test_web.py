@@ -237,7 +237,7 @@ def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
     review = client.get(urlparse(created.headers["location"]).path)
 
     assert review.status_code == 200
-    assert f"about {expected_label} tall" in review.text
+    assert f"About {expected_label} tall" in review.text
 
 
 def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path) -> None:
@@ -252,9 +252,15 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
 
     review = client.get(intent_path)
     assert review.status_code == 200
-    assert "treat this as a playable animated character, about 1.72 m tall." in review.text
+    assert "Here\u2019s what I expect before I inspect." in review.text
+    assert "Playable animated character" in review.text
+    assert "About 1.72 m tall" in review.text
+    assert "Static inspection and handoff; no rigging or animation repair" in review.text
+    assert "not a repair preset" in review.text
+    assert 'name="target_use"' not in review.text
+    assert 'name="target_height_m"' not in review.text
     assert "Use this target" in review.text
-    assert "rigging, skinning, and animation remain an external repair handoff" in review.text
+    assert "no rigging or animation repair" in review.text
     assert "Choose your GLB file" not in review.text
     assert "Review rules" not in review.text
     _assert_focus_area_budget(review.text)
@@ -317,7 +323,35 @@ def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: P
     )
     assert completed.status_code == 303
     review = client.get(intent_path)
-    assert "treat this as a static game asset, about 1.2 m tall." in review.text
+    assert "Static game asset" in review.text
+    assert "About 1.2 m tall" in review.text
+
+
+def test_missing_intent_is_clarified_in_words_without_a_mode_selector(tmp_path: Path) -> None:
+    """An unresolved deterministic fallback asks for better context, not a preset choice."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    created = client.post(
+        "/intents",
+        data={"description": "A mountain of goop for a surreal game world."},
+        follow_redirects=False,
+    )
+    intent_path = urlparse(created.headers["location"]).path
+    clarification = client.get(intent_path)
+
+    assert "Tell me the missing intent in your own words." in clarification.text
+    assert 'name="description"' in clarification.text
+    assert 'name="target_use"' not in clarification.text
+    assert 'name="target_height_m"' not in clarification.text
+
+    completed = client.post(
+        f"{intent_path}/clarify",
+        data={"description": "A 600 m static game asset: a mountain of goop for scenery."},
+        follow_redirects=False,
+    )
+    assert completed.status_code == 303
+    review = client.get(intent_path)
+    assert "Static game asset" in review.text
+    assert "About 600 m tall" in review.text
 
 
 def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questions(
@@ -330,13 +364,14 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
         model_id = "gpt-5.6-luna"
 
         def analyze(self, description: str) -> TargetIntakeContract:
+            height_cm = 60000.0 if "600 m" in description else 80000.0
             return contract_from_inference(
                 description,
                 TargetIntakeInference(
                     target_use=AssetTargetUse.STATIC_GAME_ASSET,
                     target_use_confidence=0.96,
                     target_use_evidence="A mountain is an environmental feature.",
-                    target_height_cm=80000.0,
+                    target_height_cm=height_cm,
                     target_height_confidence=0.91,
                     target_height_evidence="A mountain is a kilometer-scale feature.",
                 ),
@@ -360,21 +395,26 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     proposal = client.get(intent_path)
 
     assert proposal.status_code == 200
-    assert "treat this as a static game asset, about 800 m tall." in proposal.text
+    assert "Static game asset" in proposal.text
+    assert "About 800 m tall" in proposal.text
     assert "quick answer" not in proposal.text
-    assert "Adjust" in proposal.text
-    assert "Why this target?" in proposal.text
+    assert "Tell me what I misunderstood" in proposal.text
+    assert "Show inference evidence" in proposal.text
     assert "A mountain is an environmental feature." in proposal.text
     assert "not a measurement of the GLB" in proposal.text
+    assert "No semantic piece-count assumption" in proposal.text
+    assert "Always checked for every GLB" in proposal.text
+    assert 'name="target_use"' not in proposal.text
+    assert 'name="target_height_m"' not in proposal.text
 
     revised = client.post(
         f"{intent_path}/revise",
-        data={"target_use": "STATIC_GAME_ASSET", "target_height_m": "600"},
+        data={"description": "A 600 m mountain of goop for a surreal game world."},
         follow_redirects=False,
     )
     assert revised.status_code == 303
     adjusted = client.get(intent_path)
-    assert "treat this as a static game asset, about 600 m tall." in adjusted.text
+    assert "About 600 m tall" in adjusted.text
 
 
 def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_height(
@@ -457,6 +497,14 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
 
     inspect_view = client.get(f"{job_path}?view=inspect")
     assert inspect_view.status_code == 200
+    assert "What I expected" in inspect_view.text
+    assert "What the GLB contains" in inspect_view.text
+    assert "What should happen next" in inspect_view.text
+    assert "Assembly" in inspect_view.text
+    assert "nodes" in inspect_view.text
+    assert "meshes" in inspect_view.text
+    assert "primitives" in inspect_view.text
+    assert "Target-specific expectation" in inspect_view.text
     assert "Policy rule" in inspect_view.text
     assert "Height target 180.0 cm ± 9.0 cm" in inspect_view.text
     _assert_focus_area_budget(inspect_view.text)
@@ -696,7 +744,8 @@ def test_web_clean_fixture_completes_twice_from_clean_app_starts(tmp_path: Path)
         assert "PASSED_PROJECT_READY" in completed.text
         _assert_focus_area_budget(completed.text)
         inspected = client.get(f"{job_path}?view=inspect")
-        assert "No project-policy findings." in inspected.text
+        assert "No findings." in inspected.text
+        assert "No repair is proposed." in inspected.text
         assert client.get(f"{job_path}/download").status_code == 200
 
 
@@ -731,8 +780,10 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
     assert blocked.status_code == 200
     assert "Inspection-only result" in blocked.text
     blocked_inspect = client.get(f"{job_path}?view=inspect")
-    assert "INSPECTION_ONLY_UNSUPPORTED_FEATURES" in blocked_inspect.text
+    assert "inspection only unsupported features" in blocked_inspect.text
     assert "UNSUPPORTED_REPAIR_FEATURES" in blocked_inspect.text
+    assert "cannot be repaired safely here" in blocked_inspect.text
+    assert "Return to the model creation or export tool" in blocked_inspect.text
     assert client.get(f"{job_path}/repaired.glb").status_code == 404
     assert skinned_path.read_bytes() == source_before
 

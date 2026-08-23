@@ -4,6 +4,54 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D027 — Replace use-mode selection with an expectation-to-evidence contract
+
+**Date:** 2026-08-22
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 conversation and web product
+
+**Context**
+
+The target-adjustment UI exposed `static game asset`, `rig-ready character`, and `playable animated
+character` in a dropdown. That presentation made them look like validation presets with different
+repair behavior. They are not. The current repair engine has one static-GLB domain; non-static
+intent is retained only to state the narrowed external handoff honestly. The same screen also made
+it difficult to distinguish assumptions inferred from a user's description, universal safety
+invariants, measured GLB facts, and the resulting plan.
+
+**Decision**
+
+Remove the intended-use dropdown from confirmation, clarification, and the hosted workspace.
+Corrections are natural-language edits that run through the same schema-validated analyzer. Before
+upload, list every active target assumption with its source and list the universal checks
+separately. After inspection, organize the active view into three areas: target expectations,
+deterministic GLB observations, and findings plus action plan. Label finding authority in public
+language. If the registered plan is blocked, explicitly recommend returning to the model creation
+or export tool with the recorded reasons.
+
+Intended use remains typed provenance and a support-boundary input, not a repair preset. Static
+intent receives the full supported workflow. Character intent receives static inspection and an
+external rigging/animation handoff. Assembly expectations remain explicitly unspecified: the tools
+report roots, nodes, meshes, and primitives, but no semantic piece count is invented and no
+merge/split repair is added.
+
+**Evidence and consequences**
+
+Route acceptance proves that complete and missing-intent screens contain no target-use selector,
+natural-language reinterpretation updates the typed proposal, and inspection renders assumptions,
+measured assembly facts, finding authority, candidates, report-only warnings, and blocked handoff.
+The full offline suite passes with 100 tests and one opt-in live-provider skip. Desktop and 390 × 844
+browser review show the expectation sheet without horizontal overflow; the compact document width
+is 375 pixels inside a 390-pixel viewport.
+
+No new repair type, model authority, transform control, topology operation, or GLB mutation is
+introduced. A future semantic assembly contract must define measurable evidence before it can
+become a finding or repair goal.
+
 ### D026 — Check authority is explicit and validation is layered
 
 **Date:** 2026-08-22

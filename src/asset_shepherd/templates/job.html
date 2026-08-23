@@ -37,73 +37,80 @@
           </div>
         </header>
 
-        <div class="inspect-layout">
-          <article class="preview-card source-inspection">
-            <div class="preview-label"><strong>{{ story.source_label }}</strong><span>Original</span></div>
-            <model-viewer
-              src="{{ url_for('source_asset', job_id=job.job_id) }}"
-              alt="Interactive preview of the untouched uploaded model"
-              camera-controls
-              auto-rotate
-              rotation-per-second="12deg"
-              shadow-intensity="1"
-              environment-image="neutral"
-              exposure="1"
-              interaction-prompt="none">
-              <div class="viewer-fallback" slot="poster">Loading source preview…</div>
-            </model-viewer>
-            {% if inspection and inspection.geometry %}
-              <div class="bounds-line">
-                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} m</span><span>×</span>
-                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} m</span><span>×</span>
-                <span>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[2]) }} m</span>
-              </div>
-            {% endif %}
+        <div class="inspect-storyboard">
+          <article class="inspect-story-card expectation-pane">
+            <header><span>1</span><div><small>Assumptions</small><h3>What I expected</h3></div></header>
+            <div class="inspect-expectation-list">
+              {% for expectation in target_expectations %}
+                <div><small>{{ expectation.label }}</small><strong>{{ expectation.value }}</strong><span>{{ expectation.source }}</span></div>
+              {% endfor %}
+            </div>
+            <details class="universal-expectations">
+              <summary>Always-required checks</summary>
+              <dl>{% for label, detail in universal_expectations %}<div><dt>{{ label }}</dt><dd>{{ detail }}</dd></div>{% endfor %}</dl>
+            </details>
           </article>
 
-          <div class="inspection-evidence">
+          <article class="inspect-story-card observed-pane">
+            <header><span>2</span><div><small>Deterministic tools</small><h3>What the GLB contains</h3></div></header>
+            <div class="observed-preview">
+              <model-viewer
+                src="{{ url_for('source_asset', job_id=job.job_id) }}"
+                alt="Interactive preview of the untouched uploaded model"
+                camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1"
+                environment-image="neutral" exposure="1" interaction-prompt="none">
+                <div class="viewer-fallback" slot="poster">Loading source preview…</div>
+              </model-viewer>
+            </div>
             {% if inspection %}
-              <dl class="metric-list">
-                <div><dt>Eligibility</dt><dd>{{ inspection.repair_eligibility }}</dd></div>
-                <div><dt>Triangles</dt><dd>{{ "{:,}".format(inspection.geometry.triangle_count) if inspection.geometry else "—" }}</dd></div>
-                <div><dt>Materials</dt><dd>{{ inspection.package.material_count }}</dd></div>
-                <div><dt>Textures</dt><dd>{{ inspection.package.texture_count }}</dd></div>
+              <dl class="observation-list">
+                {% if inspection.geometry %}<div><dt>Measured size</dt><dd>{{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[0]) }} × {{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[1]) }} × {{ "%.3f"|format(inspection.geometry.bounds.dimensions_m[2]) }} m</dd></div>{% endif %}
+                <div><dt>Assembly</dt><dd>{{ inspection.package.node_count }} nodes · {{ inspection.package.mesh_count }} meshes · {{ inspection.package.primitive_count }} primitives{% if inspection.transforms %} · {{ inspection.transforms.root_nodes|length }} roots{% endif %}</dd></div>
+                {% if inspection.geometry %}<div><dt>Geometry</dt><dd>{{ "{:,}".format(inspection.geometry.vertex_count) }} vertices · {{ "{:,}".format(inspection.geometry.triangle_count) }} triangles</dd></div>{% endif %}
+                <div><dt>Resources</dt><dd>{{ inspection.package.material_count }} materials · {{ inspection.package.texture_count }} textures · {{ inspection.package.image_count }} images</dd></div>
+                {% if inspection.geometry %}<div><dt>Pose facts</dt><dd>{{ inspection.geometry.dominant_dimension_axis }} dominant · {{ inspection.geometry.ground_relationship|replace('_', ' ')|lower }}</dd></div>{% endif %}
+                <div><dt>Repair eligibility</dt><dd>{{ inspection.repair_eligibility|replace('_', ' ')|lower }}</dd></div>
               </dl>
-            {% endif %}
+              <p class="piece-boundary">These are structural counts, not a guess at semantic “pieces.” Splitting and merging are outside the safe repair domain.</p>
+            {% else %}<p class="empty-state">No inspection is available.</p>{% endif %}
+          </article>
 
+          <article class="inspect-story-card action-pane">
+            <header><span>3</span><div><small>Comparison and plan</small><h3>What should happen next</h3></div></header>
+            {% if cannot_repair %}
+              <div class="plan-callout blocked"><strong>This GLB cannot be repaired safely here.</strong><p>Return to the model creation or export tool, correct the source issue, and export a new static GLB.</p></div>
+              {% if plan and plan.blocked_reasons %}<ul class="plan-list">{% for reason in plan.blocked_reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+            {% elif plan and plan.candidates %}
+              <div class="plan-callout"><strong>{{ plan.candidates|length }} bounded repair{{ '' if plan.candidates|length == 1 else 's' }} proposed.</strong><p>Only registered deterministic actions can execute.</p></div>
+              <ol class="plan-list">
+                {% for candidate in plan.candidates %}<li><span>{{ candidate.action_class|replace('_', ' ')|lower }}</span><strong>{{ candidate.description }}</strong></li>{% endfor %}
+              </ol>
+            {% elif inspection %}
+              <div class="plan-callout clear"><strong>No repair is proposed.</strong><p>The asset already satisfies the enforceable target and universal checks.</p></div>
+            {% endif %}
+            {% if report_only_findings %}
+              <details class="report-only-list" open><summary>Unresolved report-only warnings · {{ report_only_findings|length }}</summary>{% for finding in report_only_findings %}<p><code>{{ finding.code }}</code> {{ finding.title }}</p>{% endfor %}</details>
+            {% endif %}
             <section class="findings-block" aria-labelledby="findings-title">
-              <div class="section-heading">
-                <h3 id="findings-title">{{ story.findings_heading }}</h3>
-                <span>{% if inspection %}{{ inspection.findings|length }} total{% endif %}</span>
-              </div>
+              <div class="section-heading"><h3 id="findings-title">Findings</h3><span>{% if inspection %}{{ inspection.findings|length }} total{% endif %}</span></div>
               {% if finding_groups %}
                 <div class="finding-list">
-                  {% for severity, findings in finding_groups %}
-                    {% for finding in findings %}
-                      <article class="finding">
-                        <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
-                        <h4>{{ finding.title }}</h4>
-                        <details class="finding-detail">
-                          <summary>Details</summary>
-                          <p>{{ finding.description }}</p>
-                          <p><strong>Check basis</strong> {{ finding.basis|replace('_', ' ')|lower }}</p>
-                          {% if finding.id in rule_explanations %}
-                            <p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>
-                            {% if finding.rule_provenance.sources %}<p class="rule-provenance"><strong>Rule source</strong> {% for path, source in finding.rule_provenance.sources.items() %}<code>{{ path }}</code> {{ source|replace('_', ' ')|lower }}{% if not loop.last %}; {% endif %}{% endfor %}</p>{% endif %}
-                          {% endif %}
-                          {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
-                        </details>
-                      </article>
-                    {% endfor %}
-                  {% endfor %}
+                  {% for severity, findings in finding_groups %}{% for finding in findings %}
+                    <article class="finding">
+                      <div><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }}</span></div>
+                      <h4>{{ finding.title }}</h4>
+                      <small class="basis-label">{{ basis_labels[finding.basis.value] }}</small>
+                      <details class="finding-detail"><summary>Evidence and rule</summary>
+                        <p>{{ finding.description }}</p>
+                        {% if finding.id in rule_explanations %}<p class="rule-provenance"><strong>Policy rule</strong> {{ rule_explanations[finding.id] }} <code>{{ finding.rule_provenance.profile_id }}</code></p>{% endif %}
+                        {% if finding.evidence %}<small>{{ finding.evidence[0].observation }}</small>{% endif %}
+                      </details>
+                    </article>
+                  {% endfor %}{% endfor %}
                 </div>
-              {% elif inspection %}
-                <p class="empty-state"><strong>No project-policy findings.</strong> The asset already satisfies this profile.</p>
-              {% else %}
-                <p class="empty-state">No inspection is available.</p>
-              {% endif %}
+              {% elif inspection %}<p class="empty-state"><strong>No findings.</strong> Nothing conflicts with the target.</p>{% endif %}
             </section>
-          </div>
+          </article>
         </div>
 
         <details class="technical-details">
@@ -191,12 +198,12 @@
         {% if job.error %}
           <header class="panel-heading danger-copy">
             <div><p class="section-label">Stopped safely</p><h2 id="download-title">No output was marked ready.</h2></div>
-            <p>{{ job.error }}</p>
+            <p>{{ job.error }} Return to the model creation or export tool if the source GLB cannot be corrected within the listed safe actions.</p>
           </header>
         {% elif is_blocked %}
           <header class="panel-heading">
             <div><p class="section-label">Inspection complete</p><h2 id="download-title">Inspection-only result</h2></div>
-            <p>This asset is not eligible for structural repair. Diagnostics are packaged without a ready candidate.</p>
+            <p>This asset is not eligible for structural repair. Diagnostics are packaged without a ready candidate; correct the source in its creation tool and export a new static GLB.</p>
           </header>
         {% elif workflow_result %}
           <header class="panel-heading success-copy">

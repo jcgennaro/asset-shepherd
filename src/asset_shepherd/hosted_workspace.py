@@ -516,6 +516,47 @@ class HostedWorkspaceStore:
             self._persist(workspace)
             return workspace
 
+    def reinterpret_target(
+        self,
+        workspace: HostedWorkspace,
+        *,
+        description: str,
+        command_id: str,
+    ) -> HostedWorkspace:
+        """Re-run semantic intake on an edited description exactly once."""
+        if _COMMAND_ID.fullmatch(command_id) is None:
+            raise HostedWorkspaceError("The target-adjustment command identifier is invalid.")
+        try:
+            normalized = normalize_intent_description(description)
+            target_draft = self.intake_analyzer.analyze(normalized)
+        except ValueError as error:
+            raise HostedWorkspaceError(str(error)) from error
+        with self._lock:
+            if command_id in workspace.record.processed_commands:
+                return workspace
+            if workspace.record.phase is not WorkspacePhase.TARGET_CONFIRMATION:
+                raise HostedWorkspaceError("This workspace target is already frozen.")
+            processed = {**workspace.record.processed_commands, command_id: "TARGET_REINTERPRETED"}
+            workspace.record = workspace.record.model_copy(
+                update={
+                    "private_description": normalized,
+                    "target_draft": target_draft,
+                    "processed_commands": processed,
+                }
+            )
+            workspace.record = self._append_event(
+                workspace.record,
+                "TARGET_REINTERPRETED",
+                evidence_refs=(sha256(normalized.encode("utf-8")).hexdigest(),),
+                payload={"missing_fields": list(target_draft.missing_fields)},
+            )
+            _write_json_atomic(
+                workspace.root / "target_intake.json",
+                target_draft.model_dump(mode="json"),
+            )
+            self._persist(workspace)
+            return workspace
+
     def _target_contract(
         self,
         record: HostedWorkspaceRecord,

@@ -19,8 +19,7 @@
           <p class="section-label">Asset conversation</p>
           <h2 id="conversation-heading">
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d treat this as a {{ target_use_label }}, about {{ target_height_label }} tall.
-            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields and "target_height_cm" in target_draft.missing_fields %}What should this be in your game, and about how tall?
-            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}What should this be in your game?
+            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' %}About how tall should it be?
             {% elif record.phase.value == 'APPROVAL' %}One physical change needs your decision.
             {% elif record.phase.value == 'COMPLETE' %}The verified package is ready.
@@ -33,15 +32,21 @@
           {% if target_draft and not target_draft.ready_for_confirmation %}
             <form action="{{ url_for('clarify_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-card" data-busy-form>
               <input type="hidden" name="command_id" value="{{ command_id }}">
-              {% if target_draft.target_use %}<p class="fine-print">I’m treating it as {{ target_use_label }}; I only need the size.</p>{% elif target_draft.target_height_cm %}<p class="fine-print">I have the {{ target_height_label }} height; I only need its use.</p>{% endif %}
-              {% if "target_use" in target_draft.missing_fields %}<label><span>What should this asset become?</span>
-                <select name="target_use" required><option value="" disabled selected>Choose the intended use</option>{% for value, label in target_uses %}<option value="{{ value }}">{{ label|capitalize }}</option>{% endfor %}</select>
-              </label>{% endif %}
-              {% if "target_height_cm" in target_draft.missing_fields %}<label><span>What real-world height should it have?</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>{% endif %}
+              {% if target_draft.target_use %}<p class="fine-print">I’m treating it as {{ target_use_label }}; I only need the size.</p>{% elif target_draft.target_height_cm %}<p class="fine-print">I have the {{ target_height_label }} height; I need clearer intended use.</p>{% endif %}
+              {% if "target_use" in target_draft.missing_fields %}<label><span>Add what this should be, how it will be used, and any scale clue you know</span>
+                <textarea name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea>
+              </label>{% elif "target_height_cm" in target_draft.missing_fields %}<label><span>What real-world height should it have?</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>{% endif %}
               <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
             </form>
           {% elif target_draft %}
             <div class="target-card target-review-card">
+              <section class="expectation-sheet compact" aria-labelledby="hosted-expectation-title">
+                <div class="expectation-sheet-heading"><div><p class="section-label">Before inspection</p><h3 id="hosted-expectation-title">Target-specific assumptions</h3></div><span>Not GLB findings</span></div>
+                <div class="expectation-list">
+                  {% for expectation in target_expectations %}<article><div><small>{{ expectation.label }}</small><strong>{{ expectation.value }}</strong></div><span>{{ expectation.source }}</span><p>{{ expectation.detail }}</p></article>{% endfor %}
+                </div>
+                <details class="universal-expectations"><summary>Always checked for every GLB</summary><dl>{% for label, detail in universal_expectations %}<div><dt>{{ label }}</dt><dd>{{ detail }}</dd></div>{% endfor %}</dl></details>
+              </section>
               <details class="proposal-evidence">
                 <summary>Why this target?</summary>
                 <dl>
@@ -50,12 +55,12 @@
                 <p>This is an interpretation of your description, not a measurement of the GLB.</p>
               </details>
               <details class="intent-adjust">
-                <summary>Adjust target</summary>
+                <summary>Tell me what I misunderstood</summary>
                 <form action="{{ url_for('revise_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="intent-form" data-busy-form>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
-                  <label><span>Use</span><select name="target_use" required>{% for value, label in target_uses %}<option value="{{ value }}"{% if value == target_draft.target_use.value %} selected{% endif %}>{{ label|capitalize }}</option>{% endfor %}</select></label>
-                  <label><span>Height</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" value="{{ "%g"|format(target_draft.target_height_cm / 100) }}" required><b>m</b></span></label>
-                  <button class="secondary-button" type="submit" data-submit-button>Update proposal</button>
+                  <label><span>Edit the description in your own words</span><textarea name="description" minlength="12" maxlength="600" required>{{ record.private_description }}</textarea></label>
+                  <p>I’ll infer the target again. You are not choosing a hidden repair mode.</p>
+                  <button class="secondary-button" type="submit" data-submit-button>Reinterpret description</button>
                 </form>
               </details>
               <form action="{{ url_for('confirm_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-confirm-form" data-busy-form>
@@ -155,7 +160,7 @@
           </dl>
         </details>
         <details {% if record.target %}open{% endif %}>
-          <summary>Target <span>{{ "frozen" if record.target else "not agreed" }}</span></summary>
+          <summary>Target assumptions <span>{{ "frozen" if record.target else "not agreed" }}</span></summary>
           {% if record.target %}<dl>
             <div><dt>Original intent</dt><dd>{{ record.target.original_intent }}</dd></div>
             <div><dt>Requested</dt><dd>{{ record.target.requested_use }}</dd></div>
@@ -179,11 +184,12 @@
           {% else %}<p>Rules are derived only after target confirmation.</p>{% endif %}
         </details>
         <details>
-          <summary>Findings and plan <span>{{ inspection.findings|length if inspection else "pending" }}</span></summary>
+          <summary>Tool findings and action plan <span>{{ inspection.findings|length if inspection else "pending" }}</span></summary>
           {% if finding_groups %}{% for severity, findings in finding_groups %}{% for finding in findings %}
-            <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }} · {{ finding.basis|replace('_', ' ')|lower }}</span></p>
+            <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }} · {{ basis_labels[finding.basis.value] }}</span></p>
           {% endfor %}{% endfor %}{% elif inspection %}<p>No policy findings.</p>{% else %}<p>No inspection exists before confirmation.</p>{% endif %}
-          {% if plan %}<p>{{ plan.candidates|length }} registered candidate(s); {{ plan.approval_action_ids|length }} require approval.</p>{% endif %}
+          {% if plan and plan.blocked %}<p><strong>Cannot safely repair this GLB.</strong> Return to its creation or export tool and use the recorded blockers to produce a new static GLB.</p>
+          {% elif plan %}<p>{{ plan.candidates|length }} registered candidate(s); {{ plan.approval_action_ids|length }} require approval.</p>{% for candidate in plan.candidates %}<p class="contract-finding"><code>{{ candidate.action_class }}</code><span>{{ candidate.description }}</span></p>{% endfor %}{% endif %}
         </details>
         <details>
           <summary>Decision, verification, package <span>{{ record.phase|replace('_', ' ')|lower }}</span></summary>

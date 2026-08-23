@@ -36,6 +36,7 @@ from asset_shepherd.intent import (
     validate_asset_intent,
 )
 from asset_shepherd.models import (
+    ActionClass,
     AgentWorkflowResult,
     ApprovalCard,
     AssetIntentProvenance,
@@ -45,15 +46,16 @@ from asset_shepherd.models import (
     Finding,
     ProfilePolicyProvenance,
     ProjectProfile,
+    RepairEligibility,
     Severity,
     VerificationState,
 )
 from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
 from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.target_intake import (
+    TargetFieldEvidence,
     TargetIntakeContract,
     clarify_target_intake,
-    revise_target_intake,
 )
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -84,6 +86,16 @@ class PolicyProposalView:
     summary: tuple[tuple[str, str], ...]
     review_rules: tuple[tuple[str, str], ...]
     form_defaults: dict[str, JsonValue]
+
+
+@dataclass(frozen=True)
+class ExpectationView:
+    """One user-facing target assumption with its authority made explicit."""
+
+    label: str
+    value: str
+    source: str
+    detail: str
 
 
 @dataclass(frozen=True)
@@ -593,6 +605,7 @@ class WebJob:
     job_id: str
     original_filename: str
     intent: AssetIntentProvenance
+    target_intake: TargetIntakeContract
     story: StoryDefinition
     profile: FrozenProfile
     root: Path
@@ -764,6 +777,128 @@ def _display_target_height(height_cm: float) -> str:
     return f"{height_cm / 100:g} m"
 
 
+UNIVERSAL_EXPECTATIONS: tuple[tuple[str, str], ...] = (
+    (
+        "Readable structure",
+        "The file must be a parseable GLB 2.0 container with valid references.",
+    ),
+    (
+        "Sound geometry data",
+        "Positions, normals, tangents, UVs, and indices must be finite and internally consistent.",
+    ),
+    (
+        "Static repair boundary",
+        "Skins, animation, morph targets, topology, UVs, and artistic edits are inspection-only.",
+    ),
+    (
+        "Content preservation",
+        "Geometry, materials, textures, and binary payloads must survive any supported repair.",
+    ),
+    (
+        "Exact authorization",
+        "Names may be repaired safely; physical normalization requires approval and independent "
+        "verification.",
+    ),
+)
+
+BASIS_LABELS = {
+    "UNIVERSAL_INVARIANT": "Always-required invariant",
+    "FROZEN_PROJECT_POLICY": "Target-specific expectation",
+    "OBJECTIVE_SOURCE_DIAGNOSTIC": "Measured source fact",
+    "EXTERNAL_CONSUMER_EVIDENCE": "Independent consumer evidence",
+}
+
+
+def _evidence_source_label(evidence: TargetFieldEvidence | None) -> str:
+    """Translate typed intake provenance into compact public language."""
+    if evidence is None:
+        return "No assumption"
+    labels = {
+        "EXPLICIT_USER_TEXT": "Explicit in your description",
+        "MODEL_INFERENCE": "Inferred from your description",
+        "USER_CLARIFICATION": "Confirmed by you",
+    }
+    return labels[evidence.source.value]
+
+
+def _policy_source_label(value: str | None) -> str:
+    """Translate one frozen rule source without presenting it as model fact."""
+    labels = {
+        "CONFIRMED_INTENT": "Confirmed target",
+        "DERIVED_INTENT": "Derived from your description",
+        "FAMILY_DEFAULT": "Universal project-family rule",
+        "USER_OVERRIDE": "Advanced user adjustment",
+    }
+    return labels.get(value or "", "Fixed product boundary")
+
+
+def _target_expectations(
+    target: TargetIntakeContract,
+    profile: ProjectProfile,
+    policy_sources: Mapping[str, str],
+) -> tuple[ExpectationView, ...]:
+    """Expose every current target assumption separately from measured GLB facts."""
+    if target.target_use is None or target.target_height_cm is None:
+        return ()
+    evidence = {item.field: item for item in target.evidence}
+    full_static = target.target_use is AssetTargetUse.STATIC_GAME_ASSET
+    orientation_value = (
+        "Y-up; propose upright normalization if the measured dominant axis disagrees"
+        if profile.orientation.require_y_up_geometry
+        else "No target-specific upright requirement"
+    )
+    grounding_value = (
+        f"Grounded within {profile.orientation.ground_tolerance_cm:g} cm"
+        if profile.orientation.require_ground_contact
+        else "No ground-contact requirement"
+    )
+    return (
+        ExpectationView(
+            label="Intended use",
+            value=TARGET_USE_LABELS[target.target_use].capitalize(),
+            source=_evidence_source_label(evidence.get("target_use")),
+            detail="This is context and a support-boundary check, not a repair preset.",
+        ),
+        ExpectationView(
+            label="Supported outcome",
+            value=(
+                "Full static inspect → repair → verify workflow"
+                if full_static
+                else "Static inspection and handoff; no rigging or animation repair"
+            ),
+            source="Current product boundary",
+            detail="The same deterministic checks and safety rules apply to every supported GLB.",
+        ),
+        ExpectationView(
+            label="Real-world size",
+            value=f"About {_display_target_height(target.target_height_cm)} tall",
+            source=_evidence_source_label(evidence.get("target_height_cm")),
+            detail="This target will be compared with measured world-space bounds.",
+        ),
+        ExpectationView(
+            label="Orientation",
+            value=orientation_value,
+            source=_policy_source_label(policy_sources.get("orientation.require_y_up_geometry")),
+            detail="The GLB is measured before any rotation is proposed.",
+        ),
+        ExpectationView(
+            label="Grounding",
+            value=grounding_value,
+            source=_policy_source_label(policy_sources.get("orientation.require_ground_contact")),
+            detail="Hanging or hovering language can remove this target-specific goal.",
+        ),
+        ExpectationView(
+            label="Assembly",
+            value="No semantic piece-count assumption",
+            source="Unspecified",
+            detail=(
+                "Inspection reports nodes, meshes, roots, and primitives. Asset Shepherd does not "
+                "merge, split, or guess semantic pieces."
+            ),
+        ),
+    )
+
+
 class WebJobStore:
     """Thread-safe in-process job registry with isolated filesystem workspaces."""
 
@@ -821,19 +956,14 @@ class WebJobStore:
         self,
         intent: WebIntent,
         *,
-        target_use_value: str,
-        target_height_m: str,
+        description: str,
     ) -> WebIntent:
-        """Replace an unconfirmed model proposal with explicit target values."""
+        """Reinterpret an edited natural-language description before confirmation."""
         with self._lock:
             if intent.confirmed is not None:
                 raise UploadValidationError("This target story is already confirmed.")
             try:
-                intent.target = revise_target_intake(
-                    intent.target,
-                    target_use_value=target_use_value,
-                    target_height_m=target_height_m,
-                )
+                intent.target = self.intake_analyzer.analyze(description)
             except ValueError as error:
                 raise UploadValidationError(str(error)) from error
             return intent
@@ -962,6 +1092,7 @@ class WebJobStore:
             job_id=job_id,
             original_filename=Path(original_filename).name,
             intent=intent,
+            target_intake=target_intake,
             story=story,
             profile=frozen_profile,
             root=job_root,
@@ -1067,6 +1198,19 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
             for record in core.decisions.records
             if record.decision is not DecisionValue.AUTO_AUTHORIZED
         )
+    plan = core.selected_plan
+    report_only_findings = tuple(
+        finding
+        for finding in (core.inspection.findings if core.inspection is not None else ())
+        if finding.action_class is ActionClass.REPORT_ONLY
+    )
+    cannot_repair = bool(
+        (plan is not None and plan.blocked)
+        or (
+            core.inspection is not None
+            and core.inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH
+        )
+    )
     return {
         "job": job,
         "story": job.story,
@@ -1076,6 +1220,15 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "workflow_steps": _workflow_steps(job),
         "stages": job.stages(),
         "finding_groups": _finding_groups(job),
+        "basis_labels": BASIS_LABELS,
+        "target_expectations": _target_expectations(
+            job.target_intake,
+            core.profile,
+            job.profile.policy_provenance.rule_sources,
+        ),
+        "universal_expectations": UNIVERSAL_EXPECTATIONS,
+        "report_only_findings": report_only_findings,
+        "cannot_repair": cannot_repair,
         "rule_explanations": {
             finding.id: explanation
             for finding in (core.inspection.findings if core.inspection is not None else ())
@@ -1084,7 +1237,7 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "approval_card": job.approval_card(),
         "interrupt_id": core.pending_interrupt_id,
         "inspection": core.inspection,
-        "plan": core.selected_plan,
+        "plan": plan,
         "verification": verification,
         "workflow_result": job.workflow_result,
         "decision_records": decision_records,
@@ -1191,6 +1344,28 @@ def create_app(
         approval_card = None
         if runtime_job is not None and runtime_job.pending_interrupt_id is not None:
             approval_card = runtime_job.approval_card()
+        target_expectations: tuple[ExpectationView, ...] = ()
+        target_draft = workspace.record.target_draft
+        if target_draft is not None and target_draft.ready_for_confirmation:
+            if runtime_job is not None and workspace.record.profile_policy is not None:
+                expectation_profile = runtime_job.profile
+                expectation_sources = workspace.record.profile_policy.rule_sources
+            else:
+                assert target_draft.target_use is not None
+                assert target_draft.target_height_cm is not None
+                expectation_resolution = resolve_policy_family(
+                    family.profile,
+                    description=target_draft.description,
+                    target_use=target_draft.target_use,
+                    target_height_cm=target_draft.target_height_cm,
+                )
+                expectation_profile = expectation_resolution.profile
+                expectation_sources = expectation_resolution.provenance.rule_sources
+            target_expectations = _target_expectations(
+                target_draft,
+                expectation_profile,
+                expectation_sources,
+            )
         return templates.TemplateResponse(
             request=request,
             name="hosted_workspace.html",
@@ -1208,6 +1383,9 @@ def create_app(
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,
                 "target_draft": workspace.record.target_draft,
+                "target_expectations": target_expectations,
+                "universal_expectations": UNIVERSAL_EXPECTATIONS,
+                "basis_labels": BASIS_LABELS,
                 "target_use_label": (
                     TARGET_USE_LABELS[workspace.record.target_draft.target_use]
                     if workspace.record.target_draft is not None
@@ -1219,9 +1397,6 @@ def create_app(
                     if workspace.record.target_draft is not None
                     and workspace.record.target_draft.target_height_cm is not None
                     else None
-                ),
-                "target_uses": tuple(
-                    (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
                 ),
                 "command_id": uuid4().hex,
                 "error": error,
@@ -1259,9 +1434,6 @@ def create_app(
             context={
                 "intent": intent,
                 "target_use_label": target_use_label,
-                "target_uses": tuple(
-                    (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
-                ),
                 "error": error,
                 "active_mode": "confirm",
                 "active_style": "Clarify",
@@ -1277,6 +1449,7 @@ def create_app(
         status_code: int = 200,
     ) -> Response:
         """Render one concise, adjustable proposal before explicit agreement."""
+        policy_proposal = _policy_proposal(family, intent)
         return templates.TemplateResponse(
             request=request,
             name="intent.html",
@@ -1284,9 +1457,12 @@ def create_app(
                 "intent": intent,
                 "target_use_label": TARGET_USE_LABELS[intent.target_use],
                 "target_height_label": _display_target_height(intent.target_height_cm),
-                "target_uses": tuple(
-                    (target_use.value, label) for target_use, label in TARGET_USE_LABELS.items()
+                "target_expectations": _target_expectations(
+                    intent.target,
+                    policy_proposal.resolution.profile,
+                    policy_proposal.resolution.provenance.rule_sources,
                 ),
+                "universal_expectations": UNIVERSAL_EXPECTATIONS,
                 "error": error,
                 "active_mode": "confirm",
                 "active_style": "Confirm",
@@ -1374,17 +1550,21 @@ def create_app(
     def clarify_intent(
         request: Request,
         intent_id: str,
+        description: Annotated[str | None, Form()] = None,
         target_use: Annotated[str | None, Form()] = None,
         target_height_m: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Complete only missing minimum target fields and return to proposal review."""
         try:
             intent = require_intent(intent_id)
-            store.clarify_intent(
-                intent,
-                target_use_value=target_use,
-                target_height_m=target_height_m,
-            )
+            if description is not None:
+                store.revise_intent(intent, description=description)
+            else:
+                store.clarify_intent(
+                    intent,
+                    target_use_value=target_use,
+                    target_height_m=target_height_m,
+                )
         except UploadValidationError as error:
             intent = store.get_intent(intent_id)
             if intent is None:
@@ -1398,17 +1578,12 @@ def create_app(
     def revise_intent(
         request: Request,
         intent_id: str,
-        target_use: Annotated[str, Form()],
-        target_height_m: Annotated[str, Form()],
+        description: Annotated[str, Form()],
     ) -> Response:
-        """Apply an explicit pre-confirmation correction to a model proposal."""
+        """Reinterpret an edited description without exposing implementation categories."""
         try:
             intent = require_intent(intent_id)
-            store.revise_intent(
-                intent,
-                target_use_value=target_use,
-                target_height_m=target_height_m,
-            )
+            store.revise_intent(intent, description=description)
         except UploadValidationError as error:
             intent = store.get_intent(intent_id)
             if intent is None:
@@ -1511,7 +1686,7 @@ def create_app(
         finally:
             asset.file.close()
         return RedirectResponse(
-            request.url_for("job_page", job_id=job.job_id),
+            f"{request.url_for('job_page', job_id=job.job_id)}?view=inspect",
             status_code=303,
         )
 
@@ -1553,7 +1728,7 @@ def create_app(
                 headers={"Cache-Control": "no-store"},
             )
         return RedirectResponse(
-            request.url_for("job_page", job_id=job.job_id),
+            f"{request.url_for('job_page', job_id=job.job_id)}?view=download",
             status_code=303,
         )
 
@@ -1640,18 +1815,26 @@ def create_app(
         request: Request,
         workspace_id: str,
         command_id: Annotated[str, Form()],
+        description: Annotated[str | None, Form()] = None,
         target_use: Annotated[str | None, Form()] = None,
         target_height_m: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Answer only target fields missing from the durable minimum contract."""
         try:
             workspace = require_hosted_workspace(workspace_id)
-            hosted_store.clarify_target(
-                workspace,
-                target_use_value=target_use,
-                target_height_m=target_height_m,
-                command_id=command_id,
-            )
+            if description is not None:
+                hosted_store.reinterpret_target(
+                    workspace,
+                    description=description,
+                    command_id=command_id,
+                )
+            else:
+                hosted_store.clarify_target(
+                    workspace,
+                    target_use_value=target_use,
+                    target_height_m=target_height_m,
+                    command_id=command_id,
+                )
         except HostedWorkspaceError as error:
             try:
                 workspace = require_hosted_workspace(workspace_id)
@@ -1667,18 +1850,28 @@ def create_app(
         request: Request,
         workspace_id: str,
         command_id: Annotated[str, Form()],
-        target_use: Annotated[str, Form()],
-        target_height_m: Annotated[str, Form()],
+        description: Annotated[str | None, Form()] = None,
+        target_use: Annotated[str | None, Form()] = None,
+        target_height_m: Annotated[str | None, Form()] = None,
     ) -> Response:
-        """Apply an explicit correction to an unfrozen semantic target proposal."""
+        """Reinterpret natural-language corrections to an unfrozen target proposal."""
         try:
             workspace = require_hosted_workspace(workspace_id)
-            hosted_store.revise_target(
-                workspace,
-                target_use_value=target_use,
-                target_height_m=target_height_m,
-                command_id=command_id,
-            )
+            if description is not None:
+                hosted_store.reinterpret_target(
+                    workspace,
+                    description=description,
+                    command_id=command_id,
+                )
+            elif target_use is not None and target_height_m is not None:
+                hosted_store.revise_target(
+                    workspace,
+                    target_use_value=target_use,
+                    target_height_m=target_height_m,
+                    command_id=command_id,
+                )
+            else:
+                raise HostedWorkspaceError("Describe what the target should be instead.")
         except HostedWorkspaceError as error:
             try:
                 workspace = require_hosted_workspace(workspace_id)

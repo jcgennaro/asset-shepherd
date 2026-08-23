@@ -150,5 +150,8 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     proposal = client.get(workspace_path)
     assert "treat this as a static game asset, about 1.8 m tall." in proposal.text
     assert "1.8 m" in proposal.text
-    assert "Adjust target" in proposal.text
+    assert "Tell me what I misunderstood" in proposal.text
+    assert "Target-specific assumptions" in proposal.text
+    assert "No semantic piece-count assumption" in proposal.text
+    assert 'name="target_use"' not in proposal.text
     assert "What real-world height should it have?" not in proposal.text

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-22
-**Current commit:** How-it-works help page (this file is included)
+**Current commit:** Expectation-led intake and inspection (this file is included)
 **Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 semantic intake; D024 protected one-command local launcher |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 semantic intake; D024 protected one-command local launcher; D027 expectation-to-evidence UI |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -45,7 +45,7 @@ before any AWS invocation or resource creation.
 
 ## Latest evidence
 
-- Tests: `uv run pytest` — 98 passed and the opt-in live-provider test skipped. D019–D026 acceptance
+- Tests: `uv run pytest` — 100 passed and the opt-in live-provider test skipped. D019–D027 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -77,6 +77,12 @@ before any AWS invocation or resource creation.
   fields. The user can adjust and must confirm once. Both paths retain provider/model/evidence in
   `target_intake.json`; hosted adjustments survive restart and are exactly once. Mock transport
   covers the paid request contract; the live probe did not run because `OPENAI_API_KEY` was absent.
+- Expectation-led intake and inspection: intended use is now visibly context and a support-boundary
+  check, not a selectable preset. Confirmation and clarification contain no target-use dropdown;
+  corrections are natural-language reinterpretations. The UI lists target-specific assumptions
+  separately from universal invariants, then presents deterministic GLB observations and the
+  bounded action plan. Assembly reports roots/nodes/meshes/primitives without inventing semantic
+  piece count, and blocked jobs direct users back to the creation/export tool with recorded reasons.
 - Local key handling: two one-line PowerShell entry points save the key through a hidden prompt as
   Windows current-user protected ciphertext outside the repository, then unlock it only around the
   web command and restore process state on exit. Windows PowerShell 5.1 parser, DPAPI round-trip,
@@ -134,6 +140,10 @@ before any AWS invocation or resource creation.
   a collapsed disclosure during intake so policy controls stay near the fold. At 390 × 844 the left
   workflow rail remains visible, content uses one column, horizontal overflow is absent, and browser
   diagnostics contain no warnings or errors.
+- D027 browser review confirms the new expectation sheet at the default desktop viewport and
+  390 × 844. The compact document width is 375 pixels within the 390-pixel viewport, with the
+  description-derived goal, product boundary, scale, orientation, grounding, and explicit
+  unspecified assembly assumption readable without a mode selector.
 - Versioned policy intake remains intact: historical repository profiles stay byte-for-byte
   immutable for CLI and evidence reproduction, while new conversational jobs use the immutable
   `unreal-static-game-asset-family-v1` family. `Review all active rules` and `Why these rules?`
