@@ -1,25 +1,30 @@
 # Asset Shepherd Web Design and Flow
 
-This is the current local web-product handoff. It documents the implemented intent-first flow and
-its authorization boundary; it is not a proposal to expand repair scope.
+This document records the implemented local web shell and the corrected D036 product flow. The
+current routes and durable state are reusable, but the deterministic findings-and-plan path is now a
+legacy harness. `AGENT_ORCHESTRATED_WORKFLOW.md` controls the model/tool authority boundary.
 
 ## Product mental model
 
-Asset Shepherd works with a user on one asset, but the conversation is not the repair authority:
+Asset Shepherd works with a user on one asset. Conversation carries the collaboration; structured
+controls carry authorization:
 
 ```text
 Describe the intended asset and target state
   -> Review and agree on one target story
-  -> Review agent-resolved project rules and upload the source GLB
-  -> Inspect deterministic findings
-  -> Approve or reject one grouped physical normalization, if proposed
-  -> Independently verify and download the evidence package
+  -> Upload the source GLB
+  -> Agent chooses sensors and assesses the evidence
+  -> Agent accepts, asks, reports, stops, or previews a supported action
+  -> Approve or reject the exact consequential action, if proposed
+  -> Agent executes, re-observes, and may iterate
+  -> Verify invariants and download the evidence package
 ```
 
-The first two steps now use a bounded semantic intake provider. OpenAI `gpt-5.6-luna` with `xhigh`
-reasoning is the authorized interim implementation; Amazon Bedrock will replace it behind the same
-typed interface. Measurements, candidate repairs, authorization, mutation, verification, and
-ready/not-ready status remain owned by the deterministic engine.
+The implemented first two steps use a bounded semantic intake provider. The corrected workflow must
+then give a real workflow model the confirmed target, durable job state, typed sensor/action
+capabilities, and recorded render evidence. Deterministic tools own measurements, exact action
+consequences, authorization enforcement, mutation, invariant verification, and artifacts. The agent
+owns target-dependent findings, disposition, and repair choice.
 
 ## Why intent replaces the role selector
 
@@ -112,7 +117,8 @@ static-game-asset family. Target height comes directly from confirmed intent; he
 tolerances are bounded proportions of intended height; explicit standing, hanging, or hovering
 language may influence ground-contact policy; and genuinely unspecified values retain family
 defaults. The user never enters a scale factor or transform matrix; the deterministic planner
-derives the minimal physical normalization, if one is warranted.
+no longer derives a semantic repair. The workflow agent decides whether any supported action is
+warranted and calls a typed preview tool; deterministic code calculates its exact consequence.
 
 ## Rules and upload
 
@@ -130,8 +136,9 @@ fields already enforced by `ProjectProfile`: height tolerance, Y-up and ground-c
 and tolerance, naming pattern, and report-only triangle/material/texture budgets. The confirmed
 height is displayed but is not requested again or replaceable by a raw operation.
 
-Action classes, grouped approval behavior, vertical inference, uniqueness guarantees, verification
-invariants, unsupported repair domains, engine/type, and mutation boundaries are fixed. Repository
+Authorization behavior, uniqueness guarantees, verification invariants, unsupported repair domains,
+engine/type, and mutation boundaries are fixed. Dominant-extent vertical inference is deprecated and
+cannot create an assessment or action. Repository
 profiles and the family remain byte-for-byte immutable. Each job receives a validated
 `profile.json` snapshot plus frozen/family identifiers, explicit differences, per-rule sources,
 version, and canonical hash in provenance. The legacy `base_preset_id` field mirrors the family ID.
@@ -145,18 +152,18 @@ policy family before creating an isolated job.
 
 ### Inspect
 
-Inspect uses three sequential areas. **Checking your GLB** replays six deterministic domains in one
-compact log and resolves each to a pass or attention marker. **Summary** reports only measured size,
-topology, and resources; compresses normal domains into one sentence; and groups every attention
-finding into no more than three readable areas. **Do these issues look fixable?** gates entry to the
-repair decision. The server rejects a direct Decide navigation or submission until that summary has
-been acknowledged.
+Inspect uses three sequential areas. **Checking your GLB** streams the sensors chosen by the agent
+and resolves each call to evidence available or attention required. **Summary** is the agent's compact
+assessment, grounded in the confirmed target, measurements, and renders; it compresses normal
+domains and groups every attention finding into no more than three readable areas. The next question
+reflects the agent's chosen disposition rather than mechanically assuming every finding is fixable.
 
 One closed **More details** disclosure retains the preview plus the full check log, target
 expectations, universal invariants, measurements, findings, finding authority, exact rule
-provenance, repair candidates, execution stages, and frozen policy in a scrollable table. The
+provenance, agent-proposed actions, execution stages, and frozen policy in a scrollable table. The
 default view does not repeat the target story, a second workflow rail, or per-check explanatory
-paragraphs. Free text cannot create a finding or candidate action.
+paragraphs. User free text cannot authorize an action; agent assessments and action previews remain
+typed durable state rather than unstructured chat claims.
 
 Intended use is context and a support-boundary check, not a preset. Static-asset intent receives the
 complete supported workflow. Character intent is retained, but the current product offers only
@@ -166,10 +173,10 @@ pretend those structural counts identify artistic pieces and does not merge or s
 
 ### Decide
 
-If the deterministic plan proposes scale/orientation/grounding normalization, Decide presents one
-grouped consequential action. Approve or Reject is bound to the exact Strands interrupt ID.
-Automatic display-name repairs remain separate. Rejection is recorded in decisions and
-provenance, the physical operation is not executed, and unresolved findings remain explicit.
+If the agent previews a consequential supported action, Decide presents that exact action. Approve
+or Reject is bound to the action hash and exact Strands interrupt ID. Preauthorized display-name
+repairs still require an initiating agent tool call. Rejection is recorded in decisions and
+provenance, the proposed operation is not executed, and unresolved assessments remain explicit.
 
 ### Verify and download
 
@@ -184,8 +191,9 @@ Projected world-bounds corners drive persistent **Before** and **After** targeti
 leader lines; a model less than 18% of the other's longest dimension receives an explicit
 **model here** label. Optional X/Y/Z rulers retarget to the selected fit bounds with five
 human-readable meter ticks, and an optional approximately 20-centimeter banana provides a playful
-physical reference. These are display-only scene additions. The source, candidate, repair plan,
-verification, and package remain byte-for-byte independent of the viewer.
+physical reference. The HUD and banana remain display-only. Standardized source/candidate render
+artifacts must also be recorded for the workflow model's visual assessment; they do not alter the
+source, candidate, approved action, invariant verification, or package bytes.
 
 The Apache-licensed Google `<model-viewer>` 4.3.1 browser distribution is served from the package,
 so previews do not rely on a public CDN at runtime.
@@ -223,23 +231,27 @@ not change.
   through disclosures instead of competing with the next action.
 - The dark workshop palette, responsive left rail, keyboard-visible controls, and reduced-motion
   behavior remain.
-- Interactive previews use pinned `<model-viewer>` 4.3.1. The viewer is a browser dependency, not
-  repair or verification authority.
+- Interactive previews use pinned `<model-viewer>` 4.3.1. The browser viewer is not repair or
+  verification authority, but standardized renders derived from the same asset states are sensing
+  evidence available to the agent and user.
 
 ## Runtime boundaries and limitations
 
 - Intake uses the OpenAI Responses API unless `--offline-intake` selects explicit-text extraction.
   Only the description leaves the process; the uploaded GLB remains local.
-- The repair flow uses the real Strands loop with a scripted zero-network provider.
+- The current repair flow uses the real Strands loop with a scripted zero-network provider. Under
+  D036 this is a test harness, not accepted product behavior.
 - Draft intents and active approval sessions are in memory. Refresh works while the process is
   running; restart requires a new target story and ends active sessions.
 - Job artifacts live below `build/web/jobs/{job_id}` and use opaque server-generated IDs.
-- Semantic intake proposes only supported use and intended vertical size. It does not infer project
-  budgets, create transforms, or add unsupported repair goals from prose.
+- The current semantic intake proposes only supported use and intended size. The corrected workflow
+  model performs later assessment and may create typed requests for supported action tools; it still
+  cannot add unsupported repair domains or authorize itself.
 - Assembly intent remains visibly unspecified until a typed, measurable contract exists; current
   structural counts are objective observations only.
-- Bedrock must emit the same bounded schema and may not bypass deterministic inspection, explicit
-  approval, or independent verification.
+- Bedrock must use the same durable Job Contract and typed tool schemas and may not bypass parsing,
+  invariant enforcement, explicit approval, or independent verification. It must choose sensing and
+  disposition rather than replay the scripted harness.
 - The current product remains static-GLB repair only. It does not add rigging, skinning, animation,
   topology, UV, material, texture, transparency, emissive, or speculative artistic repair.
 

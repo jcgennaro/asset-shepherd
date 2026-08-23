@@ -5,10 +5,11 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.4
+**Document version:** 1.5
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
-D022 minimum target-intake contract, and D023 provider-neutral semantic intake, 2026-08-22
+D022 minimum target-intake contract, D023 provider-neutral semantic intake, and D036
+agent-orchestrated sensing and disposition, 2026-08-23
 
 ---
 
@@ -34,14 +35,16 @@ This contract should remain stable. Changes to it require an explicit user decis
 
 Asset Shepherd is an autonomous 3D-asset intake and normalization agent for indie game developers and technical artists.
 
-A user provides a static 3D asset and a small project profile. Asset Shepherd:
+A user provides a static 3D asset and describes the result they are trying to achieve. Asset
+Shepherd's workflow agent:
 
-1. Inspects the asset using deterministic tools.
-2. Explains concrete defects and project-policy violations.
-3. Applies repairs that are mechanically safe.
-4. Requests human approval before any repair that could alter scale, orientation, grounding, or artistic intent.
-5. Re-inspects the repaired asset independently.
-6. Returns a validated asset package and a clear before-and-after report.
+1. Determines what it needs to learn and calls deterministic sensing tools.
+2. Interprets measured and rendered evidence against the confirmed user goal.
+3. Decides whether to accept, inspect further, ask, report, repair, or stop.
+4. Chooses supported repair tools and typed parameters when a repair is warranted.
+5. Requests human approval before any consequential physical or artistic change.
+6. Re-observes every candidate, independently verifies invariants, and iterates when useful.
+7. Returns a validated asset package or honest diagnostics with a clear before-and-after report.
 
 The product does real work. It must produce an actual repaired asset and verification evidence, not merely discuss what a technical artist could do manually.
 
@@ -53,11 +56,12 @@ Game developers repeatedly acquire assets from marketplaces, contractors, proced
 
 Asset Shepherd turns that workflow into exception supervision:
 
-- Machines measure facts.
+- Deterministic sensors measure facts and produce standardized visual evidence.
 - The agent interprets those facts against project intent.
-- Safe transformations happen automatically.
-- Ambiguous transformations wait for approval.
-- Verification is independent of the agent's verbal confidence.
+- The agent chooses which supported actions to request and with which typed parameters.
+- Consequential transformations wait for human approval.
+- Deterministic enforcement constrains every action, and verification is independent of the agent's
+  verbal confidence.
 
 The demo must make this visible within seconds: a broken robot enters, one meaningful approval is requested, and a correctly scaled, upright, grounded, valid asset exits with evidence.
 
@@ -211,7 +215,6 @@ expected_height_cm:
 
 orientation:
   require_y_up_geometry: true
-  infer_vertical_from_dominant_extent: true
   require_ground_contact: true
   ground_tolerance_cm: 1
 
@@ -231,7 +234,11 @@ repair_policy:
   require_approval_for_normalization_transform: true
 ```
 
-The production schema must be JSON and versioned. YAML above is explanatory only.
+The production schema must be JSON and versioned. YAML above is explanatory only. Historical
+profiles may retain `infer_vertical_from_dominant_extent` for artifact compatibility, but the
+corrected product must not use dominant extent to infer semantic vertical, emit an orientation
+finding, or create a rotation. Project-policy fields supply constraints and preferences to the agent;
+they do not generate contextual conclusions without agent reasoning.
 
 ### 6.6 Required output package
 
@@ -267,15 +274,15 @@ the primary navigation model; it is not the source of record for target state, p
 authorization, or readiness.
 
 The hosted workspace must display an inspectable structured **Job Contract** containing source
-status, intended target, rules, measured facts, findings, registered plan, decision state,
-verification, and package status.
+status, intended target, rules, measured facts and renders, agent assessments, proposed actions,
+decision state, verification, and package status.
 
 After minimal user context, the hosted path may accept and hash the GLB before final target
 agreement. Before confirmation it may perform only objective preflight: structural eligibility,
-represented dimensions, orientation and grounding facts, supported-feature counts, resource counts,
-and deterministically available material or texture metadata. This state must be labeled as measured
-source facts with no agreed target. It must not create policy-relative findings, a registered plan,
-an approval interrupt, a mutation, or a readiness result.
+represented dimensions, transforms and ground-plane relationship, supported-feature counts, resource
+counts, and deterministically available material or texture metadata. This state must be labeled as
+measured source facts with no agreed target. It must not create a target-dependent assessment,
+proposed action, approval interrupt, mutation, or readiness result.
 
 Before offering target confirmation, the agent must satisfy the versioned minimum target-intake
 contract. It requires a normalized asset description, one supported intended-use value, and a
@@ -289,7 +296,9 @@ resource budgets are resolved-policy parameters, not mandatory intake questions.
 adjust and must confirm the complete typed target once before any policy-relative inspection. Every
 provider, including the interim OpenAI implementation and the intended Bedrock implementation,
 must emit the same server-validated public schema; model prose alone is not target state. The model
-cannot propose raw transforms, expand repair domains, authorize an action, or declare readiness.
+may later choose typed parameters for supported action tools, but it cannot expose raw transforms as
+user controls, expand repair domains, authorize an action, bypass tool validation, or declare
+invariant readiness.
 
 Ordinary users confirm a schema-valid job-scoped policy resolved from one trusted, immutable,
 versioned parameterized family. They do not choose a named scale baseline or re-enter target state
@@ -305,6 +314,18 @@ Original intent must be distinct from the supported job goal. Unsupported playab
 rigging, skinning, or animation intent may be preserved as context only when the user explicitly
 accepts a narrowed static-mesh or inspection-only goal. The product must not claim unsupported
 readiness.
+
+### 6.8 Agent-orchestrated job definition
+
+The workflow defined in `docs/AGENT_ORCHESTRATED_WORKFLOW.md` is controlling. The agent chooses its
+sensors, forms target-dependent conclusions, chooses the disposition, and initiates every mutation.
+Deterministic code supplies observations, action previews, invariant enforcement, exact mutation,
+verification, and packaging. It must not manufacture a variable repair plan from a project profile
+or shape heuristic.
+
+This amendment preserves the narrow supported mutation domain and exact human authorization. It
+changes who decides that a repair is warranted and how it is composed. A live workflow model, not
+the scripted test double, must demonstrate that behavior before the hosted agent milestone passes.
 
 ---
 
@@ -342,10 +363,13 @@ The deterministic inspector must report facts before the agent interprets them.
 ### 7.4 Naming facts
 
 - Missing names.
-- Names that violate the profile pattern.
 - Duplicate node names.
 - Duplicate mesh names.
-- Deterministic proposed replacements.
+- Exact node and mesh display-name inventory.
+
+Whether a name violates the confirmed project expectation and whether it should be changed are
+target-dependent agent conclusions. A deterministic naming tool may validate or preview a specific
+replacement requested by the agent.
 
 ### 7.5 Materials and textures
 
@@ -367,9 +391,11 @@ A repair job must not proceed when eligibility is not `ELIGIBLE_STATIC_MESH`.
 
 ---
 
-## 8. Findings and evidence model
+## 8. Assessment and evidence model
 
-Every finding must contain:
+Universal-invariant tools may emit deterministic failures. Target-dependent findings are agent
+assessments grounded in sensor observations and the confirmed goal. Every recorded assessment must
+contain:
 
 ```text
 id
@@ -386,6 +412,9 @@ profile_rule
 candidate_repairs
 ```
 
+`candidate_repairs` is retained for schema migration only. In the corrected architecture it records
+agent-proposed typed actions; the inspector does not populate it from a heuristic planner.
+
 ### 8.1 Severity
 
 - `INFO`: useful fact or recommendation.
@@ -400,7 +429,9 @@ candidate_repairs
 - `APPROVAL_REQUIRED`
 - `BLOCKED`
 
-Severity and action class are separate. A serious budget violation can be report-only, while a minor naming defect can be safely automatic.
+Severity and action class are separate. A serious budget concern can be report-only, while a minor
+naming defect may be preauthorized. Preauthorization does not remove the requirement for an agent to
+initiate the action.
 
 ### 8.3 Evidence discipline
 
@@ -434,28 +465,32 @@ The agent may explain this inference. It may not invent dimensions or pretend a 
 9. The source hash must remain unchanged.
 10. Running the same approved repair pipeline twice must be semantically idempotent.
 
-### 9.2 `AUTO_SAFE` repairs in the MVP
+### 9.2 Preauthorized non-consequential repairs in the MVP
 
-The MVP may automatically:
+The agent may explicitly initiate the following typed actions when the confirmed project rules
+preauthorize them:
 
 - Assign deterministic valid names to unnamed nodes and meshes.
 - Normalize invalid node and mesh names according to the project pattern.
 - Make duplicate node and mesh names unique with deterministic suffixes.
 - Re-serialize the GLB without changing geometry, materials, or textures when necessary for valid output packaging.
 
-Name changes are considered safe because glTF references nodes and meshes by index, not by display name. The implementation must still prove that indices and references remain intact.
+Name changes may be considered non-consequential because glTF references nodes and meshes by index,
+not by display name. The implementation must still prove that indices and references remain intact.
+No background pass applies them merely because an inspector found a name it dislikes.
 
 The MVP should not automatically delete nodes, resources, materials, or textures. Such cleanup is deceptively easy to describe and annoyingly capable of amputating semantics.
 
-### 9.3 `APPROVAL_REQUIRED` repair in the MVP
+### 9.3 Consequential repair primitives in the MVP
 
-The single consequential repair is a **normalization transform** combining any approved subset of:
+The current action capability is a reversible root transform that the agent may compose from an
+explicitly chosen subset of:
 
 - Physical scale correction.
-- Rotation that maps the inferred vertical axis to positive Y.
-- Translation that places the lowest world-space point at Y=0.
+- A specific root rotation selected by the agent from target and sensor evidence.
+- A specific root translation selected by the agent, including grounding when appropriate.
 
-The proposed transform must include:
+The deterministic preview of the agent-requested transform must include:
 
 - Before bounds and dimensions.
 - Proposed 4×4 transform matrix.
@@ -466,7 +501,9 @@ The proposed transform must include:
 
 The implementation should prefer a reversible, standards-compliant root normalization transform over destructive vertex baking for the MVP. A top-level normalization node is acceptable if it round-trips correctly and verification proves the resulting world-space asset is correct.
 
-The agent must group scale, upright rotation, and grounding into one coherent approval card when they form one normalization operation. It should not make the user approve three obvious fragments of the same decision.
+The agent should group compatible scale, rotation, and translation into one coherent approval card
+when its reasoning says they form one operation. The deterministic layer must neither insert a
+component the agent did not request nor split the decision into scripted fragments.
 
 ### 9.4 `REPORT_ONLY` findings
 
@@ -508,12 +545,17 @@ The output must be reloaded from disk and independently inspected. Verification 
 - Source and output hashes are recorded.
 - Triangle, vertex, material, and texture counts remain unchanged unless a future authorized repair explicitly permits a change.
 - Names satisfy the profile and are unique.
-- Approved scale is within profile tolerance.
-- Approved upright orientation places the dominant expected vertical extent on Y.
-- Approved grounding places the lowest point within the ground tolerance.
+- Each executed action satisfies the exact deterministic postconditions declared by its approved
+  preview.
+- Scale, rotation, and translation results match the exact agent-requested and user-approved action,
+  without using dominant extent as a semantic proxy.
 - Rejected repairs were not applied.
 - All executed actions appear in provenance.
-- A second planning run proposes no additional version-1 repairs.
+- No unrequested mutation occurred.
+
+The agent must then reassess target satisfaction using fresh sensor evidence, including standardized
+renders when appearance or pose matters. An empty deterministic plan is not evidence of semantic
+correctness because deterministic code no longer owns contextual planning.
 
 Verification states:
 
@@ -577,10 +619,10 @@ Typed Tool Boundary
         ↓
 Deterministic Asset Core
   ├─ Load and validate
-  ├─ Inspect
-  ├─ Generate candidate repairs
-  ├─ Apply authorized repairs
-  ├─ Verify
+  ├─ Measure and render observations
+  ├─ Preview requested action consequences
+  ├─ Apply authorized agent-requested actions
+  ├─ Verify invariants and declared postconditions
   └─ Package artifacts
         ↓
 Local filesystem or AWS object storage
@@ -592,8 +634,9 @@ Local filesystem or AWS object storage
 
 - Parsing.
 - Geometry and transform calculations.
-- Finding evidence.
-- Repair matrices.
+- Measured and rendered sensor evidence.
+- Universal-invariant failures.
+- Exact matrices and consequences for actions requested by the agent.
 - File mutation.
 - Validation.
 - Hashing.
@@ -602,12 +645,16 @@ Local filesystem or AWS object storage
 **Strands agent owns:**
 
 - Choosing when to call tools.
-- Interpreting structured findings against the profile.
-- Selecting only valid candidate repairs.
-- Explaining proposed consequences.
+- Choosing which sensors are needed.
+- Interpreting observations against the confirmed target.
+- Creating and revising target-dependent findings.
+- Choosing supported action tools and typed parameters.
+- Choosing the disposition: accept, investigate, ask, report, repair, or stop.
+- Explaining proposed consequences and uncertainty.
 - Grouping approval decisions.
 - Pausing and resuming for human input.
-- Responding to deterministic verification failures with at most one bounded correction attempt.
+- Re-observing every candidate and iterating within explicit operational limits.
+- Responding to deterministic verification failures without overriding them.
 - Producing a concise final summary.
 
 **The user owns:**
@@ -640,22 +687,24 @@ Use strict typed models and versioned JSON. Pydantic v2 is preferred unless the 
 
 All tool inputs and outputs must be JSON-serializable and validated. The agent must receive structured data rather than scraping human-formatted reports.
 
-### 12.5 CLI
+### 12.5 Deterministic tool harness
 
-The deterministic core must remain independently usable through a CLI before the agent layer exists.
+The deterministic core must remain independently testable through a CLI. This is a repair-engine and
+invariant harness, not the product decision maker. Variable actions require explicit typed parameters
+that stand in for an agent tool call; the CLI must not infer a contextual repair plan.
 
 Expected commands may include:
 
 ```text
 asset-shepherd inspect
-asset-shepherd plan
+asset-shepherd preview-action
 asset-shepherd repair
 asset-shepherd verify
-asset-shepherd run
 asset-shepherd fixtures generate
 ```
 
-Exact command names may be adjusted for coherence. The CLI must support a complete non-network end-to-end run using an approvals JSON file.
+Exact command names may be adjusted for coherence. The CLI must support non-network testing with an
+explicit action request and approvals JSON file.
 
 ### 12.6 Web interface
 
@@ -665,8 +714,9 @@ The hosted final experience should provide:
 2. GLB upload with objective preflight before final target agreement.
 3. An editable typed target card before confirmation and a frozen structured Job Contract after it.
 4. A visible resolved policy summary, with supported advanced rule customization.
-5. Findings grouped by severity and action class.
-6. One exact normalization approval card whose structured control is the only authorization path.
+5. Agent assessments grouped around the current decision, with sensor evidence available on demand.
+6. One exact approval card for the current agent-proposed consequential action; its structured
+   control is the only authorization path.
 7. Before and after 3D preview, verification summary, and downloadable result ZIP.
 8. Durable refresh, application-restart, and agent-runtime-restart resume behavior.
 
@@ -699,12 +749,14 @@ The Strands design follows the model-tools-prompt structure:
 ### 13.3 Required agent capabilities
 
 - Invoke inspection tools.
-- Consume structured findings.
-- Produce a validated repair-plan selection.
+- Choose sensing tools and consume structured observations and renders.
+- Produce evidence-cited target-dependent assessments.
+- Choose supported repair tools and typed action parameters.
 - Request human approval before consequential repair.
 - Resume from the same interrupted job.
-- Invoke repair and verification tools.
-- Interpret verification results without overriding them.
+- Invoke repair, re-observation, verification, and packaging tools.
+- Iterate through further sensing or a fresh proposed action when needed.
+- Interpret invariant verification results without overriding them.
 - Return a structured final result and user-facing explanation.
 - Remain available through download for questions answerable from recorded job evidence.
 
@@ -724,11 +776,12 @@ The user response must be explicitly associated with the interrupt ID. On resume
 The agent cannot:
 
 - Call arbitrary shell commands against uploaded content.
-- Construct an unregistered repair action.
+- Invoke an unsupported capability or submit an action that fails its typed schema and deterministic
+  constraints.
 - Modify paths outside the job workspace.
 - Apply an approval-required action without a valid approval record.
 - Claim verification success when the tool returned failure.
-- retry more than once after a repair or verification failure.
+- continue after configured cost, time, repeated-failure, or user-decision limits.
 
 ### 13.6 Observability
 
@@ -751,10 +804,11 @@ Model provider, model ID, AWS profile, and region must be explicit configuration
 
 ### 13.8 Conversation and authorization boundary
 
-The conversation may ask bounded follow-up questions, propose typed intent and policy state, explain
-structured results, and cite finding IDs, measured values, and frozen rules. Description semantics
-may influence what the agent asks. A statement about appearance is permitted only when deterministic
-material or texture metadata supports it; otherwise the property must be marked not evaluated.
+The conversation may ask bounded follow-up questions, propose typed intent and policy state, choose
+sensing and action tools, explain structured results, and cite assessment IDs, measured values,
+standardized renders, and frozen rules. Appearance statements require recorded visual evidence
+available to a vision-capable workflow model or explicit human adjudication; metadata alone supports
+only metadata claims. Otherwise the property must be marked not evaluated.
 
 Typing approval language in chat never authorizes a repair. The human grants or rejects
 consequential authorization through the structured interrupt control. The deterministic core
@@ -849,9 +903,12 @@ If AgentCore threatens the submission deadline, Codex may propose a fallback dep
 
 ### 15.4 Determinism
 
-Fixture generation, inspection, candidate-repair calculation, repair application, and verification should be deterministic for the same source, profile, and approvals.
+Fixture generation, sensor measurements, action-preview calculation, repair application, and
+invariant verification must be deterministic for the same source and typed tool calls.
 
-The agent's wording may vary. The actual repair matrix and output acceptance must not depend on creative prose.
+The agent's assessment and chosen action may vary with evidence, target, and model reasoning. Once it
+submits a typed action request, the exact preview, approval binding, matrix, mutation, and invariant
+result must not depend on creative prose.
 
 ### 15.5 Hosted conversation data
 
@@ -898,11 +955,12 @@ At the start of every substantial Codex task:
 
 1. Read `AGENTS.md`.
 2. Read this contract.
-3. Read `docs/PROJECT_STATUS.md`.
-4. Inspect Git status and recent commits.
-5. Identify the earliest incomplete, unblocked milestone.
-6. State internally what gate will prove the work complete.
-7. Implement only work serving that milestone or a documented blocker.
+3. Read `docs/AGENT_ORCHESTRATED_WORKFLOW.md`.
+4. Read `docs/PROJECT_STATUS.md`.
+5. Inspect Git status and recent commits.
+6. Identify the earliest incomplete, unblocked milestone.
+7. State internally what gate will prove the work complete.
+8. Implement only work serving that milestone or a documented blocker.
 
 ### 16.4 End-of-work procedure
 
@@ -995,6 +1053,11 @@ Avoid enormous command transcripts unless a failure requires them.
 ## 17. Milestone plan
 
 Dates are targets, not excuses to skip gates. Codex should update actual completion dates in `PROJECT_STATUS.md`.
+
+M0-M8 describe completed historical implementation gates. Their deterministic inspector/planner
+requirements remain regression evidence for the repair-engine harness but do not override D036's
+agent-orchestrated product authority. M9 must perform the migration and pass the D036 acceptance gate
+before deployment or public product claims.
 
 ### M0 — Repository bootstrap
 
@@ -1224,6 +1287,12 @@ And:
 
 **Work:**
 
+- Replace the deterministic semantic planner with the D036 agent-led sensing, assessment,
+  disposition, and action-preview loop while retaining deterministic enforcement.
+- Make standardized rendered views available as recorded sensor evidence to a vision-capable
+  workflow model.
+- Recast the scripted provider as a test double only and require representative live-model behavior
+  evaluation before product acceptance.
 - Add the D019 conversation-led workspace over the existing typed intent, profile, finding, plan,
   decision, verification, and package schemas.
 - Implement objective preflight before target confirmation, a visible Job Contract, and frozen
@@ -1244,10 +1313,13 @@ And:
 
 **Gate:**
 
+- The D036 acceptance gate in `docs/AGENT_ORCHESTRATED_WORKFLOW.md` passes, including the
+  long-bodied quadruped, ambiguous-orientation, action-provenance, and second-repair cases.
 - One live Bedrock conversation completes bounded intake → preflight → target confirmation →
-  inspect → plan → approve or reject → repair → verify → package → evidence follow-up.
-- The same source, resolved policy, decision, and deterministic pipeline produce the same contracted
-  result as the M8 reference path.
+  agent-chosen sensing → assessment → action preview → approve or reject → repair → reassess → verify
+  → package → evidence follow-up.
+- Deterministic measurements and results are reproducible for the same typed calls; the workflow is
+  not required to reproduce the obsolete M8 heuristic plan.
 - A pending approval survives browser and runtime restart, and duplicate resume or callback attempts
   do not duplicate mutation or packaging.
 - Every conversational factual statement in the acceptance trace maps to recorded evidence.
@@ -1370,9 +1442,9 @@ Suggested flow:
 0:00–0:25  Show the broken robot and explain the import problem.
 0:25–0:50  Identify indie developers and technical artists as users.
 0:50–1:30  Upload asset and project profile.
-1:30–2:10  Show deterministic findings and agent explanation.
-2:10–2:40  Approve one combined normalization decision.
-2:40–3:15  Show repair, independent verification, and before/after preview.
+1:30–2:10  Show agent-chosen sensing and an evidence-cited assessment.
+2:10–2:40  Approve one exact agent-proposed action.
+2:40–3:15  Show repair, agent reassessment, invariant verification, and before/after evidence.
 3:15–3:40  Download the package and show measurable results.
 3:40–4:05  Show Strands/AWS architecture and observability.
 4:05–4:15  Close with the product promise.
@@ -1439,15 +1511,21 @@ After the core product passes all gates, a feature may be added only if it mater
 
 ### Risk: Orientation inference is wrong
 
-**Mitigation:** Confidence and evidence, approval required, fixture designed for unambiguous dominant-axis inference, user may reject.
+**Mitigation:** Orientation is a target-dependent agent conclusion, never a dominant-extent rule.
+The agent may request additional measurements, standardized renders, or user clarification. Rotation
+requires an agent-requested typed preview and consequential approval.
 
 ### Risk: Agent is ornamental
 
-**Mitigation:** Agent selects structured actions, explains findings, controls tool sequence, pauses/resumes, handles verification failure, emits metrics.
+**Mitigation:** A live model must choose sensors, form evidence-cited assessments, choose disposition,
+and design supported action requests. The scripted provider is only a test double and cannot satisfy
+the agent-orchestrated acceptance gate.
 
 ### Risk: Agent hallucinates repairs
 
-**Mitigation:** Candidate repair registry, typed schemas, deterministic action validation, no arbitrary transform accepted from prose.
+**Mitigation:** Capability registry, typed action schemas, deterministic dry-run consequences,
+approval hashes, mutation-scope enforcement, and independent verification. No transform is accepted
+from prose or applied without an explicit agent tool call.
 
 ### Risk: AWS region or model access blocks progress
 
@@ -1487,10 +1565,14 @@ After the core product passes all gates, a feature may be added only if it mater
 Before doing substantial work, read:
 
 1. `docs/PROJECT_CONTRACT.md`
-2. `docs/PROJECT_STATUS.md`
-3. `docs/DECISIONS.md`
+2. `docs/AGENT_ORCHESTRATED_WORKFLOW.md`
+3. `docs/PROJECT_STATUS.md`
+4. `docs/DECISIONS.md`
+5. `docs/REAL_WORLD_VALIDATION_PLAN.md`
 
 `docs/PROJECT_CONTRACT.md` is the controlling product and execution specification.
+`docs/AGENT_ORCHESTRATED_WORKFLOW.md` controls the model/tool authority boundary and product path.
+The real-world validation plan controls corpus, Tripo, Blender, Unreal, evaluation, and demo work.
 
 Work directly on `main`. Do not create branches or pull requests. Do not force-push or use destructive Git cleanup. Preserve unrelated user changes.
 

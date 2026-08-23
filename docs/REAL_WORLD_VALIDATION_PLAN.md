@@ -14,6 +14,11 @@ This document extends `docs/PROJECT_CONTRACT.md`. It does not replace the existi
 
 Its purpose is to replace synthetic-only product validation with a layered evaluation program using realistic textured assets, controlled mutations of those assets, and an actual Blender-to-Unreal production pass.
 
+D036 changes the product's decision architecture without changing this corpus or downstream evidence
+program. Real-world runs must now freeze the agent's sensor choices, assessments, disposition, and
+typed action requests in addition to deterministic observations and results. Legacy deterministic
+plans remain historical benchmark evidence, not the target product behavior.
+
 Use this priority order when instructions conflict:
 
 1. A direct current instruction from the user.
@@ -319,9 +324,10 @@ The blind phase is mandatory. It prevents the inspection rules from being writte
 For each untouched Tripo GLB:
 
 1. Hash and register the raw file.
-2. Run Asset Shepherd with the selected project profile.
-3. Freeze the resulting inspection, plan, report, and verification artifacts.
-4. Record every finding before manual Blender or Unreal diagnosis.
+2. Run the Asset Shepherd workflow agent with a confirmed target and recorded project constraints.
+3. Freeze its sensor calls, observations, assessments, disposition, proposed actions, decisions,
+   report, and verification artifacts.
+4. Record every agent finding and invariant failure before manual Blender or Unreal diagnosis.
 5. Only after the prediction is frozen, import the raw asset into Blender and Unreal.
 6. Record the actual interventions or problems observed by the user.
 7. Adjudicate each Asset Shepherd finding as true positive, false positive, useful warning, unsupported-but-correctly-blocked, or incorrect.
@@ -341,11 +347,11 @@ Mutation scripts must be independent of the production repair path wherever prac
 
 | Mutation | Example operation | Expected Asset Shepherd behavior |
 |---|---|---|
-| Scale mismatch | Multiply represented size by 100 | Detect; approval required; restore expected physical scale when approved |
-| Sideways orientation | Rotate root 90 degrees around X or Z | Detect; approval required; normalize when approved |
-| Floating geometry | Translate model above ground | Detect; approval required; ground when approved |
+| Scale mismatch | Multiply represented size by 100 | Agent recognizes the target conflict from sensor evidence, previews a supported scale action, and obtains approval |
+| Sideways orientation | Rotate root 90 degrees around X or Z | Agent uses transform and rendered evidence, previews a supported rotation, and obtains approval |
+| Floating geometry | Translate model above ground | Agent determines whether grounding is intended, previews a supported translation, and obtains approval |
 | Pivot displacement | Offset root origin laterally or vertically | Detect or report according to current capability; never silently invent intent |
-| Name corruption | Missing, duplicate, invalid node and mesh names | Detect; safe deterministic rename where references remain valid |
+| Name corruption | Missing, duplicate, invalid node and mesh names | Agent chooses a typed rename when project rules warrant it; deterministic tools preserve references |
 | Empty hierarchy | Add empty leaf and nested transform nodes | Remove only when mechanically safe; otherwise report or require approval |
 | Material bloat | Duplicate visually equivalent material slots or add unused material | Report budget; remove only provably unused resources if contract permits |
 | Texture bloat | Inflate one texture to 8192 or create duplicated image references | Report budget; do not resize or artistically edit in MVP |
@@ -557,9 +563,9 @@ Report:
 
 ### 14.2 Nonnegotiable safety gate
 
-**Unsafe automatic repairs must equal zero.**
+**Unsafe, unapproved, or agent-unrequested repairs must equal zero.**
 
-An unsafe automatic repair includes any unapproved operation that:
+An unsafe repair includes any unapproved or agent-unrequested operation that:
 
 - Damages visible geometry.
 - Changes intended scale or orientation.
@@ -592,7 +598,7 @@ Real-world validation is minimally complete when all of the following are true:
 4. At least six controlled realistic variants exist across at least three base assets.
 5. `normalization_chaos`, `hierarchy_trap`, and `material_texture_bloat` are represented.
 6. At least one asset has completed the three-way raw versus Shepherd versus human-reference Blender-to-Unreal comparison.
-7. Asset Shepherd produced zero unsafe automatic repairs.
+7. Asset Shepherd produced zero unsafe, unapproved, or agent-unrequested repairs.
 8. Material and texture preservation has explicit evidence.
 9. A reproducible report summarizes findings, misses, blocks, runtime, and manual effort.
 10. One asset and one failure story have been selected for the final demo.
@@ -696,7 +702,7 @@ This plan does not require Codex to idle while the user generates assets. It sho
 
 - All intended mutations independently confirmed.
 - No source mutation.
-- Zero unsafe automatic repairs.
+- Zero unsafe, unapproved, or agent-unrequested repairs.
 
 ### RW4 — Blender and Unreal acceptance
 
@@ -765,7 +771,7 @@ Human requests must be concise, singular, and immediately actionable.
 
 Stop and report when:
 
-- A real asset suffers an unsafe automatic repair.
+- A real asset suffers an unsafe, unapproved, or agent-unrequested repair.
 - A repaired asset loses textures, materials, geometry, or visible fidelity.
 - Product code appears to require scenario-specific logic.
 - The only apparent fix requires FBX support or Blender in the hosted product runtime.

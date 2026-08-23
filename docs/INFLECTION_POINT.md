@@ -1,17 +1,24 @@
 # Asset Shepherd at the Inflection Point
 
-**Status:** D019 direction plus D021–D023 intake corrections implemented locally; live Bedrock pending
+**Status:** Historical D019 review; its authority model is superseded by D036
 
 **Date:** 2026-08-22
 
-**Current implementation:** D020 durable hosted reference with D021 family resolution and D023 semantic intake
+**Current implementation:** D020 durable hosted reference with deterministic semantic planning; D036
+correction is documented but not implemented
 
-**Controlling specifications:** `PROJECT_CONTRACT.md` and `REAL_WORLD_VALIDATION_PLAN.md`
+**Controlling specifications:** `PROJECT_CONTRACT.md`, `AGENT_ORCHESTRATED_WORKFLOW.md`, and
+`REAL_WORLD_VALIDATION_PLAN.md`
 
-This document is the single handoff for a product-direction review. It separates the product that
-exists now from the conversational product we are considering next. D023 authorizes only the
-interim OpenAI semantic-intake call; it does not authorize AWS work, new repair domains, or other
-changes to the controlling contract.
+This document preserves the product-direction review that led to D019. Its descriptions of the
+deterministic core as the sole authority for findings and repair planning are no longer controlling.
+D036 establishes the corrected model: deterministic tools sense, constrain, execute, and prove;
+the workflow agent assesses, chooses disposition, and chooses supported actions. See
+`AGENT_ORCHESTRATED_WORKFLOW.md` for the current start-to-finish path.
+
+> [!IMPORTANT]
+> Keep the current-versus-envisioned record below as historical context. Do not implement its
+> "unchanged deterministic planner" recommendation where it conflicts with D036.
 
 ## The decision in one sentence
 

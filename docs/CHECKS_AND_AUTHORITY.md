@@ -1,26 +1,37 @@
 # Asset Shepherd checks and authority
 
 Asset Shepherd separates **what the asset should become** from **what must always remain safe**.
-An LLM may propose a target from the user's description. It does not inspect binary geometry,
-declare a file valid, choose a transform, approve a repair, or waive verification.
+The workflow agent chooses sensing, interprets target-dependent evidence, and chooses supported
+actions. Deterministic tools measure, render, calculate exact action consequences, enforce
+invariants, mutate only after a valid agent call and applicable approval, and verify the result.
 
 ## Authority classes
 
-Every finding and verification check has one of four typed bases:
+Every observation, assessment, and verification check has one of five typed bases. The present schema
+must be migrated to add `AGENT_ASSESSMENT`; until then, existing policy findings are legacy output,
+not the target authority model.
 
 | Basis | Who or what supplies it | Can user intent change it? |
 | --- | --- | --- |
 | `FROZEN_PROJECT_POLICY` | The confirmed target plus a versioned policy family | Only before upload, by creating a new job |
+| `AGENT_ASSESSMENT` | The workflow agent, citing confirmed target plus recorded sensor evidence | The user may correct intent; new evidence may revise it |
 | `UNIVERSAL_INVARIANT` | Deterministic safety and preservation code | No |
 | `OBJECTIVE_SOURCE_DIAGNOSTIC` | A measurement of the uploaded bytes | No; it may be informative rather than blocking |
 | `EXTERNAL_CONSUMER_EVIDENCE` | Khronos, Blender, Unreal, or another independent consumer | No; evidence informs verification and human review |
 
-### Where the LLM actually participates
+### Where the workflow model participates
 
-The semantic-intake provider receives only the user's description and may propose two fields:
+The semantic-intake provider currently receives only the user's description and proposes supported
+use and plausible scale. That is an interim implementation, not the completed agent product.
 
-- supported intended use;
-- plausible vertical real-world height.
+The workflow model must receive the confirmed target, durable structured state, available tool
+capabilities, measurements, and requested standardized renders. It then:
+
+- chooses additional sensors;
+- determines which observations matter to the target;
+- creates and revises target-dependent assessments;
+- chooses whether to accept, inspect, ask, report, repair, or stop; and
+- chooses supported action tools and typed parameters.
 
 `target_intake.json` records, per field, whether the value came from `MODEL_INFERENCE`,
 `EXPLICIT_USER_TEXT`, or `USER_CLARIFICATION`, with confidence and concise evidence. Values below
@@ -35,19 +46,18 @@ The resulting policy records the source of each active parameter:
 - `FAMILY_DEFAULT`: a versioned project convention not supplied by the model;
 - `USER_OVERRIDE`: an advanced supported value explicitly changed by the user.
 
-Findings cite the exact active parameter values and these sources. For example,
-`HEIGHT_OUT_OF_RANGE` cites confirmed target height plus the derived tolerance. A malformed index
-remains a universal blocker even if the description or LLM proposal says the asset is acceptable.
+Assessments cite exact target values, policy sources, and sensor evidence. A malformed index remains
+a universal blocker even if the user or model says the asset is acceptable.
 
 ## Inspection checks
 
 | Area | Checks | Basis | Implementation |
 | --- | --- | --- | --- |
-| Target height | Measured vertical extent versus target and tolerance | Frozen policy | NumPy world-space bounds plus `ProjectProfile.expected_height_cm` |
-| Orientation | Dominant extent is Y when Y-up geometry is required | Frozen policy | Deterministic transformed bounds |
-| Grounding | Minimum Y versus required contact and tolerance | Frozen policy | Deterministic transformed bounds |
-| Naming | Pattern, presence, and node/mesh uniqueness | Frozen policy | Versioned regex and index-stable name scan |
-| Budgets | Triangles, materials, textures, image dimensions | Frozen policy, report-only | Accessor/resource counts and Pillow image metadata |
+| Target dimensions | Axis-aligned bounds and exact extents are observations; the agent determines which dimension should match which target concept | Objective diagnostic plus agent assessment | NumPy world-space bounds, target, and any needed renders |
+| Orientation | Transforms, bounds, ground relationship, and views are observations; the agent decides whether pose is wrong | Objective diagnostic plus agent assessment | Deterministic traversal and standardized renders; never dominant extent alone |
+| Grounding | Minimum Y and support-plane relationship are observations; the agent decides whether the intended object should be grounded | Objective diagnostic plus agent assessment | Deterministic bounds plus target context and renders when needed |
+| Naming | Presence, duplicates, and pattern results are observations; the agent chooses disposition and replacement | Frozen policy plus agent assessment | Versioned regex and index-stable name scan |
+| Budgets | Counts and limits are observations; the agent explains their importance and normally reports them | Frozen policy plus agent assessment | Accessor/resource counts and Pillow image metadata |
 | Container and structure | GLB 2.0 header, scenes, references, supported repair domain | Universal invariant | `pygltflib` load plus local structural validation |
 | Geometry validity | Attribute cardinality; finite positions, normals, tangents, and UVs; unit normals; tangent handedness; index range | Universal invariant | Direct accessor decoding with NumPy; violations block repair |
 | Topology diagnostics | Repeated-index and scale-aware zero-area triangles | Objective diagnostic, report-only | Direct index and position analysis |
@@ -63,9 +73,11 @@ does not repair topology, normals, UVs, materials, textures, transparency, or em
 
 ## Repair and verification checks
 
-The agent may sequence typed tools, but the deterministic engine derives the minimal registered
-plan and enforces authorization. Users approve a target-state normalization as one grouped physical
-change; neither the user nor the LLM supplies a raw matrix.
+The agent chooses typed sensor tools, forms the assessment, and chooses supported action-preview tools
+and their typed parameters. Deterministic code calculates the exact matrix or edit, validates the
+capability boundary, and enforces authorization. Users never manipulate raw matrices in the UI.
+Deterministic code must not add a scale, rotation, translation, grounding, or rename that the agent
+did not request.
 
 Universal verification asserts:
 
@@ -80,9 +92,10 @@ Universal verification asserts:
 - executed and rejected actions exactly match decisions and provenance;
 - when the official Khronos validator is configured, repair introduces no new validator errors.
 
-Frozen-policy verification checks repaired names, approved height/orientation/grounding targets,
-and whether a second planning pass is empty. Rejected normalization instead requires unchanged
-bounds and a preserved rejection record.
+Action verification checks the exact declared postconditions of every approved action and proves
+that no unrequested mutation occurred. Rejection requires the corresponding action to remain
+unapplied and its record to be preserved. The agent then reassesses target satisfaction using fresh
+sensor evidence. An empty second deterministic plan is not a semantic verification condition.
 
 The official Khronos result is layered deliberately. Zero output errors is objective conformance.
 If the untouched source already contains an official error in data outside the authorized repair,
@@ -95,16 +108,17 @@ verification fail. Asset Shepherd does not claim that it repaired source metadat
   report plus typed counts and codes.
 - `validation/blender/inspect_glb.py` imports in Blender, inventories scene/resources, and can
   re-export a control GLB.
-- `validation/blender/render_turntable.py` produces equally framed views.
+- `validation/blender/render_turntable.py` produces equally framed views that should become recorded
+  workflow sensor artifacts.
 - `asset_shepherd.validation.visual_compare` verifies paired render sets and reports per-view MAE,
   RMSE, maximum channel delta, alpha MAE, and changed-pixel fraction. These metrics are external
   evidence, not an automated semantic judgment that appearance is correct.
 - `validation/unreal/import_compare.py` imports isolated raw, Shepherd, and reference arms and
   records Unreal-owned metrics and warnings.
 
-Appearance, transparency, emissive behavior, normals, material coverage, and texture fidelity still
-require independent consumer evidence and human adjudication when the comparison is not
-mechanically conclusive.
+A vision-capable workflow model may use recorded standardized views for evidence-cited semantic
+assessment. Appearance, transparency, emissive behavior, normals, material coverage, and texture
+fidelity still require human adjudication when model and mechanical evidence are inconclusive.
 
 ## Local commands
 

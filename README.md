@@ -9,16 +9,18 @@ verification agent for game developers.
 ## Project control
 
 - [Project contract](docs/PROJECT_CONTRACT.md)
+- [Agent-orchestrated workflow](docs/AGENT_ORCHESTRATED_WORKFLOW.md)
+- [Agent operating contract](docs/AGENT_OPERATING_CONTRACT.md)
 - [Real-world validation plan](docs/REAL_WORLD_VALIDATION_PLAN.md)
 - [Project status](docs/PROJECT_STATUS.md)
 - [Decision log](docs/DECISIONS.md)
 - [Web design and flow](docs/WEB_DESIGN_AND_FLOW.md)
 - [Checks and authority](docs/CHECKS_AND_AUTHORITY.md)
 
-The checks document distinguishes LLM/user-derived target policy from universal safety invariants,
-objective source diagnostics, and independent Khronos/Blender/Unreal evidence. Model conclusions
-can shape the frozen desired target only after user confirmation; they cannot waive file validity,
-authorization, source preservation, or verification.
+The agent-orchestrated workflow defines the product authority boundary: deterministic tools provide
+measurements, rendered evidence, bounded actions, enforcement, and proof; the workflow agent decides
+what to inspect, what the evidence means, and which supported action to request. Model conclusions
+cannot waive file validity, authorization, mutation scope, or invariant verification.
 
 ## Real-world validation
 
@@ -68,16 +70,18 @@ The versioned D019 reference is at `http://127.0.0.1:8000/workspace`. It starts 
 description plus the untouched GLB, performs profile-free objective preflight, uses the same
 semantic proposal, and asks only for fields that remain genuinely ambiguous. A
 persistent Job Contract shows measured source facts, the derived
-frozen policy, findings, registered plan, exact decision, verification, and package state beside the
-conversation. Ordinary users never choose a named scale preset. Advanced customization is limited
+frozen policy, current assessments and action state, exact decision, verification, and package state
+beside the conversation. Ordinary users never choose a named scale preset. Advanced customization is limited
 to fields already enforced by `ProjectProfile`; safety and repair boundaries remain fixed.
 
 The persistent left pane shows the shared **Describe -> Agree -> Inspect -> Decide -> Download**
 workflow. Intake presents **Rules -> Upload** one step at a time, and each job presents only its
 current Inspect, Decide, or Download view. Intake currently calls OpenAI through a provider-neutral
 boundary; the repair workflow still uses a zero-network scripted provider over the real Strands
-loop. Bedrock will replace the interim intake provider through the same typed interface.
-Deterministic measurements, repairs, authorization, and verification remain authoritative.
+loop. That repair path is a deterministic test harness, not the completed product agent. D036
+requires a real workflow model to choose sensors, assess evidence, choose disposition, and initiate
+typed supported actions. Deterministic tools remain authoritative for measurements, exact action
+consequences, authorization enforcement, mutation scope, and invariant verification.
 
 New conversational jobs use one immutable, versioned **Unreal Static Game Asset Policy Family**.
 Asset Shepherd proposes the complete job policy from the already-confirmed target story, including
@@ -97,7 +101,7 @@ has a seven-day retention marker; production cleanup remains part of the AWS gat
 uses the pinned official `<model-viewer>` browser component; GLB files remain served from the local
 Asset Shepherd origin.
 
-## Deterministic CLI demo
+## Deterministic repair-engine harness
 
 ```powershell
 uv sync
@@ -107,13 +111,14 @@ uv run asset-shepherd run fixtures/broken_robot.glb `
   --output demo-output
 ```
 
-The command inspects, plans, applies policy-safe renames, consumes the explicit normalization
+The legacy command inspects, plans, applies policy-safe renames, consumes the explicit normalization
 approval, repairs, independently verifies, and writes `demo-output/result.zip`. It does not invoke a
-model or make a network request.
+model or make a network request. It tests repair mechanics and artifacts; its heuristic plan is not
+the target D036 product behavior.
 
-## Local Strands agent demo
+## Local Strands orchestration harness
 
-The offline harness drives the real Strands agent loop and native interrupt/resume mechanism with a
+The offline harness drives the real Strands event loop and native interrupt/resume mechanism with a
 scripted zero-network model:
 
 ```powershell
@@ -128,6 +133,7 @@ The CLI prints the combined normalization approval card and its Strands interrup
 resumes. The deterministic seven-file ZIP remains unchanged; `agent_result.json` sits beside it and
 contains the prompt version, user-facing summary, provider/model identity, token usage, tool
 success/error/duration metrics, interrupt count, correction count, and final verification state.
+This proves tool plumbing, not model judgment or agent-orchestrated repair choice.
 
 Live Bedrock use for the Strands repair workflow remains opt-in and has no hard-coded model ID. Copy
 `.env.example` into your environment, set `ASSET_SHEPHERD_MODEL_ID` and region to values available

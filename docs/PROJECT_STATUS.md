@@ -1,8 +1,8 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** Comparison-viewer and approval-copy correction (this file is included)
-**Current milestone:** M9 hosted conversation and durability / RW2 Minimum Asset Flock / M10 evaluation
+**Current commit:** D036 agent-orchestrated architecture correction (this file is included)
+**Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
 ## Milestones
@@ -16,9 +16,9 @@
 | M4 Inspector | COMPLETE | Broken fixture yields all 10 expected defects; clean has no false severe/auto-safe findings; deterministic CLI artifacts | 4f7434b6ba58127d38e35f793db8ed27fddd3331 | Completed 2026-08-21 |
 | M5 Repair engine | COMPLETE | Registered plan, strict authorization, approve/reject paths, stable counts/references, source preservation, idempotence | 27781e2d8afb185171a29982d3cad173e55fe90d | Completed 2026-08-21 |
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
-| M7 Strands agent | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Completed 2026-08-21; D002; mandatory checkpoint 2 reviewed by the addendum instruction |
+| M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 accepted; D020 durable local `/workspace`; D021 family resolver; D022 typed minimum target; D023 semantic intake; D024 protected one-command local launcher; D027 expectation-to-evidence UI; D029 progressive inspection review |  | Live Bedrock, remote deployment, access, traces, retention cleanup, and cost proof remain; interim OpenAI use is authorized but no key was available for the live probe |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace foundation; D036 agent-orchestrated correction and acceptance gate |  | Current implementation still delegates semantic findings and repair construction to deterministic code; correct locally before Bedrock/deployment |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -36,15 +36,34 @@
 
 ## Current gate
 
-Shader Lantern is the second registered real-world input and has completed its approved
-inspect → plan → approve → repair → verify → package path plus Blender and isolated Unreal evidence.
-Its exported geometry and PBR resources are preserved at the intended 1.2-meter height; the
-triangle-budget warning remains explicit. RW2 still needs untouched Debug Beetle and Cloudforge
-Workbench assets. M9 requires user-owned AWS profile, model access, region, and cost-control setup
-before any AWS invocation or resource creation.
+M9 is paused at the D036 architecture correction. The current hosted workflow is durable and its
+deterministic repair mechanics are useful, but it does not yet satisfy the product thesis: the
+inspector creates target-dependent findings, the planner manufactures a grouped transform, the
+scripted provider follows a predetermined sequence, and verification repeats planner heuristics.
+
+The next gate is the ten-part acceptance contract in `docs/AGENT_ORCHESTRATED_WORKFLOW.md`. A real
+workflow model must choose sensing, assessment, disposition, and supported action parameters; every
+mutation must originate in an agent call; standardized renders must be model-accessible evidence;
+and the grounded long-bodied quadruped regression must not be rotated. Deterministic code remains the
+measurement, enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- Architecture diagnosis: the grasshopper-sized quadruped source measured
+  `0.471 × 0.463 × 0.998 m` and was already grounded with minimum Y exactly `0`. The inspector
+  nevertheless emitted `ORIENTATION_NOT_Y_UP` solely because Z was the longest extent, the planner
+  rotated Z to Y, and verification passed by checking that same longest extent was now Y. Luna had
+  inferred only `RIG_READY_CHARACTER` and a 5 cm proposal; `agent_result.json` identifies the repair
+  runtime as `asset-shepherd-scripted-v1`. No workflow model viewed the source or comparison renders.
+- D036 corrects the authority model. `docs/AGENT_ORCHESTRATED_WORKFLOW.md` now documents the complete
+  understand → sense → assess → choose disposition → preview action → approve → execute → re-observe
+  → verify → package loop. The agent chooses sensors and repairs; deterministic tools return facts,
+  calculate exact consequences, enforce constraints, mutate only on an agent call, and prove
+  invariants. `docs/AGENT_OPERATING_CONTRACT.md` now defines the corresponding model behavior and
+  live acceptance cases.
+- Contract version 1.5 explicitly deprecates dominant-extent semantic inference, removes
+  deterministic variable planning from the target architecture, makes standardized renders eligible
+  sensing evidence, and adds the D036 gate to M9. No product-code compliance is claimed yet.
 - Comparison-viewer recovery: the pinned `model-viewer` extension requires plain numeric
   `extra-model` offsets and enters a bad camera state when given the former unbounded
   `min-camera-orbit`/`max-camera-orbit` values. Both attributes are removed, initial and dynamic
@@ -315,7 +334,8 @@ before any AWS invocation or resource creation.
 
 ## Blockers
 
-RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. Paid or remote M9 work requires
+The D036 local architecture correction is unblocked and precedes AWS work. RW2 requires untouched
+Debug Beetle and Cloudforge Workbench exports. Paid or remote M9 work requires
 the user to configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock
 region/model access, and a budget alert. Read-only preflight found that AWS CLI is not installed on
 this workstation (`Get-Command aws` returned no command). A human-cleaned reference and manual-time
@@ -323,9 +343,12 @@ record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-The unblocked local D019/D020 slice is complete. The next M9 step crosses the existing human/AWS
-boundary: install or confirm AWS CLI, configure the dedicated `asset-shepherd` profile, select and
-verify a tool-capable Bedrock model/region, and create a budget alert before any paid invocation or
-resource. The earliest corpus work remains RW2 registration of the untouched Debug Beetle GLB when
-the user supplies it; do not begin Cloudforge until that batch is complete. No paid invocation or
-AWS resource creation is authorized yet.
+Implement D036 locally before any Bedrock or deployment work: split observations from contextual
+assessments, expose composable typed sensor and action-preview tools, make the real workflow model
+choose sensing and disposition, add model-consumable standardized renders, and replace second-plan
+verification with declared-action postconditions plus agent reassessment. Preserve the current
+mutation scope, exact authorization, durability, and invariant checks. The first regression is the
+grounded long-bodied quadruped; it must remain unrotated without an asset-specific exception.
+
+RW2 registration resumes when the user supplies Debug Beetle. No paid invocation or AWS resource
+creation is authorized yet.

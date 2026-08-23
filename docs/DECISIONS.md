@@ -4,6 +4,74 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D036 — The agent owns sensing, assessment, disposition, and repair choice
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User
+
+**Milestone:** M9 hosted agent architecture correction
+
+**Context**
+
+The grasshopper-sized quadrupedal robot run exposed the actual authority error. The source was
+already grounded on Y, but the deterministic inspector equated its longest Z extent with semantic
+vertical, emitted `ORIENTATION_NOT_Y_UP`, created a rotation, and later verified success by checking
+that the same longest extent had moved to Y. The intake model had inferred only use and size; the
+scripted workflow did not visually reason about the model or choose the repair. Fixing that one
+orientation heuristic would leave the same mistaken architecture in place for scale, grounding,
+naming, assembly, and future tools.
+
+**Options considered**
+
+- Add a quadruped-specific orientation exception or improve the dominant-axis heuristic.
+- Keep deterministic planning but allow the agent to veto generated candidates.
+- Make deterministic components sensors, bounded action capabilities, enforcement, and proof while
+  the agent chooses what to inspect, what the evidence means, what disposition to take, and which
+  supported action and parameters to request.
+
+**Decision**
+
+Adopt the third option. `docs/AGENT_ORCHESTRATED_WORKFLOW.md` is the controlling start-to-finish
+architecture. Sensors return observations without contextual verdicts. The workflow agent forms and
+revises target-dependent conclusions, chooses whether to accept, investigate, ask, report, repair,
+or stop, and initiates every mutation. The agent may call bounded preview tools for supported scale,
+rotation, translation, grounding, and display-name primitives and compose them into an exact proposed
+action. Deterministic code calculates consequences, validates schemas and capability limits, binds
+approval, applies the authorized action, verifies invariants and declared postconditions, and
+packages evidence. It never adds an unrequested variable fix.
+
+Universal invariants remain non-negotiable and may block any call, but even a preauthorized
+non-consequential mutation begins with an explicit agent tool call. Consequential actions retain exact
+structured user approval. Standardized before/after renders become agent-accessible sensor evidence;
+the browser comparison remains available to the user. After each mutation the agent re-observes the
+candidate and may continue through fresh sensing and a fresh approval turn within explicit
+operational limits.
+
+The scripted provider remains a deterministic test double only. It cannot prove agent behavior. A
+representative live workflow model must pass the corrected acceptance gate before M9 is complete.
+
+This decision supersedes the deterministic semantic-planning and fixed-sequence portions of D002,
+D018-D023, D026-D027, and D032-D034. Their durable state, target confirmation, narrow repair scope,
+content boundary, exact authorization, source preservation, and independent-verification decisions
+remain active. D035's viewer implementation remains useful, but its renders must also become recorded
+sensing artifacts rather than user-only decoration.
+
+**Evidence and consequences**
+
+The controlling contract is amended to version 1.5, the agent operating contract is rewritten, and
+the complete product path plus ten-part acceptance gate are documented. The present deterministic
+prototype is now explicitly classified as a repair-engine test harness, not evidence that the
+product is agent orchestrated.
+
+Implementation has not been silently claimed. The next local milestone must separate sensor facts
+from agent assessments, replace auto-generated candidates with typed action previews initiated by a
+real model, provide rendered evidence to that model, and prove multi-turn reassessment. Existing GLB
+scope and mutation primitives remain narrow; no topology, material, texture, rigging, animation,
+Blender-hosting, or Unreal-plugin scope is added.
+
 ### D035 — One shared comparison scene uses the viewer's supported camera and transform syntax
 
 **Date:** 2026-08-23
