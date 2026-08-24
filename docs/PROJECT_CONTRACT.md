@@ -5,11 +5,11 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.5
+**Document version:** 1.6
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
-D022 minimum target-intake contract, D023 provider-neutral semantic intake, and D036
-agent-orchestrated sensing and disposition, 2026-08-23
+D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
+sensing and disposition, and D042 upload-first two-text UX, 2026-08-24
 
 ---
 
@@ -719,6 +719,18 @@ The hosted final experience should provide:
    control is the only authorization path.
 7. Before and after 3D preview, verification summary, and downloadable result ZIP.
 8. Durable refresh, application-restart, and agent-runtime-restart resume behavior.
+
+The authoritative public flow is **Assets → Upload → Describe → Shepherd**. Upload performs only
+container validation and objective preflight. Description then supplies the minimum target context.
+Target agreement, inspection, action review, repair, verification, feedback, and repeat turns all
+remain inside Shepherd; they are not separate navigation modes.
+
+Every default screen has one global workspace title. It may add at most one agent-authored
+informative sentence for the current decision. Do not stack eyebrow labels, step counts, section
+titles, card titles, subtitles, or duplicate state summaries. Control labels and factual row labels
+must be concise and must not restate the title. Complete policy, evidence, and provenance remain
+available through closed disclosures or the on-demand Job details dialog. Dialogs may carry the one
+title needed for their own accessible context.
 
 The M8 form-led application remains the deterministic reference implementation, offline acceptance
 harness, comparison baseline, and deployment fallback. M9 may change hosted navigation without

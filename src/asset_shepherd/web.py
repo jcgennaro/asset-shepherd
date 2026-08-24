@@ -36,8 +36,9 @@ from asset_shepherd.hosted_workspace import (
     HostedWorkspace,
     HostedWorkspaceError,
     HostedWorkspaceStore,
+    copy_validated_upload,
 )
-from asset_shepherd.inspector import inspect_asset
+from asset_shepherd.inspector import inspect_asset, preflight_asset
 from asset_shepherd.intake_analyzer import (
     DeterministicTargetIntakeAnalyzer,
     TargetIntakeAnalyzer,
@@ -202,11 +203,11 @@ class ApprovalChangeView:
 
 @dataclass(frozen=True)
 class HostedStartDraft:
-    """Short-lived intake state between the description and upload screens."""
+    """Short-lived validated upload state awaiting the user's description."""
 
     draft_id: str
-    description: str
-    target_draft: TargetIntakeContract
+    original_filename: str
+    source_path: Path
     replace_workspace_id: str | None
 
 
@@ -2178,6 +2179,7 @@ def create_app(
     )
     hosted_start_drafts: dict[str, HostedStartDraft] = {}
     hosted_start_lock = RLock()
+    hosted_staging_root = (work_root / "hosted-start").resolve(strict=False)
     feedback_root = work_root / "feedback"
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     cast(dict[str, object], templates.env.globals)["static_version"] = _static_asset_version()
@@ -2240,14 +2242,14 @@ def create_app(
 
     def render_hosted_describe(
         request: Request,
+        draft: HostedStartDraft | None,
         error: str | None = None,
         status_code: int = 200,
         description: str = "",
-        replace_workspace_id: str | None = None,
         *,
         refusal: bool = False,
     ) -> Response:
-        """Render only the initial description step."""
+        """Render the description step after one GLB has passed objective preflight."""
         return templates.TemplateResponse(
             request=request,
             name="hosted_describe.html",
@@ -2255,7 +2257,7 @@ def create_app(
                 "error": error,
                 "refusal": refusal,
                 "description": description,
-                "replace_workspace_id": replace_workspace_id,
+                "draft": draft,
                 "active_mode": "conversation",
                 "active_style": "Describe",
                 "hosted_step": "describe",
@@ -2266,17 +2268,17 @@ def create_app(
 
     def render_hosted_upload(
         request: Request,
-        draft: HostedStartDraft,
         error: str | None = None,
         status_code: int = 200,
+        replace_workspace_id: str | None = None,
     ) -> Response:
-        """Render only the GLB upload step for a validated description draft."""
+        """Render the first new-asset step: one GLB upload."""
         return templates.TemplateResponse(
             request=request,
             name="hosted_upload.html",
             context={
                 "error": error,
-                "draft": draft,
+                "replace_workspace_id": replace_workspace_id,
                 "active_mode": "conversation",
                 "active_style": "Upload",
                 "hosted_step": "upload",
@@ -2501,7 +2503,7 @@ def create_app(
                 "error": error,
                 "max_upload_mb": 50,
                 "active_mode": "intake",
-                "active_style": "Rules and upload",
+                "active_style": "Shepherd",
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -2517,8 +2519,8 @@ def create_app(
         return job
 
     def home(request: Request) -> Response:
-        """Ask what the user was trying to make."""
-        return render_intent_home(request)
+        """Send public entry traffic to the authoritative hosted workspace."""
+        return RedirectResponse(request.url_for("hosted_home"), status_code=303)
 
     def how_it_works(request: Request) -> Response:
         """Explain the user journey in three concise steps."""
@@ -2958,58 +2960,103 @@ def create_app(
         """Choose an existing asset workspace or a new slot."""
         return render_hosted_home(request)
 
-    def hosted_describe(
-        request: Request,
-        replace_workspace_id: str | None = None,
-    ) -> Response:
-        """Begin one new slot with the description step only."""
+    def _validate_hosted_replacement(
+        replace_workspace_id: str | None,
+    ) -> tuple[bool, str | None]:
         records = hosted_store.list_records()
         record_ids = {record.workspace_id for record in records}
         if len(records) >= MAX_HOSTED_WORKSPACES and replace_workspace_id not in record_ids:
-            return render_hosted_home(
-                request,
-                "Choose which existing asset to replace.",
-                status_code=400,
-            )
+            return False, "Choose which existing asset to replace."
         if replace_workspace_id is not None and replace_workspace_id not in record_ids:
-            return render_hosted_home(
-                request,
-                "That asset slot is unavailable.",
-                status_code=404,
-            )
-        return render_hosted_describe(
+            return False, "That asset slot is unavailable."
+        return True, None
+
+    def hosted_upload(
+        request: Request,
+        replace_workspace_id: str | None = None,
+    ) -> Response:
+        """Begin one new slot by accepting the GLB before semantic intake."""
+        valid, error = _validate_hosted_replacement(replace_workspace_id)
+        if not valid:
+            return render_hosted_home(request, error, status_code=400)
+        return render_hosted_upload(
             request,
             replace_workspace_id=replace_workspace_id,
         )
 
-    def save_hosted_description(
+    def upload_hosted_asset(
         request: Request,
-        description: Annotated[str, Form()],
+        asset: Annotated[UploadFile, File()],
         replace_workspace_id: Annotated[str | None, Form()] = None,
     ) -> Response:
-        """Infer the target once, then advance to the separate upload step."""
-        records = hosted_store.list_records()
-        record_ids = {record.workspace_id for record in records}
-        if len(records) >= MAX_HOSTED_WORKSPACES and replace_workspace_id not in record_ids:
-            return render_hosted_describe(
+        """Validate and stage one GLB, then advance to description."""
+        valid, error = _validate_hosted_replacement(replace_workspace_id)
+        if not valid:
+            asset.file.close()
+            return render_hosted_home(request, error, status_code=400)
+        filename = asset.filename or ""
+        if Path(filename).suffix.lower() != ".glb":
+            asset.file.close()
+            return render_hosted_upload(
                 request,
-                "Choose which existing asset to replace from the gallery.",
+                "Choose exactly one file with a .glb extension.",
                 status_code=400,
-                description=description,
+                replace_workspace_id=replace_workspace_id,
             )
-        if replace_workspace_id is not None and replace_workspace_id not in record_ids:
-            return render_hosted_describe(
+        draft_id = uuid4().hex
+        draft_root = hosted_staging_root / draft_id
+        source_path = draft_root / "source.glb"
+        try:
+            draft_root.mkdir(parents=True, exist_ok=False)
+            copy_validated_upload(asset.file, source_path)
+            preflight = preflight_asset(source_path)
+            if not preflight.package.parse_success:
+                raise HostedWorkspaceError(
+                    f"This GLB could not be read: {preflight.parse_error or 'unknown parse error'}"
+                )
+            draft = HostedStartDraft(
+                draft_id=draft_id,
+                original_filename=Path(filename).name,
+                source_path=source_path,
+                replace_workspace_id=replace_workspace_id,
+            )
+            with hosted_start_lock:
+                hosted_start_drafts[draft_id] = draft
+        except (HostedWorkspaceError, ValueError, OSError) as upload_error:
+            source_path.unlink(missing_ok=True)
+            if draft_root.is_dir():
+                draft_root.rmdir()
+            return render_hosted_upload(
                 request,
-                "That asset slot is unavailable.",
-                status_code=404,
-                description=description,
+                str(upload_error),
+                status_code=400,
+                replace_workspace_id=replace_workspace_id,
             )
+        finally:
+            asset.file.close()
+        return RedirectResponse(
+            request.url_for("hosted_describe", draft_id=draft_id),
+            status_code=303,
+        )
+
+    def save_hosted_description(
+        request: Request,
+        draft_id: str,
+        description: Annotated[str, Form()],
+    ) -> Response:
+        """Infer the target, then create the durable shepherding workspace."""
+        try:
+            draft = require_hosted_start_draft(draft_id)
+        except HostedWorkspaceError as draft_error:
+            return render_hosted_upload(request, str(draft_error), status_code=404)
         try:
             normalized = normalize_intent_description(description)
             target_draft = hosted_store.intake_analyzer.analyze(normalized)
         except TargetIntakeContentRefusal as error:
+            discard_hosted_start_draft(draft)
             return render_hosted_describe(
                 request,
+                None,
                 str(error),
                 status_code=400,
                 refusal=True,
@@ -3017,71 +3064,59 @@ def create_app(
         except ValueError as error:
             return render_hosted_describe(
                 request,
+                draft,
                 str(error),
                 status_code=400,
                 description=description,
-                replace_workspace_id=replace_workspace_id,
             )
-        draft = HostedStartDraft(
-            draft_id=uuid4().hex,
-            description=normalized,
-            target_draft=target_draft,
-            replace_workspace_id=replace_workspace_id,
-        )
-        with hosted_start_lock:
-            hosted_start_drafts[draft.draft_id] = draft
+        try:
+            with draft.source_path.open("rb") as stream:
+                workspace = hosted_store.create(
+                    normalized,
+                    draft.original_filename,
+                    stream,
+                    replace_workspace_id=draft.replace_workspace_id,
+                    target_draft=target_draft,
+                )
+        except (HostedWorkspaceError, ValueError, OSError) as error:
+            return render_hosted_describe(
+                request,
+                draft,
+                str(error),
+                status_code=400,
+                description=description,
+            )
+        discard_hosted_start_draft(draft)
         return RedirectResponse(
-            request.url_for("hosted_upload", draft_id=draft.draft_id),
+            request.url_for("hosted_workspace_page", workspace_id=workspace.record.workspace_id),
             status_code=303,
         )
 
     def require_hosted_start_draft(draft_id: str) -> HostedStartDraft:
         if re.fullmatch(r"[0-9a-f]{32}", draft_id) is None:
-            raise HostedWorkspaceError("This upload step is unavailable. Describe the asset again.")
+            raise HostedWorkspaceError("This upload is unavailable. Choose the GLB again.")
         with hosted_start_lock:
             draft = hosted_start_drafts.get(draft_id)
-        if draft is None:
-            raise HostedWorkspaceError("This upload step is unavailable. Describe the asset again.")
+        if draft is None or not draft.source_path.is_file():
+            raise HostedWorkspaceError("This upload is unavailable. Choose the GLB again.")
         return draft
 
-    def hosted_upload(request: Request, draft_id: str) -> Response:
-        """Show one file upload control for the validated description draft."""
-        try:
-            draft = require_hosted_start_draft(draft_id)
-        except HostedWorkspaceError as error:
-            return render_hosted_describe(request, str(error), status_code=404)
-        return render_hosted_upload(request, draft)
-
-    def upload_hosted_asset(
-        request: Request,
-        draft_id: str,
-        asset: Annotated[UploadFile, File()],
-    ) -> Response:
-        """Create the durable workspace from the separately selected GLB."""
-        try:
-            draft = require_hosted_start_draft(draft_id)
-        except HostedWorkspaceError as error:
-            asset.file.close()
-            return render_hosted_describe(request, str(error), status_code=404)
-        filename = asset.filename or ""
-        try:
-            workspace = hosted_store.create(
-                draft.description,
-                filename,
-                asset.file,
-                replace_workspace_id=draft.replace_workspace_id,
-                target_draft=draft.target_draft,
-            )
-        except (HostedWorkspaceError, ValueError) as error:
-            return render_hosted_upload(request, draft, str(error), status_code=400)
-        finally:
-            asset.file.close()
+    def discard_hosted_start_draft(draft: HostedStartDraft) -> None:
+        """Remove one exact staged source after completion or terminal refusal."""
         with hosted_start_lock:
             hosted_start_drafts.pop(draft.draft_id, None)
-        return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace.record.workspace_id),
-            status_code=303,
-        )
+        draft.source_path.unlink(missing_ok=True)
+        draft_root = draft.source_path.parent
+        if draft_root.parent == hosted_staging_root and draft_root.is_dir():
+            draft_root.rmdir()
+
+    def hosted_describe(request: Request, draft_id: str) -> Response:
+        """Describe the model after its GLB has passed objective preflight."""
+        try:
+            draft = require_hosted_start_draft(draft_id)
+        except HostedWorkspaceError as error:
+            return render_hosted_upload(request, str(error), status_code=404)
+        return render_hosted_describe(request, draft)
 
     def create_hosted_workspace(
         request: Request,
@@ -3498,30 +3533,30 @@ def create_app(
         name="hosted_home",
     )
     app.add_api_route(
-        "/workspace/new/describe",
-        hosted_describe,
-        methods=["GET"],
-        response_class=HTMLResponse,
-        name="hosted_describe",
-    )
-    app.add_api_route(
-        "/workspace/new/describe",
-        save_hosted_description,
-        methods=["POST"],
-        name="save_hosted_description",
-    )
-    app.add_api_route(
-        "/workspace/new/{draft_id}/upload",
+        "/workspace/new/upload",
         hosted_upload,
         methods=["GET"],
         response_class=HTMLResponse,
         name="hosted_upload",
     )
     app.add_api_route(
-        "/workspace/new/{draft_id}/upload",
+        "/workspace/new/upload",
         upload_hosted_asset,
         methods=["POST"],
         name="upload_hosted_asset",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/describe",
+        hosted_describe,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="hosted_describe",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/describe",
+        save_hosted_description,
+        methods=["POST"],
+        name="save_hosted_description",
     )
     app.add_api_route(
         "/workspace",

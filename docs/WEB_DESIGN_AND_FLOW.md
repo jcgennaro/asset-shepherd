@@ -10,9 +10,10 @@ Asset Shepherd works with a user on one asset. Conversation carries the collabor
 controls carry authorization:
 
 ```text
-Describe the intended asset and target state
-  -> Review and agree on one target story
-  -> Upload the source GLB
+Choose or replace an asset workspace
+  -> Upload the source GLB and run objective preflight
+  -> Describe the intended asset and target state
+  -> Review and agree on the target inside Shepherd
   -> Agent chooses sensors and assesses the evidence
   -> Agent accepts, asks, reports, stops, or previews a supported action
   -> Approve or reject the exact consequential action, if proposed
@@ -20,7 +21,8 @@ Describe the intended asset and target state
   -> Verify invariants and download the evidence package
 ```
 
-The implemented first two steps use a bounded semantic intake provider. The corrected workflow must
+The description step uses a bounded semantic intake provider after the file has passed objective
+preflight. The corrected workflow must
 then give a real workflow model the confirmed target, durable job state, typed sensor/action
 capabilities, and recorded render evidence. Deterministic tools own measurements, exact action
 consequences, authorization enforcement, mutation, invariant verification, and artifacts. The agent
@@ -32,7 +34,8 @@ The former entry point asked whether someone was a game developer, 3D artist, or
 Those routes changed labels but not behavior, and did not answer the important project questions:
 what the person meant to create, what it should be used for, and how large it should be.
 
-The primary entry point now gives one instruction: **Describe the model you’re working on.** It
+After one GLB is selected, the next screen gives one instruction: **Describe the model you’re
+working on.** It
 accepts a 12–600 character plain-text description. Use and scale guidance appears only in the input
 example. The entry surface does not repeat that instruction or expose privacy, implementation, or
 alternate-workflow notes. A typed intake pass proposes supported intended use and a plausible
@@ -40,8 +43,8 @@ semantic vertical scale, even when the prompt contains no number. A clarificatio
 natural question only when a required field remains below the confidence gate. It never shows a
 field whose value is already supported by the proposal.
 
-Asset Shepherd drafts one exact first-person target story. The user must review and agree to that
-story before seeing validation rules or an upload control. The description is target metadata, not
+Asset Shepherd drafts one exact first-person target story. The user reviews and agrees to that
+story inside Shepherd before any target-dependent inspection or action. The description is target metadata, not
 instructions to run code, perform transforms, change materials, or authorize a repair.
 
 Non-static target uses are permitted because they truthfully capture intent. The confirmation page
@@ -52,7 +55,7 @@ and animation remain external work. This does not add those repair domains.
 
 | Route | Purpose | Mutation or inspection? |
 |---|---|---|
-| `/` | Describe the intended asset in one prompt | No |
+| `/` | Redirect to the authoritative hosted asset gallery | No |
 | `/intents/{intent_id}` | Answer only missing target fields, then review the exact story | No |
 | `/intents/{intent_id}/intake` | Review rules and choose the source GLB after agreement | No until submit |
 | `/jobs/{job_id}?view=inspect` | Review measured facts, findings, and rule provenance | No |
@@ -60,20 +63,22 @@ and animation remain external work. This does not add those repair domains.
 | `/jobs/{job_id}?view=download` | Review verification and retrieve the result package | No |
 | `/feedback` | Record bounded feedback with the originating workflow context | Local feedback record only |
 | `/workspace` | Select a new slot or resume one of seven named assets | No |
-| `/workspace/new/describe` | Describe one new or replacement asset | No |
-| `/workspace/new/{draft_id}/upload` | Upload one GLB after semantic intake | Objective preflight only |
+| `/workspace/new/upload` | Upload one new or replacement GLB | Objective preflight only |
+| `/workspace/new/{draft_id}/describe` | Describe the already-selected GLB | No target-dependent inspection |
 | `/workspace/{workspace_id}` | Resume the exact persisted conversation phase for one asset | Only through its typed workflow controls |
 
 Former `/stories/{role}` bookmarks redirect to `/`. Audience modes are no longer a primary product
 choice. Internally retained presentation labels do not affect policy or deterministic behavior.
 
-The hosted left pane is a compact four-step orientation rail: **Assets → Describe → Upload →
+The hosted left pane is a compact four-step orientation rail: **Assets → Upload → Describe →
 Shepherd**. Assets selects a new slot or resumes one. Describe and Upload each contain exactly one
-task. Shepherd owns the checklist, exact actions, approval, repair, verification, user feedback, and
-every subsequent repair turn. The form-led reference route retains its own five-step rail.
+task. Target agreement and inspection are not separate navigation modes: Shepherd owns both, plus
+the checklist, exact actions, approval, repair, verification, user feedback, and every subsequent
+repair turn. The historical form-led routes remain available only as an offline acceptance harness;
+the public root redirects to the hosted gallery.
 
 The persistent question-mark action opens a task-oriented **How it works** page. It presents only
-three steps: **Describe and upload**, **Review what we found**, and **Download the result**, plus one
+three steps: **Upload and describe**, **Review what we found**, and **Download the result**, plus one
 start action. Release numbers, roadmap framing, internal tool or provenance terminology, and a
 generic repair-scope inventory do not appear there. A limitation belongs in the active workflow
 only when the particular asset or intended result makes it relevant.
@@ -86,11 +91,12 @@ preview rather than a filename or hash. Opening a card reconstructs that asset's
 phase. The existing workspace ID remains the Strands session ID and each workspace owns a separate
 `strands_state` directory. No conversation state is shared across assets.
 
-Starting a new slot opens a description-only screen. A successful semantic intake advances to a
-separate upload-only screen; the inferred target contract is carried forward and is not recomputed
-after file selection. At seven assets, each gallery card offers an explicit replacement path before
-description. The selected workspace is removed only after the replacement upload and objective
-preflight persist successfully. The structured contract remains available through **Job details**, but it no longer
+Starting a new slot opens an upload-only screen. A valid GLB is copied to an isolated short-lived
+staging directory and must pass objective preflight before a separate description-only screen is
+shown. Semantic intake then creates the target draft and durable workspace from that validated
+source. At seven assets, each gallery card offers an explicit replacement path before upload. The
+selected workspace is removed only after the replacement description, durable workspace, and
+objective preflight persist successfully. The structured contract remains available through **Job details**, but it no longer
 occupies a permanent right-hand reading area. Completion presents one compact workflow-agent
 sentence, followed by the useful model comparison and Yes/No handoff. Yes changes the existing
 panel to fixed-model and evidence downloads without a page reload.
@@ -143,12 +149,13 @@ defaults. The user never enters a scale factor or transform matrix; the determin
 no longer derives a semantic repair. The workflow agent decides whether any supported action is
 warranted and calls a typed preview tool; deterministic code calculates its exact consequence.
 
-## Rules and upload
+## Upload, description, and derived rules
 
-After agreement, intake exposes two visible workflow steps, one at a time:
-
-1. **Rules.** Review the complete intent-derived proposal or adjust supported advanced values.
-2. **Upload.** Select the actual GLB to inspect.
+The hosted product uploads first, asks for one description second, and derives the complete policy
+only after the target is confirmed inside Shepherd. Rules are not a navigation step. The full
+resolved profile and supported advanced values remain inspectable on demand through Job details.
+The historical form-led harness renders its policy in one collapsed **Review rules** disclosure
+beside the upload control; it no longer presents a nested Rules/Upload sub-workflow.
 
 New jobs use the immutable `unreal-static-game-asset-family-v1` parameter family. The historical
 `unreal-indie-robot-v1` and `small-stylized-static-mesh-v1` profiles remain immutable CLI, fixture,
@@ -251,6 +258,10 @@ not change.
 ## Attention and visual system
 
 - One server-rendered focus area is visible in every state; the hard maximum remains three.
+- Every default screen has exactly one global title and at most one agent-authored informative
+  sentence. Eyebrows, step counters, section headings, card headings, subtitles, and duplicate state
+  summaries are forbidden when they restate the same screen. Accessible dialog titles, concise
+  control labels, and factual row labels are the only exceptions.
 - The two-column shell retains the placeholder `LOGO` cell, persistent left navigation, current-step
   title, and full workspace.
 - Primary questions and actions use large type and available whitespace.
@@ -296,7 +307,8 @@ not change.
   job exists.
 - Explicit description values are preserved with evidence; clarification asks only for missing or
   conflicting required fields and survives hosted restart.
-- Upload is unavailable before explicit agreement.
+- The hosted upload precedes description and agreement but is limited to objective preflight; the
+  historical form-led harness still rejects a job upload before its legacy intent agreement.
 - Confirmed intent and its hash are frozen in the job and copied into package provenance.
 - Confirmed height and bounded grounding language resolve one family without baseline selection or
   duplicate target entry, and without exposing a scale operation.
@@ -317,7 +329,8 @@ When the AWS milestone is authorized, Bedrock should replace the interim provide
 the same typed dialogue:
 
 ```text
-user description
+GLB upload and objective preflight
+  -> user description
   -> validated minimum target-intake contract
   -> follow-up questions only for missing required fields
   -> proposed AssetIntentProvenance fields

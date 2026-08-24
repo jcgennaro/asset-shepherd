@@ -4,6 +4,59 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D042 — Upload-first shepherding and a two-text screen hierarchy
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+The remaining form-led intake placed description and agreement before file selection, then combined
+rules and upload in a nested two-step workspace. Its default view contained nine title-like texts:
+the global page title, eyebrow, hero title, target subtitle, story disclosure, substep navigation,
+step counter, panel title, and policy-card title. Those layers repeated workflow state instead of
+helping the user perform the next action. The hosted rail also still showed Describe before Upload
+and treated agreement as a visually separate phase even though objective GLB preflight is valid
+without a target.
+
+**Decision**
+
+Make the authoritative public path **Assets → Upload → Describe → Shepherd**. Upload first validates
+and stages one GLB and performs objective preflight only. Description then supplies the minimum
+target contract. Target agreement and inspection both occur inside Shepherd, followed by any action
+review, repair, verification, user feedback, and repeated agent turns. `/` redirects to the hosted
+gallery so a stale form-led entry cannot become the apparent primary product.
+
+Give every default screen one global workspace title and, only when useful, one agent-authored
+informative sentence. Do not add visible eyebrow labels, step counts, nested section titles, card
+titles, subtitles, context bars, or duplicate state summaries. Concise control labels and factual
+row labels are not titles. Complete rules, evidence, and provenance stay available through closed
+disclosures or the on-demand Job details dialog; a dialog may use the single accessible title it
+needs.
+
+Keep the historical form-led routes as the offline acceptance harness, but remove their visible
+Rules/Upload sub-navigation and nine-title intake stack. Its deep intake link now renders one agent
+sentence, the GLB control, and one collapsed **Review rules** disclosure.
+
+This decision supersedes D041's Describe-before-Upload ordering and D012/D018 ordering for the
+authoritative hosted surface. It does not change the agent/tool authority boundary, minimum target
+contract, policy schema, supported actions, authorization, verification, or package contract.
+
+**Evidence and consequences**
+
+Route acceptance proves that `/` redirects to `/workspace`, the left rail orders Upload before
+Describe, both start screens expose only one task, and neither contains any `h2` or `h3` title below
+the one global `h1`. The staged GLB must pass extension, size, magic-byte, and parse validation before
+description; refusal removes its temporary copy. The legacy intake likewise has one global title,
+no subordinate heading elements, and retains complete profile values plus schema-validated advanced
+fields inside disclosures. The seven-slot replacement remains destructive only after the new
+durable workspace succeeds.
+
 ### D041 — Four-step hosted flow and one explicit approval surface
 
 **Date:** 2026-08-24

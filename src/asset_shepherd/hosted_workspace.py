@@ -203,7 +203,8 @@ def _write_json_atomic(path: Path, value: object) -> None:
     temporary.replace(path)
 
 
-def _copy_validated_upload(stream: BinaryIO, destination: Path) -> None:
+def copy_validated_upload(stream: BinaryIO, destination: Path) -> None:
+    """Copy one bounded GLB upload to a caller-owned isolated path."""
     total = 0
     header = b""
     with destination.open("xb") as target:
@@ -360,7 +361,7 @@ class HostedWorkspaceStore:
             root.mkdir(parents=True, exist_ok=False)
             source_path = root / "source.glb"
             try:
-                _copy_validated_upload(stream, source_path)
+                copy_validated_upload(stream, source_path)
                 preflight = preflight_asset(source_path)
                 _write_json_atomic(root / "preflight.json", preflight.model_dump(mode="json"))
                 _write_json_atomic(

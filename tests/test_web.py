@@ -151,35 +151,27 @@ def _assert_focus_area_budget(html: str, expected: int = 1) -> None:
     assert len(focus_areas) <= 3
 
 
-def test_web_starts_with_asset_intent_instead_of_an_audience_selector(tmp_path: Path) -> None:
-    """The entry point asks for the user's target rather than their job title."""
+def test_web_starts_with_the_authoritative_asset_gallery(tmp_path: Path) -> None:
+    """The public root cannot strand users in the superseded form-led surface."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
-    response = client.get("/")
+    redirect = client.get("/", follow_redirects=False)
+    response = client.get("/workspace")
 
+    assert redirect.status_code == 303
+    assert urlparse(redirect.headers["location"]).path == "/workspace"
     assert response.status_code == 200
-    assert "<title>Asset Shepherd -- Describe</title>" in response.text
-    assert "Describe the model you\u2019re working on." in response.text
-    assert 'name="target_use"' not in response.text
-    assert 'name="target_height_m"' not in response.text
-    assert "Try the durable conversation-led workspace" not in response.text
-    assert "Only this description is sent" not in response.text
-    assert "You confirm the proposal before inspection" not in response.text
-    assert "/static/app.css?v=" in response.text
-    assert "Propose a target" in response.text
-    assert "Game developer" not in response.text
-    assert "3D artist" not in response.text
-    assert "Technical artist" not in response.text
-    assert "Describe" in response.text
-    assert "Agree" in response.text
-    assert "Inspect" in response.text
+    assert "<title>Asset Shepherd -- Assets</title>" in response.text
+    assert "New asset" in response.text
+    assert response.text.index(">Upload</strong>") < response.text.index(">Describe</strong>")
+    assert ">Agree</strong>" not in response.text
+    assert ">Inspect</strong>" not in response.text
     _assert_focus_area_budget(response.text)
 
 
-def test_describe_and_confirm_share_layout_and_description_field_rules(tmp_path: Path) -> None:
-    """Forward and backward target entry render from shared stage and field components."""
+def test_description_fields_still_share_one_component(tmp_path: Path) -> None:
+    """Legacy and hosted target edits retain one shared description field renderer."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     css = client.get("/static/app.css")
-    describe = client.get("/")
     intent_path = _draft_intent(client)
     confirm = client.get(intent_path)
 
@@ -205,9 +197,7 @@ def test_describe_and_confirm_share_layout_and_description_field_rules(tmp_path:
         r"\.confirmation-actions \.intent-adjust \.intent-form\s*\{\s*width: 100%;",
         css.text,
     )
-    assert 'class="intent-stage intent-panel"' in describe.text
     assert 'class="intent-stage intent-confirmation"' in confirm.text
-    assert 'class="asset-description-field"' in describe.text
     assert 'class="asset-description-field"' in confirm.text
     assert "data-confirmation-decision" in confirm.text
     assert "&amp;amp;" not in confirm.text
@@ -228,13 +218,7 @@ def test_upload_controls_support_click_and_drag_drop(tmp_path: Path) -> None:
     """Both upload surfaces share one GLB chooser-and-drop interaction."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     _, intake_path = _confirmed_intent(client)
-    described = client.post(
-        "/workspace/new/describe",
-        data={"description": "A friendly 1.8 m robot for a static game asset."},
-        follow_redirects=False,
-    )
-    assert described.status_code == 303
-    hosted_upload_path = urlparse(described.headers["location"]).path
+    hosted_upload_path = "/workspace/new/upload"
 
     for response in (client.get(intake_path), client.get(hosted_upload_path)):
         assert response.status_code == 200
@@ -261,17 +245,21 @@ def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
     entry = client.get("/workspace")
     assert entry.status_code == 200
     assert ">Assets</strong>" in entry.text
-    assert ">Describe</strong>" in entry.text
     assert ">Upload</strong>" in entry.text
+    assert ">Describe</strong>" in entry.text
     assert ">Shepherd</strong>" in entry.text
+    assert entry.text.index(">Upload</strong>") < entry.text.index(">Describe</strong>")
     assert 'class="help-icon" aria-hidden="true">?</span>' in entry.text
     assert 'href="http://testserver/how-it-works"' in entry.text
 
     help_page = client.get("/how-it-works")
     assert help_page.status_code == 200
     assert "<title>Asset Shepherd -- How it works</title>" in help_page.text
-    assert "Understand it." in help_page.text
-    assert "Describe and upload" in help_page.text
+    assert (
+        "Upload the GLB, describe the intended result, and review each change with the agent."
+        in help_page.text
+    )
+    assert "Upload and describe" in help_page.text
     assert "Review what we found" in help_page.text
     assert "Download the result" in help_page.text
     assert len(re.findall(r"<span>0[1-3]</span>", help_page.text)) == 3
@@ -283,6 +271,9 @@ def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
     assert "provenance" not in help_page.text.lower()
     assert "safety boundary" not in help_page.text.lower()
     assert "original stays untouched" not in help_page.text.lower()
+    assert help_page.text.count("<h1") == 1
+    assert "<h2" not in help_page.text
+    assert "<h3" not in help_page.text
     _assert_focus_area_budget(help_page.text)
 
 
@@ -380,10 +371,15 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     intake_path = _agree_intent(client, intent_path)
     intake = client.get(intake_path)
     assert intake.status_code == 200
-    assert "Agreed target" in intake.text
-    assert "playable animated character for Unreal at 1.72 m tall" in intake.text
-    assert "Review the rules I derived" in intake.text
-    assert "Upload the GLB you want checked" in intake.text
+    assert "Asset Shepherd -- Shepherd" in intake.text
+    assert "Add the GLB and I\u2019ll shepherd it toward the target we agreed." in intake.text
+    assert "Review rules" in intake.text
+    assert "Choose or drop your GLB" in intake.text
+    assert "Agreed target" not in intake.text
+    assert "Review the rules I derived" not in intake.text
+    assert intake.text.count("<h1") == 1
+    assert "<h2" not in intake.text
+    assert "<h3" not in intake.text
     _assert_focus_area_budget(intake.text)
 
 
@@ -425,16 +421,22 @@ def test_web_refuses_disallowed_intake_without_echoing_or_storing_it(tmp_path: P
     assert "Check the target" not in form_led.text
     assert declined_description not in form_led.text
 
-    hosted = client.post(
-        "/workspace",
-        data={"description": declined_description},
+    staged = client.post(
+        "/workspace/new/upload",
         files={"asset": (CLEAN_PATH.name, CLEAN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
     )
+    assert staged.status_code == 303
+    describe_path = urlparse(staged.headers["location"]).path
+    assert tuple(work_root.rglob("source.glb"))
+
+    hosted = client.post(describe_path, data={"description": declined_description})
     assert hosted.status_code == 400
     assert unescape(hosted.text).count(INTAKE_REFUSAL_MESSAGE) == 1
     assert "Workspace not started" not in hosted.text
     assert declined_description not in hosted.text
-    assert not work_root.exists()
+    assert not tuple(work_root.rglob("source.glb"))
+    assert not tuple(work_root.rglob("workspace.json"))
 
 
 def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: Path) -> None:
@@ -621,8 +623,9 @@ def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_heig
     assert "Human-scale static mesh" not in response.text
     assert "Compact static mesh" not in response.text
     assert 'name="profile_id"' not in response.text
-    assert "Agent-resolved rules · 1.8 m target" in response.text
-    assert "Review all active rules" in response.text
+    assert "Review rules" in response.text
+    assert "1.8 m height" in response.text
+    assert "All active rules" in response.text
     assert "Why these rules?" in response.text
     assert "This is the height already confirmed in the target story." in response.text
     assert "Target height" in response.text
@@ -634,9 +637,12 @@ def test_web_agent_resolves_one_family_after_confirmation_without_duplicate_heig
     assert "Fixed safety boundary" not in response.text
     assert "source preservation" not in response.text.lower()
     assert "transform matrix" not in response.text.lower()
-    assert 'data-intake-panel="rules"' in response.text
-    assert 'data-intake-panel="upload" aria-labelledby="upload-title" hidden' in response.text
-    assert "Confirmed target 1.8 m" in response.text
+    assert 'data-intake-panel="rules"' not in response.text
+    assert 'data-intake-panel="upload"' not in response.text
+    assert "Choose or drop your GLB" in response.text
+    assert response.text.count("<h1") == 1
+    assert "<h2" not in response.text
+    assert "<h3" not in response.text
     assert response.text.count('name="target_height_m"') == 0
     _assert_focus_area_budget(response.text)
 
@@ -1001,7 +1007,7 @@ def test_web_rejects_non_glb_upload_without_starting_a_job(tmp_path: Path) -> No
     )
     assert response.status_code == 400
     assert "The upload is not a GLB 2.0 binary container." in response.text
-    assert "Agreed target" in response.text
+    assert "Add the GLB and I\u2019ll shepherd it toward the target we agreed." in response.text
     _assert_focus_area_budget(response.text)
     assert not work_root.exists() or not tuple(work_root.iterdir())
 

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-24
-**Current commit:** D041 four-step hosted flow and explicit approval surface (this file is included)
+**Current commit:** D042 upload-first flow and two-text hierarchy (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 four-step hosted flow |  | Repeated feedback/action/approval turns, per-asset session state, resumable seven-slot workspace, and one-task-per-step hosted UX are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first two-text flow |  | Repeated feedback/action/approval turns, per-asset session state, resumable seven-slot workspace, and one-task-per-step hosted UX are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -50,9 +50,15 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
-- D041 hosted workflow simplification: the persistent rail is now **Assets → Describe → Upload →
-  Shepherd**. `/workspace` is only the seven-slot gallery; description and GLB upload are separate
-  screens; inspection and every repair/feedback iteration stay in Shepherd. Approval has one title,
+- D042 upload-first hierarchy: the authoritative public rail is now **Assets → Upload → Describe →
+  Shepherd**, and `/` redirects to its seven-slot gallery. A GLB must pass bounded container
+  validation and objective preflight before the separate description screen. Target agreement and
+  inspection are one Shepherd stage. Start screens have one global title plus at most one agent
+  sentence; route tests reject subordinate heading stacks. The historical form-led deep intake now
+  has one sentence, one upload control, and one collapsed rules disclosure instead of its nested
+  substeps and nine title-like texts. Refusal removes the temporary staged GLB; replacement remains
+  destructive only after the new durable workspace succeeds.
+- D041 approval simplification: approval has one title,
   one six-row checklist, one exact three-group change list, and Reject/Approve. Attention rows are
   color-highlighted and their icons explain the condition on hover or keyboard focus. The duplicate
   result table, completed count, context bar, hidden plan details, and recorded-evidence question are
@@ -197,7 +203,7 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
   at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
   scrolls inside its own container. Browser console warnings and errors are empty.
-- Tests: `uv run pytest` — 121 passed and the opt-in live-provider test skipped. D019–D041 acceptance
+- Tests: `uv run pytest` — 122 passed and the opt-in live-provider test skipped. D019–D042 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -294,12 +300,13 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   no-approval completion twice from independent app starts; invalid GLB rejection; unsupported
   inspection-only packaging; exact ZIP audit; source preservation; trusted family baseline; 50 MB
   and GLB magic boundaries; finding-level rule provenance.
-- Single-step evidence: the persistent left pane now orients **Describe → Agree → Inspect → Decide
-  → Download**. Intake renders only Rules or Upload and every job response renders only its selected
-  Inspect, Decide, or Download panel. Every server-rendered state retains one `data-focus-area`.
+- Single-step evidence: the authoritative left pane orients **Assets → Upload → Describe →
+  Shepherd**. Agreement, inspection, decision, verification, and continuation stay inside Shepherd.
+  The internal M8 harness remains covered without being the public entry. Every server-rendered
+  state retains one `data-focus-area`.
 - Workflow help: a large persistent `?` action sits immediately below **New asset** in both rail
-  variants and opens `/how-it-works`. The page uses one continuous four-step explanation, one
-  collapsed repair-scope disclosure, and a start action without changing the workflow. Browser
+  variants and opens `/how-it-works`. The page uses one agent sentence, three concise actions, and a
+  start action without changing the workflow. Browser
   acceptance at the default viewport and 390 × 844 confirms action order, active state, one focus
   area, no horizontal overflow, and no console warning or error.
 - Browser review at 1440 × 900 confirms that Describe, confirmation, and agreed intake use the full

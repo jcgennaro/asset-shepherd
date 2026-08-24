@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
   <section class="single-step" data-focus-area="GLB upload" aria-label="Upload the GLB">
+    <p class="conversation-prompt">Upload the GLB you want me to shepherd.</p>
     {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
-    <form action="{{ url_for('upload_hosted_asset', draft_id=draft.draft_id) }}" method="post" enctype="multipart/form-data" class="single-step-form" data-busy-form>
+    <form action="{{ url_for('upload_hosted_asset') }}" method="post" enctype="multipart/form-data" class="single-step-form" data-busy-form>
+      {% if replace_workspace_id %}<input type="hidden" name="replace_workspace_id" value="{{ replace_workspace_id }}">{% endif %}
       <label class="drop-zone" for="hosted-asset" data-drop-zone>
         <input id="hosted-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
         <strong data-file-label>Choose or drop your GLB</strong>
         <span>One GLB · up to 50 MB</span>
         <span class="drop-zone-error" data-file-error aria-live="polite"></span>
       </label>
-      <button class="primary-button" type="submit" data-submit-button>Shepherd this asset <span aria-hidden="true">→</span></button>
+      <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
     </form>
   </section>
 {% endblock %}

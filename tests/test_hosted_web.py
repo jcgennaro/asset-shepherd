@@ -43,34 +43,43 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Model description" not in entry.text
     assert "Choose or drop your GLB" not in entry.text
     assert ">Assets</strong>" in entry.text
-    assert ">Describe</strong>" in entry.text
     assert ">Upload</strong>" in entry.text
+    assert ">Describe</strong>" in entry.text
     assert ">Shepherd</strong>" in entry.text
+    assert entry.text.index(">Upload</strong>") < entry.text.index(">Describe</strong>")
     assert "Use the form-led reference workflow instead" not in entry.text
     assert "durable workspace" not in entry.text
     assert "only your description is sent" not in entry.text
     assert entry.text.count('data-focus-area="') == 1
 
-    describe = client.get("/workspace/new/describe")
-    assert "Model description" in describe.text
-    assert "Choose or drop your GLB" not in describe.text
+    upload = client.get("/workspace/new/upload")
+    assert upload.status_code == 200
+    assert "Choose or drop your GLB" in upload.text
+    assert "Model description" not in upload.text
+    assert "Upload the GLB you want me to shepherd." in upload.text
+    assert upload.text.count("<h1") == 1
+    assert "<h2" not in upload.text
+    assert "<h3" not in upload.text
 
-    described = client.post(
-        "/workspace/new/describe",
-        data={"description": DESCRIPTION},
+    uploaded = client.post(
+        "/workspace/new/upload",
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
         follow_redirects=False,
     )
-    assert described.status_code == 303
-    upload_path = urlparse(described.headers["location"]).path
-    upload = client.get(upload_path)
-    assert "Choose or drop your GLB" in upload.text
-    assert "One GLB · up to 50 MB" in upload.text
-    assert "Model description" not in upload.text
-    assert "Shepherd this asset" in upload.text
+    assert uploaded.status_code == 303
+    describe_path = urlparse(uploaded.headers["location"]).path
+    describe = client.get(describe_path)
+    assert "Model description" in describe.text
+    assert "Choose or drop your GLB" not in describe.text
+    assert "Describe the model you\u2019re working on." in describe.text
+    assert "Shepherd this asset" in describe.text
+    assert describe.text.count("<h1") == 1
+    assert "<h2" not in describe.text
+    assert "<h3" not in describe.text
 
     created = client.post(
-        upload_path,
-        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        describe_path,
+        data={"description": DESCRIPTION},
         follow_redirects=False,
     )
     assert created.status_code == 303
@@ -214,6 +223,23 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     assert "What real-world height should it have?" not in proposal.text
 
 
+def test_upload_preflight_rejects_an_invalid_glb_before_description(tmp_path: Path) -> None:
+    """Upload-first intake cannot ask for intent after the source boundary already failed."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+
+    rejected = client.post(
+        "/workspace/new/upload",
+        files={"asset": ("broken.glb", b"not a GLB", "application/octet-stream")},
+    )
+
+    assert rejected.status_code == 400
+    assert "The upload is not a GLB 2.0 binary container." in rejected.text
+    assert "Model description" not in rejected.text
+    assert "Upload the GLB you want me to shepherd." in rejected.text
+    assert not tuple(work_root.rglob("source.glb"))
+
+
 def test_workspace_gallery_names_and_resumes_isolated_asset_state(tmp_path: Path) -> None:
     """Gallery cards use intake names and return each asset to its own persisted phase."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
@@ -277,4 +303,5 @@ def test_full_gallery_requires_visible_replacement_choice(tmp_path: Path) -> Non
     replacement = client.get(replace_path.group(1))
     assert replacement.status_code == 200
     assert 'name="replace_workspace_id"' in replacement.text
-    assert "Choose or drop your GLB" not in replacement.text
+    assert "Choose or drop your GLB" in replacement.text
+    assert "Model description" not in replacement.text

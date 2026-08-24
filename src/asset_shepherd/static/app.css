@@ -816,7 +816,7 @@ a {
   margin-top: clamp(26px, 4vh, 42px);
 }
 
-.confirmation-question h3 {
+.confirmation-question .decision-question {
   margin: 0;
   font-size: clamp(1.25rem, 2vw, 1.65rem);
 }
@@ -3909,7 +3909,7 @@ textarea.asset-description-input:focus {
   border-bottom: 1px solid var(--line);
 }
 
-.result-review h3,
+.result-review .decision-question,
 .result-review p {
   margin: 0;
 }

@@ -196,7 +196,7 @@ for (const form of document.querySelectorAll("[data-result-accept]")) {
         question.hidden = true;
       }
       accepted.hidden = false;
-      const heading = accepted.querySelector("h3");
+      const heading = accepted.querySelector("[data-result-title]");
       if (heading?.id) {
         review.setAttribute("aria-labelledby", heading.id);
       }

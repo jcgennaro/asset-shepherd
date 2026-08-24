@@ -94,7 +94,9 @@ dimension should lie on Y.
 
 ```mermaid
 flowchart LR
-    U[User goal] --> A[Agent chooses sensors]
+    F[User uploads GLB] --> R[Objective preflight]
+    R --> U[User describes and confirms the goal]
+    U --> A[Agent chooses sensors]
     A --> S[Tools return observations]
     S --> J[Agent assesses and chooses disposition]
     J -->|accept or report| V[Verify invariants]
@@ -111,21 +113,21 @@ flowchart LR
 The loop returns to sensing after every mutation. Verification is a gate near the end of a candidate
 turn, not a substitute for agent reassessment.
 
-### 1. Understand the goal
+### 1. Register the source
 
-The user describes the model they already made. The agent extracts a provisional target including
+The user uploads the GLB first. Container validation, hashing, structural eligibility, and objective
+preflight may run immediately. These tools create no target-dependent finding, repair proposal,
+approval, mutation, or readiness claim.
+
+### 2. Understand the goal
+
+After upload, the user describes the model they already made. The agent extracts a provisional target including
 the object, intended use, relevant scale semantics, pose or support expectations, and any important
 appearance or assembly requirements. It asks one concise follow-up only when a materially different
 interpretation would change inspection or repair.
 
 The user confirms the target. Confirmation freezes a versioned target record; it does not choose a
 repair preset.
-
-### 2. Register the source
-
-The agent calls the source-registration and structural-preflight tools. These tools validate the
-container boundary, hash the file, record supported features, and report objective source facts.
-They create no policy-relative finding and no repair candidate.
 
 ### 3. Choose how to inspect
 

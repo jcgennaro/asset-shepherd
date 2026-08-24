@@ -3,52 +3,27 @@
   method="post"
   enctype="multipart/form-data"
   class="intake-form"
-  data-busy-form
-  data-intake-workflow>
-  {% if error %}
-    <div class="alert danger" role="alert">
-      <strong>Intake stopped</strong>
-      <span>{{ error }}</span>
-    </div>
-  {% endif %}
+  data-busy-form>
+  {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
 
-  <nav class="workflow-nav intake-workflow-nav" aria-label="New inspection workflow">
-    <button type="button" data-intake-step-button="rules" aria-controls="intake-rules" aria-current="step">
-      <span>1</span><strong>Rules</strong>
-    </button>
-    <i aria-hidden="true"></i>
-    <button type="button" data-intake-step-button="upload" aria-controls="intake-upload">
-      <span>2</span><strong>Upload</strong>
-    </button>
-  </nav>
+  <label class="drop-zone" for="asset" data-drop-zone>
+    <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
+    <strong data-file-label>Choose or drop your GLB</strong>
+    <span>One GLB · up to {{ max_upload_mb }} MB</span>
+    <span class="drop-zone-error" data-file-error aria-live="polite"></span>
+  </label>
 
-  <section id="intake-rules" class="intake-panel" data-intake-panel="rules" aria-labelledby="rules-title">
-    <header class="panel-heading" title="These rules define ready.">
-      <div>
-        <p class="section-label">Step 1 of 2</p>
-        <h2 id="rules-title">Review the rules I derived</h2>
-      </div>
-    </header>
-
-    <input type="hidden" name="profile_mode" value="resolved" data-profile-mode>
-    <article
-      class="profile-option-shell policy-proposal-card"
-      data-policy-proposal
-      data-profile-defaults='{{ policy_proposal.form_defaults | tojson }}'>
-      <header class="policy-proposal-heading">
-        <span aria-hidden="true">✦</span>
-        <div>
-          <strong>{{ policy_proposal.resolution.display_name }}</strong>
-          <small>Based on your description</small>
-        </div>
-      </header>
+  <input type="hidden" name="profile_mode" value="resolved" data-profile-mode>
+  <details class="custom-policy legacy-rule-review" data-policy-proposal data-profile-defaults='{{ policy_proposal.form_defaults | tojson }}'>
+    <summary>Review rules</summary>
+    <div class="legacy-rule-review-body">
       <dl class="policy-summary">
         {% for label, value in policy_proposal.summary %}
           <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
         {% endfor %}
       </dl>
       <details class="policy-review">
-        <summary>Review all active rules</summary>
+        <summary>All active rules</summary>
         <dl class="policy-rule-list">
           {% for label, value in policy_proposal.review_rules %}
             <div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
@@ -59,93 +34,51 @@
         <summary>Why these rules?</summary>
         <dl class="policy-rule-list">
           {% for rule in policy_proposal.resolution.rules %}
-            <div>
-              <dt>{{ rule.label }} <small>{{ rule.source|replace('_', ' ')|lower }}</small></dt>
-              <dd>{{ rule.rationale }}</dd>
-            </div>
+            <div><dt>{{ rule.label }}</dt><dd>{{ rule.rationale }}</dd></div>
           {% endfor %}
         </dl>
       </details>
-    </article>
-
-    <details class="custom-policy" data-custom-policy title="Advanced · supported target-state rules only">
-      <summary><span><strong>Adjust supported rules</strong></span></summary>
-      <div class="custom-policy-body">
-        <p>The proposed values are prefilled. Adjust only rules the deterministic inspector already enforces.</p>
-        <label class="custom-policy-toggle">
-          <input type="checkbox" data-custom-toggle>
-          <span><strong>Use my adjustments</strong><small data-custom-status>Agent proposal remains active.</small></span>
-        </label>
-        <div class="custom-policy-fields" data-custom-fields hidden>
-          <fieldset>
-            <legend>Target dimensions</legend>
-            <label>Confirmed height <span><strong>{{ "%g"|format(intent.target_height_cm / 100) }}</strong> m</span></label>
-            <label>Height tolerance <span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" data-custom-field="custom_height_tolerance_cm" disabled> cm</span></label>
-          </fieldset>
-          <fieldset>
-            <legend>Orientation and grounding</legend>
-            <label>Require Y-up geometry
-              <select name="custom_require_y_up" data-custom-field="custom_require_y_up" disabled><option value="true">Yes</option><option value="false">No</option></select>
-            </label>
-            <label>Require ground contact
-              <select name="custom_require_ground_contact" data-custom-field="custom_require_ground_contact" disabled><option value="true">Yes</option><option value="false">No</option></select>
-            </label>
-            <label>Ground tolerance <span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" data-custom-field="custom_ground_tolerance_cm" disabled> cm</span></label>
-          </fieldset>
-          <fieldset>
-            <legend>Naming</legend>
-            <label>Name pattern <input type="text" name="custom_naming_pattern" maxlength="128" spellcheck="false" data-custom-field="custom_naming_pattern" disabled></label>
-            <small>Must allow generated names such as <code>Node_000</code> and <code>Mesh_000</code>.</small>
-          </fieldset>
-          <fieldset>
-            <legend>Report-only budgets</legend>
-            <label>Maximum triangles <input type="number" name="custom_max_triangles" min="0" step="1" data-custom-field="custom_max_triangles" disabled></label>
-            <label>Maximum materials <input type="number" name="custom_max_materials" min="0" step="1" data-custom-field="custom_max_materials" disabled></label>
-            <label>Maximum textures <input type="number" name="custom_max_textures" min="0" step="1" data-custom-field="custom_max_textures" disabled></label>
-            <label>Maximum texture dimension <span><input type="number" name="custom_max_texture_dimension" min="1" step="1" data-custom-field="custom_max_texture_dimension" disabled> px</span></label>
-          </fieldset>
+      <details class="custom-policy" data-custom-policy>
+        <summary>Adjust supported rules</summary>
+        <div class="custom-policy-body">
+          <label class="custom-policy-toggle">
+            <input type="checkbox" data-custom-toggle>
+            <span><strong>Use my adjustments</strong><small data-custom-status>Agent proposal remains active.</small></span>
+          </label>
+          <div class="custom-policy-fields" data-custom-fields hidden>
+            <fieldset>
+              <legend>Target dimensions</legend>
+              <label>Confirmed height <span><strong>{{ "%g"|format(intent.target_height_cm / 100) }}</strong> m</span></label>
+              <label>Height tolerance <span><input type="number" name="custom_height_tolerance_cm" min="0" step="0.001" data-custom-field="custom_height_tolerance_cm" disabled> cm</span></label>
+            </fieldset>
+            <fieldset>
+              <legend>Orientation and grounding</legend>
+              <label>Require Y-up geometry
+                <select name="custom_require_y_up" data-custom-field="custom_require_y_up" disabled><option value="true">Yes</option><option value="false">No</option></select>
+              </label>
+              <label>Require ground contact
+                <select name="custom_require_ground_contact" data-custom-field="custom_require_ground_contact" disabled><option value="true">Yes</option><option value="false">No</option></select>
+              </label>
+              <label>Ground tolerance <span><input type="number" name="custom_ground_tolerance_cm" min="0" step="0.001" data-custom-field="custom_ground_tolerance_cm" disabled> cm</span></label>
+            </fieldset>
+            <fieldset>
+              <legend>Naming</legend>
+              <label>Name pattern <input type="text" name="custom_naming_pattern" maxlength="128" spellcheck="false" data-custom-field="custom_naming_pattern" disabled></label>
+            </fieldset>
+            <fieldset>
+              <legend>Report-only budgets</legend>
+              <label>Maximum triangles <input type="number" name="custom_max_triangles" min="0" step="1" data-custom-field="custom_max_triangles" disabled></label>
+              <label>Maximum materials <input type="number" name="custom_max_materials" min="0" step="1" data-custom-field="custom_max_materials" disabled></label>
+              <label>Maximum textures <input type="number" name="custom_max_textures" min="0" step="1" data-custom-field="custom_max_textures" disabled></label>
+              <label>Maximum texture dimension <span><input type="number" name="custom_max_texture_dimension" min="1" step="1" data-custom-field="custom_max_texture_dimension" disabled> px</span></label>
+            </fieldset>
+          </div>
         </div>
-      </div>
-    </details>
-
-    <div class="step-actions end">
-      <p class="step-validation" data-step-validation aria-live="polite"></p>
-      <button class="primary-button" type="button" data-intake-next="upload">
-        Continue to upload <span aria-hidden="true">→</span>
-      </button>
+      </details>
     </div>
-  </section>
+  </details>
 
-  <section id="intake-upload" class="intake-panel upload-panel" data-intake-panel="upload" aria-labelledby="upload-title" hidden>
-    <header class="panel-heading">
-      <div>
-        <p class="section-label">Step 2 of 2</p>
-        <h2 id="upload-title">Upload the GLB you want checked</h2>
-      </div>
-    </header>
-
-    <div class="selected-policy-line">
-      <span>Confirmed target {{ "%g"|format(intent.target_height_cm / 100) }} m</span>
-      <strong data-selected-policy>Agent-resolved rules</strong>
-    </div>
-
-    <label class="drop-zone" for="asset" data-drop-zone>
-      <input id="asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
-      <strong data-file-label>Choose or drop your GLB</strong>
-      <span>One GLB · up to {{ max_upload_mb }} MB</span>
-      <span class="drop-zone-error" data-file-error aria-live="polite"></span>
-    </label>
-
-    <div class="step-actions split">
-      <button class="secondary-button" type="button" data-intake-next="rules">← Back to rules</button>
-      <button class="primary-button" type="submit" data-submit-button>
-        <span>{{ story.submit_label }}</span>
-        <span aria-hidden="true">→</span>
-      </button>
-    </div>
-    <details class="upload-notes">
-      <summary>Upload details</summary>
-      <p class="fine-print">Changing target intent or rules creates a new inspection and job.</p>
-    </details>
-  </section>
+  <div class="step-actions end">
+    <button class="primary-button" type="submit" data-submit-button>Shepherd this asset <span aria-hidden="true">→</span></button>
+  </div>
 </form>

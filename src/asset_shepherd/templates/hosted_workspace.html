@@ -86,7 +86,7 @@
           <section class="result-review" aria-labelledby="{% if record.accepted %}hosted-result-accepted-title{% else %}hosted-result-review-title{% endif %}" data-result-review>
             {% if not record.accepted %}
               <div class="result-review-question" data-result-question>
-              <h3 id="hosted-result-review-title">Did we get it right?</h3>
+              <p class="decision-question" id="hosted-result-review-title" data-result-title>Did we get it right?</p>
               <div class="result-review-actions">
                 <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-result-accept>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
@@ -111,7 +111,7 @@
               </div>
             {% endif %}
             <div class="result-accepted-prompt" data-result-accepted{% if not record.accepted %} hidden{% endif %}>
-              <h3 id="hosted-result-accepted-title" tabindex="-1">Ready to download.</h3>
+              <p class="decision-question" id="hosted-result-accepted-title" tabindex="-1" data-result-title>Ready to download.</p>
               <div class="result-download-actions">
                 {% if workspace.ready_candidate %}
                   <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
