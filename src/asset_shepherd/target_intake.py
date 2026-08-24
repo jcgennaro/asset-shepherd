@@ -37,13 +37,17 @@ class TargetFieldEvidence(ContractModel):
 class TargetIntakeContract(ContractModel):
     """Minimum typed state required before Asset Shepherd may offer target confirmation."""
 
-    schema_version: Literal[1, 2, 3] = 3
+    schema_version: Literal[1, 2, 3, 4] = 4
     description: Annotated[str, Field(min_length=12, max_length=600)]
     asset_name: Annotated[str, Field(min_length=2, max_length=48)] = "Untitled asset"
     analyzer_provider: Annotated[str, Field(min_length=1, max_length=40)] = "deterministic"
     analyzer_model: Annotated[str, Field(min_length=1, max_length=120)] = "explicit-text-v1"
     target_use: AssetTargetUse | None = None
     target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)] | None = None
+    expected_piece_count: Annotated[int, Field(ge=1, le=64)] = 1
+    expected_piece_count_evidence: Annotated[str, Field(min_length=1, max_length=160)] = (
+        "A single asset is normally expected as one semantic piece."
+    )
     evidence: tuple[TargetFieldEvidence, ...] = ()
     missing_fields: tuple[TargetField, ...]
 
@@ -194,6 +198,10 @@ def draft_target_intake(description: str) -> TargetIntakeContract:
         analyzer_model="explicit-text-v1",
         target_use=target_use,
         target_height_cm=target_height_cm,
+        expected_piece_count=1,
+        expected_piece_count_evidence=(
+            "The description does not clearly identify a multi-piece set or pair."
+        ),
         evidence=evidence,
         missing_fields=tuple(missing_values),
     )
@@ -245,6 +253,8 @@ def clarify_target_intake(
         analyzer_model=draft.analyzer_model,
         target_use=target_use,
         target_height_cm=target_height_cm,
+        expected_piece_count=draft.expected_piece_count,
+        expected_piece_count_evidence=draft.expected_piece_count_evidence,
         evidence=tuple(evidence),
         missing_fields=(),
     )
@@ -283,6 +293,8 @@ def revise_target_intake(
         analyzer_model=draft.analyzer_model,
         target_use=target_use,
         target_height_cm=target_height_cm,
+        expected_piece_count=draft.expected_piece_count,
+        expected_piece_count_evidence=draft.expected_piece_count_evidence,
         evidence=evidence,
         missing_fields=(),
     )

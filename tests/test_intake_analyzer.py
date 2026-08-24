@@ -52,6 +52,8 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
                     "target_height_evidence": (
                         "A mountain requires a kilometer-scale vertical target."
                     ),
+                    "expected_piece_count": 1,
+                    "expected_piece_count_evidence": "The description identifies one mountain.",
                 }
             ),
         )
@@ -70,6 +72,8 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
     assert contract.analyzer_provider == "openai"
     assert contract.analyzer_model == OPENAI_INTAKE_MODEL
     assert contract.asset_name == "Goop Mountain"
+    assert contract.expected_piece_count == 1
+    assert contract.expected_piece_count_evidence == "The description identifies one mountain."
     assert {item.source for item in contract.evidence} == {TargetEvidenceSource.MODEL_INFERENCE}
     assert captured["model"] == OPENAI_INTAKE_MODEL
     assert captured["reasoning"] == {"effort": "xhigh"}
@@ -77,6 +81,9 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
     text = captured["text"]
     assert isinstance(text, dict)
     assert text["format"]["strict"] is True
+    instructions = captured["instructions"]
+    assert isinstance(instructions, str)
+    assert "Usually this is 1" in instructions
 
 
 def test_low_confidence_model_fields_become_questions() -> None:
@@ -92,6 +99,8 @@ def test_low_confidence_model_fields_become_questions() -> None:
             target_height_cm=None,
             target_height_confidence=0.3,
             target_height_evidence=None,
+            expected_piece_count=1,
+            expected_piece_count_evidence="The description identifies one abstract asset.",
         ),
         provider="openai",
         model_id=OPENAI_INTAKE_MODEL,
@@ -110,6 +119,8 @@ def test_low_confidence_model_fields_become_questions() -> None:
             target_height_cm=None,
             target_height_confidence=0.3,
             target_height_evidence=None,
+            expected_piece_count=1,
+            expected_piece_count_evidence="The description identifies one abstract asset.",
         )
 
 
@@ -133,6 +144,8 @@ def test_disallowed_intake_returns_only_a_concise_refusal() -> None:
                     "target_height_cm": None,
                     "target_height_confidence": 0.0,
                     "target_height_evidence": None,
+                    "expected_piece_count": None,
+                    "expected_piece_count_evidence": None,
                 }
             ),
         )

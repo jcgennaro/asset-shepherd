@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-24
-**Current commit:** D042 upload-first flow and two-text hierarchy (this file is included)
+**Current commit:** D043 semantic assembly and mesh-health sensing (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first two-text flow |  | Repeated feedback/action/approval turns, per-asset session state, resumable seven-slot workspace, and one-task-per-step hosted UX are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health |  | Repeated feedback/action/approval turns, per-asset session state, resumable seven-slot workspace, and one-task-per-step hosted UX are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -50,6 +50,15 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D043 semantic assembly and mesh health: the intake agent now freezes an expected semantic piece
+  count and evidence, defaulting to one unless the description clearly names a pair or set. The UI
+  no longer couples assembly intent to a redundant GLB-validity message. Deterministic triangle
+  diagnostics expose non-manifold and inconsistently wound edges, edge-connected face components,
+  unused/coincident positions, vertex reuse, and FIFO-16 ACMR. Objective defects and narrow
+  performance risks are report-only; ambiguous topology facts remain evidence for agent judgment,
+  and no geometry rewrite or optimization action was added. Textareas submit on Ctrl+Enter while
+  plain Enter remains a line break. Comparison fits now interpolate, the banana twirls in and melts
+  out with reduced-motion support, and public GLB/ZIP attachments use the agent-assigned asset name.
 - D042 upload-first hierarchy: the authoritative public rail is now **Assets → Upload → Describe →
   Shepherd**, and `/` redirects to its seven-slot gallery. A GLB must pass bounded container
   validation and objective preflight before the separate description screen. Target agreement and
@@ -203,7 +212,7 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
   at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
   scrolls inside its own container. Browser console warnings and errors are empty.
-- Tests: `uv run pytest` — 122 passed and the opt-in live-provider test skipped. D019–D042 acceptance
+- Tests: `uv run pytest` — 126 passed and the opt-in live-provider test skipped. D019–D043 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -239,8 +248,9 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   check, not a selectable preset. Confirmation and clarification contain no target-use dropdown;
   corrections are natural-language reinterpretations. The UI lists target-specific assumptions
   separately from universal invariants, then presents deterministic GLB observations and the
-  bounded action plan. Assembly reports roots/nodes/meshes/primitives without inventing semantic
-  piece count, and blocked jobs direct users back to the creation/export tool with recorded reasons.
+  bounded action plan. The intake agent records a semantic piece-count expectation while inspection
+  keeps roots/nodes/meshes/primitives as separate structural facts; blocked jobs direct users back
+  to the creation/export tool with recorded reasons.
 - Asset-in-hand entry language: both entry points now use one short instruction: describe the model
   you are working on. Use and scale guidance stays in the example inside the full-width input. The
   primary surface contains no implementation notes, workflow comparison links, or repeated

@@ -56,16 +56,19 @@ def craft_confirmed_story(
 
 def _canonical_payload(
     *,
+    intent_version: int,
     intent_id: str,
     original_description: str,
     target_use: AssetTargetUse,
     target_height_cm: float,
     confirmed_story: str,
     confirmed_at: datetime,
+    expected_piece_count: int,
+    expected_piece_count_evidence: str,
 ) -> dict[str, object]:
     timestamp = confirmed_at.astimezone(UTC).isoformat().replace("+00:00", "Z")
-    return {
-        "intent_version": 1,
+    payload: dict[str, object] = {
+        "intent_version": intent_version,
         "intent_id": intent_id,
         "original_description": original_description,
         "target_use": target_use.value,
@@ -73,6 +76,10 @@ def _canonical_payload(
         "confirmed_story": confirmed_story,
         "confirmed_at": timestamp,
     }
+    if intent_version >= 2:
+        payload["expected_piece_count"] = expected_piece_count
+        payload["expected_piece_count_evidence"] = expected_piece_count_evidence
+    return payload
 
 
 def _canonical_sha256(payload: dict[str, object]) -> str:
@@ -91,6 +98,10 @@ def build_asset_intent(
     target_use: AssetTargetUse,
     target_height_cm: float,
     *,
+    expected_piece_count: int = 1,
+    expected_piece_count_evidence: str = (
+        "A single asset is normally expected as one semantic piece."
+    ),
     intent_id: str | None = None,
     confirmed_at: datetime | None = None,
 ) -> AssetIntentProvenance:
@@ -100,18 +111,23 @@ def build_asset_intent(
     resolved_time = confirmed_at or datetime.now(UTC)
     story = craft_confirmed_story(normalized, target_use, target_height_cm)
     payload = _canonical_payload(
+        intent_version=2,
         intent_id=resolved_id,
         original_description=normalized,
         target_use=target_use,
         target_height_cm=target_height_cm,
         confirmed_story=story,
         confirmed_at=resolved_time,
+        expected_piece_count=expected_piece_count,
+        expected_piece_count_evidence=expected_piece_count_evidence,
     )
     return AssetIntentProvenance(
         intent_id=resolved_id,
         original_description=normalized,
         target_use=target_use,
         target_height_cm=target_height_cm,
+        expected_piece_count=expected_piece_count,
+        expected_piece_count_evidence=expected_piece_count_evidence,
         confirmed_story=story,
         confirmed_at=resolved_time,
         canonical_sha256=_canonical_sha256(payload),
@@ -121,12 +137,15 @@ def build_asset_intent(
 def validate_asset_intent(intent: AssetIntentProvenance) -> None:
     """Reject a target story whose canonical identity no longer matches its fields."""
     payload = _canonical_payload(
+        intent_version=intent.intent_version,
         intent_id=intent.intent_id,
         original_description=intent.original_description,
         target_use=intent.target_use,
         target_height_cm=intent.target_height_cm,
         confirmed_story=intent.confirmed_story,
         confirmed_at=intent.confirmed_at,
+        expected_piece_count=intent.expected_piece_count,
+        expected_piece_count_evidence=intent.expected_piece_count_evidence,
     )
     if intent.canonical_sha256 != _canonical_sha256(payload):
         raise ValueError("Confirmed asset intent hash does not match its fields")

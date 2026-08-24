@@ -731,6 +731,8 @@ class HostedWorkspaceStore:
                 workspace.record.private_description,
                 target_use,
                 target_height_cm,
+                expected_piece_count=target_draft.expected_piece_count,
+                expected_piece_count_evidence=target_draft.expected_piece_count_evidence,
                 intent_id=workspace.record.workspace_id,
             )
             _write_json_atomic(workspace.root / "profile.json", profile.model_dump(mode="json"))

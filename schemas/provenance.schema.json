@@ -252,14 +252,31 @@
           "title": "Confirmed Story",
           "type": "string"
         },
+        "expected_piece_count": {
+          "default": 1,
+          "maximum": 64,
+          "minimum": 1,
+          "title": "Expected Piece Count",
+          "type": "integer"
+        },
+        "expected_piece_count_evidence": {
+          "default": "A single asset is normally expected as one semantic piece.",
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Expected Piece Count Evidence",
+          "type": "string"
+        },
         "intent_id": {
           "pattern": "^[0-9a-f]{32}$",
           "title": "Intent Id",
           "type": "string"
         },
         "intent_version": {
-          "const": 1,
-          "default": 1,
+          "default": 2,
+          "enum": [
+            1,
+            2
+          ],
           "title": "Intent Version",
           "type": "integer"
         },

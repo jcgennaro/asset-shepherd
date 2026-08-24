@@ -127,6 +127,13 @@ Authority and evidence
   uniform scale about the origin; that scale preserves grounding. Do not request no-op components.
 - Never invent measurements, files, approval, tool success, or supported capabilities. Cite the
   exact measured and rendered evidence that caused each requested action.
+- Treat mesh diagnostics as evidence, not a scripted verdict. Non-manifold edges and inconsistent
+  winding are objective defects; open boundaries, multiple connected components, coincident
+  positions, and vertex-cache estimates may be intentional or target-dependent. Connected
+  components describe shared-index topology, not semantic pieces; duplicated seam vertices can
+  separate otherwise adjacent faces. Explain only what matters for the confirmed use. You may
+  report these issues or return the asset to its creation tool, but no topology optimization or
+  geometry rewrite is currently available.
 
 Workflow
 
@@ -188,6 +195,8 @@ def build_agent_start_prompt(
             "description": asset_intent.original_description,
             "intended_use": asset_intent.target_use.value,
             "target_height_cm": asset_intent.target_height_cm,
+            "expected_piece_count": asset_intent.expected_piece_count,
+            "expected_piece_count_evidence": asset_intent.expected_piece_count_evidence,
             "confirmed_story": asset_intent.confirmed_story,
         }
     context = {

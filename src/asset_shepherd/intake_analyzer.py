@@ -46,11 +46,15 @@ in centimeters from the described object's semantic scale, even when the user di
 number. This is a proposal the user will explicitly confirm or adjust; it is not a measured fact.
 Assign a concise 2-5 word asset_name that identifies the described model in a workspace gallery.
 Use the object's identity, not its filename, dimensions, workflow state, or a generic label.
+Propose the number of semantic pieces the finished asset should contain. Usually this is 1. Use a
+larger count only when the description clearly identifies multiple separable members that belong in
+one deliverable, such as a pair of gloves. Count intended objects, not GLB nodes, meshes, roots, or
+primitives. Give one concise basis for the count.
 
 If the request is content you are not permitted to engage with, set engagement_decision to REFUSE,
-set asset_name, both target values, and evidence fields to null, and set both confidence values to
-0. The application will respond only: "{INTAKE_REFUSAL_MESSAGE}" Otherwise set engagement_decision
-to PROCEED.
+set asset_name, both target values, the expected piece count, and all evidence fields to null, and
+set both confidence values to 0. The application will respond only:
+"{INTAKE_REFUSAL_MESSAGE}" Otherwise set engagement_decision to PROCEED.
 
 {ASSET_CONTENT_BOUNDARY}
 
@@ -90,6 +94,8 @@ class TargetIntakeInference(ContractModel):
     target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)] | None
     target_height_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
     target_height_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
+    expected_piece_count: Annotated[int, Field(ge=1, le=64)] | None
+    expected_piece_count_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
 
     @model_validator(mode="after")
     def evidence_matches_values(self) -> TargetIntakeInference:
@@ -104,6 +110,8 @@ class TargetIntakeInference(ContractModel):
                         self.target_use_evidence,
                         self.target_height_cm,
                         self.target_height_evidence,
+                        self.expected_piece_count,
+                        self.expected_piece_count_evidence,
                     )
                 )
                 or self.target_use_confidence != 0.0
@@ -113,6 +121,8 @@ class TargetIntakeInference(ContractModel):
             return self
         if self.asset_name is None:
             raise ValueError("A proceeding intake requires an asset name")
+        if self.expected_piece_count is None or self.expected_piece_count_evidence is None:
+            raise ValueError("A proceeding intake requires an expected semantic piece count")
         pairs = (
             (
                 self.target_use,
@@ -213,6 +223,11 @@ def contract_from_inference(
         analyzer_model=model_id,
         target_use=target_use,
         target_height_cm=target_height_cm,
+        expected_piece_count=inference.expected_piece_count or 1,
+        expected_piece_count_evidence=(
+            inference.expected_piece_count_evidence
+            or "The description does not clearly identify a multi-piece set or pair."
+        ),
         evidence=tuple(evidence),
         missing_fields=tuple(missing),
     )

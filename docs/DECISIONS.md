@@ -4,6 +4,59 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D043 — The agent owns semantic assembly expectations; tools expose mesh health facts
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing / M10 evaluation
+
+**Context**
+
+After upload, **Piece count unspecified · valid GLB required** mixed a semantic target question with
+an already-completed file-validity check. The inspector also lacked deeper facts about defective
+edge relationships, fragmented index topology, unused vertices, and likely vertex-cache cost. Those
+facts are useful to the workflow agent, but several are legitimate modeling choices rather than
+universal failures.
+
+**Decision**
+
+The intake model derives an expected semantic piece count from the description. It defaults to one
+and chooses a larger count only when the request clearly identifies a multi-object deliverable such
+as a pair or set. The frozen target and asset-intent records preserve both the count and its concise
+evidence. This count is not inferred from nodes, meshes, primitives, or edge-connected components,
+and it does not authorize merge, split, or geometry repair.
+
+Add a deterministic, read-only mesh diagnostic tool for triangle primitives. It measures boundary,
+non-manifold, and inconsistently wound edges; edge-connected face components; unused and coincident
+positions; average vertex reuse; and a FIFO-16 ACMR estimate. Non-manifold and inconsistent shared
+edges are objective report-only defects. Unused data and very poor estimated cache locality are
+report-only performance attention. Boundaries, component counts, coincident positions, and cache
+estimates remain observations for agent interpretation because seams, hard edges, open surfaces,
+and target hardware can make them intentional. No topology or optimization mutation is added.
+
+Comparison fits use the viewer's camera interpolation instead of jumping. The optional banana
+twirls into the shared scene and flattens before disappearing, with reduced-motion behavior honored.
+Public downloads use an agent-derived asset-name slug; the contracted evidence ZIP keeps its
+required internal `repaired.glb` name.
+
+This decision supersedes D027 only where it prohibited an agent-authored semantic piece-count
+expectation. D027's distinction between semantic pieces and structural counts, and its prohibition
+on merge/split repair, remain controlling.
+
+**Evidence and consequences**
+
+Unit tests cover closed, non-manifold, duplicate/unused, and deliberately cache-hostile meshes.
+Inspector tests prove typed measurements and report-only findings. Intake, provenance, prompt, and
+route tests prove the semantic count is frozen and displayed without reintroducing structural-count
+guessing. Browser acceptance proves plain Enter still inserts a line break, Ctrl+Enter submits, and
+the comparison banana completes both animations. The diagnostic design follows established
+concepts from Khronos glTF Validator, Blender and trimesh mesh diagnostics, and meshoptimizer's
+cache metrics; actual target-GPU profiling remains authoritative for performance.
+
 ### D042 — Upload-first shepherding and a two-text screen hierarchy
 
 **Date:** 2026-08-24

@@ -218,7 +218,8 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     assert "1.8 m" in proposal.text
     assert "<summary>No</summary>" in proposal.text
     assert proposal.text.count('class="expectation-group"') == 3
-    assert "No semantic piece-count assumption" in proposal.text
+    assert "1 expected semantic piece" in proposal.text
+    assert "valid GLB required" not in proposal.text
     assert 'name="target_use"' not in proposal.text
     assert "What real-world height should it have?" not in proposal.text
 

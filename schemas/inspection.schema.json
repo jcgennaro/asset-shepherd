@@ -771,9 +771,33 @@
           "title": "Attribute Count Mismatches",
           "type": "array"
         },
+        "average_vertex_reuse": {
+          "default": 0.0,
+          "minimum": 0.0,
+          "title": "Average Vertex Reuse",
+          "type": "number"
+        },
+        "boundary_edge_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Boundary Edge Count",
+          "type": "integer"
+        },
+        "connected_component_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Connected Component Count",
+          "type": "integer"
+        },
         "degenerate_triangle_count": {
           "minimum": 0,
           "title": "Degenerate Triangle Count",
+          "type": "integer"
+        },
+        "duplicate_position_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Duplicate Position Count",
           "type": "integer"
         },
         "has_normals": {
@@ -787,6 +811,12 @@
         "has_texcoord_0": {
           "title": "Has Texcoord 0",
           "type": "boolean"
+        },
+        "inconsistent_winding_edge_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Inconsistent Winding Edge Count",
+          "type": "integer"
         },
         "index_count": {
           "minimum": 0,
@@ -823,6 +853,12 @@
           "title": "Non Finite Texcoord 0 Count",
           "type": "integer"
         },
+        "non_manifold_edge_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Non Manifold Edge Count",
+          "type": "integer"
+        },
         "non_unit_normal_count": {
           "minimum": 0,
           "title": "Non Unit Normal Count",
@@ -842,6 +878,29 @@
           "minimum": 0,
           "title": "Primitive Index",
           "type": "integer"
+        },
+        "topology_analyzed": {
+          "default": false,
+          "title": "Topology Analyzed",
+          "type": "boolean"
+        },
+        "unused_position_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Unused Position Count",
+          "type": "integer"
+        },
+        "valid_triangle_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Valid Triangle Count",
+          "type": "integer"
+        },
+        "vertex_cache_acmr": {
+          "default": 0.0,
+          "minimum": 0.0,
+          "title": "Vertex Cache Acmr",
+          "type": "number"
         }
       },
       "required": [

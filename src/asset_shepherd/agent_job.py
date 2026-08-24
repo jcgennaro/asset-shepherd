@@ -482,7 +482,9 @@ class AgentJob:
             ],
             "interpretation_boundary": (
                 "Dimensions, dominant axis, and ground relationship are observations only. "
-                "They do not establish semantic height or justify rotation."
+                "They do not establish semantic height or justify rotation. Boundary edges, "
+                "connected components, coincident positions, and cache estimates are diagnostic "
+                "facts, not automatic defects or repair authorization."
             ),
         }
 

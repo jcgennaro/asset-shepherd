@@ -152,6 +152,27 @@ if (intakeWorkflow) {
   }
 }
 
+for (const textarea of document.querySelectorAll("textarea")) {
+  textarea.addEventListener("keydown", (event) => {
+    const isCtrlEnter =
+      event.key === "Enter" &&
+      event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      !event.shiftKey;
+    if (!isCtrlEnter) {
+      return;
+    }
+    const form = textarea.form;
+    const submitButton = form?.querySelector('button[type="submit"]:not([disabled])');
+    if (!(form instanceof HTMLFormElement) || !(submitButton instanceof HTMLButtonElement)) {
+      return;
+    }
+    event.preventDefault();
+    form.requestSubmit(submitButton);
+  });
+}
+
 for (const form of document.querySelectorAll("[data-busy-form]")) {
   form.addEventListener("submit", (event) => {
     const submitter = event.submitter;
@@ -270,6 +291,9 @@ function initializeModelComparison(comparison) {
   let bananaVisible = false;
   let renderFrame = 0;
   let bananaBounds = null;
+  let bananaFinalOffset = null;
+  let bananaAnimationFrame = 0;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const fitButtons = [...comparison.querySelectorAll("[data-comparison-fit]")];
   const targetGraphics = new Map();
   const axisGraphics = new Map();
@@ -512,11 +536,108 @@ function initializeModelComparison(comparison) {
       center: minimum.map((value, index) => (value + maximum[index]) / 2),
       longest: Math.max(...minimum.map((value, index) => maximum[index] - value)),
     };
+    bananaFinalOffset = offset;
     bananaModel?.setAttribute("offset", offset.join(" "));
     viewer.updateHotspot({
       name: "hotspot-banana",
       position: `${offset[0]}m ${offset[1] + 0.025}m ${offset[2]}m`,
     });
+  }
+
+  function setBananaPose(offset, scale, yawDegrees) {
+    bananaModel?.setAttribute("offset", offset.join(" "));
+    bananaModel?.setAttribute("scale", scale.join(" "));
+    bananaModel?.setAttribute("orientation", `0deg 0deg ${yawDegrees}deg`);
+    viewer.updateHotspot({
+      name: "hotspot-banana",
+      position: `${offset[0]}m ${offset[1] + 0.025 * scale[1]}m ${offset[2]}m`,
+    });
+    scheduleHud();
+  }
+
+  function cancelBananaAnimation() {
+    if (bananaAnimationFrame) {
+      window.cancelAnimationFrame(bananaAnimationFrame);
+      bananaAnimationFrame = 0;
+    }
+  }
+
+  function animateBananaIn(bounds) {
+    cancelBananaAnimation();
+    if (!bananaFinalOffset) {
+      return;
+    }
+    const finalOffset = [...bananaFinalOffset];
+    if (reduceMotion) {
+      setBananaPose(finalOffset, [1, 1, 1], 0);
+      return;
+    }
+    const flight = Math.max(bounds.longest * 1.4, 0.55);
+    const startOffset = [
+      finalOffset[0] - flight,
+      finalOffset[1] + flight * 0.45,
+      finalOffset[2] + flight * 0.25,
+    ];
+    let startedAt = 0;
+    const animate = (timestamp) => {
+      if (!startedAt) {
+        startedAt = timestamp;
+      }
+      const progress = clamp((timestamp - startedAt) / 900, 0, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      const arc = Math.sin(Math.PI * progress) * flight * 0.32;
+      const offset = finalOffset.map(
+        (value, index) =>
+          startOffset[index] + (value - startOffset[index]) * eased + (index === 1 ? arc : 0),
+      );
+      const scale = 0.35 + 0.65 * eased;
+      setBananaPose(offset, [scale, scale, scale], 720 * (1 - eased));
+      if (progress < 1 && bananaVisible) {
+        bananaAnimationFrame = window.requestAnimationFrame(animate);
+      } else {
+        bananaAnimationFrame = 0;
+        if (bananaVisible) {
+          setBananaPose(finalOffset, [1, 1, 1], 0);
+        }
+      }
+    };
+    bananaAnimationFrame = window.requestAnimationFrame(animate);
+  }
+
+  function animateBananaOut() {
+    cancelBananaAnimation();
+    if (!bananaFinalOffset || reduceMotion) {
+      bananaModel?.setAttribute("scale", "0 0 0");
+      bananaModel?.setAttribute("orientation", "0deg 0deg 0deg");
+      return;
+    }
+    const startOffset = [...bananaFinalOffset];
+    let startedAt = 0;
+    const animate = (timestamp) => {
+      if (!startedAt) {
+        startedAt = timestamp;
+      }
+      const progress = clamp((timestamp - startedAt) / 650, 0, 1);
+      const eased = progress * progress * (3 - 2 * progress);
+      const offset = [
+        startOffset[0],
+        startOffset[1] - 0.012 * eased,
+        startOffset[2],
+      ];
+      setBananaPose(
+        offset,
+        [1 + eased * 0.65, Math.max(1 - eased * 0.98, 0.02), 1 + eased * 0.8],
+        0,
+      );
+      if (progress < 1) {
+        bananaAnimationFrame = window.requestAnimationFrame(animate);
+      } else {
+        bananaAnimationFrame = 0;
+        bananaModel?.setAttribute("scale", "0 0 0");
+        bananaModel?.setAttribute("orientation", "0deg 0deg 0deg");
+      }
+    };
+    bananaAnimationFrame = window.requestAnimationFrame(animate);
   }
 
   function unionBounds(left, right) {
@@ -538,22 +659,22 @@ function initializeModelComparison(comparison) {
     const horizontalField = 2 * Math.atan(Math.tan(verticalField / 2) * aspect);
     const limitingField = Math.min(verticalField, horizontalField);
     const distance = Math.max((radius / Math.tan(limitingField / 2)) * 1.18, 1e-4);
-    const currentOrbit = viewer.getCameraOrbit?.();
-    const theta = Number.isFinite(currentOrbit?.theta) ? `${currentOrbit.theta}rad` : "35deg";
-    const phi = Number.isFinite(currentOrbit?.phi) ? `${currentOrbit.phi}rad` : "70deg";
     viewer.cameraTarget = bounds.center.map((component) => `${component}m`).join(" ");
-    viewer.cameraOrbit = `${theta} ${phi} ${distance}m`;
+    viewer.cameraOrbit = `35deg 70deg ${distance}m`;
     viewer.fieldOfView = "45deg";
-    viewer.jumpCameraToGoal?.();
     scheduleHud();
   }
 
   function fit(mode) {
+    cancelBananaAnimation();
     activeFitMode = mode;
     const bounds = config[mode];
     updateAxes(bounds);
     placeBanana(bounds);
     frameBounds(bananaVisible && bananaBounds ? unionBounds(bounds, bananaBounds) : bounds);
+    if (bananaVisible && bananaFinalOffset) {
+      setBananaPose(bananaFinalOffset, [1, 1, 1], 0);
+    }
     for (const button of fitButtons) {
       const selected = button.dataset.comparisonFit === mode;
       button.classList.toggle("active", selected);
@@ -575,9 +696,16 @@ function initializeModelComparison(comparison) {
     bananaVisible = !bananaVisible;
     bananaButton.setAttribute("aria-pressed", String(bananaVisible));
     bananaButton.classList.toggle("active", bananaVisible);
-    bananaLayer.toggleAttribute("hidden", !bananaVisible);
-    bananaModel?.setAttribute("scale", bananaVisible ? "1 1 1" : "0 0 0");
-    fit(activeFitMode);
+    if (bananaVisible) {
+      bananaLayer.removeAttribute("hidden");
+      fit(activeFitMode);
+      animateBananaIn(config[activeFitMode]);
+    } else {
+      bananaLayer.setAttribute("hidden", "");
+      animateBananaOut();
+      updateAxes(config[activeFitMode]);
+      frameBounds(config[activeFitMode]);
+    }
   });
 
   viewer.addEventListener("camera-change", scheduleHud);

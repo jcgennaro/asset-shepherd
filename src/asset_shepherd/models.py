@@ -342,6 +342,16 @@ class PrimitiveAttributeDiagnostics(ContractModel):
     non_finite_texcoord_0_count: NonNegativeInt
     out_of_range_index_count: NonNegativeInt
     degenerate_triangle_count: NonNegativeInt
+    topology_analyzed: bool = False
+    valid_triangle_count: NonNegativeInt = 0
+    boundary_edge_count: NonNegativeInt = 0
+    non_manifold_edge_count: NonNegativeInt = 0
+    inconsistent_winding_edge_count: NonNegativeInt = 0
+    connected_component_count: NonNegativeInt = 0
+    unused_position_count: NonNegativeInt = 0
+    duplicate_position_count: NonNegativeInt = 0
+    average_vertex_reuse: Annotated[float, Field(ge=0.0)] = 0.0
+    vertex_cache_acmr: Annotated[float, Field(ge=0.0)] = 0.0
 
 
 class SourceDiagnostics(ContractModel):
@@ -694,11 +704,15 @@ class ProfilePolicyProvenance(ContractModel):
 class AssetIntentProvenance(ContractModel):
     """Immutable user-confirmed target story bound to one inspection job."""
 
-    intent_version: Literal[1] = 1
+    intent_version: Literal[1, 2] = 2
     intent_id: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
     original_description: Annotated[str, Field(min_length=12, max_length=600)]
     target_use: AssetTargetUse
     target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)]
+    expected_piece_count: Annotated[int, Field(ge=1, le=64)] = 1
+    expected_piece_count_evidence: Annotated[str, Field(min_length=1, max_length=160)] = (
+        "A single asset is normally expected as one semantic piece."
+    )
     confirmed_story: Annotated[str, Field(min_length=20, max_length=1000)]
     confirmed_at: datetime
     canonical_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]

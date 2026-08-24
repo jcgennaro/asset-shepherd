@@ -236,6 +236,19 @@ def test_upload_controls_support_click_and_drag_drop(tmp_path: Path) -> None:
     assert 'endsWith(".glb")' in script.text
 
 
+def test_textareas_submit_with_ctrl_enter_only(tmp_path: Path) -> None:
+    """Ctrl+Enter uses native form submission while ordinary Enter remains text input."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+    script = client.get("/static/app.js")
+
+    assert script.status_code == 200
+    assert 'for (const textarea of document.querySelectorAll("textarea"))' in script.text
+    assert 'event.key === "Enter"' in script.text
+    assert "event.ctrlKey" in script.text
+    assert "event.preventDefault()" in script.text
+    assert "form.requestSubmit(submitButton)" in script.text
+
+
 def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
     tmp_path: Path,
 ) -> None:
@@ -304,6 +317,8 @@ def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
                     target_height_cm=height_cm,
                     target_height_confidence=0.91,
                     target_height_evidence="The description states the intended scale.",
+                    expected_piece_count=1,
+                    expected_piece_count_evidence="The description identifies one bracelet.",
                 ),
                 provider=self.provider,
                 model_id=self.model_id,
@@ -525,6 +540,8 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
                     target_height_cm=height_cm,
                     target_height_confidence=0.91,
                     target_height_evidence="A mountain is a kilometer-scale feature.",
+                    expected_piece_count=1,
+                    expected_piece_count_evidence="The description identifies one mountain.",
                 ),
                 provider=self.provider,
                 model_id=self.model_id,
@@ -552,7 +569,8 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     assert "<summary>No</summary>" in proposal.text
     assert "Show inference evidence" not in proposal.text
     assert "A mountain is an environmental feature." in proposal.text
-    assert "No semantic piece-count assumption" in proposal.text
+    assert "1 expected semantic piece" in proposal.text
+    assert "valid GLB required" not in proposal.text
     assert proposal.text.count('class="expectation-group"') == 3
     assert "Always checked for every GLB" not in proposal.text
     assert 'name="target_use"' not in proposal.text
@@ -759,7 +777,11 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert "normal-size 20 cm banana" in completed.text
     assert "BEFORE MODEL HERE" not in completed.text
     _assert_focus_area_budget(completed.text)
-    assert client.get(f"{job_path}/repaired.glb").status_code == 200
+    repaired_response = client.get(f"{job_path}/repaired.glb")
+    assert repaired_response.status_code == 200
+    disposition = repaired_response.headers["content-disposition"]
+    assert disposition.endswith('.glb"')
+    assert "repaired.glb" not in disposition
 
     accepted = client.post(
         f"{job_path}/result",
@@ -1068,6 +1090,14 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "function niceMeterStep(span)" in script.text
     assert 'bananaModel?.setAttribute("scale"' in script.text
     assert 'axisLayer.toggleAttribute("hidden"' in script.text
+    assert "function animateBananaIn(bounds)" in script.text
+    assert "function animateBananaOut()" in script.text
+    assert "viewer.jumpCameraToGoal" not in script.text
+
+    comparison_template = (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"
+    ).read_text(encoding="utf-8")
+    assert 'interpolation-decay="240"' in comparison_template
 
 
 def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:

@@ -29,6 +29,8 @@ def _intent(description: str) -> AssetIntentProvenance:
         original_description=description,
         target_use=AssetTargetUse.STATIC_GAME_ASSET,
         target_height_cm=120.0,
+        expected_piece_count=2,
+        expected_piece_count_evidence="The description identifies a matched lantern pair.",
         confirmed_story="A 1.2 meter hanging lantern for a game environment.",
         confirmed_at=datetime(2026, 8, 23, tzinfo=UTC),
         canonical_sha256="2" * 64,
@@ -55,6 +57,7 @@ def test_v3_prompt_makes_target_dependent_planning_agent_owned() -> None:
     assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V3
     assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V3
     assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V3
+    assert "Treat mesh diagnostics as evidence" in AGENT_SYSTEM_PROMPT_V3
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V3
 
 
@@ -73,6 +76,7 @@ def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:
     context = json.loads(raw_context)
     assert context["confirmed_target"]["description"] == description
     assert context["confirmed_target"]["target_height_cm"] == 120.0
+    assert context["confirmed_target"]["expected_piece_count"] == 2
     assert context["frozen_policy"]["profile_id"] == profile.profile_id
     assert context["frozen_policy"]["canonical_sha256"]
     assert context["frozen_policy"]["budgets"] == profile.budgets.model_dump(mode="json")

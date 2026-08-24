@@ -29,6 +29,7 @@ from asset_shepherd.glb import (
     validate_loaded_glb,
     world_bounds,
 )
+from asset_shepherd.mesh_diagnostics import analyze_mesh_topology
 from asset_shepherd.models import (
     ActionClass,
     Bounds3D,
@@ -507,6 +508,9 @@ def _primitive_diagnostics(
         triangles = indices[:usable].reshape((-1, 3))
     elif mode == TRIANGLE_STRIP and len(indices) >= 3:
         triangles = np.column_stack((indices[:-2], indices[1:-1], indices[2:]))
+        odd_triangles = triangles[1::2].copy()
+        triangles[1::2, 0] = odd_triangles[:, 1]
+        triangles[1::2, 1] = odd_triangles[:, 0]
     elif mode == TRIANGLE_FAN and len(indices) >= 3:
         triangles = np.column_stack(
             (
@@ -553,6 +557,15 @@ def _primitive_diagnostics(
         area_degenerate = twice_area <= area_tolerance
         degenerate[np.flatnonzero(valid_non_repeated)] = area_degenerate
 
+    topology_mask = valid_triangles & ~degenerate
+    if np.any(topology_mask):
+        topology_positions = positions[triangles[topology_mask], :3]
+        topology_mask[np.flatnonzero(topology_mask)] &= np.isfinite(topology_positions).all(
+            axis=(1, 2)
+        )
+    topology = analyze_mesh_topology(positions, triangles[topology_mask])
+    topology_analyzed = mode in {TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN}
+
     non_unit_normals = 0
     normal_accessor = gltf.accessors[normal_index] if normal_index is not None else None
     if (
@@ -586,6 +599,16 @@ def _primitive_diagnostics(
         non_finite_texcoord_0_count=0 if texcoords is None else _non_finite_count(texcoords),
         out_of_range_index_count=int(np.count_nonzero(out_of_range)),
         degenerate_triangle_count=int(np.count_nonzero(degenerate)),
+        topology_analyzed=topology_analyzed,
+        valid_triangle_count=topology.valid_triangle_count,
+        boundary_edge_count=topology.boundary_edge_count,
+        non_manifold_edge_count=topology.non_manifold_edge_count,
+        inconsistent_winding_edge_count=topology.inconsistent_winding_edge_count,
+        connected_component_count=topology.connected_component_count,
+        unused_position_count=topology.unused_position_count,
+        duplicate_position_count=topology.duplicate_position_count,
+        average_vertex_reuse=topology.average_vertex_reuse,
+        vertex_cache_acmr=topology.vertex_cache_acmr,
     )
 
 
@@ -951,6 +974,122 @@ def _inspection_findings(
                         observed_value=item.degenerate_triangle_count,
                     )
                     for item in degenerate_primitives
+                ),
+                profile_rule=None,
+            )
+        )
+
+    topology_defects = tuple(
+        primitive
+        for primitive in diagnostics.primitives
+        if primitive.non_manifold_edge_count or primitive.inconsistent_winding_edge_count
+    )
+    if topology_defects:
+        findings.append(
+            _finding(
+                code="MESH_TOPOLOGY_DEFECTS_DETECTED",
+                domain="geometry",
+                title="Non-manifold or inconsistently wound edges detected",
+                description=(
+                    "Topology defects are reported for the agent to assess; no unsupported "
+                    "geometry repair is applied."
+                ),
+                severity=Severity.WARNING,
+                action_class=ActionClass.REPORT_ONLY,
+                confidence=1.0,
+                affected=tuple(
+                    f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
+                    for item in topology_defects
+                ),
+                evidence=tuple(
+                    FindingEvidence(
+                        observation=(
+                            f"Mesh {item.mesh_index} primitive {item.primitive_index}: "
+                            f"{item.non_manifold_edge_count} non-manifold edges; "
+                            f"{item.inconsistent_winding_edge_count} inconsistent shared edges."
+                        ),
+                        observed_value={
+                            "non_manifold_edges": item.non_manifold_edge_count,
+                            "inconsistent_winding_edges": item.inconsistent_winding_edge_count,
+                        },
+                        inference=(
+                            "These edge relationships can cause shading, deformation, or "
+                            "downstream mesh-processing failures."
+                        ),
+                    )
+                    for item in topology_defects
+                ),
+                profile_rule=None,
+            )
+        )
+
+    unused_vertex_data = tuple(
+        primitive for primitive in diagnostics.primitives if primitive.unused_position_count
+    )
+    if unused_vertex_data:
+        findings.append(
+            _finding(
+                code="UNUSED_VERTEX_DATA_DETECTED",
+                domain="performance",
+                title="Unreferenced vertex data may waste memory",
+                description="Unused positions are reported without rewriting vertex buffers.",
+                severity=Severity.INFO,
+                action_class=ActionClass.REPORT_ONLY,
+                confidence=1.0,
+                affected=tuple(
+                    f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
+                    for item in unused_vertex_data
+                ),
+                evidence=tuple(
+                    FindingEvidence(
+                        observation=(
+                            f"Mesh {item.mesh_index} primitive {item.primitive_index} contains "
+                            f"{item.unused_position_count} unreferenced positions."
+                        ),
+                        observed_value=item.unused_position_count,
+                    )
+                    for item in unused_vertex_data
+                ),
+                profile_rule=None,
+            )
+        )
+
+    cache_locality_risks = tuple(
+        primitive
+        for primitive in diagnostics.primitives
+        if primitive.valid_triangle_count >= 100 and primitive.vertex_cache_acmr > 2.0
+    )
+    if cache_locality_risks:
+        findings.append(
+            _finding(
+                code="VERTEX_CACHE_LOCALITY_RISK",
+                domain="performance",
+                title="Triangle order has poor estimated vertex-cache locality",
+                description=(
+                    "The FIFO-16 estimate is a hardware-independent warning; target-GPU "
+                    "measurement remains authoritative."
+                ),
+                severity=Severity.INFO,
+                action_class=ActionClass.REPORT_ONLY,
+                confidence=0.9,
+                affected=tuple(
+                    f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
+                    for item in cache_locality_risks
+                ),
+                evidence=tuple(
+                    FindingEvidence(
+                        observation=(
+                            f"Mesh {item.mesh_index} primitive {item.primitive_index} has an "
+                            f"estimated FIFO-16 ACMR of {item.vertex_cache_acmr:.3g}."
+                        ),
+                        observed_value=item.vertex_cache_acmr,
+                        expected_value={"heuristic_attention_above": 2.0},
+                        inference=(
+                            "More than two estimated vertex transforms per triangle suggests "
+                            "poor index locality."
+                        ),
+                    )
+                    for item in cache_locality_risks
                 ),
                 profile_rule=None,
             )
@@ -1424,6 +1563,16 @@ def render_inspection_report(inspection: InspectionResult) -> str:
                 "- Apparent duplicate records: "
                 f"{len(inspection.diagnostics.duplicate_material_groups)} material groups, "
                 f"{len(inspection.diagnostics.duplicate_texture_groups)} texture groups",
+                "- Mesh topology: "
+                f"{sum(item.boundary_edge_count for item in primitives)} boundary edges, "
+                f"{sum(item.non_manifold_edge_count for item in primitives)} non-manifold edges, "
+                f"{sum(item.inconsistent_winding_edge_count for item in primitives)} "
+                "inconsistent shared edges",
+                "- Mesh efficiency: "
+                f"{sum(item.unused_position_count for item in primitives)} unused positions; "
+                "FIFO-16 ACMR range "
+                f"{min((item.vertex_cache_acmr for item in primitives), default=0):.3g}-"
+                f"{max((item.vertex_cache_acmr for item in primitives), default=0):.3g}",
             )
         )
     lines.extend(("", "## Findings", ""))

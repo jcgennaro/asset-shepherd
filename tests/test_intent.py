@@ -15,6 +15,8 @@ def test_asset_intent_is_canonical_and_reproducible() -> None:
         "  A shader lantern with warm light and translucent glass.  ",
         AssetTargetUse.STATIC_GAME_ASSET,
         120.0,
+        expected_piece_count=2,
+        expected_piece_count_evidence="The description identifies a matched lantern pair.",
         intent_id="a" * 32,
         confirmed_at=confirmed_at,
     )
@@ -22,6 +24,8 @@ def test_asset_intent_is_canonical_and_reproducible() -> None:
         "  A shader lantern with warm light and translucent glass.  ",
         AssetTargetUse.STATIC_GAME_ASSET,
         120.0,
+        expected_piece_count=2,
+        expected_piece_count_evidence="The description identifies a matched lantern pair.",
         intent_id="a" * 32,
         confirmed_at=confirmed_at,
     )
@@ -29,6 +33,7 @@ def test_asset_intent_is_canonical_and_reproducible() -> None:
     assert first == second
     assert first.original_description == ("A shader lantern with warm light and translucent glass.")
     assert "static game asset for Unreal at 1.2 m tall" in first.confirmed_story
+    assert first.expected_piece_count == 2
     validate_asset_intent(first)
 
 

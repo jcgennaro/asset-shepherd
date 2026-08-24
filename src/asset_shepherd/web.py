@@ -7,6 +7,7 @@ import math
 import mimetypes
 import os
 import re
+import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -80,6 +81,13 @@ _PACKAGE_ROOT = Path(__file__).resolve().parent
 _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
 _DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
 mimetypes.add_type("model/gltf-binary", ".glb")
+
+
+def _asset_download_stem(asset_name: str) -> str:
+    """Return a portable filename stem from the agent-assigned asset name."""
+    ascii_name = unicodedata.normalize("NFKD", asset_name).encode("ascii", "ignore").decode()
+    stem = re.sub(r"[^a-z0-9]+", "-", ascii_name.casefold()).strip("-")
+    return stem[:64].rstrip("-") or "asset-shepherd-model"
 
 
 def _static_asset_version() -> str:
@@ -1091,12 +1099,12 @@ def _target_expectations(
         ),
         ExpectationView(
             label="Assembly",
-            value="No semantic piece-count assumption",
-            source="Unspecified",
-            detail=(
-                "I\u2019ll report the structure I find without merging, splitting, or guessing "
-                "pieces."
+            value=(
+                f"{target.expected_piece_count} expected semantic "
+                f"{'piece' if target.expected_piece_count == 1 else 'pieces'}"
             ),
+            source="Inferred from your description",
+            detail=target.expected_piece_count_evidence,
         ),
     )
 
@@ -1120,15 +1128,7 @@ def _expectation_groups(
         "Y-up" if profile.orientation.require_y_up_geometry else "orientation unrestricted",
         "grounded" if profile.orientation.require_ground_contact else "ground contact optional",
     ]
-    file_validity = ExpectationView(
-        label="File validity",
-        value="Valid GLB structure and geometry data",
-        source="Always required",
-        detail=(
-            "I\u2019ll check the container, references, geometry attributes, indices, and finite "
-            "values."
-        ),
-    )
+    piece_label = "piece" if target.expected_piece_count == 1 else "pieces"
     return (
         ExpectationGroupView(
             label="Purpose",
@@ -1142,8 +1142,8 @@ def _expectation_groups(
         ),
         ExpectationGroupView(
             label="Structure",
-            summary="Piece count unspecified · valid GLB required",
-            items=(expectations[5], file_validity),
+            summary=f"{target.expected_piece_count} expected semantic {piece_label}",
+            items=(expectations[5],),
         ),
     )
 
@@ -1238,6 +1238,8 @@ class WebJobStore:
                     intent.original_description,
                     intent.target_use,
                     intent.target_height_cm,
+                    expected_piece_count=intent.target.expected_piece_count,
+                    expected_piece_count_evidence=(intent.target.expected_piece_count_evidence),
                     intent_id=intent.intent_id,
                 )
             return intent.confirmed
@@ -2926,6 +2928,7 @@ def create_app(
         return FileResponse(
             job.output_dir / "repaired.glb",
             media_type="model/gltf-binary",
+            filename=f"{_asset_download_stem(job.target_intake.asset_name)}.glb",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
@@ -2952,7 +2955,7 @@ def create_app(
         return FileResponse(
             result_zip,
             media_type="application/zip",
-            filename=f"asset-shepherd-{job.job_id[:8]}.zip",
+            filename=f"{_asset_download_stem(job.target_intake.asset_name)}-evidence.zip",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
@@ -3364,6 +3367,7 @@ def create_app(
         return FileResponse(
             workspace.output_dir / "repaired.glb",
             media_type="model/gltf-binary",
+            filename=f"{_asset_download_stem(workspace.record.asset_name)}.glb",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
@@ -3398,7 +3402,7 @@ def create_app(
         return FileResponse(
             result_zip,
             media_type="application/zip",
-            filename=f"asset-shepherd-{workspace_id[:8]}.zip",
+            filename=f"{_asset_download_stem(workspace.record.asset_name)}-evidence.zip",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 

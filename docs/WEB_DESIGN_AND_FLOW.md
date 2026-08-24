@@ -200,9 +200,11 @@ typed durable state rather than unstructured chat claims.
 
 Intended use is context and a support-boundary check, not a preset. Static-asset intent receives the
 complete supported workflow. Character intent is retained, but the current product offers only
-static inspection/normalization and an external rigging or animation handoff. Semantic piece count
-is currently **unspecified**: inspection reports roots, nodes, meshes, and primitives, but does not
-pretend those structural counts identify artistic pieces and does not merge or split geometry.
+static inspection/normalization and an external rigging or animation handoff. The intake agent
+records the expected semantic piece count—normally one, or more only when the description clearly
+identifies a pair or set. Inspection still reports roots, nodes, meshes, primitives, and connected
+topology as distinct structural facts; none of those counts is treated as an artistic piece count,
+and Asset Shepherd does not merge or split geometry.
 
 ### Decide
 
@@ -221,6 +223,10 @@ served through the repaired-asset route. A structurally unsupported input receiv
 inspection-only package without `repaired.glb`. A clean input is packaged without unnecessary GLB
 reserialization or mutation.
 
+The direct fixed-model download uses the concise asset name assigned during intake, normalized to a
+safe `.glb` filename. The evidence ZIP similarly uses that asset name externally, while its internal
+seven-file contract retains `repaired.glb` for deterministic consumers.
+
 If at least one repair executed, Download presents source and verified candidate in one shared 3D
 scene at their actual relative scales. The user can orbit, pan, zoom, or fit both, before, or after.
 Projected world-bounds corners drive persistent **Before** and **After** targeting brackets and
@@ -230,6 +236,10 @@ human-readable meter ticks, and an optional approximately 20-centimeter banana p
 physical reference. The HUD and banana remain display-only. Standardized source/candidate render
 artifacts must also be recorded for the workflow model's visual assessment; they do not alter the
 source, candidate, approved action, invariant verification, or package bytes.
+
+Both/Before/After fit controls smoothly interpolate camera target, orbit, and distance. Summoning
+the optional banana sends it through a short curved twirl; dismissing it flattens it before removal.
+Reduced-motion preference skips both effects.
 
 The Apache-licensed Google `<model-viewer>` 4.3.1 browser distribution is served from the package,
 so previews do not rely on a public CDN at runtime.

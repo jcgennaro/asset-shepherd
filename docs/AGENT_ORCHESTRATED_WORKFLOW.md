@@ -136,7 +136,9 @@ sensing capabilities should include:
 
 - structural and official glTF validation;
 - world bounds, transforms, hierarchy, and ground-plane measurements;
-- geometry, topology, normals, UV availability, and component counts;
+- geometry, normals, UV availability, and deterministic mesh diagnostics: boundary, non-manifold,
+  and inconsistently wound edges; index-topology components; unused/coincident positions; vertex
+  reuse; and estimated FIFO-16 cache locality;
 - material, texture, alpha, and emissive metadata;
 - standardized front, side, top, perspective, and turntable renders;
 - before/after render and metric comparison; and
@@ -144,6 +146,12 @@ sensing capabilities should include:
 
 The agent may call additional sensors, ask the user a focused question, or stop when the evidence is
 already sufficient. A fixed seven-stage script must not decide this sequence for it.
+
+Edge-connected components are not semantic pieces, and coincident seam vertices can separate
+otherwise adjacent faces. Open boundaries, component count, coincident positions, and cache
+estimates therefore require target-aware agent interpretation. Non-manifold or inconsistently wound
+shared edges are objective defects, but remain report-only because no topology rewrite tool is
+authorized. Performance estimates identify likely risk; target-engine/GPU profiling is decisive.
 
 ### 4. Form an assessment
 

@@ -80,6 +80,8 @@ def test_clean_fixture_has_no_false_severe_or_automatic_findings() -> None:
     assert all(not item.attribute_count_mismatches for item in inspection.diagnostics.primitives)
     assert all(item.non_finite_position_count == 0 for item in inspection.diagnostics.primitives)
     assert all(item.out_of_range_index_count == 0 for item in inspection.diagnostics.primitives)
+    assert all(item.topology_analyzed for item in inspection.diagnostics.primitives)
+    assert all(item.non_manifold_edge_count == 0 for item in inspection.diagnostics.primitives)
 
 
 def test_repeated_inspection_and_cli_artifacts_are_deterministic(tmp_path: Path) -> None:
