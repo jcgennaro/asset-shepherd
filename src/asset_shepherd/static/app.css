@@ -3590,6 +3590,59 @@ textarea.asset-description-input:focus {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.result-review {
+  display: grid;
+  gap: 14px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.result-review h3,
+.result-review p {
+  margin: 0;
+}
+
+.result-review-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.result-review-actions details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.result-review-actions details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.result-review-actions details form {
+  display: grid;
+  gap: 9px;
+  width: min(620px, 75vw);
+  margin-top: 12px;
+}
+
+.result-review-actions textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.limit-note {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 @media (max-width: 1050px) {
   .hosted-columns {
     grid-template-columns: 1fr;
@@ -3695,6 +3748,16 @@ textarea.asset-description-input:focus {
 
   .feedback-reasons {
     grid-template-columns: 1fr;
+  }
+
+  .result-review-actions,
+  .result-review-actions details,
+  .result-review-actions details form {
+    width: 100%;
+  }
+
+  .result-review-actions {
+    flex-direction: column;
   }
 
   .universal-expectations dl div {

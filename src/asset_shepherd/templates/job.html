@@ -162,6 +162,36 @@
           </div>
         {% endif %}
 
+        {% if workflow_result and job.runtime.job.result %}
+          <section class="result-review" aria-labelledby="result-review-title">
+            {% if accepted %}
+              <h3 id="result-review-title">Result accepted.</h3>
+            {% else %}
+              <h3 id="result-review-title">Did we get it right?</h3>
+              {% if continuation_error %}<p class="form-error">{{ continuation_error }}</p>{% endif %}
+              <div class="result-review-actions">
+                <form action="{{ url_for('review_job_result', job_id=job.job_id) }}" method="post">
+                  <input type="hidden" name="decision" value="accept">
+                  <button type="submit" class="primary-button">Yes</button>
+                </form>
+                {% if can_continue %}
+                  <details>
+                    <summary class="secondary-button">No</summary>
+                    <form action="{{ url_for('review_job_result', job_id=job.job_id) }}" method="post" data-busy-form>
+                      <input type="hidden" name="decision" value="continue">
+                      <label for="repair-feedback">What still needs attention?</label>
+                      <textarea id="repair-feedback" name="feedback" maxlength="1000" required></textarea>
+                      <button type="submit" class="secondary-button" data-submit-button>Try another pass</button>
+                    </form>
+                  </details>
+                {% elif job.runtime.job.agent_orchestrated %}
+                  <span class="limit-note">Turn limit reached</span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </section>
+        {% endif %}
+
         <details class="technical-details">
           <summary><span>Verification and package details</span><small>{% if verification %}{{ verification.state }}{% else %}Not available{% endif %}</small></summary>
           <div class="details-body">

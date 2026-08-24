@@ -19,6 +19,7 @@ from asset_shepherd.models import (
     AssetIntentProvenance,
     CheckBasis,
     CheckStatus,
+    ConversationTurnRecord,
     DecisionRecord,
     Decisions,
     DecisionSource,
@@ -92,6 +93,7 @@ class AgentJob:
     profile_policy: ProfilePolicyProvenance | None = None
     asset_intent: AssetIntentProvenance | None = None
     agent_orchestrated: bool = False
+    max_turns: int = 5
     clock: Callable[[], datetime] = _utc_now
     verification_function: VerificationFunction = verify_repair
     profile: ProjectProfile = field(init=False)
@@ -109,16 +111,23 @@ class AgentJob:
     correction_attempts: int = field(default=0, init=False)
     agent_assessment: AgentRepairAssessment | None = field(default=None, init=False)
     candidate_reassessment: AgentCandidateReassessment | None = field(default=None, init=False)
+    turn_index: int = field(default=0, init=False)
+    prior_turns: tuple[ConversationTurnRecord, ...] = field(default=(), init=False)
+    accepted: bool = field(default=False, init=False)
+    original_source: Path = field(init=False)
 
     def __post_init__(self) -> None:
         """Resolve trusted caller paths before exposing path-free agent tools."""
         self.source = self.source.resolve(strict=True)
+        self.original_source = self.source
         self.profile_path = self.profile_path.resolve(strict=True)
         self.output_dir = self.output_dir.resolve(strict=False)
         if self.source.suffix.lower() != ".glb":
             raise AgentWorkflowError("Agent jobs accept exactly one .glb source")
         if self.output_dir == self.source:
             raise AgentWorkflowError("Agent output directory cannot be the source file")
+        if not 1 <= self.max_turns <= 50:
+            raise AgentWorkflowError("Agent turn limit must be between 1 and 50")
         self.profile = ProjectProfile.model_validate_json(
             self.profile_path.read_text(encoding="utf-8")
         )
@@ -154,6 +163,11 @@ class AgentJob:
             "pending_interrupt_id": self.pending_interrupt_id,
             "correction_attempts": self.correction_attempts,
             "agent_orchestrated": self.agent_orchestrated,
+            "max_turns": self.max_turns,
+            "turn_index": self.turn_index,
+            "working_source": str(self.source) if self.turn_index else None,
+            "prior_turns": [turn.model_dump(mode="json") for turn in self.prior_turns],
+            "accepted": self.accepted,
             "phase": (
                 "complete"
                 if self.result is not None
@@ -190,6 +204,31 @@ class AgentJob:
             str(pending_interrupt_id) if pending_interrupt_id is not None else None
         )
         self.correction_attempts = int(state.get("correction_attempts", 0))
+        persisted_max_turns = int(state.get("max_turns", self.max_turns))
+        if not 1 <= persisted_max_turns <= 50:
+            raise AgentWorkflowError("Persisted agent turn limit is invalid")
+        self.max_turns = persisted_max_turns
+        self.turn_index = int(state.get("turn_index", 0))
+        self.prior_turns = tuple(
+            ConversationTurnRecord.model_validate_json(json.dumps(turn))
+            for turn in state.get("prior_turns", [])
+        )
+        if self.turn_index != len(self.prior_turns) or self.turn_index >= self.max_turns:
+            raise AgentWorkflowError("Persisted conversation turn chain is invalid")
+        self.accepted = bool(state.get("accepted", False))
+        working_source = state.get("working_source")
+        if working_source is not None:
+            restored_source = Path(str(working_source)).resolve(strict=True)
+            turn_root = (self.output_dir.parent / "turns").resolve(strict=False)
+            try:
+                restored_source.relative_to(turn_root)
+            except ValueError as error:
+                raise AgentWorkflowError(
+                    "Persisted working source is outside turn history"
+                ) from error
+            if restored_source.suffix.lower() != ".glb":
+                raise AgentWorkflowError("Persisted working source is not a GLB")
+            self.source = restored_source
         persisted_agent_mode = bool(state.get("agent_orchestrated", False))
         if persisted_agent_mode != self.agent_orchestrated:
             raise AgentWorkflowError("Persisted planning authority does not match this runtime")
@@ -259,6 +298,115 @@ class AgentJob:
     def set_pending_interrupt(self, interrupt_id: str | None) -> None:
         """Persist the exact native interrupt identity or its durable resolution."""
         self.pending_interrupt_id = interrupt_id
+        self._persist_runtime_state()
+
+    @property
+    def turns_remaining(self) -> int:
+        """Return how many additional user-requested repair turns remain."""
+        return max(0, self.max_turns - self.turn_index - 1)
+
+    def begin_next_turn(self, feedback: str) -> ConversationTurnRecord:
+        """Archive the completed turn and make its candidate the next immutable input."""
+        feedback = feedback.strip()
+        if not self.agent_orchestrated:
+            raise AgentWorkflowError("Multi-turn repair requires agent-orchestrated mode")
+        if self.accepted:
+            raise AgentWorkflowError("This conversation is already accepted")
+        if not feedback:
+            raise AgentWorkflowError("Explain what still needs attention")
+        if len(feedback) > 1000:
+            raise AgentWorkflowError("Repair feedback must be 1,000 characters or fewer")
+        if self.turns_remaining <= 0:
+            raise AgentWorkflowError("This conversation has reached its configured turn limit")
+        if (
+            self.result is None
+            or self.provenance is None
+            or self.last_verification is None
+            or self.inspection is None
+            or self.selected_plan is None
+        ):
+            raise AgentWorkflowError("The current turn must finish before another can begin")
+        repaired = self.output_dir / "repaired.glb"
+        failed_candidate = self.output_dir / "candidate.glb"
+        next_source = repaired if repaired.is_file() else failed_candidate
+        if not next_source.is_file():
+            raise AgentWorkflowError("The completed turn has no candidate for another pass")
+        result_zip = self.output_dir / "result.zip"
+        if not result_zip.is_file() or self.provenance.output_sha256 is None:
+            raise AgentWorkflowError("The completed turn is missing its evidence package")
+        record = ConversationTurnRecord(
+            turn_index=self.turn_index,
+            source_sha256=self.inspection.package.file_sha256,
+            output_sha256=self.provenance.output_sha256,
+            plan_id=self.selected_plan.plan_id,
+            agent_assessment_id=(
+                self.agent_assessment.assessment_id if self.agent_assessment is not None else None
+            ),
+            candidate_reassessment_id=(
+                self.candidate_reassessment.reassessment_id
+                if self.candidate_reassessment is not None
+                else None
+            ),
+            verification_state=self.last_verification.state,
+            result_zip_sha256=sha256(result_zip.read_bytes()).hexdigest(),
+            continuation_feedback=feedback,
+        )
+        turn_root = self.output_dir.parent / "turns" / f"turn-{self.turn_index:03d}"
+        if turn_root.exists():
+            raise AgentWorkflowError("Conversation turn archive already exists")
+        turn_root.parent.mkdir(parents=True, exist_ok=True)
+        turn_root.mkdir()
+        archive_output = turn_root / "output"
+        shutil.move(str(self.output_dir), str(archive_output))
+        for private_path in (self.agent_assessment_path, self.candidate_reassessment_path):
+            if private_path.is_file():
+                shutil.move(str(private_path), str(turn_root / private_path.name))
+        evidence_root = self.output_dir.parent / "agent_evidence"
+        if evidence_root.is_dir():
+            shutil.move(str(evidence_root), str(turn_root / "agent_evidence"))
+        archived_source = archive_output / next_source.name
+        self.prior_turns = (*self.prior_turns, record)
+        self.turn_index += 1
+        self.source = archived_source.resolve(strict=True)
+        self.started_at = None
+        self.inspection = None
+        self.full_plan = None
+        self.selection = None
+        self.selected_plan = None
+        self.decisions = None
+        self.outcome = None
+        self.provenance = None
+        self.last_verification = None
+        self.result = None
+        self.pending_interrupt_id = None
+        self.correction_attempts = 0
+        self.agent_assessment = None
+        self.candidate_reassessment = None
+        manifest = {
+            "schema_version": 1,
+            "max_turns": self.max_turns,
+            "current_turn_index": self.turn_index,
+            "turns": [turn.model_dump(mode="json") for turn in self.prior_turns],
+        }
+        _write_json(self.output_dir.parent / "conversation.json", manifest)
+        self._persist_runtime_state()
+        return record
+
+    def record_user_acceptance(self) -> None:
+        """Durably close the current conversation after the user accepts its result."""
+        if self.result is None:
+            raise AgentWorkflowError("A completed turn is required before acceptance")
+        self.accepted = True
+        payload = {
+            "schema_version": 1,
+            "max_turns": self.max_turns,
+            "current_turn_index": self.turn_index,
+            "accepted": True,
+            "accepted_at": self.clock().isoformat(),
+            "turns": [turn.model_dump(mode="json") for turn in self.prior_turns],
+            "current_result": self.result.model_dump(mode="json"),
+        }
+        _write_json(self.output_dir.parent / "conversation.json", payload)
         self._persist_runtime_state()
 
     @property
@@ -741,6 +889,8 @@ class AgentJob:
             profile_policy=self.profile_policy,
             asset_intent=self.asset_intent,
             agent_assessment=self.agent_assessment,
+            conversation_turn_index=self.turn_index,
+            prior_turns=self.prior_turns,
         )
         _write_json(
             self.output_dir / "decisions.json",
@@ -794,6 +944,8 @@ class AgentJob:
                 profile_policy=self.profile_policy,
                 asset_intent=self.asset_intent,
                 agent_assessment=self.agent_assessment,
+                conversation_turn_index=self.turn_index,
+                prior_turns=self.prior_turns,
             )
             verification = build_blocked_verification(self.selected_plan)
             self.last_verification = verification

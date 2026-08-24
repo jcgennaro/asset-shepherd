@@ -85,6 +85,34 @@
               </article>{% endif %}
             </div>
           {% endif %}
+          <section class="result-review" aria-labelledby="hosted-result-review-title">
+            {% if record.accepted %}
+              <h3 id="hosted-result-review-title">Result accepted.</h3>
+            {% else %}
+              <h3 id="hosted-result-review-title">Did we get it right?</h3>
+              <div class="result-review-actions">
+                <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post">
+                  <input type="hidden" name="command_id" value="{{ command_id }}">
+                  <input type="hidden" name="decision" value="accept">
+                  <button type="submit" class="primary-button">Yes</button>
+                </form>
+                {% if can_continue %}
+                  <details>
+                    <summary class="secondary-button">No</summary>
+                    <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form>
+                      <input type="hidden" name="command_id" value="{{ command_id }}">
+                      <input type="hidden" name="decision" value="continue">
+                      <label for="hosted-repair-feedback">What still needs attention?</label>
+                      <textarea id="hosted-repair-feedback" name="feedback" maxlength="1000" required></textarea>
+                      <button type="submit" class="secondary-button" data-submit-button>Try another pass</button>
+                    </form>
+                  </details>
+                {% elif job.agent_orchestrated %}
+                  <span class="limit-note">Turn limit reached</span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </section>
         {% endif %}
 
         {% if record.last_answer %}

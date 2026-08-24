@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** D037 agent-orchestrated planner checkpoint (this file is included)
+**Current commit:** D038 bounded multi-turn agent loop (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 live agent-authored planning and visual reassessment |  | First action loop is agent-authored and live-tested; fresh second-action/approval turn and remaining D036 evaluations stay open before Bedrock/deployment |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop |  | Repeated feedback/action/approval turns are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -42,13 +42,32 @@ measurements without legacy height/orientation/grounding verdicts; the agent sel
 and requested scale, rotation, grounding, and naming components; deterministic code adds none. An
 executed action cannot verify until the agent compares recorded source and candidate renders.
 
-This is a checkpoint, not full D036 completion. The same durable conversation still needs a fresh
-second action with a new proposal and approval, plus the ambiguous-orientation and changed-goal
-representative evaluations. Deterministic code remains the measurement, enforcement,
-exact-mutation, invariant-verification, and packaging layer.
+D038 makes that action cycle repeatable rather than adding a special second pass. User feedback
+archives the completed turn, promotes its candidate to the next immutable input, and invokes the
+same stateful agent with fresh sensing and authorization. Remaining D036 work is representative
+ambiguous-orientation and changed-goal live evaluation. Deterministic code remains the measurement,
+enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D038 bounded conversation loop: form-led and durable hosted results now ask **Did we get it
+  right?** Yes records durable acceptance; No opens one 1,000-character feedback field and begins a
+  fresh agent turn. There is no hard-coded second attempt. The per-job limit is frozen from
+  `ASSET_SHEPHERD_MAX_TURNS` (default 5; range 1–50). Completed outputs, assessments, and source/
+  candidate renders move to `turns/turn-NNN/`; `conversation.json`, runtime state, hosted events,
+  and current packaged provenance link the ordered turns. A three-turn regression proves the
+  candidate/source transition, contiguous provenance, and remaining-limit calculation. Restart
+  reconstruction restores the exact current GLB and frozen limit.
+- D038 live continuation: the hosted OpenAI Responses workspace completed turn 0 on
+  `clean_robot.glb`, accepted **No** plus feedback, archived the complete turn-0 output and four
+  source renders, promoted the verified candidate to turn 1, and completed a fresh agent inspection
+  and package. Turn-1 provenance records `conversation_turn_index: 1` and one prior turn with its
+  source/output hashes, assessment/plan IDs, verification state, result-ZIP hash, and continuation
+  feedback. Desktop and 390 x 844 browser checks expose one compact Yes/No review, reveal one
+  feedback field only after No, have no horizontal overflow, and emit no browser warning or error.
+- `docs/AGENT_LOOP_FLOW.md` diagrams intake → observe → assess → preview → approve → mutate →
+  re-observe → verify → user feedback, including both loops, required resources, agent-visible
+  tools, exact mutation boundary, durable artifacts, and stop/usage conditions.
 - D037 live first-action loop: OpenAI Responses with `gpt-5.6-luna`/xhigh inspected the generated
   standing-robot fixture, requested source renders, identified source Y as semantic height, left
   rotation at zero, and requested scale, grounding, and index-preserving names. After approval it
@@ -155,7 +174,7 @@ exact-mutation, invariant-verification, and packaging layer.
   pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
   at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
   scrolls inside its own container. Browser console warnings and errors are empty.
-- Tests: `uv run pytest` — 116 passed and the opt-in live-provider test skipped. D019–D037 acceptance
+- Tests: `uv run pytest` — 117 passed and the opt-in live-provider test skipped. D019–D038 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -361,11 +380,12 @@ record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Complete the remaining D036 local cases before Bedrock or deployment work: allow the agent to
-re-observe a candidate, originate a fresh supported second action, obtain a new exact approval, and
-finish in the same durable conversation. Add changed-goal and ambiguous-orientation live
-evaluations. Preserve the current mutation scope, exact authorization, durability, and invariant
-checks; do not restore deterministic target-dependent planning.
+Complete the remaining D036 local cases before Bedrock or deployment work: add changed-goal and
+ambiguous-orientation live evaluations, then exercise a consequential continuation turn whose fresh
+agent assessment requests a new action and approval. The no-change live continuation, durable
+archive, provenance link, and browser review are complete. Preserve the current mutation scope,
+exact authorization, durability, and invariant checks; do not restore deterministic target-dependent
+planning.
 
-RW2 registration resumes when the user supplies Debug Beetle. No paid invocation or AWS resource
-creation is authorized yet.
+RW2 registration resumes when the user supplies Debug Beetle. AWS resource creation is not
+authorized yet; local OpenAI validation uses only the explicitly configured interim provider.

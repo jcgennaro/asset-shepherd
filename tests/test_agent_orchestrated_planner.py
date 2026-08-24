@@ -49,6 +49,27 @@ def _write_fake_views(root: Path) -> None:
         (root / name).write_bytes(b"recorded-test-view")
 
 
+def _complete_accept_turn(job: AgentJob, suffix: str) -> None:
+    job.inspect()
+    job.register_agent_plan(
+        initiating_tool_call_id=f"accept-tool-{suffix}",
+        disposition="ACCEPT",
+        summary="The current candidate needs no additional supported mutation in this turn.",
+        evidence=["Objective inspection reports a valid eligible static GLB."],
+        confidence=0.9,
+        semantic_height_axis=None,
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=False,
+        source_views_used=[],
+    )
+    job.execute(approved=None, interrupt_id=None)
+    _, result = job.verify_and_package()
+    assert result is not None
+
+
 def _long_quadruped_bounds() -> Bounds3D:
     return Bounds3D(
         minimum_m=(-0.2353515625, 0.0, -0.4990234375),
@@ -170,6 +191,7 @@ def test_executed_agent_action_requires_and_packages_visual_reassessment(
         output,
         asset_intent=_intent(),
         agent_orchestrated=True,
+        max_turns=2,
     )
     job.inspect()
     evidence_root = output.parent / "agent_evidence"
@@ -222,3 +244,71 @@ def test_executed_agent_action_requires_and_packages_visual_reassessment(
     with ZipFile(output / "result.zip") as archive:
         packaged = Provenance.model_validate_json(archive.read("provenance.json"))
     assert packaged.candidate_reassessment == reassessment
+
+    record = job.begin_next_turn("The feet still look too far above the intended contact plane.")
+    archived_output = output.parent / "turns" / "turn-000" / "output"
+    assert record.turn_index == 0
+    assert archived_output.is_dir()
+    assert (archived_output / "result.zip").is_file()
+    assert job.turn_index == 1
+    assert job.turns_remaining == 0
+    assert job.source == (archived_output / "repaired.glb").resolve()
+    assert job.inspection is None
+    assert not output.exists()
+    assert not evidence_root.exists()
+    assert (output.parent / "turns" / "turn-000" / "agent_evidence").is_dir()
+    with pytest.raises(AgentWorkflowError, match="turn limit"):
+        job.begin_next_turn("Try once more.")
+
+    restored = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    assert restored.max_turns == 2
+    assert restored.turn_index == 1
+    assert restored.prior_turns == (record,)
+    assert restored.source == job.source
+    next_inspection = restored.inspect()
+    assert next_inspection.package.file_sha256 == record.output_sha256
+
+
+def test_conversation_loop_is_not_hard_coded_to_a_second_turn(tmp_path: Path) -> None:
+    """Any completed candidate may become another turn until the frozen limit is reached."""
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        tmp_path / "output",
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+        max_turns=4,
+    )
+    _complete_accept_turn(job, "zero")
+    first = job.begin_next_turn("Check the latest candidate again with the updated art review.")
+    _complete_accept_turn(job, "one")
+    second = job.begin_next_turn("One more review pass is needed for the intended placement.")
+    _complete_accept_turn(job, "two")
+
+    assert (first.turn_index, second.turn_index) == (0, 1)
+    assert job.turn_index == 2
+    assert job.turns_remaining == 1
+    assert tuple(turn.turn_index for turn in job.prior_turns) == (0, 1)
+    assert job.provenance is not None
+    assert job.provenance.conversation_turn_index == 2
+    assert job.provenance.prior_turns == job.prior_turns
+
+    job.record_user_acceptance()
+    assert job.accepted is True
+    with pytest.raises(AgentWorkflowError, match="already accepted"):
+        job.begin_next_turn("Attempt to reopen a completed conversation.")
+
+    restored = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        tmp_path / "output",
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    assert restored.accepted is True

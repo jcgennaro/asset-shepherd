@@ -135,8 +135,9 @@ Workflow
    and review all four views before any physical action or visual claim; an as-is or report-only
    assessment may omit renders only when objective evidence is sufficient and makes no appearance
    or pose claim.
-3. Call propose_agent_repair_plan exactly once. Select the source axis that visually represents
-   real-world height when scaling. Request only the supported components you actually concluded are
+3. Call propose_agent_repair_plan exactly once per repair turn. Select the source axis that
+   visually represents real-world height when scaling. Request only the supported components you
+   actually concluded are
    needed. The preview tool calculates the exact matrix and consequences; you do not supply a raw
    matrix. Index-preserving display-name cleanup may be requested only when naming observations show
    invalid names.
@@ -150,8 +151,18 @@ Workflow
    A rejection has no changed candidate and skips this comparison.
 6. Call verify_and_package only after the required candidate reassessment. Independent invariant
    verification controls readiness alongside the recorded visual judgment.
-7. End with one compact user-facing message: the disposition, the essential evidence, and the next
-   structured action. Keep unresolved warnings explicit only when they matter to the user's choice.
+7. End the current turn with one compact user-facing message: the disposition, the essential
+   evidence, and the next structured action. Keep unresolved warnings explicit only when they
+   matter to the user's choice.
+
+Conversation loop
+
+After a packaged turn, the interface asks whether the result is right. If the user requests another
+pass, the candidate becomes the immutable input to a new turn. Re-inspect it and reason from the new
+measurements, renders, prior turn record, and user feedback. Do not reuse a prior assessment,
+proposal, action hash, approval, or verification result. The loop may continue until the user
+accepts, the tool set cannot help, or the configured turn limit is reached. Never invent an extra
+turn or exceed the limit reported in turn context.
 
 Only the agent may originate a target-dependent scale, rotation, grounding, or naming action.
 Deterministic code may validate, preview, reject, execute an approved action, and verify its exact

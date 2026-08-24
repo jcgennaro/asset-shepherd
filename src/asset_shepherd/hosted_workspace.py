@@ -139,6 +139,8 @@ class HostedWorkspaceRecord(ContractModel):
     processed_commands: dict[str, str] = Field(default_factory=dict)
     events: tuple[WorkspaceEvent, ...] = ()
     last_answer: EvidenceAnswer | None = None
+    max_turns: int = Field(default=5, ge=1, le=50)
+    accepted: bool = False
 
 
 @dataclass
@@ -222,11 +224,15 @@ class HostedWorkspaceStore:
         work_root: Path,
         family: ProjectProfile,
         intake_analyzer: TargetIntakeAnalyzer | None = None,
+        max_agent_turns: int = 5,
     ) -> None:
         """Bind durable workspaces to one trusted parameterized policy family."""
         self.work_root = work_root.resolve(strict=False)
         self.family = family
         self.intake_analyzer = intake_analyzer or DeterministicTargetIntakeAnalyzer()
+        if not 1 <= max_agent_turns <= 50:
+            raise ValueError("Agent turn limit must be between 1 and 50")
+        self.max_agent_turns = max_agent_turns
         self._lock = RLock()
 
     def _record_path(self, workspace_id: str) -> Path:
@@ -314,6 +320,7 @@ class HostedWorkspaceStore:
                     if preflight.package.parse_success
                     else f"Preflight could not read this GLB: {preflight.parse_error}"
                 ),
+                max_turns=self.max_agent_turns,
             )
             record = self._append_event(
                 record,
@@ -695,6 +702,7 @@ class HostedWorkspaceStore:
                 profile_policy=policy,
                 asset_intent=intent,
                 agent_orchestrated=agent_mode,
+                max_turns=workspace.record.max_turns,
             )
             runtime = (
                 build_live_agent(
@@ -743,6 +751,7 @@ class HostedWorkspaceStore:
             profile_policy=record.profile_policy,
             asset_intent=record.intent,
             agent_orchestrated=persisted_agent_mode,
+            max_turns=record.max_turns,
         )
         workspace.runtime = (
             build_live_agent(
@@ -791,37 +800,42 @@ class HostedWorkspaceStore:
             return
         event_types = {event.event_type for event in workspace.record.events}
         job = runtime.job
-        if job.inspection is not None and "POLICY_INSPECTION_COMPLETED" not in event_types:
+        suffix = "" if job.turn_index == 0 else f"_TURN_{job.turn_index}"
+        inspection_event = f"POLICY_INSPECTION_COMPLETED{suffix}"
+        plan_event = f"REPAIR_PLAN_REGISTERED{suffix}"
+        interrupt_event = f"APPROVAL_INTERRUPT_CREATED{suffix}"
+        complete_event = f"DETERMINISTIC_WORKFLOW_COMPLETED{suffix}"
+        if job.inspection is not None and inspection_event not in event_types:
             workspace.record = self._append_event(
                 workspace.record,
-                "POLICY_INSPECTION_COMPLETED",
+                inspection_event,
                 evidence_refs=(job.inspection.inspection_id,),
                 payload={
                     "finding_count": len(job.inspection.findings),
                     "repair_eligibility": job.inspection.repair_eligibility.value,
                 },
             )
-        if job.selected_plan is not None and "REPAIR_PLAN_REGISTERED" not in event_types:
+        if job.selected_plan is not None and plan_event not in event_types:
             workspace.record = self._append_event(
                 workspace.record,
-                "REPAIR_PLAN_REGISTERED",
+                plan_event,
                 evidence_refs=(job.selected_plan.plan_id,),
                 payload={
                     "candidate_ids": [candidate.id for candidate in job.selected_plan.candidates],
                     "approval_action_ids": list(job.selected_plan.approval_action_ids),
                 },
             )
-        if job.pending_interrupt_id is not None and "APPROVAL_INTERRUPT_CREATED" not in event_types:
+        if job.pending_interrupt_id is not None and interrupt_event not in event_types:
             workspace.record = self._append_event(
                 workspace.record,
-                "APPROVAL_INTERRUPT_CREATED",
+                interrupt_event,
                 evidence_refs=(job.pending_interrupt_id,),
                 payload={"candidate_id": "normalize-root-v1"},
             )
-        if job.result is not None and "DETERMINISTIC_WORKFLOW_COMPLETED" not in event_types:
+        if job.result is not None and complete_event not in event_types:
             workspace.record = self._append_event(
                 workspace.record,
-                "DETERMINISTIC_WORKFLOW_COMPLETED",
+                complete_event,
                 evidence_refs=(job.result.job_id,),
                 payload={
                     "phase": workspace.record.phase.value,
@@ -904,6 +918,65 @@ class HostedWorkspaceStore:
                 command_id: f"{expected_value}:COMPLETE",
             }
             workspace.record = workspace.record.model_copy(update={"processed_commands": processed})
+            self._sync_runtime(workspace)
+            self._record_runtime_events(workspace)
+            self._persist(workspace)
+            return workspace
+
+    def review_result(
+        self,
+        workspace: HostedWorkspace,
+        *,
+        accepted: bool,
+        feedback: str,
+        command_id: str,
+    ) -> HostedWorkspace:
+        """Durably accept the result or begin a fresh agent-led turn."""
+        if _COMMAND_ID.fullmatch(command_id) is None:
+            raise HostedWorkspaceError("The result-review command identifier is invalid.")
+        with self._lock:
+            previous = workspace.record.processed_commands.get(command_id)
+            expected = "RESULT_ACCEPTED" if accepted else "RESULT_CONTINUED"
+            if previous is not None:
+                if previous == expected:
+                    return workspace
+                raise HostedWorkspaceError("This command identifier was used for another action.")
+            if workspace.runtime is None or workspace.runtime.job.result is None:
+                raise HostedWorkspaceError("Finish the current repair turn first.")
+            if workspace.record.accepted or workspace.runtime.job.accepted:
+                if accepted:
+                    return workspace
+                raise HostedWorkspaceError("This conversation is already accepted.")
+            processed = {**workspace.record.processed_commands, command_id: expected}
+            if accepted:
+                workspace.runtime.job.record_user_acceptance()
+                workspace.record = workspace.record.model_copy(
+                    update={"accepted": True, "processed_commands": processed}
+                )
+                workspace.record = self._append_event(
+                    workspace.record,
+                    "RESULT_ACCEPTED",
+                    evidence_refs=(workspace.runtime.job.result.job_id,),
+                    payload={"turn_index": workspace.runtime.job.turn_index},
+                )
+                self._persist(workspace)
+                return workspace
+            try:
+                workspace.latest_result = workspace.runtime.continue_after_feedback(feedback)
+                workspace.workflow_result = None
+                if workspace.latest_result.stop_reason != "interrupt":
+                    workspace.workflow_result = workspace.runtime.complete(workspace.latest_result)
+            except AgentWorkflowError as error:
+                raise HostedWorkspaceError(str(error)) from error
+            workspace.record = workspace.record.model_copy(
+                update={"accepted": False, "processed_commands": processed, "last_answer": None}
+            )
+            workspace.record = self._append_event(
+                workspace.record,
+                "RESULT_FEEDBACK_RECORDED",
+                evidence_refs=(sha256(feedback.strip().encode("utf-8")).hexdigest(),),
+                payload={"turn_index": workspace.runtime.job.turn_index},
+            )
             self._sync_runtime(workspace)
             self._record_runtime_events(workspace)
             self._persist(workspace)

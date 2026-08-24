@@ -15,6 +15,7 @@ from asset_shepherd.models import (
     AgentRepairAssessment,
     AssetIntentProvenance,
     CheckStatus,
+    ConversationTurnRecord,
     Decisions,
     DecisionSource,
     ExecutedAction,
@@ -97,6 +98,8 @@ def build_provenance(
     asset_intent: AssetIntentProvenance | None = None,
     agent_assessment: AgentRepairAssessment | None = None,
     candidate_reassessment: AgentCandidateReassessment | None = None,
+    conversation_turn_index: int = 0,
+    prior_turns: tuple[ConversationTurnRecord, ...] = (),
 ) -> Provenance:
     """Build provenance from the exact plan, decisions, and repair outcome."""
     candidates = {candidate.id: candidate for candidate in plan.candidates}
@@ -127,6 +130,8 @@ def build_provenance(
         asset_intent=asset_intent,
         agent_assessment=agent_assessment,
         candidate_reassessment=candidate_reassessment,
+        conversation_turn_index=conversation_turn_index,
+        prior_turns=prior_turns,
         application_version=application_version,
         commit_sha=_application_commit(),
         library_versions=_library_versions(),

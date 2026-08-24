@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import mimetypes
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -725,6 +726,7 @@ class WebJob:
     workflow_result: AgentWorkflowResult | None = None
     error: str | None = None
     inspection_acknowledged: bool = False
+    accepted: bool = False
     lock: RLock = field(default_factory=RLock, repr=False)
 
     @property
@@ -1128,11 +1130,15 @@ class WebJobStore:
         work_root: Path,
         family: PolicyFamilyOption,
         intake_analyzer: TargetIntakeAnalyzer,
+        max_agent_turns: int = 5,
     ) -> None:
         """Create a registry rooted in an ignored, caller-controlled directory."""
         self.work_root = work_root.resolve(strict=False)
         self.family = family
         self.intake_analyzer = intake_analyzer
+        if not 1 <= max_agent_turns <= 50:
+            raise ValueError("Agent turn limit must be between 1 and 50")
+        self.max_agent_turns = max_agent_turns
         self._intents: dict[str, WebIntent] = {}
         self._jobs: dict[str, WebJob] = {}
         self._lock = RLock()
@@ -1308,6 +1314,7 @@ class WebJobStore:
             profile_policy=policy_provenance,
             asset_intent=intent,
             agent_orchestrated=agent_mode,
+            max_turns=self.max_agent_turns,
         )
         runtime = build_live_agent(runtime_job) if agent_mode else build_scripted_agent(runtime_job)
         job = WebJob(
@@ -1349,6 +1356,21 @@ class WebJobStore:
             result = job.runtime.resume(interrupt_id, approved=approved)
             job.latest_result = result
             job.workflow_result = job.runtime.complete(result)
+
+    def continue_after_feedback(self, job: WebJob, feedback: str) -> None:
+        """Advance the current candidate into a fresh bounded agent turn."""
+        with job.lock:
+            if job.error is not None:
+                raise AgentWorkflowError("A stopped job cannot continue")
+            if job.waiting_for_approval:
+                raise AgentWorkflowError("Resolve the current approval before continuing")
+            result = job.runtime.continue_after_feedback(feedback)
+            job.latest_result = result
+            job.workflow_result = None
+            job.inspection_acknowledged = False
+            job.accepted = False
+            if result.stop_reason != "interrupt":
+                job.workflow_result = job.runtime.complete(result)
 
 
 def _finding_groups(job: WebJob) -> tuple[tuple[str, tuple[Finding, ...]], ...]:
@@ -1966,7 +1988,7 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         and core.outcome.executed_action_ids
     ):
         comparison_scene = _comparison_scene(
-            job.source_path,
+            core.source,
             comparison_candidate_path,
         )
     return {
@@ -2007,6 +2029,11 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "result_presentation": _result_presentation(core),
         "decision_summary": _decision_summary(core),
         "decision_records": decision_records,
+        "turn_index": core.turn_index,
+        "turns_remaining": core.turns_remaining,
+        "can_continue": core.agent_orchestrated and core.turns_remaining > 0,
+        "prior_turns": core.prior_turns,
+        "accepted": job.accepted,
         "is_blocked": bool(
             verification is not None and verification.state is VerificationState.BLOCKED
         ),
@@ -2018,15 +2045,23 @@ def create_app(
     project_root: Path = _DEFAULT_PROJECT_ROOT,
     work_root: Path = _DEFAULT_WORK_ROOT,
     intake_analyzer: TargetIntakeAnalyzer | None = None,
+    max_agent_turns: int | None = None,
 ) -> FastAPI:
     """Create a local Asset Shepherd web application and isolated job store."""
     family = discover_policy_family(project_root.resolve(strict=True))
     analyzer = intake_analyzer or DeterministicTargetIntakeAnalyzer()
-    store = WebJobStore(work_root, family, analyzer)
+    configured_turns = max_agent_turns
+    if configured_turns is None:
+        try:
+            configured_turns = int(os.environ.get("ASSET_SHEPHERD_MAX_TURNS", "5"))
+        except ValueError as error:
+            raise ValueError("ASSET_SHEPHERD_MAX_TURNS must be an integer") from error
+    store = WebJobStore(work_root, family, analyzer, configured_turns)
     hosted_store = HostedWorkspaceStore(
         work_root / "hosted",
         family.profile,
         analyzer,
+        configured_turns,
     )
     feedback_root = work_root / "feedback"
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
@@ -2130,7 +2165,7 @@ def create_app(
             )
             if comparison_candidate_path is not None:
                 comparison_scene = _comparison_scene(
-                    workspace.source_path,
+                    runtime_job.source,
                     comparison_candidate_path,
                 )
                 comparison_candidate_ready = workspace.ready_candidate
@@ -2196,6 +2231,12 @@ def create_app(
                     else None
                 ),
                 "command_id": uuid4().hex,
+                "can_continue": bool(
+                    runtime_job
+                    and runtime_job.agent_orchestrated
+                    and runtime_job.turns_remaining > 0
+                ),
+                "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
                 "error": error,
                 "active_mode": "conversation",
                 "active_style": "Conversation",
@@ -2640,13 +2681,59 @@ def create_app(
             status_code=303,
         )
 
+    def review_job_result(
+        request: Request,
+        job_id: str,
+        decision: Annotated[str, Form()],
+        feedback: Annotated[str, Form()] = "",
+    ) -> Response:
+        """Accept the result or start another agent turn from concise user feedback."""
+        try:
+            job = require_job(job_id)
+            if job.workflow_result is None or job.runtime.job.result is None:
+                raise UploadValidationError("Finish the current repair turn first.")
+            if job.accepted or job.runtime.job.accepted:
+                if decision == "accept":
+                    return RedirectResponse(
+                        f"{request.url_for('job_page', job_id=job.job_id)}?view=download",
+                        status_code=303,
+                    )
+                raise UploadValidationError("This conversation is already accepted.")
+            if decision == "accept":
+                job.runtime.job.record_user_acceptance()
+                job.accepted = True
+                return RedirectResponse(
+                    f"{request.url_for('job_page', job_id=job.job_id)}?view=download",
+                    status_code=303,
+                )
+            if decision != "continue":
+                raise UploadValidationError("Choose whether the result is right.")
+            store.continue_after_feedback(job, feedback)
+            return RedirectResponse(
+                f"{request.url_for('job_page', job_id=job.job_id)}?view=inspect",
+                status_code=303,
+            )
+        except (UploadValidationError, AgentWorkflowError) as error:
+            job = store.get(job_id)
+            if job is None:
+                return render_intent_home(request, str(error), status_code=404)
+            context = _job_context(job, "download")
+            context["continuation_error"] = str(error)
+            return templates.TemplateResponse(
+                request=request,
+                name="job.html",
+                context=context,
+                status_code=400,
+                headers={"Cache-Control": "no-store"},
+            )
+
     def source_asset(job_id: str) -> Response:
-        """Serve the immutable uploaded source for the before preview."""
+        """Serve the immutable input to the current repair turn for before preview."""
         job = store.get(job_id)
         if job is None:
             return Response(status_code=404)
         return FileResponse(
-            job.source_path,
+            job.runtime.job.source,
             media_type="model/gltf-binary",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
@@ -2901,13 +2988,42 @@ def create_app(
             status_code=303,
         )
 
+    def review_hosted_result(
+        request: Request,
+        workspace_id: str,
+        decision: Annotated[str, Form()],
+        command_id: Annotated[str, Form()],
+        feedback: Annotated[str, Form()] = "",
+    ) -> Response:
+        """Accept a hosted result or continue the durable agent loop."""
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            if decision not in {"accept", "continue"}:
+                raise HostedWorkspaceError("Choose whether the result is right.")
+            hosted_store.review_result(
+                workspace,
+                accepted=decision == "accept",
+                feedback=feedback,
+                command_id=command_id,
+            )
+        except HostedWorkspaceError as error:
+            try:
+                workspace = require_hosted_workspace(workspace_id)
+            except HostedWorkspaceError:
+                return render_hosted_home(request, str(error), status_code=404)
+            return render_hosted_workspace(request, workspace, str(error), status_code=400)
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            status_code=303,
+        )
+
     def hosted_source_asset(workspace_id: str) -> Response:
-        """Serve one immutable hosted source GLB."""
+        """Serve the immutable input to the current hosted repair turn."""
         workspace = hosted_store.get(workspace_id)
-        if workspace is None:
+        if workspace is None or workspace.runtime is None:
             return Response(status_code=404)
         return FileResponse(
-            workspace.source_path,
+            workspace.runtime.job.source,
             media_type="model/gltf-binary",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
@@ -3052,6 +3168,12 @@ def create_app(
         name="decide_job",
     )
     app.add_api_route(
+        "/jobs/{job_id}/result",
+        review_job_result,
+        methods=["POST"],
+        name="review_job_result",
+    )
+    app.add_api_route(
         "/jobs/{job_id}/source.glb",
         source_asset,
         methods=["GET"],
@@ -3124,6 +3246,12 @@ def create_app(
         ask_hosted_workspace,
         methods=["POST"],
         name="ask_hosted_workspace",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/result",
+        review_hosted_result,
+        methods=["POST"],
+        name="review_hosted_result",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/source.glb",

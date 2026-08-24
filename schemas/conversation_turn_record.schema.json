@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "VerificationState": {
+      "description": "Contracted final verification state.",
+      "enum": [
+        "PASSED_PROJECT_READY",
+        "PASSED_WITH_REMAINING_WARNINGS",
+        "FAILED",
+        "BLOCKED"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/conversation_turn_record.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Immutable link from one completed repair turn to the next user-requested turn.",
+  "properties": {
+    "agent_assessment_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agent Assessment Id"
+    },
+    "candidate_reassessment_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Candidate Reassessment Id"
+    },
+    "continuation_feedback": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Continuation Feedback",
+      "type": "string"
+    },
+    "output_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Output Sha256",
+      "type": "string"
+    },
+    "plan_id": {
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "result_zip_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Result Zip Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    },
+    "turn_index": {
+      "minimum": 0,
+      "title": "Turn Index",
+      "type": "integer"
+    },
+    "verification_state": {
+      "$ref": "#/$defs/VerificationState"
+    }
+  },
+  "required": [
+    "turn_index",
+    "source_sha256",
+    "output_sha256",
+    "plan_id",
+    "verification_state",
+    "result_zip_sha256",
+    "continuation_feedback"
+  ],
+  "title": "ConversationTurnRecord",
+  "type": "object"
+}

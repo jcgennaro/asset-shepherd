@@ -546,6 +546,21 @@ class AgentCandidateReassessment(ContractModel):
         return self
 
 
+class ConversationTurnRecord(ContractModel):
+    """Immutable link from one completed repair turn to the next user-requested turn."""
+
+    schema_version: Literal[1] = 1
+    turn_index: NonNegativeInt
+    source_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    output_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    plan_id: str
+    agent_assessment_id: str | None = None
+    candidate_reassessment_id: str | None = None
+    verification_state: VerificationState
+    result_zip_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    continuation_feedback: Annotated[str, Field(min_length=1, max_length=1000)]
+
+
 class PlanSelection(ContractModel):
     """Agent selection of registered candidates from one deterministic plan."""
 
@@ -701,6 +716,8 @@ class Provenance(ContractModel):
     asset_intent: AssetIntentProvenance | None = None
     agent_assessment: AgentRepairAssessment | None = None
     candidate_reassessment: AgentCandidateReassessment | None = None
+    conversation_turn_index: NonNegativeInt = 0
+    prior_turns: tuple[ConversationTurnRecord, ...] = ()
     application_version: str
     commit_sha: str
     library_versions: dict[str, str]
@@ -726,6 +743,14 @@ class Provenance(ContractModel):
             != self.agent_assessment.assessment_id
         ):
             raise ValueError("Candidate reassessment must cite the packaged agent assessment")
+        if any(turn.turn_index >= self.conversation_turn_index for turn in self.prior_turns):
+            raise ValueError("Prior conversation turns must precede the current turn")
+        if tuple(turn.turn_index for turn in self.prior_turns) != tuple(
+            range(len(self.prior_turns))
+        ):
+            raise ValueError("Prior conversation turns must be contiguous and ordered")
+        if self.conversation_turn_index != len(self.prior_turns):
+            raise ValueError("Current conversation turn must follow the complete prior-turn chain")
         return self
 
 

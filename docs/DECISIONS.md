@@ -4,6 +4,67 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D038 — Repair is a bounded user-agent loop, not a two-pass workflow
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User
+
+**Milestone:** M9 durable agent conversation
+
+**Context**
+
+The D037 checkpoint completed one agent-authored action and visual reassessment, but its handoff
+described the remaining work as a “second repair.” That wording implied a special retry. The product
+requires an ordinary conversation: intake, analysis, repair attempt, user feedback, and as many new
+evidence/decision turns as the configured usage allowance permits.
+
+**Options considered**
+
+- Add one hard-coded correction attempt after verification.
+- Keep each attempt as a separate job and lose conversational/authorization continuity.
+- Treat every completed candidate as a versioned state in one append-only conversation, with a
+  configurable turn limit and a completely fresh action/approval boundary on every iteration.
+
+**Decision**
+
+Use the third option. A completed turn may be accepted or continued with up to 1,000 characters of
+user feedback. Continuation archives all current output and rendered evidence, makes that turn's
+candidate the next immutable source, resets per-turn assessment/plan/decision/verification state,
+and invokes the same stateful Strands agent. Every consequential mutation therefore needs a new
+assessment, typed preview, action hash, interrupt, approval, execution record, candidate
+reassessment, and independent verification.
+
+Freeze a per-job maximum from `ASSET_SHEPHERD_MAX_TURNS`, defaulting to five and validating the
+range 1–50. The limit is persisted and restored rather than changing with the server environment.
+Both the form-led result and durable hosted workspace ask only **Did we get it right?** Yes closes
+the conversation; No reveals one feedback field and starts another turn when allowance remains.
+
+Use `turns/turn-NNN/` for immutable prior output, assessments, and model-visible render evidence.
+Persist ordered turn records in `conversation.json`, runtime state, hosted structured events, and
+the current `provenance.json`. Records link source/output hashes, plan and assessment IDs,
+verification state, result-ZIP hash, and continuation feedback. The current seven-file ZIP contract
+does not expand; its provenance carries the prior-turn chain.
+
+**Evidence and consequences**
+
+The regression suite completes three ordinary turns, proves that each repaired GLB becomes the next
+source, restores the current turn and frozen limit after reconstructing `AgentJob`, and rejects a
+turn beyond the allowance. Existing authorization, source-preservation, schema, web, hosted,
+restart, and package tests remain passing. `docs/AGENT_LOOP_FLOW.md` records the loops, resources,
+tools, allowed mutations, durable state, and stop conditions.
+
+A live hosted OpenAI Responses run also exercised **No** plus feedback after a clean verified turn.
+The runtime archived the complete turn-0 package and source renders, promoted its candidate, ran a
+fresh turn-1 inspection, and produced new provenance with one ordered prior-turn link. Browser
+review passed at desktop and 390 x 844 without overflow or browser diagnostics.
+
+Turn count is the implemented local usage guard. Provider token, time, and cost ceilings remain
+deployment configuration and must fail closed. Changing the confirmed target or project rules is
+not repair feedback; it still creates a new job and inspection.
+
 ### D037 — Live model authors the first repair preview and reassesses the candidate
 
 **Date:** 2026-08-23
@@ -53,10 +114,9 @@ run completed inspect, render, plan, approve, execute, candidate render, visual 
 independent verification, and seven-file packaging. The suite passes with 116 tests and one opt-in
 skip.
 
-This decision completes the first action loop, not the full D036 gate. A newly discovered supported
-problem cannot yet become a second versioned proposal and fresh approval within the same job; that
-is the next local work item. Ambiguous-orientation and materially changed-goal live evaluations also
-remain required. The non-fatal OpenAI/httpcore streaming-generator close warning observed after
+This decision completes the first action loop; D038 generalizes it to an arbitrary bounded number
+of versioned feedback/action turns. Ambiguous-orientation and materially changed-goal live
+evaluations remain required. The non-fatal OpenAI/httpcore streaming-generator close warning observed after
 interrupted Responses runs remains a dependency-level diagnostic to isolate before deployment.
 
 ### D036 — The agent owns sensing, assessment, disposition, and repair choice
