@@ -17,7 +17,12 @@ from pydantic import Field, JsonValue
 from strands.agent import AgentResult
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
-from asset_shepherd.agent_runtime import AssetShepherdAgent, build_scripted_agent
+from asset_shepherd.agent_runtime import (
+    AssetShepherdAgent,
+    build_live_agent,
+    build_scripted_agent,
+    workflow_model_available,
+)
 from asset_shepherd.inspector import preflight_asset
 from asset_shepherd.intake_analyzer import (
     DeterministicTargetIntakeAnalyzer,
@@ -682,16 +687,27 @@ class HostedWorkspaceStore:
                 payload=event_payload,
             )
             self._persist(workspace)
-            runtime = build_scripted_agent(
-                AgentJob(
-                    workspace.source_path,
-                    workspace.root / "profile.json",
-                    workspace.output_dir,
-                    profile_policy=policy,
-                    asset_intent=intent,
-                ),
-                session_id=workspace.record.workspace_id,
-                session_root=workspace.root / "strands_state",
+            agent_mode = workflow_model_available()
+            runtime_job = AgentJob(
+                workspace.source_path,
+                workspace.root / "profile.json",
+                workspace.output_dir,
+                profile_policy=policy,
+                asset_intent=intent,
+                agent_orchestrated=agent_mode,
+            )
+            runtime = (
+                build_live_agent(
+                    runtime_job,
+                    session_id=workspace.record.workspace_id,
+                    session_root=workspace.root / "strands_state",
+                )
+                if agent_mode
+                else build_scripted_agent(
+                    runtime_job,
+                    session_id=workspace.record.workspace_id,
+                    session_root=workspace.root / "strands_state",
+                )
             )
             workspace.runtime = runtime
             try:
@@ -711,16 +727,35 @@ class HostedWorkspaceStore:
         record = workspace.record
         if record.intent is None or record.profile_policy is None:
             return
-        workspace.runtime = build_scripted_agent(
-            AgentJob(
-                workspace.source_path,
-                workspace.root / "profile.json",
-                workspace.output_dir,
-                profile_policy=record.profile_policy,
-                asset_intent=record.intent,
-            ),
-            session_id=record.workspace_id,
-            session_root=workspace.root / "strands_state",
+        runtime_state_path = workspace.root / "runtime_state.json"
+        persisted_agent_mode = False
+        if runtime_state_path.is_file():
+            runtime_state = json.loads(runtime_state_path.read_text(encoding="utf-8"))
+            persisted_agent_mode = bool(runtime_state.get("agent_orchestrated", False))
+        if persisted_agent_mode and not workflow_model_available():
+            raise HostedWorkspaceError(
+                "This workspace requires its configured workflow model to resume."
+            )
+        runtime_job = AgentJob(
+            workspace.source_path,
+            workspace.root / "profile.json",
+            workspace.output_dir,
+            profile_policy=record.profile_policy,
+            asset_intent=record.intent,
+            agent_orchestrated=persisted_agent_mode,
+        )
+        workspace.runtime = (
+            build_live_agent(
+                runtime_job,
+                session_id=record.workspace_id,
+                session_root=workspace.root / "strands_state",
+            )
+            if persisted_agent_mode
+            else build_scripted_agent(
+                runtime_job,
+                session_id=record.workspace_id,
+                session_root=workspace.root / "strands_state",
+            )
         )
         result_path = workspace.output_dir / "agent_result.json"
         if result_path.is_file():

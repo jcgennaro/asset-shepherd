@@ -6,7 +6,8 @@
         "UNIVERSAL_INVARIANT",
         "FROZEN_PROJECT_POLICY",
         "OBJECTIVE_SOURCE_DIAGNOSTIC",
-        "EXTERNAL_CONSUMER_EVIDENCE"
+        "EXTERNAL_CONSUMER_EVIDENCE",
+        "AGENT_ASSESSMENT"
       ],
       "title": "CheckBasis",
       "type": "string"

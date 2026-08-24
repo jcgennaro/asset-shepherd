@@ -3,7 +3,7 @@
 # Strands' overloaded decorator exposes a partially unknown bare-dict schema type to Pyright.
 # pyright: reportUnknownVariableType=false
 
-from typing import Any
+from typing import Any, Literal
 
 from strands import tool
 from strands.types.tools import ToolContext
@@ -40,7 +40,169 @@ class AssetShepherdTools:
         configured input cannot be inspected.
 
         """
+        if self.job.agent_orchestrated:
+            return self.job.objective_observations()
         return self.job.inspect().model_dump(mode="json")
+
+    @tool(name="render_source_views_for_job")
+    def render_source_views_for_job(self) -> dict[str, Any]:
+        """Render four standardized source views for semantic size and pose assessment.
+
+        Call after inspection and before proposing any scale, rotation, or grounding change. The
+        images show the GLB after Blender's normal glTF +Y-up to Blender +Z-up import conversion;
+        visible vertical therefore corresponds to source +Y. A long visible body axis is not
+        automatically height. Returns front, right, back, and left images as model-visible evidence.
+
+        """
+        paths = self.job.render_source_views()
+        content: list[dict[str, object]] = [
+            {
+                "text": (
+                    "Standardized Blender views. Blender converted glTF +Y-up to Blender +Z-up; "
+                    "the visible vertical direction corresponds to source +Y."
+                )
+            }
+        ]
+        for path in paths:
+            content.append({"text": f"VIEW {path.name}"})
+            content.append(
+                {
+                    "image": {
+                        "format": "png",
+                        "source": {"bytes": path.read_bytes()},
+                    }
+                }
+            )
+        return {"status": "success", "content": content}
+
+    @tool(name="render_candidate_views_for_job")
+    def render_candidate_views_for_job(self) -> dict[str, Any]:
+        """Render the executed candidate for a model-visible before/after comparison.
+
+        Call after an authorized action executes and before verification. Review these views beside
+        the previously rendered source views. Returns front, right, back, and left candidate images;
+        it does not decide whether the action succeeded.
+
+        """
+        paths = self.job.render_candidate_views()
+        content: list[dict[str, object]] = [
+            {
+                "text": (
+                    "Candidate views after the executed action. Compare these with the source "
+                    "views before judging whether the proposed result was achieved."
+                )
+            }
+        ]
+        for path in paths:
+            content.append({"text": f"CANDIDATE VIEW {path.name}"})
+            content.append(
+                {
+                    "image": {
+                        "format": "png",
+                        "source": {"bytes": path.read_bytes()},
+                    }
+                }
+            )
+        return {"status": "success", "content": content}
+
+    @tool(context=True, name="record_candidate_reassessment")
+    def record_candidate_reassessment(
+        self,
+        tool_context: ToolContext,
+        candidate_satisfies_assessment: bool,
+        summary: str,
+        evidence: list[str],
+        confidence: float,
+        source_views_used: list[str],
+        candidate_views_used: list[str],
+    ) -> dict[str, Any]:
+        """Record the agent's visual comparison of source and executed candidate.
+
+        Args:
+            tool_context: Strands call identity used only for durable provenance.
+            candidate_satisfies_assessment: Whether the candidate achieved the proposed result
+                without a newly visible problem.
+            summary: Concise evidence-grounded comparison for the user and final provenance.
+            evidence: Specific observations from both sets of standardized views.
+            confidence: Confidence from 0 through 1; uncertainty must remain explicit.
+            source_views_used: Exact source filenames consulted.
+            candidate_views_used: Exact candidate filenames consulted.
+
+        A false result prevents project-ready completion. This judgment does not replace independent
+        invariant verification and cannot authorize another action.
+
+        """
+        reassessment = self.job.register_candidate_reassessment(
+            initiating_tool_call_id=tool_context.tool_use["toolUseId"],
+            candidate_satisfies_assessment=candidate_satisfies_assessment,
+            summary=summary,
+            evidence=evidence,
+            confidence=confidence,
+            source_views_used=source_views_used,
+            candidate_views_used=candidate_views_used,
+        )
+        return reassessment.model_dump(mode="json")
+
+    @tool(context=True, name="propose_agent_repair_plan")
+    def propose_agent_repair_plan(
+        self,
+        tool_context: ToolContext,
+        disposition: Literal[
+            "ACCEPT",
+            "REPAIR",
+            "REPORT_ONLY",
+            "NEEDS_CLARIFICATION",
+            "RETURN_TO_CREATION_TOOL",
+        ],
+        summary: str,
+        evidence: list[str],
+        confidence: float,
+        semantic_height_axis: Literal["X", "Y", "Z"] | None = None,
+        scale_to_confirmed_height: bool = False,
+        rotation_axis: Literal["X", "Y", "Z"] | None = None,
+        rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0,
+        ground_to_y_zero: bool = False,
+        rename_invalid_display_names: bool = False,
+        source_views_used: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Register the agent's assessment and preview only its requested supported actions.
+
+        Args:
+            tool_context: Strands call identity used only for durable provenance.
+            disposition: The evidence-backed next step. Only REPAIR may request mutation.
+            summary: Concise user-facing conclusion grounded in the target and observations.
+            evidence: Specific measured facts and visual observations supporting the conclusion.
+            confidence: Confidence from 0 through 1; ambiguity should lower confidence or stop
+                repair.
+            semantic_height_axis: Source GLB axis representing real-world height, when scaling.
+            scale_to_confirmed_height: Uniformly scale that semantic axis to the confirmed target.
+            rotation_axis: Source world axis for a requested quarter-turn rotation, otherwise null.
+            rotation_degrees: One bounded right-handed quarter turn; use 0 unless views show a
+                defect.
+            ground_to_y_zero: Move the post-scale/post-rotation minimum Y exactly to zero.
+            rename_invalid_display_names: Apply measured index-preserving policy name replacements.
+            source_views_used: Exact rendered filenames used for a physical conclusion.
+
+        Returns an exact deterministic action preview, authorization classes, and bounds. It never
+        adds a scale, rotation, grounding, or rename that was not explicitly requested here. It
+        rejects uncited physical actions, unsupported parameters, and repeated planning.
+
+        """
+        plan = self.job.register_agent_plan(
+            initiating_tool_call_id=tool_context.tool_use["toolUseId"],
+            disposition=disposition,
+            summary=summary,
+            evidence=evidence,
+            confidence=confidence,
+            semantic_height_axis=semantic_height_axis,
+            scale_to_confirmed_height=scale_to_confirmed_height,
+            rotation_axis=rotation_axis,
+            rotation_degrees=rotation_degrees,
+            ground_to_y_zero=ground_to_y_zero,
+            rename_invalid_display_names=rename_invalid_display_names,
+            source_views_used=source_views_used or [],
+        )
+        return plan.model_dump(mode="json")
 
     @tool(name="list_repair_candidates")
     def list_repair_candidates(self) -> dict[str, Any]:
@@ -109,7 +271,9 @@ class AssetShepherdTools:
             "verification": verification.model_dump(mode="json"),
             "job_result": None if result is None else result.model_dump(mode="json"),
             "reassessment_available": (
-                verification.state is VerificationState.FAILED and self.job.correction_attempts == 0
+                not self.job.agent_orchestrated
+                and verification.state is VerificationState.FAILED
+                and self.job.correction_attempts == 0
             ),
         }
 
@@ -138,4 +302,16 @@ class AssetShepherdTools:
             self.execute_selected_repairs,
             self.verify_and_package,
             self.reassess_candidate_after_verification_failure,
+        ]
+
+    def as_agent_orchestrated_list(self) -> list[Any]:
+        """Return the live model's sensing, disposition, action, and proof tools."""
+        return [
+            self.inspect_asset_for_job,
+            self.render_source_views_for_job,
+            self.propose_agent_repair_plan,
+            self.execute_selected_repairs,
+            self.render_candidate_views_for_job,
+            self.record_candidate_reassessment,
+            self.verify_and_package,
         ]

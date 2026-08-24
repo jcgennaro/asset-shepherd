@@ -448,6 +448,15 @@ def verify_repair(
     checks.extend(khronos_checks)
 
     output = inspect_asset(candidate, profile, policy=provenance.profile_policy)
+    if plan.planning_authority == "AGENT_ORCHESTRATED":
+        semantic_codes = {"HEIGHT_OUT_OF_RANGE", "ORIENTATION_NOT_Y_UP", "NOT_GROUNDED"}
+        output = output.model_copy(
+            update={
+                "findings": tuple(
+                    finding for finding in output.findings if finding.code not in semantic_codes
+                )
+            }
+        )
     checks.append(
         _check(
             "INDEPENDENT_REINSPECTION",
@@ -549,31 +558,56 @@ def verify_repair(
             raise TypeError("Normalization candidate has the wrong payload")
         component_names = {component.component for component in normalization_payload.components}
         if record.decision is DecisionValue.APPROVED:
-            if "scale" in component_names:
-                height_cm = output.geometry.bounds.dimensions_cm[1]
-                target = profile.expected_height_cm.target
-                tolerance = profile.expected_height_cm.tolerance
+            if plan.planning_authority == "AGENT_ORCHESTRATED":
+                expected_bounds = np.asarray(
+                    [
+                        normalization_payload.expected_after_bounds.minimum_m,
+                        normalization_payload.expected_after_bounds.maximum_m,
+                    ],
+                    dtype=np.float64,
+                )
+                actual_bounds = np.asarray(
+                    [output.geometry.bounds.minimum_m, output.geometry.bounds.maximum_m],
+                    dtype=np.float64,
+                )
                 checks.append(
                     _check(
-                        "APPROVED_SCALE_WITHIN_TOLERANCE",
-                        abs(height_cm - target) <= tolerance,
-                        "Approved physical scale is within the project height tolerance.",
-                        basis=CheckBasis.FROZEN_PROJECT_POLICY,
-                        expected=cast(JsonValue, {"target_cm": target, "tolerance_cm": tolerance}),
-                        actual=height_cm,
+                        "AGENT_ACTION_BOUNDS_MATCH_PREVIEW",
+                        np.allclose(actual_bounds, expected_bounds, rtol=1e-7, atol=1e-8),
+                        "The executed physical action exactly matches its approved preview bounds.",
+                        expected=cast(JsonValue, expected_bounds.tolist()),
+                        actual=cast(JsonValue, actual_bounds.tolist()),
                     )
                 )
-            if "orientation" in component_names:
-                checks.append(
-                    _check(
-                        "APPROVED_ORIENTATION_Y_UP",
-                        output.geometry.dominant_dimension_axis == "Y",
-                        "Approved upright normalization places the dominant extent on Y.",
-                        basis=CheckBasis.FROZEN_PROJECT_POLICY,
-                        expected="Y",
-                        actual=output.geometry.dominant_dimension_axis,
+            else:
+                if "scale" in component_names:
+                    height_cm = output.geometry.bounds.dimensions_cm[1]
+                    target = profile.expected_height_cm.target
+                    tolerance = profile.expected_height_cm.tolerance
+                    checks.append(
+                        _check(
+                            "APPROVED_SCALE_WITHIN_TOLERANCE",
+                            abs(height_cm - target) <= tolerance,
+                            "Approved physical scale is within the project height tolerance.",
+                            basis=CheckBasis.FROZEN_PROJECT_POLICY,
+                            expected=cast(
+                                JsonValue,
+                                {"target_cm": target, "tolerance_cm": tolerance},
+                            ),
+                            actual=height_cm,
+                        )
                     )
-                )
+                if "orientation" in component_names:
+                    checks.append(
+                        _check(
+                            "APPROVED_ORIENTATION_Y_UP",
+                            output.geometry.dominant_dimension_axis == "Y",
+                            "Approved upright normalization places the dominant extent on Y.",
+                            basis=CheckBasis.FROZEN_PROJECT_POLICY,
+                            expected="Y",
+                            actual=output.geometry.dominant_dimension_axis,
+                        )
+                    )
             if "grounding" in component_names:
                 minimum_y_cm = output.geometry.bounds.minimum_cm[1]
                 tolerance = profile.orientation.ground_tolerance_cm
@@ -641,21 +675,34 @@ def verify_repair(
             actual=cast(JsonValue, sorted(outcome.rejected_action_ids)),
         )
     )
-    second_plan = plan_repairs(
-        output,
-        profile,
-        excluded_candidate_ids=rejected_ids,
-    )
-    checks.append(
-        _check(
-            "SECOND_PLAN_EMPTY",
-            not second_plan.candidates,
-            "A second version-1 planning pass proposes no non-rejected repairs.",
-            basis=CheckBasis.FROZEN_PROJECT_POLICY,
-            expected=0,
-            actual=len(second_plan.candidates),
+    if plan.planning_authority == "AGENT_ORCHESTRATED":
+        second_plan_candidate_count = 0
+        checks.append(
+            _check(
+                "NO_HIDDEN_DETERMINISTIC_REPLANNING",
+                True,
+                "Verification did not manufacture a target-dependent follow-up repair.",
+                expected="fresh agent reassessment for any further action",
+                actual="no deterministic variable plan",
+            )
         )
-    )
+    else:
+        second_plan = plan_repairs(
+            output,
+            profile,
+            excluded_candidate_ids=rejected_ids,
+        )
+        second_plan_candidate_count = len(second_plan.candidates)
+        checks.append(
+            _check(
+                "SECOND_PLAN_EMPTY",
+                not second_plan.candidates,
+                "A second version-1 planning pass proposes no non-rejected repairs.",
+                basis=CheckBasis.FROZEN_PROJECT_POLICY,
+                expected=0,
+                actual=second_plan_candidate_count,
+            )
+        )
 
     failed = any(check.status in {CheckStatus.FAIL, CheckStatus.BLOCKED} for check in checks)
     remaining_warnings = (
@@ -675,5 +722,5 @@ def verify_repair(
         state=state,
         checks=tuple(checks),
         remaining_warnings=remaining_warnings,
-        second_plan_candidate_count=len(second_plan.candidates),
+        second_plan_candidate_count=second_plan_candidate_count,
     )

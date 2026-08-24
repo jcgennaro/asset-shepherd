@@ -4,6 +4,61 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D037 — Live model authors the first repair preview and reassesses the candidate
+
+**Date:** 2026-08-23
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-orchestrated planner checkpoint
+
+**Context**
+
+D036 established that semantic height, pose, grounding intent, and repair choice belong to the
+workflow agent. The implementation still filtered a target through a deterministic planner that
+equated longest extent with vertical. The resulting quadruped was rotated onto its back, and the
+same heuristic then declared the mistake correct. The interim Luna intake call had never inspected
+the GLB or viewed a render.
+
+**Options considered**
+
+- Patch the quadruped orientation heuristic while retaining automatic grouped normalization.
+- Let the model veto deterministic candidates after they are manufactured.
+- Give the live Strands model objective measurements and standardized views, require one typed
+  evidence-cited disposition/action request, compute only its exact bounded preview, and require a
+  second model-visible source/candidate comparison before invariant verification.
+
+**Decision**
+
+Use the third option. In agent mode, legacy height, dominant-axis orientation, and grounding
+findings are removed from the observation surface. The model chooses semantic height axis and each
+supported scale, quarter-turn rotation, grounding, and display-name component. The preview layer
+rejects malformed, no-op, uncited, repeated, unsupported, or non-repair action requests and never
+adds a component. Consequential execution retains the exact Strands interrupt and approval hash.
+
+For the authorized local transition, use the stateful OpenAI Responses adapter with
+`gpt-5.6-luna`/xhigh until Bedrock is configured. Four local Blender source renders are tool-visible
+evidence for physical conclusions. After execution, four new candidate renders must be compared by
+the model and recorded before deterministic verification can run. Both assessments and their
+originating Strands tool-call IDs are embedded in final provenance; the contracted ZIP filenames do
+not change. The scripted provider remains a legacy/offline test double.
+
+**Evidence and consequences**
+
+The fresh quadruped run identified source Y as its 0.463 m standing height and Z as body length,
+producing scale only and preserving its already upright, grounded pose. A separate paid live fixture
+run completed inspect, render, plan, approve, execute, candidate render, visual reassessment,
+independent verification, and seven-file packaging. The suite passes with 116 tests and one opt-in
+skip.
+
+This decision completes the first action loop, not the full D036 gate. A newly discovered supported
+problem cannot yet become a second versioned proposal and fresh approval within the same job; that
+is the next local work item. Ambiguous-orientation and materially changed-goal live evaluations also
+remain required. The non-fatal OpenAI/httpcore streaming-generator close warning observed after
+interrupted Responses runs remains a dependency-level diagnostic to isolate before deployment.
+
 ### D036 — The agent owns sensing, assessment, disposition, and repair choice
 
 **Date:** 2026-08-23

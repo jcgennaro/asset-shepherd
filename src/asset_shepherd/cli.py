@@ -139,7 +139,12 @@ def run_cli(arguments: list[str] | None = None) -> int:
         from asset_shepherd.agent_runtime import build_live_agent, build_scripted_agent
 
         try:
-            job = AgentJob(args.source, args.profile, args.output)
+            job = AgentJob(
+                args.source,
+                args.profile,
+                args.output,
+                agent_orchestrated=not args.offline_scripted,
+            )
             runtime = build_scripted_agent(job) if args.offline_scripted else build_live_agent(job)
             result = runtime.start()
             if result.stop_reason == "interrupt":

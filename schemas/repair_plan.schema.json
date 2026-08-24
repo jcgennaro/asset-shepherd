@@ -402,6 +402,18 @@
   "additionalProperties": false,
   "description": "Deterministic set of version-1 repair candidates.",
   "properties": {
+    "agent_assessment_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agent Assessment Id"
+    },
     "approval_action_ids": {
       "items": {
         "type": "string"
@@ -440,6 +452,15 @@
     },
     "plan_id": {
       "title": "Plan Id",
+      "type": "string"
+    },
+    "planning_authority": {
+      "default": "LEGACY_DETERMINISTIC",
+      "enum": [
+        "LEGACY_DETERMINISTIC",
+        "AGENT_ORCHESTRATED"
+      ],
+      "title": "Planning Authority",
       "type": "string"
     },
     "profile_id": {

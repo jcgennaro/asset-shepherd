@@ -159,6 +159,11 @@
     "before_bounds": {
       "$ref": "#/$defs/Bounds3D"
     },
+    "before_target_extent_m": {
+      "minimum": 0.0,
+      "title": "Before Target Extent M",
+      "type": "number"
+    },
     "candidate_id": {
       "title": "Candidate Id",
       "type": "string"
@@ -176,6 +181,11 @@
     },
     "expected_after_bounds": {
       "$ref": "#/$defs/Bounds3D"
+    },
+    "expected_target_extent_m": {
+      "minimum": 0.0,
+      "title": "Expected Target Extent M",
+      "type": "number"
     },
     "finding_ids": {
       "items": {
@@ -293,6 +303,11 @@
       "title": "Schema Version",
       "type": "integer"
     },
+    "target_extent_label": {
+      "default": "Height",
+      "title": "Target Extent Label",
+      "type": "string"
+    },
     "title": {
       "title": "Title",
       "type": "string"
@@ -305,8 +320,10 @@
     "title",
     "consequence_summary",
     "before_bounds",
+    "before_target_extent_m",
     "proposed_matrix",
     "expected_after_bounds",
+    "expected_target_extent_m",
     "components"
   ],
   "title": "ApprovalCard",

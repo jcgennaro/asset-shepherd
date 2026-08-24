@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-23
-**Current commit:** D036 agent-orchestrated architecture correction (this file is included)
+**Current commit:** D037 agent-orchestrated planner checkpoint (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace foundation; D036 agent-orchestrated correction and acceptance gate |  | Current implementation still delegates semantic findings and repair construction to deterministic code; correct locally before Bedrock/deployment |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 live agent-authored planning and visual reassessment |  | First action loop is agent-authored and live-tested; fresh second-action/approval turn and remaining D036 evaluations stay open before Bedrock/deployment |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -36,19 +36,36 @@
 
 ## Current gate
 
-M9 is paused at the D036 architecture correction. The current hosted workflow is durable and its
-deterministic repair mechanics are useful, but it does not yet satisfy the product thesis: the
-inspector creates target-dependent findings, the planner manufactures a grouped transform, the
-scripted provider follows a predetermined sequence, and verification repeats planner heuristics.
+M9 remains at the D036 acceptance gate. D037 replaces the first target-dependent planning pass with
+a live model-authored assessment and exact typed action preview. Agent-mode inspection exposes
+measurements without legacy height/orientation/grounding verdicts; the agent selects semantic axes
+and requested scale, rotation, grounding, and naming components; deterministic code adds none. An
+executed action cannot verify until the agent compares recorded source and candidate renders.
 
-The next gate is the ten-part acceptance contract in `docs/AGENT_ORCHESTRATED_WORKFLOW.md`. A real
-workflow model must choose sensing, assessment, disposition, and supported action parameters; every
-mutation must originate in an agent call; standardized renders must be model-accessible evidence;
-and the grounded long-bodied quadruped regression must not be rotated. Deterministic code remains the
-measurement, enforcement, exact-mutation, invariant-verification, and packaging layer.
+This is a checkpoint, not full D036 completion. The same durable conversation still needs a fresh
+second action with a new proposal and approval, plus the ambiguous-orientation and changed-goal
+representative evaluations. Deterministic code remains the measurement, enforcement,
+exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D037 live first-action loop: OpenAI Responses with `gpt-5.6-luna`/xhigh inspected the generated
+  standing-robot fixture, requested source renders, identified source Y as semantic height, left
+  rotation at zero, and requested scale, grounding, and index-preserving names. After approval it
+  requested four candidate renders, recorded a 0.99-confidence source/candidate comparison, then
+  independently verified and packaged `PASSED_WITH_REMAINING_WARNINGS`. Packaged provenance records
+  planning tool call `call_nMY8tRPv1OATd9D2ZdQGTr2Y`, reassessment tool call
+  `call_dKE85X4neVQgtd12pwNQxoPd`, both typed assessments, the approval, exact actions, and the
+  `AGENT_VISUAL_REASSESSMENT` verification check. The seven-file ZIP contract remains unchanged.
+- Long-bodied quadruped regression: a fresh browser run on source hash `fa757b02e150…` measured
+  `0.471 × 0.463 × 0.998 m`, cited all four source views, identified Y as the 0.463 m semantic
+  height and Z as body length, and produced a pure 7.5611814× scale preview for the confirmed 3.5 m
+  target. Rotation is null/zero and grounding is false. The visible decision says **Normalize
+  physical scale**, **Before height 0.46 m**, and **After height 3.50 m**.
+- Agent-mode verification now checks exact approved preview bounds rather than dominant-axis policy
+  heuristics, never invokes the legacy second planner, and requires a recorded visual candidate
+  reassessment after executed actions. Agent assessment and candidate reassessment schemas are
+  public; both are embedded in `provenance.json` with their initiating Strands tool-call IDs.
 - Architecture diagnosis: the grasshopper-sized quadruped source measured
   `0.471 × 0.463 × 0.998 m` and was already grounded with minimum Y exactly `0`. The inspector
   nevertheless emitted `ORIENTATION_NOT_Y_UP` solely because Z was the longest extent, the planner
@@ -63,7 +80,8 @@ measurement, enforcement, exact-mutation, invariant-verification, and packaging 
   live acceptance cases.
 - Contract version 1.5 explicitly deprecates dominant-extent semantic inference, removes
   deterministic variable planning from the target architecture, makes standardized renders eligible
-  sensing evidence, and adds the D036 gate to M9. No product-code compliance is claimed yet.
+  sensing evidence, and adds the D036 gate to M9. D037 implements the first action/reassessment
+  slice; the remaining gate is still tracked explicitly.
 - Comparison-viewer recovery: the pinned `model-viewer` extension requires plain numeric
   `extra-model` offsets and enters a bad camera state when given the former unbounded
   `min-camera-orbit`/`max-camera-orbit` values. Both attributes are removed, initial and dynamic
@@ -137,7 +155,7 @@ measurement, enforcement, exact-mutation, invariant-verification, and packaging 
   pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
   at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
   scrolls inside its own container. Browser console warnings and errors are empty.
-- Tests: `uv run pytest` — 108 passed and the opt-in live-provider test skipped. D019–D033 acceptance
+- Tests: `uv run pytest` — 116 passed and the opt-in live-provider test skipped. D019–D037 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.
@@ -334,7 +352,7 @@ measurement, enforcement, exact-mutation, invariant-verification, and packaging 
 
 ## Blockers
 
-The D036 local architecture correction is unblocked and precedes AWS work. RW2 requires untouched
+The remaining D036 local acceptance work is unblocked and precedes AWS work. RW2 requires untouched
 Debug Beetle and Cloudforge Workbench exports. Paid or remote M9 work requires
 the user to configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock
 region/model access, and a budget alert. Read-only preflight found that AWS CLI is not installed on
@@ -343,12 +361,11 @@ record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Implement D036 locally before any Bedrock or deployment work: split observations from contextual
-assessments, expose composable typed sensor and action-preview tools, make the real workflow model
-choose sensing and disposition, add model-consumable standardized renders, and replace second-plan
-verification with declared-action postconditions plus agent reassessment. Preserve the current
-mutation scope, exact authorization, durability, and invariant checks. The first regression is the
-grounded long-bodied quadruped; it must remain unrotated without an asset-specific exception.
+Complete the remaining D036 local cases before Bedrock or deployment work: allow the agent to
+re-observe a candidate, originate a fresh supported second action, obtain a new exact approval, and
+finish in the same durable conversation. Add changed-goal and ambiguous-orientation live
+evaluations. Preserve the current mutation scope, exact authorization, durability, and invariant
+checks; do not restore deterministic target-dependent planning.
 
 RW2 registration resumes when the user supplies Debug Beetle. No paid invocation or AWS resource
 creation is authorized yet.

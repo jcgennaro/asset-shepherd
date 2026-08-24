@@ -1,16 +1,24 @@
 """Stateful, path-confined stages exposed to the Strands agent."""
 
 import json
+import shutil
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
+    AgentCandidateReassessment,
+    AgentDisposition,
+    AgentRepairAssessment,
     ApprovalCard,
     AssetIntentProvenance,
+    CheckBasis,
+    CheckStatus,
     DecisionRecord,
     Decisions,
     DecisionSource,
@@ -24,10 +32,11 @@ from asset_shepherd.models import (
     ProjectProfile,
     Provenance,
     RepairPlan,
+    VerificationCheck,
     VerificationResult,
     VerificationState,
 )
-from asset_shepherd.planner import plan_repairs
+from asset_shepherd.planner import plan_agent_repairs, plan_repairs
 from asset_shepherd.profile_policy import (
     build_profile_policy_provenance,
     validate_profile_policy_provenance,
@@ -82,6 +91,7 @@ class AgentJob:
     output_dir: Path
     profile_policy: ProfilePolicyProvenance | None = None
     asset_intent: AssetIntentProvenance | None = None
+    agent_orchestrated: bool = False
     clock: Callable[[], datetime] = _utc_now
     verification_function: VerificationFunction = verify_repair
     profile: ProjectProfile = field(init=False)
@@ -97,6 +107,8 @@ class AgentJob:
     result: JobResult | None = field(default=None, init=False)
     pending_interrupt_id: str | None = field(default=None, init=False)
     correction_attempts: int = field(default=0, init=False)
+    agent_assessment: AgentRepairAssessment | None = field(default=None, init=False)
+    candidate_reassessment: AgentCandidateReassessment | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         """Resolve trusted caller paths before exposing path-free agent tools."""
@@ -121,6 +133,16 @@ class AgentJob:
         """Return private resumable state kept outside the contracted artifact directory."""
         return self.output_dir.parent / "runtime_state.json"
 
+    @property
+    def agent_assessment_path(self) -> Path:
+        """Return private model judgment kept outside the contracted evidence ZIP."""
+        return self.output_dir.parent / "agent_assessment.json"
+
+    @property
+    def candidate_reassessment_path(self) -> Path:
+        """Return private post-action model judgment kept outside the evidence ZIP."""
+        return self.output_dir.parent / "candidate_reassessment.json"
+
     def _persist_runtime_state(self) -> None:
         """Atomically persist the minimum deterministic state needed after a restart."""
         state = {
@@ -131,6 +153,7 @@ class AgentJob:
             "started_at": self.started_at.isoformat() if self.started_at is not None else None,
             "pending_interrupt_id": self.pending_interrupt_id,
             "correction_attempts": self.correction_attempts,
+            "agent_orchestrated": self.agent_orchestrated,
             "phase": (
                 "complete"
                 if self.result is not None
@@ -167,12 +190,23 @@ class AgentJob:
             str(pending_interrupt_id) if pending_interrupt_id is not None else None
         )
         self.correction_attempts = int(state.get("correction_attempts", 0))
+        persisted_agent_mode = bool(state.get("agent_orchestrated", False))
+        if persisted_agent_mode != self.agent_orchestrated:
+            raise AgentWorkflowError("Persisted planning authority does not match this runtime")
         inspection_path = self.output_dir / "inspection.json"
         plan_path = self.output_dir / "repair_plan.json"
         decisions_path = self.output_dir / "decisions.json"
         provenance_path = self.output_dir / "provenance.json"
         verification_path = self.output_dir / "verification.json"
         result_path = self.output_dir / "job_result.json"
+        if self.agent_assessment_path.is_file():
+            self.agent_assessment = AgentRepairAssessment.model_validate_json(
+                self.agent_assessment_path.read_text(encoding="utf-8")
+            )
+        if self.candidate_reassessment_path.is_file():
+            self.candidate_reassessment = AgentCandidateReassessment.model_validate_json(
+                self.candidate_reassessment_path.read_text(encoding="utf-8")
+            )
         if inspection_path.is_file():
             self.inspection = InspectionResult.model_validate_json(
                 inspection_path.read_text(encoding="utf-8")
@@ -246,15 +280,296 @@ class AgentJob:
             return self.inspection
         self.output_dir.mkdir(parents=True, exist_ok=False)
         self.started_at = self.clock()
-        self.inspection = inspect_asset(self.source, self.profile, policy=self.profile_policy)
+        inspection = inspect_asset(self.source, self.profile, policy=self.profile_policy)
+        if self.agent_orchestrated:
+            semantic_codes = {"HEIGHT_OUT_OF_RANGE", "ORIENTATION_NOT_Y_UP", "NOT_GROUNDED"}
+            inspection = inspection.model_copy(
+                update={
+                    "findings": tuple(
+                        finding
+                        for finding in inspection.findings
+                        if finding.code not in semantic_codes
+                    )
+                }
+            )
+        self.inspection = inspection
         inspection_path = self.output_dir / "inspection.json"
         self._require_output_path(inspection_path)
         _write_json(inspection_path, self.inspection.model_dump(mode="json"))
         self._persist_runtime_state()
         return self.inspection
 
+    def objective_observations(self) -> dict[str, object]:
+        """Return measurements without deterministic target-dependent conclusions."""
+        inspection = self.inspect()
+        return {
+            "source_filename": inspection.source_filename,
+            "package": inspection.package.model_dump(mode="json"),
+            "geometry": (
+                inspection.geometry.model_dump(mode="json")
+                if inspection.geometry is not None
+                else None
+            ),
+            "transforms": (
+                inspection.transforms.model_dump(mode="json")
+                if inspection.transforms is not None
+                else None
+            ),
+            "naming": (
+                inspection.naming.model_dump(mode="json") if inspection.naming is not None else None
+            ),
+            "resources": (
+                inspection.resources.model_dump(mode="json")
+                if inspection.resources is not None
+                else None
+            ),
+            "repair_eligibility": inspection.repair_eligibility.value,
+            "source_diagnostics": (
+                inspection.diagnostics.model_dump(mode="json")
+                if inspection.diagnostics is not None
+                else None
+            ),
+            "non_semantic_findings": [
+                finding.model_dump(mode="json") for finding in inspection.findings
+            ],
+            "interpretation_boundary": (
+                "Dimensions, dominant axis, and ground relationship are observations only. "
+                "They do not establish semantic height or justify rotation."
+            ),
+        }
+
+    def _render_asset_views(self, asset: Path, view_root: Path) -> tuple[Path, ...]:
+        """Render one trusted job asset into four standardized local views."""
+        names = ("front.png", "right.png", "back.png", "left.png")
+        existing = tuple(view_root / name for name in names)
+        if all(path.is_file() for path in existing):
+            return existing
+        configured = shutil.which("blender")
+        blender = (
+            Path(configured)
+            if configured is not None
+            else Path("C:/Program Files/Blender Foundation/Blender 5.1/blender.exe")
+        )
+        if not blender.is_file():
+            raise AgentWorkflowError(
+                "Standardized visual sensing is unavailable: Blender not found"
+            )
+        script = (
+            Path(__file__).resolve().parents[2] / "validation" / "blender" / "render_turntable.py"
+        )
+        if not script.is_file():
+            raise AgentWorkflowError("Standardized visual sensing script is unavailable")
+        view_root.mkdir(parents=True, exist_ok=True)
+        completed = subprocess.run(
+            [
+                str(blender),
+                "--background",
+                "--factory-startup",
+                "--python",
+                str(script),
+                "--",
+                "--asset",
+                str(asset),
+                "--output-dir",
+                str(view_root),
+                "--resolution",
+                "512",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if completed.returncode != 0 or not all(path.is_file() for path in existing):
+            detail = completed.stderr.strip().splitlines()[-1:] or ["unknown Blender error"]
+            raise AgentWorkflowError(f"Standardized visual sensing failed: {detail[0]}")
+        return existing
+
+    def render_source_views(self) -> tuple[Path, ...]:
+        """Render four standardized model-consumable source views through local Blender."""
+        if self.inspection is None:
+            raise AgentWorkflowError("Inspection must run before visual sensing")
+        return self._render_asset_views(
+            self.source,
+            self.output_dir.parent / "agent_evidence" / "source_views",
+        )
+
+    def render_candidate_views(self) -> tuple[Path, ...]:
+        """Render the executed candidate for model-visible before/after reassessment."""
+        if self.outcome is None or not self.outcome.executed_action_ids:
+            raise AgentWorkflowError("Candidate views require at least one executed action")
+        if not self.candidate_path.is_file():
+            raise AgentWorkflowError("Executed candidate is unavailable for visual sensing")
+        return self._render_asset_views(
+            self.candidate_path,
+            self.output_dir.parent / "agent_evidence" / "candidate_views",
+        )
+
+    def register_candidate_reassessment(
+        self,
+        *,
+        initiating_tool_call_id: str,
+        candidate_satisfies_assessment: bool,
+        summary: str,
+        evidence: list[str],
+        confidence: float,
+        source_views_used: list[str],
+        candidate_views_used: list[str],
+    ) -> AgentCandidateReassessment:
+        """Record the model's visual comparison after an authorized action executes."""
+        if not self.agent_orchestrated or self.agent_assessment is None:
+            raise AgentWorkflowError("Candidate reassessment requires agent-authored planning")
+        if self.candidate_reassessment is not None:
+            raise AgentWorkflowError("Candidate visual reassessment is already recorded")
+        available_source = {path.name for path in self.render_source_views()}
+        available_candidate = {path.name for path in self.render_candidate_views()}
+        unknown_source = set(source_views_used) - available_source
+        unknown_candidate = set(candidate_views_used) - available_candidate
+        if unknown_source or unknown_candidate:
+            raise AgentWorkflowError(
+                "Candidate reassessment cites unavailable views: "
+                f"source={sorted(unknown_source)}, candidate={sorted(unknown_candidate)}"
+            )
+        payload = {
+            "initiating_tool_call_id": initiating_tool_call_id,
+            "source_assessment_id": self.agent_assessment.assessment_id,
+            "candidate_satisfies_assessment": candidate_satisfies_assessment,
+            "summary": summary,
+            "evidence": evidence,
+            "confidence": confidence,
+            "source_views_used": source_views_used,
+            "candidate_views_used": candidate_views_used,
+        }
+        digest = sha256(
+            json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        ).hexdigest()[:16]
+        reassessment = AgentCandidateReassessment(
+            reassessment_id=f"reassessment-{digest}-v1",
+            initiating_tool_call_id=initiating_tool_call_id,
+            source_assessment_id=self.agent_assessment.assessment_id,
+            candidate_satisfies_assessment=candidate_satisfies_assessment,
+            summary=summary,
+            evidence=tuple(evidence),
+            confidence=confidence,
+            source_views_used=tuple(source_views_used),
+            candidate_views_used=tuple(candidate_views_used),
+        )
+        self.candidate_reassessment = reassessment
+        _write_json(self.candidate_reassessment_path, reassessment.model_dump(mode="json"))
+        if self.provenance is not None:
+            self.provenance = self.provenance.model_copy(
+                update={"candidate_reassessment": reassessment}
+            )
+            _write_json(
+                self.output_dir / "provenance.json",
+                self.provenance.model_dump(mode="json"),
+            )
+        self._persist_runtime_state()
+        return reassessment
+
+    def register_agent_plan(
+        self,
+        *,
+        initiating_tool_call_id: str,
+        disposition: str,
+        summary: str,
+        evidence: list[str],
+        confidence: float,
+        semantic_height_axis: Literal["X", "Y", "Z"] | None,
+        scale_to_confirmed_height: bool,
+        rotation_axis: Literal["X", "Y", "Z"] | None,
+        rotation_degrees: Literal[-180, -90, 0, 90, 180],
+        ground_to_y_zero: bool,
+        rename_invalid_display_names: bool,
+        source_views_used: list[str],
+    ) -> RepairPlan:
+        """Validate and register one model-authored disposition and exact action preview."""
+        if not self.agent_orchestrated:
+            raise AgentWorkflowError("Agent-authored planning is disabled for this job")
+        if self.inspection is None:
+            raise AgentWorkflowError("Inspection must run before agent planning")
+        if self.selected_plan is not None or self.agent_assessment is not None:
+            raise AgentWorkflowError("This source turn already has a registered assessment")
+        physical_requested = any(
+            (scale_to_confirmed_height, rotation_degrees != 0, ground_to_y_zero)
+        )
+        available_views: set[str] = (
+            {path.name for path in self.render_source_views()} if physical_requested else set()
+        )
+        if physical_requested and not source_views_used:
+            raise AgentWorkflowError("Physical actions require cited standardized visual evidence")
+        unknown_views = set(source_views_used) - available_views
+        if unknown_views:
+            raise AgentWorkflowError(
+                f"Assessment cites unavailable source views: {sorted(unknown_views)}"
+            )
+        if self.asset_intent is None:
+            raise AgentWorkflowError("Agent planning requires a confirmed asset target")
+        if (
+            ground_to_y_zero
+            and rotation_degrees == 0
+            and self.inspection.geometry is not None
+            and abs(self.inspection.geometry.bounds.minimum_m[1]) <= 1e-9
+        ):
+            raise AgentWorkflowError(
+                "Grounding would be a no-op: measured minimum Y is already 0 and the requested "
+                "uniform scale preserves it. Submit ground_to_y_zero=false."
+            )
+        effective_rotation_axis = None if rotation_degrees == 0 else rotation_axis
+        assessment_payload = {
+            "initiating_tool_call_id": initiating_tool_call_id,
+            "disposition": disposition,
+            "summary": summary,
+            "evidence": evidence,
+            "confidence": confidence,
+            "semantic_height_axis": semantic_height_axis,
+            "scale_to_confirmed_height": scale_to_confirmed_height,
+            "rotation_axis": effective_rotation_axis,
+            "rotation_degrees": rotation_degrees,
+            "ground_to_y_zero": ground_to_y_zero,
+            "rename_invalid_display_names": rename_invalid_display_names,
+            "source_views_used": source_views_used,
+        }
+        digest = sha256(
+            json.dumps(assessment_payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        ).hexdigest()[:16]
+        assessment = AgentRepairAssessment(
+            assessment_id=f"assessment-{digest}-v1",
+            initiating_tool_call_id=initiating_tool_call_id,
+            disposition=AgentDisposition(disposition),
+            summary=summary,
+            evidence=tuple(evidence),
+            confidence=confidence,
+            semantic_height_axis=semantic_height_axis,
+            scale_to_confirmed_height=scale_to_confirmed_height,
+            rotation_axis=effective_rotation_axis,
+            rotation_degrees=rotation_degrees,
+            ground_to_y_zero=ground_to_y_zero,
+            rename_invalid_display_names=rename_invalid_display_names,
+            source_views_used=tuple(source_views_used),
+        )
+        plan = plan_agent_repairs(
+            self.inspection,
+            self.profile,
+            assessment,
+            confirmed_target_height_m=self.asset_intent.target_height_cm / 100.0,
+        )
+        self.agent_assessment = assessment
+        self.full_plan = plan
+        self.selected_plan = plan
+        self.selection = PlanSelection(
+            plan_id=plan.plan_id,
+            candidate_ids=tuple(candidate.id for candidate in plan.candidates),
+        )
+        _write_json(self.agent_assessment_path, assessment.model_dump(mode="json"))
+        _write_json(self.output_dir / "repair_plan.json", plan.model_dump(mode="json"))
+        self._persist_runtime_state()
+        return plan
+
     def list_candidates(self) -> RepairPlan:
         """Generate the immutable registry of deterministic version-1 candidates."""
+        if self.agent_orchestrated:
+            raise AgentWorkflowError("The live agent must register its own assessment and actions")
         if self.inspection is None:
             raise AgentWorkflowError("Inspection must run before candidate planning")
         if self.full_plan is None:
@@ -263,6 +578,10 @@ class AgentJob:
 
     def select_candidates(self, candidate_ids: list[str]) -> PlanSelection:
         """Validate the model's structured selection against the candidate registry."""
+        if self.agent_orchestrated:
+            raise AgentWorkflowError(
+                "Agent-orchestrated plans are selected by their typed proposal"
+            )
         plan = self.list_candidates()
         if self.selected_plan is not None or self.selection is not None:
             raise AgentWorkflowError("Repair candidates have already been selected")
@@ -328,15 +647,44 @@ class AgentJob:
         )
         if not isinstance(candidate.payload, NormalizationPayload):
             raise AgentWorkflowError("Approval-required candidate is not a normalization payload")
+        labels = {
+            "scale": "physical scale",
+            "orientation": "upright orientation",
+            "grounding": "grounding",
+        }
+        requested = [labels[component.component] for component in candidate.payload.components]
+        if len(requested) == 1:
+            title = f"Normalize {requested[0]}"
+        elif len(requested) == 2:
+            title = f"Normalize {requested[0]} and {requested[1]}"
+        else:
+            title = f"Normalize {', '.join(requested[:-1])}, and {requested[-1]}"
+        if (
+            self.agent_assessment is not None
+            and self.agent_assessment.scale_to_confirmed_height
+            and self.agent_assessment.semantic_height_axis is not None
+            and self.asset_intent is not None
+        ):
+            extent_index = {"X": 0, "Y": 1, "Z": 2}[self.agent_assessment.semantic_height_axis]
+            before_target_extent_m = candidate.payload.before_bounds.dimensions_m[extent_index]
+            expected_target_extent_m = self.asset_intent.target_height_cm / 100.0
+            target_extent_label = "Height"
+        else:
+            before_target_extent_m = max(candidate.payload.before_bounds.dimensions_m)
+            expected_target_extent_m = candidate.payload.expected_after_bounds.dimensions_m[1]
+            target_extent_label = "Height"
         return ApprovalCard(
             plan_id=self.selected_plan.plan_id,
             candidate_id=candidate.id,
             finding_ids=candidate.finding_ids,
-            title="Normalize physical scale, upright orientation, and grounding",
+            title=title,
             consequence_summary=candidate.payload.consequence_summary,
             before_bounds=candidate.payload.before_bounds,
+            before_target_extent_m=before_target_extent_m,
             proposed_matrix=candidate.payload.proposed_matrix,
             expected_after_bounds=candidate.payload.expected_after_bounds,
+            expected_target_extent_m=expected_target_extent_m,
+            target_extent_label=target_extent_label,
             components=candidate.payload.components,
         )
 
@@ -392,6 +740,7 @@ class AgentJob:
             completed_at=self.clock(),
             profile_policy=self.profile_policy,
             asset_intent=self.asset_intent,
+            agent_assessment=self.agent_assessment,
         )
         _write_json(
             self.output_dir / "decisions.json",
@@ -444,6 +793,7 @@ class AgentJob:
                 completed_at=self.clock(),
                 profile_policy=self.profile_policy,
                 asset_intent=self.asset_intent,
+                agent_assessment=self.agent_assessment,
             )
             verification = build_blocked_verification(self.selected_plan)
             self.last_verification = verification
@@ -495,6 +845,14 @@ class AgentJob:
             return verification, self.result
         if self.decisions is None or self.outcome is None or self.provenance is None:
             raise AgentWorkflowError("Repair must complete before verification")
+        if (
+            self.agent_orchestrated
+            and self.outcome.executed_action_ids
+            and self.candidate_reassessment is None
+        ):
+            raise AgentWorkflowError(
+                "Executed agent actions require visual candidate reassessment before verification"
+            )
         if self.result is not None and self.last_verification is not None:
             return self.last_verification, self.result
         if (
@@ -513,6 +871,34 @@ class AgentJob:
                 self.decisions,
                 self.outcome,
                 self.provenance,
+            )
+            self.last_verification = verification
+        if self.candidate_reassessment is not None:
+            accepted = self.candidate_reassessment.candidate_satisfies_assessment
+            assessment_check = VerificationCheck(
+                code="AGENT_VISUAL_REASSESSMENT",
+                status=CheckStatus.PASS if accepted else CheckStatus.FAIL,
+                description=self.candidate_reassessment.summary,
+                basis=CheckBasis.AGENT_ASSESSMENT,
+                expected=True,
+                actual=accepted,
+            )
+            verification = verification.model_copy(
+                update={
+                    "state": verification.state if accepted else VerificationState.FAILED,
+                    "checks": (*verification.checks, assessment_check),
+                    "remaining_warnings": (
+                        verification.remaining_warnings
+                        if accepted
+                        else (
+                            *verification.remaining_warnings,
+                            (
+                                "The workflow agent did not accept the candidate after visual "
+                                "comparison."
+                            ),
+                        )
+                    ),
+                }
             )
             self.last_verification = verification
         repaired_inspection = inspect_asset(
@@ -535,7 +921,11 @@ class AgentJob:
             encoding="utf-8",
             newline="\n",
         )
-        if verification.state is VerificationState.FAILED and self.correction_attempts == 0:
+        if (
+            verification.state is VerificationState.FAILED
+            and self.correction_attempts == 0
+            and not self.agent_orchestrated
+        ):
             self._persist_runtime_state()
             return verification, None
 

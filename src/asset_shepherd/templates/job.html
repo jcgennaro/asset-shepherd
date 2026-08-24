@@ -38,9 +38,9 @@
               <h2 id="decide-title">{{ approval_card.title }}</h2>
               <p>{{ approval_card.consequence_summary }}</p>
               <div class="dimension-compare" aria-label="Expected size change">
-                <div><small>Before</small><strong>{{ "%.2f"|format(approval_card.before_bounds.dimensions_m|max) }} m</strong></div>
+                <div><small>Before {{ approval_card.target_extent_label|lower }}</small><strong>{{ "%.2f"|format(approval_card.before_target_extent_m) }} m</strong></div>
                 <span aria-hidden="true">→</span>
-                <div><small>After height</small><strong>{{ "%.2f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m</strong></div>
+                <div><small>After {{ approval_card.target_extent_label|lower }}</small><strong>{{ "%.2f"|format(approval_card.expected_target_extent_m) }} m</strong></div>
               </div>
             </div>
             <div class="decision-side">

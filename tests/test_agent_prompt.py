@@ -7,6 +7,7 @@ from pathlib import Path
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
+    AGENT_SYSTEM_PROMPT_V3,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -34,9 +35,8 @@ def _intent(description: str) -> AssetIntentProvenance:
     )
 
 
-def test_v2_prompt_defines_goal_explanation_boundary_and_authority() -> None:
-    """The active prompt makes the model a grounded collaborator, not a chat approver."""
-    assert AGENT_PROMPT_VERSION == 2
+def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
+    """The prior prompt remains valid for persisted scripted jobs."""
     assert "technical-art collaborator" in AGENT_SYSTEM_PROMPT_V2
     assert "choices and buttons" in AGENT_SYSTEM_PROMPT_V2
     assert "Use free text to explain" in AGENT_SYSTEM_PROMPT_V2
@@ -44,6 +44,18 @@ def test_v2_prompt_defines_goal_explanation_boundary_and_authority() -> None:
     assert "no more than three points" in AGENT_SYSTEM_PROMPT_V2
     assert "If a property was not evaluated, say so" in AGENT_SYSTEM_PROMPT_V2
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V2
+
+
+def test_v3_prompt_makes_target_dependent_planning_agent_owned() -> None:
+    """The active live prompt forbids longest-axis semantics and hidden transform components."""
+    assert AGENT_PROMPT_VERSION == 3
+    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V3
+    assert "source +Y" in AGENT_SYSTEM_PROMPT_V3
+    assert "Do not request no-op components" in AGENT_SYSTEM_PROMPT_V3
+    assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V3
+    assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V3
+    assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V3
+    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V3
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

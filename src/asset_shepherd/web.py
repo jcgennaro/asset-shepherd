@@ -22,7 +22,12 @@ from pydantic import JsonValue
 from strands.agent import AgentResult
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
-from asset_shepherd.agent_runtime import AssetShepherdAgent, build_scripted_agent
+from asset_shepherd.agent_runtime import (
+    AssetShepherdAgent,
+    build_live_agent,
+    build_scripted_agent,
+    workflow_model_available,
+)
 from asset_shepherd.glb import load_glb, world_bounds
 from asset_shepherd.hosted_workspace import (
     HostedWorkspace,
@@ -1295,15 +1300,16 @@ class WebJobStore:
             path=profile_path,
             policy_provenance=policy_provenance,
         )
-        runtime = build_scripted_agent(
-            AgentJob(
-                source_path,
-                profile_path,
-                job_root / "output",
-                profile_policy=policy_provenance,
-                asset_intent=intent,
-            )
+        agent_mode = workflow_model_available()
+        runtime_job = AgentJob(
+            source_path,
+            profile_path,
+            job_root / "output",
+            profile_policy=policy_provenance,
+            asset_intent=intent,
+            agent_orchestrated=agent_mode,
         )
+        runtime = build_live_agent(runtime_job) if agent_mode else build_scripted_agent(runtime_job)
         job = WebJob(
             job_id=job_id,
             original_filename=Path(original_filename).name,
@@ -1387,6 +1393,7 @@ def _inspection_checks(job: WebJob) -> tuple[InspectionCheckView, ...]:
     core = job.runtime.job
     inspection = core.inspection
     plan = core.selected_plan
+    assessment = core.agent_assessment
     if inspection is None:
         return (InspectionCheckView("GLB structure", "checking", "Inspection is running."),)
     codes = {finding.code for finding in inspection.findings}
@@ -1404,13 +1411,29 @@ def _inspection_checks(job: WebJob) -> tuple[InspectionCheckView, ...]:
             attention if has_attention else passed,
         )
 
+    size_pose_attention = bool(
+        assessment
+        and (
+            assessment.scale_to_confirmed_height
+            or assessment.rotation_degrees != 0
+            or assessment.ground_to_y_zero
+        )
+    )
     checks = [
         InspectionCheckView("GLB structure", "pass", "The GLB parsed successfully."),
-        result(
-            "Size and pose",
-            _SIZE_POSE_CODES,
-            "Scale, orientation, and grounding match the target.",
-            "One or more target dimensions need attention.",
+        (
+            InspectionCheckView(
+                "Size and pose",
+                "attention",
+                "The workflow agent proposed a target-dependent physical change.",
+            )
+            if size_pose_attention
+            else result(
+                "Size and pose",
+                _SIZE_POSE_CODES,
+                "The workflow agent found no supported size or pose change to propose.",
+                "One or more target dimensions need attention.",
+            )
         ),
         result(
             "Topology",
@@ -1455,6 +1478,7 @@ def _inspection_summary(job: WebJob, cannot_repair: bool) -> InspectionSummaryVi
     """Create concise agent copy from structured measurements and findings."""
     inspection = job.runtime.job.inspection
     plan = job.runtime.job.selected_plan
+    assessment = job.runtime.job.agent_assessment
     if inspection is None:
         return InspectionSummaryView(
             headline="I\u2019m checking the model.",
@@ -1476,8 +1500,16 @@ def _inspection_summary(job: WebJob, cannot_repair: bool) -> InspectionSummaryVi
         )
     findings = inspection.findings
     codes = {finding.code for finding in findings}
+    physical_assessment = bool(
+        assessment
+        and (
+            assessment.scale_to_confirmed_height
+            or assessment.rotation_degrees != 0
+            or assessment.ground_to_y_zero
+        )
+    )
     normal_labels: list[str] = []
-    if not codes & _SIZE_POSE_CODES:
+    if not codes & _SIZE_POSE_CODES and not physical_assessment:
         normal_labels.append("size and pose")
     if not codes & _TOPOLOGY_CODES:
         normal_labels.append("topology")
@@ -1493,8 +1525,10 @@ def _inspection_summary(job: WebJob, cannot_repair: bool) -> InspectionSummaryVi
         normal = ""
 
     attention: list[str] = []
+    if assessment is not None and assessment.disposition.value == "REPAIR":
+        attention.append(assessment.summary.rstrip(".") + ".")
     size_findings = [finding for finding in findings if finding.code in _SIZE_POSE_CODES]
-    if size_findings:
+    if size_findings and len(attention) < 3:
         attention.append(
             "Size and pose: "
             + "; ".join(finding.title.rstrip(".").lower() for finding in size_findings)

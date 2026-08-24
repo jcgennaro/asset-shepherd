@@ -22,7 +22,7 @@
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d inspect this as a {{ target_height_label }} {{ target_use_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' %}About how tall should it be?
-            {% elif record.phase.value == 'APPROVAL' and approval_card %}Normalize {{ approval_card.components|map(attribute='component')|join(', ') }}: {{ "%.3f"|format(approval_card.before_bounds.dimensions_m|max) }} m → {{ "%.3f"|format(approval_card.expected_after_bounds.dimensions_m[1]) }} m?
+            {% elif record.phase.value == 'APPROVAL' and approval_card %}Normalize {{ approval_card.components|map(attribute='component')|join(', ') }}: {{ "%.3f"|format(approval_card.before_target_extent_m) }} m → {{ "%.3f"|format(approval_card.expected_target_extent_m) }} m?
             {% elif result_presentation %}{{ result_presentation.headline }}
             {% else %}The workflow stopped.{% endif %}
           </h2>

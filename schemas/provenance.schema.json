@@ -1,5 +1,237 @@
 {
   "$defs": {
+    "AgentCandidateReassessment": {
+      "additionalProperties": false,
+      "description": "Model judgment after comparing standardized source and candidate views.",
+      "properties": {
+        "candidate_satisfies_assessment": {
+          "title": "Candidate Satisfies Assessment",
+          "type": "boolean"
+        },
+        "candidate_views_used": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Candidate Views Used",
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "maxLength": 500,
+            "minLength": 4,
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "initiating_tool_call_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Initiating Tool Call Id"
+        },
+        "reassessment_id": {
+          "pattern": "^reassessment-[0-9a-f]{16}-v1$",
+          "title": "Reassessment Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "source_assessment_id": {
+          "pattern": "^assessment-[0-9a-f]{16}-v1$",
+          "title": "Source Assessment Id",
+          "type": "string"
+        },
+        "source_views_used": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Views Used",
+          "type": "array"
+        },
+        "summary": {
+          "maxLength": 1000,
+          "minLength": 12,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reassessment_id",
+        "source_assessment_id",
+        "candidate_satisfies_assessment",
+        "summary",
+        "evidence",
+        "confidence",
+        "source_views_used",
+        "candidate_views_used"
+      ],
+      "title": "AgentCandidateReassessment",
+      "type": "object"
+    },
+    "AgentDisposition": {
+      "description": "The workflow agent's evidence-backed next-step judgment.",
+      "enum": [
+        "ACCEPT",
+        "REPAIR",
+        "REPORT_ONLY",
+        "NEEDS_CLARIFICATION",
+        "RETURN_TO_CREATION_TOOL"
+      ],
+      "title": "AgentDisposition",
+      "type": "string"
+    },
+    "AgentRepairAssessment": {
+      "additionalProperties": false,
+      "description": "One model-authored assessment bound to objective observations and a confirmed target.",
+      "properties": {
+        "assessment_id": {
+          "pattern": "^assessment-[0-9a-f]{16}-v1$",
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "disposition": {
+          "$ref": "#/$defs/AgentDisposition"
+        },
+        "evidence": {
+          "items": {
+            "maxLength": 500,
+            "minLength": 4,
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "ground_to_y_zero": {
+          "default": false,
+          "title": "Ground To Y Zero",
+          "type": "boolean"
+        },
+        "initiating_tool_call_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Initiating Tool Call Id"
+        },
+        "rename_invalid_display_names": {
+          "default": false,
+          "title": "Rename Invalid Display Names",
+          "type": "boolean"
+        },
+        "rotation_axis": {
+          "anyOf": [
+            {
+              "enum": [
+                "X",
+                "Y",
+                "Z"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rotation Axis"
+        },
+        "rotation_degrees": {
+          "default": 0,
+          "enum": [
+            -180,
+            -90,
+            0,
+            90,
+            180
+          ],
+          "title": "Rotation Degrees",
+          "type": "integer"
+        },
+        "scale_to_confirmed_height": {
+          "default": false,
+          "title": "Scale To Confirmed Height",
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "semantic_height_axis": {
+          "anyOf": [
+            {
+              "enum": [
+                "X",
+                "Y",
+                "Z"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semantic Height Axis"
+        },
+        "source_views_used": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Views Used",
+          "type": "array"
+        },
+        "summary": {
+          "maxLength": 1000,
+          "minLength": 12,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assessment_id",
+        "disposition",
+        "summary",
+        "evidence",
+        "confidence"
+      ],
+      "title": "AgentRepairAssessment",
+      "type": "object"
+    },
     "AssetIntentProvenance": {
       "additionalProperties": false,
       "description": "Immutable user-confirmed target story bound to one inspection job.",
@@ -243,6 +475,17 @@
   "additionalProperties": false,
   "description": "Source, authorization, software, and timing provenance.",
   "properties": {
+    "agent_assessment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AgentRepairAssessment"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "application_version": {
       "title": "Application Version",
       "type": "string"
@@ -251,6 +494,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/AssetIntentProvenance"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "candidate_reassessment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AgentCandidateReassessment"
         },
         {
           "type": "null"

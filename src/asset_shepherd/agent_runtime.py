@@ -26,6 +26,7 @@ from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
+    AGENT_SYSTEM_PROMPT_V3,
     build_agent_start_prompt,
 )
 from asset_shepherd.agent_tools import AssetShepherdTools
@@ -51,7 +52,7 @@ class ModelConfiguration:
 
     provider: str
     model_id: str
-    region: str
+    region: str | None
     aws_profile: str | None
 
 
@@ -60,25 +61,27 @@ def load_model_configuration(
 ) -> ModelConfiguration:
     """Load live provider settings without choosing an implicit model ID."""
     provider = values.get("ASSET_SHEPHERD_MODEL_PROVIDER")
-    model_id = values.get("ASSET_SHEPHERD_MODEL_ID")
+    if provider is None and values.get("OPENAI_API_KEY"):
+        provider = "openai"
+    if provider is None:
+        raise AgentWorkflowError("Missing live model configuration: ASSET_SHEPHERD_MODEL_PROVIDER")
+    default_model = "gpt-5.6-luna" if provider == "openai" else None
+    model_id = values.get("ASSET_SHEPHERD_MODEL_ID", default_model)
+    if not model_id:
+        raise AgentWorkflowError("Missing live model configuration: ASSET_SHEPHERD_MODEL_ID")
     region = values.get("ASSET_SHEPHERD_AWS_REGION") or values.get("AWS_REGION")
-    missing = [
-        name
-        for name, value in (
-            ("ASSET_SHEPHERD_MODEL_PROVIDER", provider),
-            ("ASSET_SHEPHERD_MODEL_ID", model_id),
-            ("ASSET_SHEPHERD_AWS_REGION or AWS_REGION", region),
+    if provider == "bedrock" and not region:
+        raise AgentWorkflowError(
+            "Missing live model configuration: ASSET_SHEPHERD_AWS_REGION or AWS_REGION"
         )
-        if not value
-    ]
-    if missing:
-        raise AgentWorkflowError(f"Missing live model configuration: {', '.join(missing)}")
-    if provider != "bedrock":
+    if provider == "openai" and not values.get("OPENAI_API_KEY"):
+        raise AgentWorkflowError("Missing live model configuration: OPENAI_API_KEY")
+    if provider not in {"bedrock", "openai"}:
         raise AgentWorkflowError(f"Unsupported live model provider: {provider}")
     return ModelConfiguration(
         provider=provider,
-        model_id=cast(str, model_id),
-        region=cast(str, region),
+        model_id=model_id,
+        region=region,
         aws_profile=values.get("AWS_PROFILE"),
     )
 
@@ -88,11 +91,34 @@ def build_environment_model(
 ) -> tuple[Model, ModelConfiguration]:
     """Construct the configured provider; invocation remains caller-controlled and opt-in."""
     configuration = load_model_configuration(values)
-    model = BedrockModel(
-        model_id=configuration.model_id,
-        region_name=configuration.region,
-    )
+    if configuration.provider == "openai":
+        from strands.models.openai_responses import OpenAIResponsesModel
+
+        effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
+        if effort not in {"low", "medium", "high", "xhigh", "max"}:
+            raise AgentWorkflowError("Unsupported workflow reasoning effort")
+        model = OpenAIResponsesModel(
+            client_args={"api_key": values["OPENAI_API_KEY"]},
+            model_id=configuration.model_id,
+            stateful=True,
+            params={
+                "reasoning": {"effort": effort, "context": "all_turns"},
+                "max_output_tokens": 8192,
+                "parallel_tool_calls": False,
+                "text": {"verbosity": "low"},
+            },
+        )
+    else:
+        model = BedrockModel(
+            model_id=configuration.model_id,
+            region_name=cast(str, configuration.region),
+        )
     return model, configuration
+
+
+def workflow_model_available(values: Mapping[str, str] = environ) -> bool:
+    """Return whether the local process is explicitly able to invoke a workflow model."""
+    return bool(values.get("OPENAI_API_KEY") or values.get("ASSET_SHEPHERD_MODEL_PROVIDER"))
 
 
 class ScriptedWorkflowModel(Model):
@@ -221,10 +247,16 @@ class AssetShepherdAgent:
         self.provider = provider
         self.model_id = model_id
         self.tools = AssetShepherdTools(job)
+        system_prompt = AGENT_SYSTEM_PROMPT_V3 if job.agent_orchestrated else AGENT_SYSTEM_PROMPT_V2
+        tools = (
+            self.tools.as_agent_orchestrated_list()
+            if job.agent_orchestrated
+            else self.tools.as_list()
+        )
         self.agent = Agent(
             model=model,
-            tools=self.tools.as_list(),
-            system_prompt=AGENT_SYSTEM_PROMPT_V2,
+            tools=tools,
+            system_prompt=system_prompt,
             callback_handler=None,
             load_tools_from_directory=False,
             agent_id=f"asset-shepherd-{job.source.stem}",
@@ -391,6 +423,8 @@ def build_live_agent(
     session_root: Path | None = None,
 ) -> AssetShepherdAgent:
     """Build a live environment-configured agent with optional durable session state."""
+    if not job.agent_orchestrated:
+        raise AgentWorkflowError("Live workflow jobs must enable agent-orchestrated planning")
     model, configuration = build_environment_model()
     return AssetShepherdAgent(
         job,

@@ -56,6 +56,7 @@ class CheckBasis(StrEnum):
     FROZEN_PROJECT_POLICY = "FROZEN_PROJECT_POLICY"
     OBJECTIVE_SOURCE_DIAGNOSTIC = "OBJECTIVE_SOURCE_DIAGNOSTIC"
     EXTERNAL_CONSUMER_EVIDENCE = "EXTERNAL_CONSUMER_EVIDENCE"
+    AGENT_ASSESSMENT = "AGENT_ASSESSMENT"
 
 
 class AssetTargetUse(StrEnum):
@@ -80,6 +81,16 @@ class RepairKind(StrEnum):
     RENAME_NODE = "RENAME_NODE"
     RENAME_MESH = "RENAME_MESH"
     NORMALIZATION_TRANSFORM = "NORMALIZATION_TRANSFORM"
+
+
+class AgentDisposition(StrEnum):
+    """The workflow agent's evidence-backed next-step judgment."""
+
+    ACCEPT = "ACCEPT"
+    REPAIR = "REPAIR"
+    REPORT_ONLY = "REPORT_ONLY"
+    NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
+    RETURN_TO_CREATION_TOOL = "RETURN_TO_CREATION_TOOL"
 
 
 class DecisionValue(StrEnum):
@@ -471,6 +482,70 @@ class CandidateRepair(ContractModel):
         return self
 
 
+class AgentRepairAssessment(ContractModel):
+    """One model-authored assessment bound to objective observations and a confirmed target."""
+
+    schema_version: Literal[1] = 1
+    assessment_id: Annotated[str, Field(pattern=r"^assessment-[0-9a-f]{16}-v1$")]
+    initiating_tool_call_id: Annotated[str, Field(min_length=1, max_length=200)] | None = None
+    disposition: AgentDisposition
+    summary: Annotated[str, Field(min_length=12, max_length=1000)]
+    evidence: tuple[Annotated[str, Field(min_length=4, max_length=500)], ...]
+    confidence: UnitConfidence
+    semantic_height_axis: Literal["X", "Y", "Z"] | None = None
+    scale_to_confirmed_height: bool = False
+    rotation_axis: Literal["X", "Y", "Z"] | None = None
+    rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0
+    ground_to_y_zero: bool = False
+    rename_invalid_display_names: bool = False
+    source_views_used: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def action_fields_match_disposition(self) -> "AgentRepairAssessment":
+        """Keep a model assessment internally coherent before a plan can be registered."""
+        has_action = any(
+            (
+                self.scale_to_confirmed_height,
+                self.rotation_degrees != 0,
+                self.ground_to_y_zero,
+                self.rename_invalid_display_names,
+            )
+        )
+        if self.disposition is AgentDisposition.REPAIR and not has_action:
+            raise ValueError("A REPAIR disposition must request at least one supported action")
+        if self.disposition is not AgentDisposition.REPAIR and has_action:
+            raise ValueError("Only a REPAIR disposition may request mutation")
+        if self.scale_to_confirmed_height and self.semantic_height_axis is None:
+            raise ValueError("Scaling requires the semantic height axis observed by the agent")
+        if self.rotation_degrees != 0 and self.rotation_axis is None:
+            raise ValueError("Rotation degrees require a rotation axis")
+        return self
+
+
+class AgentCandidateReassessment(ContractModel):
+    """Model judgment after comparing standardized source and candidate views."""
+
+    schema_version: Literal[1] = 1
+    reassessment_id: Annotated[str, Field(pattern=r"^reassessment-[0-9a-f]{16}-v1$")]
+    initiating_tool_call_id: Annotated[str, Field(min_length=1, max_length=200)] | None = None
+    source_assessment_id: Annotated[str, Field(pattern=r"^assessment-[0-9a-f]{16}-v1$")]
+    candidate_satisfies_assessment: bool
+    summary: Annotated[str, Field(min_length=12, max_length=1000)]
+    evidence: tuple[Annotated[str, Field(min_length=4, max_length=500)], ...]
+    confidence: UnitConfidence
+    source_views_used: tuple[str, ...]
+    candidate_views_used: tuple[str, ...]
+
+    @model_validator(mode="after")
+    def comparison_has_visual_evidence(self) -> "AgentCandidateReassessment":
+        """Require both sides of the visual comparison and at least one stated observation."""
+        if not self.source_views_used or not self.candidate_views_used:
+            raise ValueError("Candidate reassessment requires source and candidate views")
+        if not self.evidence:
+            raise ValueError("Candidate reassessment requires explicit evidence")
+        return self
+
+
 class PlanSelection(ContractModel):
     """Agent selection of registered candidates from one deterministic plan."""
 
@@ -489,8 +564,11 @@ class ApprovalCard(ContractModel):
     title: str
     consequence_summary: str
     before_bounds: Bounds3D
+    before_target_extent_m: Annotated[float, Field(ge=0.0)]
     proposed_matrix: Matrix4
     expected_after_bounds: Bounds3D
+    expected_target_extent_m: Annotated[float, Field(ge=0.0)]
+    target_extent_label: str = "Height"
     components: tuple[NormalizationComponent, ...]
     options: tuple[Literal["APPROVE", "REJECT"], ...] = ("APPROVE", "REJECT")
 
@@ -517,6 +595,22 @@ class RepairPlan(ContractModel):
     approval_action_ids: tuple[str, ...]
     blocked: bool
     blocked_reasons: tuple[str, ...]
+    planning_authority: Literal["LEGACY_DETERMINISTIC", "AGENT_ORCHESTRATED"] = (
+        "LEGACY_DETERMINISTIC"
+    )
+    agent_assessment_id: str | None = None
+
+    @model_validator(mode="after")
+    def authority_has_assessment(self) -> "RepairPlan":
+        """Require a traceable assessment for every agent-authored repair plan."""
+        if self.planning_authority == "AGENT_ORCHESTRATED" and self.agent_assessment_id is None:
+            raise ValueError("Agent-orchestrated plans require an assessment identifier")
+        if (
+            self.planning_authority == "LEGACY_DETERMINISTIC"
+            and self.agent_assessment_id is not None
+        ):
+            raise ValueError("Legacy deterministic plans cannot cite an agent assessment")
+        return self
 
 
 class DecisionRecord(ContractModel):
@@ -605,6 +699,8 @@ class Provenance(ContractModel):
     profile_version: Literal[1]
     profile_policy: ProfilePolicyProvenance | None = None
     asset_intent: AssetIntentProvenance | None = None
+    agent_assessment: AgentRepairAssessment | None = None
+    candidate_reassessment: AgentCandidateReassessment | None = None
     application_version: str
     commit_sha: str
     library_versions: dict[str, str]
@@ -616,12 +712,20 @@ class Provenance(ContractModel):
     @model_validator(mode="after")
     def policy_identity_matches_profile(self) -> "Provenance":
         """Keep the legacy profile fields aligned with the frozen policy record."""
-        if self.profile_policy is None:
-            return self
-        if self.profile_policy.frozen_profile_id != self.profile_id:
-            raise ValueError("Frozen policy identifier must match profile_id")
-        if self.profile_policy.profile_version != self.profile_version:
-            raise ValueError("Frozen policy version must match profile_version")
+        if self.profile_policy is not None:
+            if self.profile_policy.frozen_profile_id != self.profile_id:
+                raise ValueError("Frozen policy identifier must match profile_id")
+            if self.profile_policy.profile_version != self.profile_version:
+                raise ValueError("Frozen policy version must match profile_version")
+        if self.candidate_reassessment is not None and self.agent_assessment is None:
+            raise ValueError("Candidate reassessment requires its source agent assessment")
+        if (
+            self.candidate_reassessment is not None
+            and self.agent_assessment is not None
+            and self.candidate_reassessment.source_assessment_id
+            != self.agent_assessment.assessment_id
+        ):
+            raise ValueError("Candidate reassessment must cite the packaged agent assessment")
         return self
 
 
@@ -674,7 +778,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2] = 2
+    prompt_version: Literal[1, 2, 3] = 3
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

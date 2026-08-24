@@ -9,7 +9,9 @@ from pydantic import BaseModel
 
 from asset_shepherd.khronos import KhronosValidationResult
 from asset_shepherd.models import (
+    AgentCandidateReassessment,
     AgentMetrics,
+    AgentRepairAssessment,
     AgentWorkflowResult,
     ApprovalCard,
     AssetIntentProvenance,
@@ -28,7 +30,9 @@ from asset_shepherd.models import (
 from asset_shepherd.target_intake import TargetIntakeContract
 
 SCHEMA_MODELS: Final[dict[str, type[BaseModel]]] = {
+    "agent_candidate_reassessment.schema.json": AgentCandidateReassessment,
     "agent_metrics.schema.json": AgentMetrics,
+    "agent_repair_assessment.schema.json": AgentRepairAssessment,
     "agent_workflow_result.schema.json": AgentWorkflowResult,
     "approval_card.schema.json": ApprovalCard,
     "asset_intent.schema.json": AssetIntentProvenance,
