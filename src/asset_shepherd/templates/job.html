@@ -125,10 +125,6 @@
 
         {% if job.runtime.job.result %}
           {% include "_result_status.html" %}
-          <a class="download-button" href="{{ url_for('download_result', job_id=job.job_id) }}">
-            <span><small>{{ result_presentation.package_label }}</small><strong>{{ result_presentation.download_label }}</strong></span>
-            <b aria-hidden="true">↓</b>
-          </a>
         {% endif %}
 
         {% if comparison_scene %}
@@ -163,14 +159,13 @@
         {% endif %}
 
         {% if workflow_result and job.runtime.job.result %}
-          <section class="result-review" aria-labelledby="result-review-title">
-            {% if accepted %}
-              <h3 id="result-review-title">Result accepted.</h3>
-            {% else %}
+          <section class="result-review" aria-labelledby="{% if accepted %}result-accepted-title{% else %}result-review-title{% endif %}" data-result-review>
+            {% if not accepted %}
+              <div class="result-review-question" data-result-question>
               <h3 id="result-review-title">Did we get it right?</h3>
               {% if continuation_error %}<p class="form-error">{{ continuation_error }}</p>{% endif %}
               <div class="result-review-actions">
-                <form action="{{ url_for('review_job_result', job_id=job.job_id) }}" method="post">
+                <form action="{{ url_for('review_job_result', job_id=job.job_id) }}" method="post" data-result-accept>
                   <input type="hidden" name="decision" value="accept">
                   <button type="submit" class="primary-button">Yes</button>
                 </form>
@@ -188,7 +183,19 @@
                   <span class="limit-note">Turn limit reached</span>
                 {% endif %}
               </div>
+              </div>
             {% endif %}
+            <div class="result-accepted-prompt" data-result-accepted{% if not accepted %} hidden{% endif %}>
+              <h3 id="result-accepted-title" tabindex="-1">Ready to download.</h3>
+              <div class="result-download-actions">
+                {% if job.ready_candidate %}
+                  <a class="primary-button" href="{{ url_for('repaired_asset', job_id=job.job_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
+                  <a class="text-link" href="{{ url_for('download_result', job_id=job.job_id) }}">Evidence package</a>
+                {% else %}
+                  <a class="primary-button" href="{{ url_for('download_result', job_id=job.job_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
+                {% endif %}
+              </div>
+            </div>
           </section>
         {% endif %}
 

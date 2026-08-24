@@ -4,6 +4,81 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D040 — Each named asset is one resumable conversation
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+The hosted completion view repeated its outcome as a large heading, a status card, and a dense
+recap. The persistent Job Contract occupied a narrow right column, while returning users had no
+visual list of processed assets. Filenames and opaque IDs stood in for asset identity even though
+the intake agent had enough context to name the described model. The existing hosted runtime
+already scoped Strands session storage by workspace ID and did not need another conversation store.
+
+**Decision**
+
+Make the hosted home a seven-slot visual asset gallery. The first semantic intake turn assigns a
+concise asset name from the user's description; the deterministic offline analyzer supplies a
+bounded fallback. A card resumes the exact durable workspace phase and source preview. Creating an
+eighth workspace requires the user to select one of the visible seven to replace; no workspace is
+silently evicted.
+
+Keep each asset's existing `workspace_id` as its server-side conversation/session authority and
+retain the workspace-owned `strands_state` directory. Do not introduce a shared transcript or a
+second session database. Move the structured Job Contract into a modal opened by **Job details**.
+At completion, show one compact sentence from the workflow agent instead of the prior headline,
+status card, and recap; comparison, review, fixed-model download, and evidence remain available.
+
+**Evidence and consequences**
+
+Tests prove stable intake names, seven-slot enforcement, explicit replacement, gallery previews,
+exact-state resume, distinct Strands session roots, one completion sentence, the details dialog,
+and the existing inline acceptance transition. Existing records without a name derive a bounded
+compatibility label and fall back to **Untitled asset** only when none is usable. Replacement is
+destructive only after the new upload and preflight have been persisted successfully. Live browser
+review showed seven rendered GLB cards,
+resumed a pending approval, opened and closed the modal contract, and confirmed that Yes reveals
+the fixed-model download at the same URL.
+
+### D039 — Inspection progress and acceptance stay in the conversation
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+The active conversation route called its first action **Measure my asset**, omitted the progressive
+inspection checklist already present in the form-led route, and handled result acceptance with a
+full-page redirect that changed little on screen. The wording understated the agent workflow, the
+missing checklist hid useful progress, and the acceptance reload interrupted the final handoff.
+
+**Decision**
+
+Call the action **Shepherd this asset**. Reuse the shared six-row inspection checklist in the hosted
+conversation, replaying structured results from checking to pass, attention, or blocked status and
+keeping row details collapsed. Persist **Yes** asynchronously and replace the question in place with
+**Ready to download**, a direct fixed-GLB action, and a secondary evidence-package link. Retain the
+ordinary POST/redirect path as the no-JavaScript fallback.
+
+**Evidence and consequences**
+
+Route tests cover the new copy, shared checklist, durable 204 acceptance transition, and accepted
+download state. Live browser review confirmed that the URL does not change when Yes is selected,
+the question disappears, the fixed-model and evidence actions appear, the six checks resolve, the
+390 x 844 layout has no horizontal overflow, and browser diagnostics are empty.
+
 ### D038 — Repair is a bounded user-agent loop, not a two-pass workflow
 
 **Date:** 2026-08-23

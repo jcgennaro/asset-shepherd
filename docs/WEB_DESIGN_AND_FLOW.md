@@ -59,6 +59,8 @@ and animation remain external work. This does not add those repair domains.
 | `/jobs/{job_id}?view=decide` | Approve or reject the grouped normalization | Only approval can authorize it |
 | `/jobs/{job_id}?view=download` | Review verification and retrieve the result package | No |
 | `/feedback` | Record bounded feedback with the originating workflow context | Local feedback record only |
+| `/workspace` | Resume one of seven named assets or start a new one | No until a GLB is submitted |
+| `/workspace/{workspace_id}` | Resume the exact persisted conversation phase for one asset | Only through its typed workflow controls |
 
 Former `/stories/{role}` bookmarks redirect to `/`. Audience modes are no longer a primary product
 choice. Internally retained presentation labels do not affect policy or deterministic behavior.
@@ -73,11 +75,27 @@ start action. Release numbers, roadmap framing, internal tool or provenance term
 generic repair-scope inventory do not appear there. A limitation belongs in the active workflow
 only when the particular asset or intended result makes it relevant.
 
+## Hosted asset workspace
+
+The conversation-led home is a visual gallery of up to seven processed assets. Intake assigns each
+asset a concise name from the user's description and cards show that name, current phase, and source
+preview rather than a filename or hash. Opening a card reconstructs that asset's exact persisted
+phase. The existing workspace ID remains the Strands session ID and each workspace owns a separate
+`strands_state` directory. No conversation state is shared across assets.
+
+At seven assets, the new-asset form requires an explicit choice of which workspace to replace. The
+selected workspace is removed only after the replacement upload and objective preflight persist
+successfully. The structured contract remains available through **Job details**, but it no longer
+occupies a permanent right-hand reading area. Completion presents one compact workflow-agent
+sentence, followed by the useful model comparison and Yes/No handoff. Yes changes the existing
+panel to fixed-model and evidence downloads without a page reload.
+
 ## Target-story contract
 
-Before a target story exists, the public version-2 `TargetIntakeContract` requires:
+Before a target story exists, the public version-3 `TargetIntakeContract` requires:
 
 - the normalized description;
+- a concise asset name for the gallery and workspace;
 - one supported intended-use enum;
 - a positive intended real-world height in centimeters;
 - one evidence record, source, and confidence of at least 0.8 for every populated target field; and
@@ -157,6 +175,7 @@ and resolves each call to evidence available or attention required. **Summary** 
 assessment, grounded in the confirmed target, measurements, and renders; it compresses normal
 domains and groups every attention finding into no more than three readable areas. The next question
 reflects the agent's chosen disposition rather than mechanically assuming every finding is fixable.
+The conversation-led route uses the same shared checklist rather than bypassing this progress view.
 
 One closed **More details** disclosure retains the preview plus the full check log, target
 expectations, universal invariants, measurements, findings, finding authority, exact rule
@@ -197,6 +216,11 @@ source, candidate, approved action, invariant verification, or package bytes.
 
 The Apache-licensed Google `<model-viewer>` 4.3.1 browser distribution is served from the package,
 so previews do not rely on a public CDN at runtime.
+
+After comparison, **Did we get it right?** remains the only result decision. **Yes** records durable
+acceptance without navigating away and changes that panel in place to **Ready to download**. A ready
+candidate offers the fixed GLB first and the complete evidence package second. The standard
+POST/redirect response remains as a no-JavaScript fallback. **No** retains the bounded feedback loop.
 
 The successful ZIP still contains exactly:
 

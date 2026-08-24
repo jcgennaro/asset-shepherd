@@ -43,6 +43,7 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
             json=_response(
                 {
                     "engagement_decision": "PROCEED",
+                    "asset_name": "Goop Mountain",
                     "target_use": "STATIC_GAME_ASSET",
                     "target_use_confidence": 0.96,
                     "target_use_evidence": "A mountain is an environmental game-world feature.",
@@ -68,6 +69,7 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
     assert contract.target_height_cm == 80000.0
     assert contract.analyzer_provider == "openai"
     assert contract.analyzer_model == OPENAI_INTAKE_MODEL
+    assert contract.asset_name == "Goop Mountain"
     assert {item.source for item in contract.evidence} == {TargetEvidenceSource.MODEL_INFERENCE}
     assert captured["model"] == OPENAI_INTAKE_MODEL
     assert captured["reasoning"] == {"effort": "xhigh"}
@@ -83,6 +85,7 @@ def test_low_confidence_model_fields_become_questions() -> None:
         "An abstract shape that could play several unrelated roles in the game.",
         TargetIntakeInference(
             engagement_decision="PROCEED",
+            asset_name="Abstract Shape",
             target_use=None,
             target_use_confidence=0.4,
             target_use_evidence=None,
@@ -100,6 +103,7 @@ def test_low_confidence_model_fields_become_questions() -> None:
     with pytest.raises(ValueError, match="confidence gate"):
         TargetIntakeInference(
             engagement_decision="PROCEED",
+            asset_name="Abstract Shape",
             target_use=None,
             target_use_confidence=0.9,
             target_use_evidence=None,
@@ -122,6 +126,7 @@ def test_disallowed_intake_returns_only_a_concise_refusal() -> None:
             json=_response(
                 {
                     "engagement_decision": "REFUSE",
+                    "asset_name": None,
                     "target_use": None,
                     "target_use_confidence": 0.0,
                     "target_use_evidence": None,

@@ -298,6 +298,7 @@ def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
                 description,
                 TargetIntakeInference(
                     engagement_decision="PROCEED",
+                    asset_name="Tiny Bracelet",
                     target_use=AssetTargetUse.STATIC_GAME_ASSET,
                     target_use_confidence=0.96,
                     target_use_evidence="The description identifies a static prop.",
@@ -507,6 +508,7 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
                 description,
                 TargetIntakeInference(
                     engagement_decision="PROCEED",
+                    asset_name="Goop Mountain",
                     target_use=AssetTargetUse.STATIC_GAME_ASSET,
                     target_use_confidence=0.96,
                     target_use_evidence="A mountain is an environmental feature.",
@@ -726,7 +728,10 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert "Import-ready candidate" in completed.text
     assert "Ready-to-import proof" in completed.text
     assert "PASSED_WITH_REMAINING_WARNINGS" in completed.text
-    assert "Download result ZIP" in completed.text
+    assert "Did we get it right?" in completed.text
+    assert "data-result-accepted hidden" in completed.text
+    assert "Download fixed model" in completed.text
+    assert "Evidence package" in completed.text
     assert "data-model-comparison" in completed.text
     assert completed.text.count("<model-viewer") == 1
     assert completed.text.count("<extra-model") == 2
@@ -741,6 +746,18 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert "BEFORE MODEL HERE" not in completed.text
     _assert_focus_area_budget(completed.text)
     assert client.get(f"{job_path}/repaired.glb").status_code == 200
+
+    accepted = client.post(
+        f"{job_path}/result",
+        data={"decision": "accept"},
+        headers={"X-Asset-Shepherd-Transition": "accept"},
+        follow_redirects=False,
+    )
+    assert accepted.status_code == 204
+    accepted_page = client.get(f"{job_path}?view=download")
+    assert "Did we get it right?" not in accepted_page.text
+    assert "data-result-accepted hidden" not in accepted_page.text
+    assert "Ready to download." in accepted_page.text
 
     recorded_decision = client.get(f"{job_path}?view=decide")
     assert "Decision recorded" in recorded_decision.text

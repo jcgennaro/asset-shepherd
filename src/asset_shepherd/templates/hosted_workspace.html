@@ -4,8 +4,8 @@
   <section class="hosted-workspace" data-focus-area="asset conversation">
     <header class="hosted-context">
       <a class="back-link" href="{{ url_for('hosted_home') }}">← New asset</a>
-      <p><strong>{{ record.original_filename }}</strong><span>{{ result_presentation.state_label if result_presentation else record.phase|replace('_', ' ')|title }}</span></p>
-      <code>{{ record.workspace_id[:12] }}</code>
+      <p><strong>{{ record.asset_name }}</strong><span>{{ result_presentation.state_label if result_presentation else record.phase|replace('_', ' ')|title }}</span></p>
+      <button type="button" class="secondary-button compact-button" data-job-contract-open>Job details</button>
     </header>
 
     {% if error %}
@@ -18,15 +18,34 @@
       <main class="conversation-pane" aria-labelledby="conversation-heading">
         <header>
           <p class="section-label">Asset conversation</p>
-          <h2 id="conversation-heading"{% if record.phase.value == 'APPROVAL' %} class="approval-heading"{% endif %}>
+          <h2 id="conversation-heading"{% if record.phase.value == 'APPROVAL' %} class="approval-heading"{% elif job and job.result %} class="completion-heading"{% endif %}>
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d inspect this as a {{ target_height_label }} {{ target_use_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' %}About how tall should it be?
             {% elif record.phase.value == 'APPROVAL' and approval_card %}Normalize {{ approval_card.components|map(attribute='component')|join(', ') }}: {{ "%.3f"|format(approval_card.before_target_extent_m) }} m → {{ "%.3f"|format(approval_card.expected_target_extent_m) }} m?
-            {% elif result_presentation %}{{ result_presentation.headline }}
+            {% elif job and job.result %}{{ completion_sentence }}
             {% else %}The workflow stopped.{% endif %}
           </h2>
         </header>
+
+        {% if inspection %}
+          <div class="hosted-inspection" data-inspection-experience>
+            <section class="inspection-progress" aria-labelledby="inspection-progress-title">
+              {% include "_inspection_checklist.html" %}
+              <details class="inspection-details">
+                <summary>More details</summary>
+                <div class="inspection-table-wrap">
+                  <table class="inspection-table">
+                    <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+                    <tbody>{% for check in inspection_checks %}
+                      <tr><td>{{ check.label }}</td><td>{{ check.status|title }}</td><td>{{ check.detail }}</td></tr>
+                    {% endfor %}</tbody>
+                  </table>
+                </div>
+              </details>
+            </section>
+          </div>
+        {% endif %}
 
         {% if record.phase.value == 'TARGET_CONFIRMATION' %}
           {% if target_draft and not target_draft.ready_for_confirmation %}
@@ -63,14 +82,6 @@
             <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
           </form>
         {% elif job and job.result %}
-          <article class="conversation-message shepherd">
-            <p><strong>{{ result_presentation.state_label }}</strong></p>
-            <p>{{ result_presentation.summary }}</p>
-          </article>
-          {% include "_result_status.html" %}
-          <a class="download-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">
-            <span><small>{{ result_presentation.package_label }}</small><strong>{{ result_presentation.download_label }}</strong></span><b aria-hidden="true">↓</b>
-          </a>
           {% if comparison_scene %}
             {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
             {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}{% else %}{% set comparison_after_url = url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) %}{% endif %}
@@ -85,13 +96,12 @@
               </article>{% endif %}
             </div>
           {% endif %}
-          <section class="result-review" aria-labelledby="hosted-result-review-title">
-            {% if record.accepted %}
-              <h3 id="hosted-result-review-title">Result accepted.</h3>
-            {% else %}
+          <section class="result-review" aria-labelledby="{% if record.accepted %}hosted-result-accepted-title{% else %}hosted-result-review-title{% endif %}" data-result-review>
+            {% if not record.accepted %}
+              <div class="result-review-question" data-result-question>
               <h3 id="hosted-result-review-title">Did we get it right?</h3>
               <div class="result-review-actions">
-                <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post">
+                <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-result-accept>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
                   <input type="hidden" name="decision" value="accept">
                   <button type="submit" class="primary-button">Yes</button>
@@ -111,7 +121,19 @@
                   <span class="limit-note">Turn limit reached</span>
                 {% endif %}
               </div>
+              </div>
             {% endif %}
+            <div class="result-accepted-prompt" data-result-accepted{% if not record.accepted %} hidden{% endif %}>
+              <h3 id="hosted-result-accepted-title" tabindex="-1">Ready to download.</h3>
+              <div class="result-download-actions">
+                {% if workspace.ready_candidate %}
+                  <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
+                  <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Evidence package</a>
+                {% else %}
+                  <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
+                {% endif %}
+              </div>
+            </div>
           </section>
         {% endif %}
 
@@ -134,9 +156,11 @@
           <button class="secondary-button" type="submit">Ask</button>
         </form>
       </main>
+    </div>
 
-      <aside class="job-contract" aria-labelledby="contract-heading">
-        <header><p class="section-label">Persistent structured state</p><h2 id="contract-heading">Job Contract</h2></header>
+    <dialog class="job-contract-dialog" data-job-contract-dialog aria-labelledby="contract-heading">
+      <div class="job-contract">
+        <header><div><p class="section-label">Recorded state</p><h2 id="contract-heading">Job details</h2></div><button type="button" class="icon-button" data-job-contract-close aria-label="Close job details">×</button></header>
         <details open>
           <summary>Source <span>{{ "measured" if preflight.package.parse_success else "invalid" }}</span></summary>
           <dl>
@@ -193,7 +217,7 @@
           {% endif %}
         </details>
         <p class="contract-retention">Private workspace state expires {{ record.retention_expires_at.strftime('%Y-%m-%d') }} · no raw transcript is packaged.</p>
-      </aside>
-    </div>
+      </div>
+    </dialog>
   </section>
 {% endblock %}

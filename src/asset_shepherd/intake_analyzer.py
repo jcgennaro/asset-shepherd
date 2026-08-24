@@ -44,11 +44,13 @@ Return only the structured output. Choose exactly one supported intended use whe
 developer would find the interpretation reasonable. Propose a plausible vertical real-world height
 in centimeters from the described object's semantic scale, even when the user did not provide a
 number. This is a proposal the user will explicitly confirm or adjust; it is not a measured fact.
+Assign a concise 2-5 word asset_name that identifies the described model in a workspace gallery.
+Use the object's identity, not its filename, dimensions, workflow state, or a generic label.
 
 If the request is content you are not permitted to engage with, set engagement_decision to REFUSE,
-set both target values and evidence fields to null, and set both confidence values to 0. The
-application will respond only: "{INTAKE_REFUSAL_MESSAGE}" Otherwise set engagement_decision to
-PROCEED.
+set asset_name, both target values, and evidence fields to null, and set both confidence values to
+0. The application will respond only: "{INTAKE_REFUSAL_MESSAGE}" Otherwise set engagement_decision
+to PROCEED.
 
 {ASSET_CONTENT_BOUNDARY}
 
@@ -81,6 +83,7 @@ class TargetIntakeInference(ContractModel):
     """Strict model-only output before server-owned contract construction."""
 
     engagement_decision: Literal["PROCEED", "REFUSE"]
+    asset_name: Annotated[str, Field(min_length=2, max_length=48)] | None
     target_use: AssetTargetUse | None
     target_use_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
     target_use_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
@@ -96,6 +99,7 @@ class TargetIntakeInference(ContractModel):
                 any(
                     value is not None
                     for value in (
+                        self.asset_name,
                         self.target_use,
                         self.target_use_evidence,
                         self.target_height_cm,
@@ -107,6 +111,8 @@ class TargetIntakeInference(ContractModel):
             ):
                 raise ValueError("A refused intake cannot include target fields")
             return self
+        if self.asset_name is None:
+            raise ValueError("A proceeding intake requires an asset name")
         pairs = (
             (
                 self.target_use,
@@ -202,6 +208,7 @@ def contract_from_inference(
         )
     return TargetIntakeContract(
         description=normalized,
+        asset_name=inference.asset_name or "Untitled asset",
         analyzer_provider=provider,
         analyzer_model=model_id,
         target_use=target_use,

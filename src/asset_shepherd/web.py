@@ -6,6 +6,7 @@ import json
 import math
 import mimetypes
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -31,6 +32,7 @@ from asset_shepherd.agent_runtime import (
 )
 from asset_shepherd.glb import load_glb, world_bounds
 from asset_shepherd.hosted_workspace import (
+    MAX_HOSTED_WORKSPACES,
     HostedWorkspace,
     HostedWorkspaceError,
     HostedWorkspaceStore,
@@ -1410,9 +1412,8 @@ _NAME_CODES = {
 }
 
 
-def _inspection_checks(job: WebJob) -> tuple[InspectionCheckView, ...]:
+def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     """Reduce the full inspection into one progressive list of user-meaningful checks."""
-    core = job.runtime.job
     inspection = core.inspection
     plan = core.selected_plan
     assessment = core.agent_assessment
@@ -1740,6 +1741,32 @@ def _result_presentation(job: AgentJob) -> ResultPresentationView | None:
     )
 
 
+def _one_sentence(value: str) -> str:
+    """Normalize one model-authored message into a compact completion sentence."""
+    compact = " ".join(value.split()).strip()
+    if not compact:
+        return "The asset conversation finished."
+    match = re.search(r"[.!?](?:\s|$)", compact)
+    sentence = compact[: match.end()].strip() if match else compact
+    if sentence[-1] not in ".!?":
+        sentence += "."
+    return sentence
+
+
+def _completion_sentence(workspace: HostedWorkspace, job: AgentJob | None) -> str | None:
+    """Use the persisted workflow agent's response for the single completion message."""
+    if job is None or job.result is None:
+        return None
+    if job.candidate_reassessment is not None:
+        return _one_sentence(job.candidate_reassessment.summary)
+    if job.agent_assessment is not None:
+        return _one_sentence(job.agent_assessment.summary)
+    if workspace.workflow_result is not None:
+        return _one_sentence(workspace.workflow_result.user_message)
+    presentation = _result_presentation(job)
+    return _one_sentence(presentation.summary if presentation else "The workflow stopped.")
+
+
 def _workflow_steps(job: WebJob) -> tuple[WorkflowStepView, ...]:
     """Summarize inspect, decide, and download progress without duplicating content."""
     core = job.runtime.job
@@ -1977,7 +2004,7 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
             and core.inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH
         )
     )
-    inspection_checks = _inspection_checks(job)
+    inspection_checks = _inspection_checks(core)
     comparison_scene = None
     comparison_candidate_path = (
         job.output_dir / "repaired.glb" if job.ready_candidate else _failed_candidate_path(core)
@@ -2113,8 +2140,10 @@ def create_app(
                 "error": error,
                 "refusal": refusal,
                 "description": description,
+                "workspace_records": hosted_store.list_records(),
+                "workspace_limit": MAX_HOSTED_WORKSPACES,
                 "active_mode": "conversation",
-                "active_style": "New asset",
+                "active_style": "Workspace",
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -2200,6 +2229,9 @@ def create_app(
                 "preflight": workspace.record.preflight,
                 "job": runtime_job,
                 "inspection": inspection,
+                "inspection_checks": (
+                    _inspection_checks(runtime_job) if runtime_job is not None else ()
+                ),
                 "plan": runtime_job.selected_plan if runtime_job is not None else None,
                 "verification": (
                     runtime_job.last_verification if runtime_job is not None else None
@@ -2209,6 +2241,7 @@ def create_app(
                 "result_presentation": (
                     _result_presentation(runtime_job) if runtime_job is not None else None
                 ),
+                "completion_sentence": _completion_sentence(workspace, runtime_job),
                 "decision_summary": (
                     _decision_summary(runtime_job) if runtime_job is not None else "pending"
                 ),
@@ -2239,7 +2272,7 @@ def create_app(
                 "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
                 "error": error,
                 "active_mode": "conversation",
-                "active_style": "Conversation",
+                "active_style": workspace.record.asset_name,
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -2688,12 +2721,15 @@ def create_app(
         feedback: Annotated[str, Form()] = "",
     ) -> Response:
         """Accept the result or start another agent turn from concise user feedback."""
+        inline_accept = request.headers.get("x-asset-shepherd-transition") == "accept"
         try:
             job = require_job(job_id)
             if job.workflow_result is None or job.runtime.job.result is None:
                 raise UploadValidationError("Finish the current repair turn first.")
             if job.accepted or job.runtime.job.accepted:
                 if decision == "accept":
+                    if inline_accept:
+                        return Response(status_code=204, headers={"Cache-Control": "no-store"})
                     return RedirectResponse(
                         f"{request.url_for('job_page', job_id=job.job_id)}?view=download",
                         status_code=303,
@@ -2702,6 +2738,8 @@ def create_app(
             if decision == "accept":
                 job.runtime.job.record_user_acceptance()
                 job.accepted = True
+                if inline_accept:
+                    return Response(status_code=204, headers={"Cache-Control": "no-store"})
                 return RedirectResponse(
                     f"{request.url_for('job_page', job_id=job.job_id)}?view=download",
                     status_code=303,
@@ -2784,11 +2822,17 @@ def create_app(
         request: Request,
         description: Annotated[str, Form()],
         asset: Annotated[UploadFile, File()],
+        replace_workspace_id: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Accept minimal context and run objective preflight only."""
         filename = asset.filename or ""
         try:
-            workspace = hosted_store.create(description, filename, asset.file)
+            workspace = hosted_store.create(
+                description,
+                filename,
+                asset.file,
+                replace_workspace_id=replace_workspace_id,
+            )
         except TargetIntakeContentRefusal as error:
             return render_hosted_home(
                 request,
@@ -3012,6 +3056,8 @@ def create_app(
             except HostedWorkspaceError:
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=400)
+        if decision == "accept" and request.headers.get("x-asset-shepherd-transition") == "accept":
+            return Response(status_code=204, headers={"Cache-Control": "no-store"})
         return RedirectResponse(
             request.url_for("hosted_workspace_page", workspace_id=workspace_id),
             status_code=303,
@@ -3019,11 +3065,11 @@ def create_app(
 
     def hosted_source_asset(workspace_id: str) -> Response:
         """Serve the immutable input to the current hosted repair turn."""
-        workspace = hosted_store.get(workspace_id)
-        if workspace is None or workspace.runtime is None:
+        source_path = hosted_store.source_path(workspace_id)
+        if source_path is None:
             return Response(status_code=404)
         return FileResponse(
-            workspace.runtime.job.source,
+            source_path,
             media_type="model/gltf-binary",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )

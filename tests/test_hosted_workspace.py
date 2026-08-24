@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from asset_shepherd.hosted_workspace import (
+    MAX_HOSTED_WORKSPACES,
     HostedWorkspace,
     HostedWorkspaceError,
     HostedWorkspaceStore,
@@ -54,6 +55,61 @@ def test_preflight_measures_source_without_policy_findings_or_plan(tmp_path: Pat
     assert not workspace.output_dir.exists()
     assert not (workspace.root / "profile.json").exists()
     assert not (workspace.root / "intent.json").exists()
+
+
+def test_gallery_limit_requires_an_explicit_replacement(tmp_path: Path) -> None:
+    """An eighth durable asset cannot silently evict one of the seven visible workspaces."""
+    store = HostedWorkspaceStore(tmp_path / "hosted", _family())
+    workspaces = [
+        _create(
+            store,
+            CLEAN_PATH,
+            f"A friendly robot number {index} intended as a 1.8 m static game asset.",
+        )
+        for index in range(MAX_HOSTED_WORKSPACES)
+    ]
+
+    with pytest.raises(HostedWorkspaceError, match="Choose one existing asset"):
+        _create(
+            store,
+            CLEAN_PATH,
+            "An eighth friendly robot intended as a 1.8 m static game asset.",
+        )
+
+    replaced = workspaces[-1]
+    replacement = store.create(
+        "A replacement lantern intended as a 1.2 m static game asset.",
+        CLEAN_PATH.name,
+        BytesIO(CLEAN_PATH.read_bytes()),
+        replace_workspace_id=replaced.record.workspace_id,
+    )
+
+    records = store.list_records()
+    assert len(records) == MAX_HOSTED_WORKSPACES
+    assert replacement.record.workspace_id in {record.workspace_id for record in records}
+    assert store.get(replaced.record.workspace_id) is None
+
+
+def test_each_asset_owns_its_strands_session_directory(tmp_path: Path) -> None:
+    """Two assets reconstruct through workspace-scoped sessions, never a shared transcript."""
+    store = HostedWorkspaceStore(tmp_path / "hosted", _family())
+    first = _create(store, CLEAN_PATH)
+    second = _create(
+        store,
+        CLEAN_PATH,
+        "A compact service robot intended as a 1.2 m static game asset.",
+    )
+
+    first = store.confirm_target(first, accept_supported_goal=False, command_id="b" * 32)
+    second = store.confirm_target(second, accept_supported_goal=False, command_id="c" * 32)
+
+    first_session = first.root / "strands_state"
+    second_session = second.root / "strands_state"
+    assert first_session.is_dir()
+    assert second_session.is_dir()
+    assert first_session != second_session
+    assert first.record.workspace_id in str(first_session.parent)
+    assert second.record.workspace_id in str(second_session.parent)
 
 
 def test_pending_interrupt_survives_restart_and_duplicate_resume_is_exactly_once(
@@ -274,6 +330,7 @@ def test_natural_language_reinterpretation_is_durable_and_exactly_once(tmp_path:
 
     assert restarted is not None
     assert restarted.record.private_description == corrected
+    assert restarted.record.asset_name == "Friendly Humanoid Robot"
     assert restarted.record.target_draft is not None
     assert restarted.record.target_draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
     assert restarted.record.target_draft.target_height_cm == 240.0

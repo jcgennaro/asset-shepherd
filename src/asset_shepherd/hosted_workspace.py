@@ -3,6 +3,7 @@
 import json
 import math
 import re
+import shutil
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -10,10 +11,10 @@ from enum import StrEnum
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
-from typing import BinaryIO
+from typing import BinaryIO, Self
 from uuid import uuid4
 
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, model_validator
 from strands.agent import AgentResult
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
@@ -46,11 +47,13 @@ from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_fa
 from asset_shepherd.target_intake import (
     TargetIntakeContract,
     clarify_target_intake,
+    fallback_asset_name,
     revise_target_intake,
 )
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 MAX_EVENTS = 64
+MAX_HOSTED_WORKSPACES = 7
 WORKSPACE_RETENTION = timedelta(days=7)
 _WORKSPACE_ID = re.compile(r"^[0-9a-f]{32}$")
 _COMMAND_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -127,6 +130,7 @@ class HostedWorkspaceRecord(ContractModel):
     deletion_status: str = "ACTIVE"
     phase: WorkspacePhase
     original_filename: str
+    asset_name: str = Field(default="Untitled asset", min_length=2, max_length=48)
     private_description: str = Field(min_length=12, max_length=600)
     preflight: PreflightResult
     target_draft: TargetIntakeContract | None = None
@@ -141,6 +145,15 @@ class HostedWorkspaceRecord(ContractModel):
     last_answer: EvidenceAnswer | None = None
     max_turns: int = Field(default=5, ge=1, le=50)
     accepted: bool = False
+
+    @model_validator(mode="after")
+    def name_legacy_assets(self) -> Self:
+        """Give pre-D040 records a useful display name without rewriting their state."""
+        if self.asset_name == "Untitled asset":
+            return self.model_copy(
+                update={"asset_name": fallback_asset_name(self.private_description)}
+            )
+        return self
 
 
 @dataclass
@@ -240,6 +253,44 @@ class HostedWorkspaceStore:
             raise HostedWorkspaceError("The workspace identifier is invalid.")
         return self.work_root / workspace_id / "workspace.json"
 
+    def _all_records(self) -> tuple[HostedWorkspaceRecord, ...]:
+        """Read active workspace summaries without reconstructing their runtimes."""
+        records: list[HostedWorkspaceRecord] = []
+        if not self.work_root.is_dir():
+            return ()
+        for path in self.work_root.glob("*/workspace.json"):
+            try:
+                record = HostedWorkspaceRecord.model_validate_json(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if record.deletion_status == "ACTIVE":
+                records.append(record)
+        records.sort(key=lambda item: item.updated_at, reverse=True)
+        return tuple(records)
+
+    def list_records(self) -> tuple[HostedWorkspaceRecord, ...]:
+        """Return the seven most recently active workspaces for the gallery."""
+        with self._lock:
+            return self._all_records()[:MAX_HOSTED_WORKSPACES]
+
+    def source_path(self, workspace_id: str) -> Path | None:
+        """Resolve a gallery source preview without reconstructing its agent runtime."""
+        try:
+            path = self._record_path(workspace_id).parent / "source.glb"
+        except HostedWorkspaceError:
+            return None
+        return path if path.is_file() else None
+
+    def _replacement_root(self, workspace_id: str) -> Path:
+        """Resolve an explicitly selected replacement inside the hosted root."""
+        path = self._record_path(workspace_id)
+        if not path.is_file():
+            raise HostedWorkspaceError("Choose an existing workspace to replace.")
+        root = path.parent.resolve(strict=True)
+        if root.parent != self.work_root:
+            raise HostedWorkspaceError("The replacement workspace is invalid.")
+        return root
+
     def _persist(self, workspace: HostedWorkspace) -> None:
         workspace.record = workspace.record.model_copy(update={"updated_at": datetime.now(UTC)})
         _write_json_atomic(
@@ -282,65 +333,80 @@ class HostedWorkspaceStore:
         description: str,
         original_filename: str,
         stream: BinaryIO,
+        *,
+        replace_workspace_id: str | None = None,
     ) -> HostedWorkspace:
         """Create a workspace and run only profile-free objective preflight."""
         normalized = normalize_intent_description(description)
         if Path(original_filename).suffix.lower() != ".glb":
             raise HostedWorkspaceError("Choose exactly one file with a .glb extension.")
         target_draft = self.intake_analyzer.analyze(normalized)
-        workspace_id = uuid4().hex
-        root = self.work_root / workspace_id
-        root.mkdir(parents=True, exist_ok=False)
-        source_path = root / "source.glb"
-        try:
-            _copy_validated_upload(stream, source_path)
-            preflight = preflight_asset(source_path)
-            _write_json_atomic(root / "preflight.json", preflight.model_dump(mode="json"))
-            _write_json_atomic(
-                root / "target_intake.json",
-                target_draft.model_dump(mode="json"),
-            )
-            now = datetime.now(UTC)
-            record = HostedWorkspaceRecord(
-                workspace_id=workspace_id,
-                created_at=now,
-                updated_at=now,
-                retention_expires_at=now + WORKSPACE_RETENTION,
-                phase=(
-                    WorkspacePhase.TARGET_CONFIRMATION
-                    if preflight.package.parse_success
-                    else WorkspacePhase.ERROR
-                ),
-                original_filename=Path(original_filename).name,
-                private_description=normalized,
-                preflight=preflight,
-                target_draft=target_draft,
-                error=(
-                    None
-                    if preflight.package.parse_success
-                    else f"Preflight could not read this GLB: {preflight.parse_error}"
-                ),
-                max_turns=self.max_agent_turns,
-            )
-            record = self._append_event(
-                record,
-                "SOURCE_MEASURED",
-                evidence_refs=(preflight.preflight_id, preflight.package.file_sha256),
-                payload={
-                    "parse_success": preflight.package.parse_success,
-                    "structural_eligibility": preflight.structural_eligibility.value,
-                },
-            )
-            workspace = HostedWorkspace(record=record, root=root)
-            self._persist(workspace)
-            return workspace
-        except Exception:
-            source_path.unlink(missing_ok=True)
-            (root / "preflight.json").unlink(missing_ok=True)
-            (root / "target_intake.json").unlink(missing_ok=True)
-            (root / "workspace.json").unlink(missing_ok=True)
-            root.rmdir()
-            raise
+        with self._lock:
+            records = self._all_records()
+            replacement_root: Path | None = None
+            if len(records) >= MAX_HOSTED_WORKSPACES and not replace_workspace_id:
+                raise HostedWorkspaceError(
+                    "Your workspace is full. Choose one existing asset to replace."
+                )
+            if replace_workspace_id:
+                replacement_root = self._replacement_root(replace_workspace_id)
+
+            workspace_id = uuid4().hex
+            root = self.work_root / workspace_id
+            root.mkdir(parents=True, exist_ok=False)
+            source_path = root / "source.glb"
+            try:
+                _copy_validated_upload(stream, source_path)
+                preflight = preflight_asset(source_path)
+                _write_json_atomic(root / "preflight.json", preflight.model_dump(mode="json"))
+                _write_json_atomic(
+                    root / "target_intake.json",
+                    target_draft.model_dump(mode="json"),
+                )
+                now = datetime.now(UTC)
+                record = HostedWorkspaceRecord(
+                    workspace_id=workspace_id,
+                    created_at=now,
+                    updated_at=now,
+                    retention_expires_at=now + WORKSPACE_RETENTION,
+                    phase=(
+                        WorkspacePhase.TARGET_CONFIRMATION
+                        if preflight.package.parse_success
+                        else WorkspacePhase.ERROR
+                    ),
+                    original_filename=Path(original_filename).name,
+                    asset_name=target_draft.asset_name,
+                    private_description=normalized,
+                    preflight=preflight,
+                    target_draft=target_draft,
+                    error=(
+                        None
+                        if preflight.package.parse_success
+                        else f"Preflight could not read this GLB: {preflight.parse_error}"
+                    ),
+                    max_turns=self.max_agent_turns,
+                )
+                record = self._append_event(
+                    record,
+                    "SOURCE_MEASURED",
+                    evidence_refs=(preflight.preflight_id, preflight.package.file_sha256),
+                    payload={
+                        "parse_success": preflight.package.parse_success,
+                        "structural_eligibility": preflight.structural_eligibility.value,
+                    },
+                )
+                workspace = HostedWorkspace(record=record, root=root)
+                self._persist(workspace)
+                if replacement_root is not None and replacement_root != root:
+                    shutil.rmtree(replacement_root)
+                return workspace
+            except Exception:
+                source_path.unlink(missing_ok=True)
+                (root / "preflight.json").unlink(missing_ok=True)
+                (root / "target_intake.json").unlink(missing_ok=True)
+                (root / "workspace.json").unlink(missing_ok=True)
+                root.rmdir()
+                raise
 
     @staticmethod
     def _custom_float(values: Mapping[str, str | None], key: str, label: str) -> float | None:
@@ -552,6 +618,7 @@ class HostedWorkspaceStore:
             workspace.record = workspace.record.model_copy(
                 update={
                     "private_description": normalized,
+                    "asset_name": target_draft.asset_name,
                     "target_draft": target_draft,
                     "processed_commands": processed,
                 }

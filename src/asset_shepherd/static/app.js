@@ -169,6 +169,68 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
   });
 }
 
+for (const form of document.querySelectorAll("[data-result-accept]")) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const review = form.closest("[data-result-review]");
+    const question = review?.querySelector("[data-result-question]");
+    const accepted = review?.querySelector("[data-result-accepted]");
+    const button = form.querySelector("button[type='submit']");
+    if (!review || !accepted || !button) {
+      form.submit();
+      return;
+    }
+    const originalLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = "Saving…";
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        headers: { "X-Asset-Shepherd-Transition": "accept" },
+      });
+      if (!response.ok) {
+        throw new Error(`Acceptance failed with ${response.status}`);
+      }
+      if (question) {
+        question.hidden = true;
+      }
+      accepted.hidden = false;
+      const heading = accepted.querySelector("h3");
+      if (heading?.id) {
+        review.setAttribute("aria-labelledby", heading.id);
+      }
+      heading?.focus();
+    } catch (_error) {
+      let message = review.querySelector("[data-result-error]");
+      if (!message) {
+        message = document.createElement("p");
+        message.className = "form-error";
+        message.dataset.resultError = "";
+        message.setAttribute("role", "alert");
+        review.append(message);
+      }
+      message.textContent = "Could not save that choice. Try again.";
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  });
+}
+
+const jobContractDialog = document.querySelector("[data-job-contract-dialog]");
+const jobContractOpen = document.querySelector("[data-job-contract-open]");
+const jobContractClose = document.querySelector("[data-job-contract-close]");
+
+if (jobContractDialog instanceof HTMLDialogElement && jobContractOpen) {
+  jobContractOpen.addEventListener("click", () => jobContractDialog.showModal());
+  jobContractClose?.addEventListener("click", () => jobContractDialog.close());
+  jobContractDialog.addEventListener("click", (event) => {
+    if (event.target === jobContractDialog) {
+      jobContractDialog.close();
+    }
+  });
+}
+
 for (const viewer of document.querySelectorAll("model-viewer")) {
   viewer.addEventListener("error", () => {
     viewer.classList.add("viewer-error");
@@ -542,7 +604,7 @@ const inspectionExperience = document.querySelector("[data-inspection-experience
 
 if (inspectionExperience && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   const rows = [...inspectionExperience.querySelectorAll("[data-inspection-check]")];
-  const results = [...document.querySelectorAll("[data-inspection-result]")];
+  const results = [...inspectionExperience.querySelectorAll("[data-inspection-result]")];
   const count = inspectionExperience.querySelector("[data-inspection-count]");
   inspectionExperience.classList.add("replaying");
   if (count) {

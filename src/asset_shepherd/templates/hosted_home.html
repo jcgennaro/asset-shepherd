@@ -1,26 +1,54 @@
 {% extends "base.html" %}
 {% from "_workflow_components.html" import asset_description %}
 {% block content %}
-  <section class="conversation-start" data-focus-area="start conversation" aria-labelledby="conversation-title">
-    <header class="intent-heading">
-      <h2 id="conversation-title">Describe the model you’re working on.</h2>
+  <section class="workspace-home" data-focus-area="asset workspace" aria-labelledby="workspace-title">
+    <header class="workspace-home-heading">
+      <h2 id="workspace-title">Your assets</h2>
+      {% if workspace_records %}<p>{{ workspace_records|length }} of {{ workspace_limit }}</p>{% endif %}
     </header>
 
-    {% if refusal %}
-      <div class="intake-refusal" role="status">{{ error }}</div>
-    {% elif error %}
-      <div class="alert danger" role="alert"><strong>Workspace not started</strong><span>{{ error }}</span></div>
+    {% if workspace_records %}
+      <div class="asset-gallery" aria-label="Processed assets">
+        {% for saved in workspace_records %}
+          <a class="asset-gallery-card" href="{{ url_for('hosted_workspace_page', workspace_id=saved.workspace_id) }}">
+            <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=saved.workspace_id) }}" alt="{{ saved.asset_name }}" camera-orbit="35deg 70deg auto" disable-zoom></model-viewer>
+            <span><strong>{{ saved.asset_name }}</strong><small>{{ saved.phase.value|replace('_', ' ')|title }}</small></span>
+          </a>
+        {% endfor %}
+      </div>
     {% endif %}
 
-    <form action="{{ url_for('create_hosted_workspace') }}" method="post" enctype="multipart/form-data" class="conversation-start-form" data-busy-form>
-      {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true) }}
-      <label class="drop-zone compact" for="hosted-asset" data-drop-zone>
-        <input id="hosted-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
-        <strong data-file-label>Choose or drop your GLB</strong>
-        <span>One GLB · up to 50 MB</span>
-        <span class="drop-zone-error" data-file-error aria-live="polite"></span>
-      </label>
-      <button class="primary-button" type="submit" data-submit-button>Measure my asset <span aria-hidden="true">→</span></button>
-    </form>
+    <details class="new-asset-panel"{% if not workspace_records or error %} open{% endif %}>
+      <summary><span aria-hidden="true">＋</span> New asset</summary>
+      <div class="conversation-start">
+        <header class="intent-heading"><h2>Describe the model you’re working on.</h2></header>
+
+        {% if refusal %}
+          <div class="intake-refusal" role="status">{{ error }}</div>
+        {% elif error %}
+          <div class="alert danger" role="alert"><strong>Workspace not started</strong><span>{{ error }}</span></div>
+        {% endif %}
+
+        <form action="{{ url_for('create_hosted_workspace') }}" method="post" enctype="multipart/form-data" class="conversation-start-form" data-busy-form>
+          {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true) }}
+          <label class="drop-zone compact" for="hosted-asset" data-drop-zone>
+            <input id="hosted-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
+            <strong data-file-label>Choose or drop your GLB</strong>
+            <span>One GLB · up to 50 MB</span>
+            <span class="drop-zone-error" data-file-error aria-live="polite"></span>
+          </label>
+          {% if workspace_records|length >= workspace_limit %}
+            <label class="replacement-choice" for="replace-workspace-id">
+              <span>Replace one existing asset</span>
+              <select id="replace-workspace-id" name="replace_workspace_id" required>
+                <option value="">Choose an asset</option>
+                {% for saved in workspace_records %}<option value="{{ saved.workspace_id }}">{{ saved.asset_name }}</option>{% endfor %}
+              </select>
+            </label>
+          {% endif %}
+          <button class="primary-button" type="submit" data-submit-button>Shepherd this asset <span aria-hidden="true">→</span></button>
+        </form>
+      </div>
+    </details>
   </section>
 {% endblock %}

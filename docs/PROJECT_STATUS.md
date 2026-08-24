@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-23
-**Current commit:** D038 bounded multi-turn agent loop (this file is included)
+**Last updated:** 2026-08-24
+**Current commit:** D040 resumable named-asset workspace (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop |  | Repeated feedback/action/approval turns are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery |  | Repeated feedback/action/approval turns, per-asset session state, and resumable seven-slot workspace are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -50,6 +50,21 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D040 named-asset workspace: the first intake turn now assigns a concise asset name used in the
+  gallery, page title, and workspace context. `/workspace` shows up to seven source previews that
+  resume the exact durable phase. An eighth upload requires an explicit replacement choice. Each
+  `workspace_id` continues to own its existing `strands_state` session directory. The completion
+  view is reduced to one agent-authored sentence; **Job details** opens the full structured contract
+  on demand instead of occupying a permanent right column. Live browser review rendered all seven
+  GLB previews, resumed a pending approval, exercised the modal, and confirmed the same-URL Yes →
+  download transition.
+- D039 hosted handoff: **Shepherd this asset** replaces the sensor-centric entry label. The
+  conversation route now reuses the six-row structured inspection checklist and its checking-to-
+  result replay instead of skipping directly from target confirmation to approval or completion.
+  **Yes** persists acceptance through a progressively enhanced POST and changes the existing panel
+  in place to **Ready to download**, with a direct fixed-GLB action and secondary evidence package;
+  the redirect fallback remains. Live desktop and 390 x 844 checks confirmed an unchanged URL, no
+  horizontal overflow, and no browser warnings or errors.
 - D038 bounded conversation loop: form-led and durable hosted results now ask **Did we get it
   right?** Yes records durable acceptance; No opens one 1,000-character feedback field and begins a
   fresh agent turn. There is no hard-coded second attempt. The per-job limit is frozen from

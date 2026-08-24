@@ -3151,6 +3151,108 @@ model-viewer {
   --accent-soft: rgba(143, 210, 190, 0.12);
 }
 
+.workspace-home {
+  display: grid;
+  width: min(1180px, 100%);
+  gap: 24px;
+  margin: 0 auto;
+}
+
+.workspace-home-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workspace-home-heading h2,
+.workspace-home-heading p {
+  margin: 0;
+}
+
+.workspace-home-heading p {
+  color: var(--muted);
+}
+
+.asset-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 14px;
+}
+
+.asset-gallery-card {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--surface);
+  text-decoration: none;
+}
+
+.asset-gallery-card:hover,
+.asset-gallery-card:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.asset-gallery-card model-viewer {
+  width: 100%;
+  height: 180px;
+  pointer-events: none;
+  background: var(--surface-soft);
+}
+
+.asset-gallery-card > span {
+  display: grid;
+  gap: 3px;
+  padding: 14px 16px 16px;
+}
+
+.asset-gallery-card small {
+  color: var(--muted);
+}
+
+.new-asset-panel {
+  border-top: 1px solid var(--line);
+}
+
+.new-asset-panel > summary {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  gap: 8px;
+  padding: 20px 0;
+  cursor: pointer;
+  font-weight: 800;
+  list-style: none;
+}
+
+.new-asset-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.new-asset-panel .conversation-start {
+  min-height: 0;
+  padding: 18px 0 42px;
+}
+
+.replacement-choice {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+}
+
+.replacement-choice select {
+  min-height: 48px;
+  padding: 0 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface);
+}
+
 .conversation-start {
   display: grid;
   width: min(1180px, 100%);
@@ -3225,14 +3327,14 @@ model-viewer {
 .hosted-columns {
   display: grid;
   align-items: start;
-  grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.75fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(18px, 3vw, 42px);
 }
 
 .conversation-pane {
   display: grid;
   min-width: 0;
-  max-width: 860px;
+  max-width: 1120px;
   grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   padding: clamp(10px, 2vw, 24px) 0 60px;
@@ -3250,6 +3352,14 @@ model-viewer {
   font-size: clamp(1.75rem, 2.7vw, 2.8rem);
   line-height: 1.08;
   letter-spacing: -0.025em;
+}
+
+.conversation-pane > header h2.completion-heading {
+  max-width: 880px;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
 }
 
 .conversation-message,
@@ -3480,16 +3590,41 @@ model-viewer {
 }
 
 .job-contract {
-  position: sticky;
-  top: 112px;
   display: grid;
-  max-height: calc(100vh - 145px);
+  max-height: none;
   gap: 9px;
-  padding: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.job-contract-dialog {
+  width: min(860px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  padding: 24px;
   overflow: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 20px;
-  background: rgba(19, 30, 28, 0.94);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.55);
+}
+
+.job-contract-dialog::backdrop {
+  background: rgba(3, 8, 7, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.job-contract > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.compact-button {
+  min-height: 40px;
+  padding: 0 14px;
 }
 
 .job-contract header h2 {
@@ -3603,6 +3738,16 @@ textarea.asset-description-input:focus {
   margin: 0;
 }
 
+.result-review-question,
+.result-accepted-prompt {
+  display: grid;
+  gap: 14px;
+}
+
+.result-accepted-prompt[hidden] {
+  display: none;
+}
+
 .result-review-actions {
   display: flex;
   align-items: flex-start;
@@ -3641,6 +3786,22 @@ textarea.asset-description-input:focus {
   align-self: center;
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.result-download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.hosted-inspection {
+  margin: 4px 0 24px;
+}
+
+.hosted-inspection .inspection-table-wrap {
+  max-height: 260px;
+  margin-top: 12px;
 }
 
 @media (max-width: 1050px) {
@@ -3702,6 +3863,20 @@ textarea.asset-description-input:focus {
     grid-template-columns: 1fr;
   }
 
+  .asset-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .asset-gallery-card model-viewer {
+    height: 140px;
+  }
+
+  .job-contract-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+    padding: 18px;
+  }
+
   .hosted-context {
     grid-template-columns: 1fr auto;
   }
@@ -3757,6 +3932,11 @@ textarea.asset-description-input:focus {
   }
 
   .result-review-actions {
+    flex-direction: column;
+  }
+
+  .result-download-actions {
+    align-items: stretch;
     flex-direction: column;
   }
 

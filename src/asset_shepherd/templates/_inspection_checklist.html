@@ -1,0 +1,13 @@
+<header>
+  <h2 id="inspection-progress-title">Checking your GLB</h2>
+  <span data-inspection-count>{{ inspection_checks|length }} complete</span>
+</header>
+<div class="inspection-stream" role="log" aria-live="polite" data-inspection-stream>
+  {% for check in inspection_checks %}
+    <div class="inspection-check {{ check.status }}" data-inspection-check data-status="{{ check.status }}" data-label="{{ check.label }}">
+      <span class="inspection-check-icon" aria-hidden="true">{% if check.status == 'pass' %}✓{% elif check.status == 'blocked' %}×{% elif check.status == 'checking' %}…{% else %}!{% endif %}</span>
+      <strong>{{ check.label }}</strong>
+      <span class="visually-hidden">{{ check.detail }}</span>
+    </div>
+  {% endfor %}
+</div>

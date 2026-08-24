@@ -37,8 +37,9 @@ class TargetFieldEvidence(ContractModel):
 class TargetIntakeContract(ContractModel):
     """Minimum typed state required before Asset Shepherd may offer target confirmation."""
 
-    schema_version: Literal[1, 2] = 2
+    schema_version: Literal[1, 2, 3] = 3
     description: Annotated[str, Field(min_length=12, max_length=600)]
+    asset_name: Annotated[str, Field(min_length=2, max_length=48)] = "Untitled asset"
     analyzer_provider: Annotated[str, Field(min_length=1, max_length=40)] = "deterministic"
     analyzer_model: Annotated[str, Field(min_length=1, max_length=120)] = "explicit-text-v1"
     target_use: AssetTargetUse | None = None
@@ -98,6 +99,30 @@ _HEIGHT_PATTERN = re.compile(
     r"(?P<unit>met(?:er|re)s?|m|centimet(?:er|re)s?|cm|feet|foot|ft|inches|inch|in)\b",
     re.IGNORECASE,
 )
+
+_NAME_PREFIX = re.compile(
+    r"^(?:(?:i(?:'m| am) (?:making|working on|creating)|this is)\s+)?(?:a|an|the)\s+",
+    re.IGNORECASE,
+)
+_NAME_STOP = re.compile(
+    r"\b(?:used|intended|designed|made)\s+(?:as|for|to)\b|\b(?:for|with|that|which)\b",
+    re.IGNORECASE,
+)
+
+
+def fallback_asset_name(description: str) -> str:
+    """Derive a short deterministic gallery label when no semantic model is available."""
+    normalized = normalize_intent_description(description)
+    without_measurements = _HEIGHT_PATTERN.sub("", normalized)
+    candidate = _NAME_PREFIX.sub("", without_measurements).strip(" ,.-")
+    candidate = _NAME_STOP.split(candidate, maxsplit=1)[0].strip(" ,.-")
+    words = re.findall(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)?", candidate)
+    if not words:
+        return "Untitled asset"
+    useful = words[:5]
+    if len(useful) == 1 and useful[0].isdigit():
+        return "Untitled asset"
+    return " ".join(useful).title()[:48].strip()
 
 
 def _extract_target_use(
@@ -164,6 +189,7 @@ def draft_target_intake(description: str) -> TargetIntakeContract:
         missing_values.append("target_height_cm")
     return TargetIntakeContract(
         description=normalized,
+        asset_name=fallback_asset_name(normalized),
         analyzer_provider="deterministic",
         analyzer_model="explicit-text-v1",
         target_use=target_use,
@@ -214,6 +240,7 @@ def clarify_target_intake(
         )
     return TargetIntakeContract(
         description=draft.description,
+        asset_name=draft.asset_name,
         analyzer_provider=draft.analyzer_provider,
         analyzer_model=draft.analyzer_model,
         target_use=target_use,
@@ -251,6 +278,7 @@ def revise_target_intake(
     )
     return TargetIntakeContract(
         description=draft.description,
+        asset_name=draft.asset_name,
         analyzer_provider=draft.analyzer_provider,
         analyzer_model=draft.analyzer_model,
         target_use=target_use,

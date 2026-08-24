@@ -21,6 +21,7 @@ def test_explicit_description_completes_minimum_contract_without_questions() -> 
     )
 
     assert draft.ready_for_confirmation
+    assert draft.asset_name == "Hanging Lantern"
     assert draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
     assert draft.target_height_cm == 120.0
     assert draft.missing_fields == ()
