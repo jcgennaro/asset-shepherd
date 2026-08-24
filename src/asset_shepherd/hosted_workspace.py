@@ -335,12 +335,16 @@ class HostedWorkspaceStore:
         stream: BinaryIO,
         *,
         replace_workspace_id: str | None = None,
+        target_draft: TargetIntakeContract | None = None,
     ) -> HostedWorkspace:
         """Create a workspace and run only profile-free objective preflight."""
         normalized = normalize_intent_description(description)
         if Path(original_filename).suffix.lower() != ".glb":
             raise HostedWorkspaceError("Choose exactly one file with a .glb extension.")
-        target_draft = self.intake_analyzer.analyze(normalized)
+        if target_draft is None:
+            target_draft = self.intake_analyzer.analyze(normalized)
+        elif target_draft.description != normalized:
+            raise HostedWorkspaceError("The intake draft does not match this description.")
         with self._lock:
             records = self._all_records()
             replacement_root: Path | None = None

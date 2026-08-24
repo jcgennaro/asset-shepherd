@@ -5,16 +5,13 @@
 
   {% if active_mode in ['conversation', 'help'] %}
   <nav class="mode-nav intent-rail" aria-label="Conversation-led workflow">
-    <p class="rail-group-label">Asset workflow</p>
-    <a class="mode-link{% if active_mode == 'conversation' %} active{% endif %}" href="{{ '#workspace' if active_mode == 'conversation' else url_for('hosted_home') }}" title="Open your asset workspace">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 3V5Z"/></svg>
-      <span class="mode-label">Workspace</span>
-    </a>
+    <ol class="hosted-flow" aria-label="Asset workflow steps">
+      <li class="{% if hosted_step == 'gallery' %}active{% endif %}"><span>1</span><strong>Assets</strong></li>
+      <li class="{% if hosted_step == 'describe' %}active{% endif %}"><span>2</span><strong>Describe</strong></li>
+      <li class="{% if hosted_step == 'upload' %}active{% endif %}"><span>3</span><strong>Upload</strong></li>
+      <li class="{% if hosted_step == 'shepherd' %}active{% endif %}"><span>4</span><strong>Shepherd</strong></li>
+    </ol>
     <div class="rail-actions">
-      <a class="mode-link utility-tile" href="{{ url_for('hosted_home') }}" title="Start a new asset">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        <span class="mode-label">New asset</span>
-      </a>
       <a class="mode-link utility-tile help-tile{% if active_mode == 'help' %} active{% endif %}" href="{{ url_for('how_it_works') }}" title="See how Asset Shepherd works">
         <span class="help-icon" aria-hidden="true">?</span>
         <span class="mode-label">How it works</span>

@@ -1,5 +1,9 @@
 <div class="inspection-experience" data-inspection-experience>
   <section class="inspection-progress" aria-labelledby="inspection-progress-title">
+    <header>
+      <h2 id="inspection-progress-title">Checking your GLB</h2>
+      <span data-inspection-count>{{ inspection_checks|length }} complete</span>
+    </header>
     {% include "_inspection_checklist.html" %}
 
     <details class="inspection-details">

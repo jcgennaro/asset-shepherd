@@ -228,8 +228,15 @@ def test_upload_controls_support_click_and_drag_drop(tmp_path: Path) -> None:
     """Both upload surfaces share one GLB chooser-and-drop interaction."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
     _, intake_path = _confirmed_intent(client)
+    described = client.post(
+        "/workspace/new/describe",
+        data={"description": "A friendly 1.8 m robot for a static game asset."},
+        follow_redirects=False,
+    )
+    assert described.status_code == 303
+    hosted_upload_path = urlparse(described.headers["location"]).path
 
-    for response in (client.get(intake_path), client.get("/workspace")):
+    for response in (client.get(intake_path), client.get(hosted_upload_path)):
         assert response.status_code == 200
         assert "Choose or drop your GLB" in response.text
         assert "data-drop-zone" in response.text
@@ -245,7 +252,7 @@ def test_upload_controls_support_click_and_drag_drop(tmp_path: Path) -> None:
     assert 'endsWith(".glb")' in script.text
 
 
-def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
+def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
     tmp_path: Path,
 ) -> None:
     """The persistent question-mark action opens one concise workflow explanation."""
@@ -253,9 +260,10 @@ def test_how_it_works_is_directly_below_new_asset_and_explains_the_flow(
 
     entry = client.get("/workspace")
     assert entry.status_code == 200
-    new_asset_position = entry.text.index(">New asset<")
-    help_position = entry.text.index(">How it works<")
-    assert new_asset_position < help_position
+    assert ">Assets</strong>" in entry.text
+    assert ">Describe</strong>" in entry.text
+    assert ">Upload</strong>" in entry.text
+    assert ">Shepherd</strong>" in entry.text
     assert 'class="help-icon" aria-hidden="true">?</span>' in entry.text
     assert 'href="http://testserver/how-it-works"' in entry.text
 

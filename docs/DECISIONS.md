@@ -4,6 +4,54 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D041 — Four-step hosted flow and one explicit approval surface
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+The hosted start screen combined the gallery, description, file upload, and replacement choice. At
+approval, a second context bar and multiple headings repeated workflow position; the checklist
+showed six results and then repeated those same six results in a tiny table. Attention icons did
+not explain themselves, and the approval prompt said that three changes needed review while showing
+only the physical normalization. A separate recorded-evidence question added another unrelated
+control.
+
+**Decision**
+
+Use four hosted steps in the persistent left rail: **Assets**, **Describe**, **Upload**, and
+**Shepherd**. The gallery only selects a new slot or resumes an existing workspace; description and
+upload are separate screens; all inspection, action, approval, repair, verification, feedback, and
+repeat turns remain in Shepherd. At seven assets, replacement is selected from the gallery before
+description.
+
+Each screen has one global title and no separate workflow context bar or approval subtitle. In Shepherd, show each of the
+six checks once. A pass is a checkmark. An attention item uses a colored row and exclamation icon;
+hover or keyboard focus on the icon explains the condition. Do not repeat the list as a status
+table or display an obvious completed-count label.
+
+At approval, show the exact selected plan in no more than three visible groups: physical
+normalization, mesh display names, and node display names. Exact single-name changes stay visible;
+larger name groups disclose their individual mappings on demand. Keep only Reject and Approve as
+the decision controls. Remove the recorded-evidence question from the hosted product surface;
+complete structured evidence remains available through **Job details**.
+
+**Evidence and consequences**
+
+Route acceptance proves gallery-only, description-only, and upload-only states, the four-step rail,
+one six-row checklist with six hover explanations, no duplicate result table or count, three visible
+change groups, and absence of the recorded-evidence control. Live browser review of the persisted
+Polar Robot Puppy approval shows the active Shepherd step, one title, colored attention rows, and
+the exact scale, mesh-name, and node-name changes before the decision buttons. Target inference is
+performed once during the description transition and carried into upload; durable workspace and
+Strands session state still begin after the GLB is accepted.
+
 ### D040 — Each named asset is one resumable conversation
 
 **Date:** 2026-08-24

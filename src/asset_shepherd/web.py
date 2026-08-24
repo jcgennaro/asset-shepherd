@@ -47,6 +47,7 @@ from asset_shepherd.intent import (
     TARGET_USE_LABELS,
     build_asset_intent,
     craft_confirmed_story,
+    normalize_intent_description,
     validate_asset_intent,
 )
 from asset_shepherd.models import (
@@ -59,7 +60,9 @@ from asset_shepherd.models import (
     Finding,
     ProfilePolicyProvenance,
     ProjectProfile,
+    RenamePayload,
     RepairEligibility,
+    RepairKind,
     Severity,
     VerificationState,
 )
@@ -185,6 +188,26 @@ class InspectionCheckView:
     label: str
     status: str
     detail: str
+
+
+@dataclass(frozen=True)
+class ApprovalChangeView:
+    """One visible group of exact changes in the approval decision."""
+
+    title: str
+    summary: str
+    authorization: str
+    items: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class HostedStartDraft:
+    """Short-lived intake state between the description and upload screens."""
+
+    draft_id: str
+    description: str
+    target_draft: TargetIntakeContract
+    replace_workspace_id: str | None
 
 
 @dataclass(frozen=True)
@@ -1497,6 +1520,69 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     return tuple(checks)
 
 
+def _approval_changes(
+    core: AgentJob,
+    approval_card: ApprovalCard | None,
+) -> tuple[ApprovalChangeView, ...]:
+    """Group the selected plan into at most three readable change categories."""
+    plan = core.selected_plan
+    if plan is None:
+        return ()
+
+    normalization: list[str] = []
+    mesh_names: list[str] = []
+    node_names: list[str] = []
+    for candidate in plan.candidates:
+        if candidate.kind is RepairKind.NORMALIZATION_TRANSFORM:
+            if approval_card is not None and candidate.id == approval_card.candidate_id:
+                normalization.append(
+                    f"{approval_card.target_extent_label}: "
+                    f"{approval_card.before_target_extent_m:.3f} m → "
+                    f"{approval_card.expected_target_extent_m:.3f} m"
+                )
+            else:
+                normalization.append(candidate.description)
+            continue
+        payload = candidate.payload
+        if not isinstance(payload, RenamePayload):
+            continue
+        before_name = payload.before_name or "(unnamed)"
+        item = f"“{before_name}” → “{payload.after_name}”"
+        if candidate.kind is RepairKind.RENAME_MESH:
+            mesh_names.append(item)
+        elif candidate.kind is RepairKind.RENAME_NODE:
+            node_names.append(item)
+
+    groups: list[ApprovalChangeView] = []
+    if normalization:
+        component_title = "Physical normalization"
+        if approval_card is not None and approval_card.components:
+            component_title = ", ".join(
+                component.component.capitalize() for component in approval_card.components
+            )
+        groups.append(
+            ApprovalChangeView(
+                component_title,
+                normalization[0],
+                "Approval required",
+                tuple(normalization[1:]),
+            )
+        )
+    for label, items in (("Mesh name", mesh_names), ("Node name", node_names)):
+        if not items:
+            continue
+        plural_label = f"{label}s" if len(items) != 1 else label
+        groups.append(
+            ApprovalChangeView(
+                plural_label,
+                items[0] if len(items) == 1 else f"{len(items)} names will be cleaned up",
+                "Automatic",
+                tuple(items if len(items) > 1 else ()),
+            )
+        )
+    return tuple(groups)
+
+
 def _inspection_summary(job: WebJob, cannot_repair: bool) -> InspectionSummaryView:
     """Create concise agent copy from structured measurements and findings."""
     inspection = job.runtime.job.inspection
@@ -2090,6 +2176,8 @@ def create_app(
         analyzer,
         configured_turns,
     )
+    hosted_start_drafts: dict[str, HostedStartDraft] = {}
+    hosted_start_lock = RLock()
     feedback_root = work_root / "feedback"
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     cast(dict[str, object], templates.env.globals)["static_version"] = _static_asset_version()
@@ -2143,7 +2231,55 @@ def create_app(
                 "workspace_records": hosted_store.list_records(),
                 "workspace_limit": MAX_HOSTED_WORKSPACES,
                 "active_mode": "conversation",
-                "active_style": "Workspace",
+                "active_style": "Assets",
+                "hosted_step": "gallery",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def render_hosted_describe(
+        request: Request,
+        error: str | None = None,
+        status_code: int = 200,
+        description: str = "",
+        replace_workspace_id: str | None = None,
+        *,
+        refusal: bool = False,
+    ) -> Response:
+        """Render only the initial description step."""
+        return templates.TemplateResponse(
+            request=request,
+            name="hosted_describe.html",
+            context={
+                "error": error,
+                "refusal": refusal,
+                "description": description,
+                "replace_workspace_id": replace_workspace_id,
+                "active_mode": "conversation",
+                "active_style": "Describe",
+                "hosted_step": "describe",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def render_hosted_upload(
+        request: Request,
+        draft: HostedStartDraft,
+        error: str | None = None,
+        status_code: int = 200,
+    ) -> Response:
+        """Render only the GLB upload step for a validated description draft."""
+        return templates.TemplateResponse(
+            request=request,
+            name="hosted_upload.html",
+            context={
+                "error": error,
+                "draft": draft,
+                "active_mode": "conversation",
+                "active_style": "Upload",
+                "hosted_step": "upload",
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -2246,6 +2382,9 @@ def create_app(
                     _decision_summary(runtime_job) if runtime_job is not None else "pending"
                 ),
                 "approval_card": approval_card,
+                "approval_changes": (
+                    _approval_changes(runtime_job, approval_card) if runtime_job is not None else ()
+                ),
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,
                 "target_draft": workspace.record.target_draft,
@@ -2273,6 +2412,7 @@ def create_app(
                 "error": error,
                 "active_mode": "conversation",
                 "active_style": workspace.record.asset_name,
+                "hosted_step": "shepherd",
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -2815,8 +2955,133 @@ def create_app(
         )
 
     def hosted_home(request: Request) -> Response:
-        """Start a new conversation-led asset workspace."""
+        """Choose an existing asset workspace or a new slot."""
         return render_hosted_home(request)
+
+    def hosted_describe(
+        request: Request,
+        replace_workspace_id: str | None = None,
+    ) -> Response:
+        """Begin one new slot with the description step only."""
+        records = hosted_store.list_records()
+        record_ids = {record.workspace_id for record in records}
+        if len(records) >= MAX_HOSTED_WORKSPACES and replace_workspace_id not in record_ids:
+            return render_hosted_home(
+                request,
+                "Choose which existing asset to replace.",
+                status_code=400,
+            )
+        if replace_workspace_id is not None and replace_workspace_id not in record_ids:
+            return render_hosted_home(
+                request,
+                "That asset slot is unavailable.",
+                status_code=404,
+            )
+        return render_hosted_describe(
+            request,
+            replace_workspace_id=replace_workspace_id,
+        )
+
+    def save_hosted_description(
+        request: Request,
+        description: Annotated[str, Form()],
+        replace_workspace_id: Annotated[str | None, Form()] = None,
+    ) -> Response:
+        """Infer the target once, then advance to the separate upload step."""
+        records = hosted_store.list_records()
+        record_ids = {record.workspace_id for record in records}
+        if len(records) >= MAX_HOSTED_WORKSPACES and replace_workspace_id not in record_ids:
+            return render_hosted_describe(
+                request,
+                "Choose which existing asset to replace from the gallery.",
+                status_code=400,
+                description=description,
+            )
+        if replace_workspace_id is not None and replace_workspace_id not in record_ids:
+            return render_hosted_describe(
+                request,
+                "That asset slot is unavailable.",
+                status_code=404,
+                description=description,
+            )
+        try:
+            normalized = normalize_intent_description(description)
+            target_draft = hosted_store.intake_analyzer.analyze(normalized)
+        except TargetIntakeContentRefusal as error:
+            return render_hosted_describe(
+                request,
+                str(error),
+                status_code=400,
+                refusal=True,
+            )
+        except ValueError as error:
+            return render_hosted_describe(
+                request,
+                str(error),
+                status_code=400,
+                description=description,
+                replace_workspace_id=replace_workspace_id,
+            )
+        draft = HostedStartDraft(
+            draft_id=uuid4().hex,
+            description=normalized,
+            target_draft=target_draft,
+            replace_workspace_id=replace_workspace_id,
+        )
+        with hosted_start_lock:
+            hosted_start_drafts[draft.draft_id] = draft
+        return RedirectResponse(
+            request.url_for("hosted_upload", draft_id=draft.draft_id),
+            status_code=303,
+        )
+
+    def require_hosted_start_draft(draft_id: str) -> HostedStartDraft:
+        if re.fullmatch(r"[0-9a-f]{32}", draft_id) is None:
+            raise HostedWorkspaceError("This upload step is unavailable. Describe the asset again.")
+        with hosted_start_lock:
+            draft = hosted_start_drafts.get(draft_id)
+        if draft is None:
+            raise HostedWorkspaceError("This upload step is unavailable. Describe the asset again.")
+        return draft
+
+    def hosted_upload(request: Request, draft_id: str) -> Response:
+        """Show one file upload control for the validated description draft."""
+        try:
+            draft = require_hosted_start_draft(draft_id)
+        except HostedWorkspaceError as error:
+            return render_hosted_describe(request, str(error), status_code=404)
+        return render_hosted_upload(request, draft)
+
+    def upload_hosted_asset(
+        request: Request,
+        draft_id: str,
+        asset: Annotated[UploadFile, File()],
+    ) -> Response:
+        """Create the durable workspace from the separately selected GLB."""
+        try:
+            draft = require_hosted_start_draft(draft_id)
+        except HostedWorkspaceError as error:
+            asset.file.close()
+            return render_hosted_describe(request, str(error), status_code=404)
+        filename = asset.filename or ""
+        try:
+            workspace = hosted_store.create(
+                draft.description,
+                filename,
+                asset.file,
+                replace_workspace_id=draft.replace_workspace_id,
+                target_draft=draft.target_draft,
+            )
+        except (HostedWorkspaceError, ValueError) as error:
+            return render_hosted_upload(request, draft, str(error), status_code=400)
+        finally:
+            asset.file.close()
+        with hosted_start_lock:
+            hosted_start_drafts.pop(draft.draft_id, None)
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace.record.workspace_id),
+            status_code=303,
+        )
 
     def create_hosted_workspace(
         request: Request,
@@ -3009,24 +3274,6 @@ def create_app(
             if workspace is None:
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=409)
-        return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
-            status_code=303,
-        )
-
-    def ask_hosted_workspace(
-        request: Request,
-        workspace_id: str,
-        category: Annotated[str, Form()],
-    ) -> Response:
-        """Answer one bounded question strictly from recorded job evidence."""
-        try:
-            workspace = require_hosted_workspace(workspace_id)
-            if category not in {"measurements", "materials", "authorization", "result"}:
-                raise HostedWorkspaceError("Choose one of the supported evidence questions.")
-            hosted_store.answer_evidence_question(workspace, category)
-        except HostedWorkspaceError as error:
-            return render_hosted_home(request, str(error), status_code=404)
         return RedirectResponse(
             request.url_for("hosted_workspace_page", workspace_id=workspace_id),
             status_code=303,
@@ -3251,6 +3498,32 @@ def create_app(
         name="hosted_home",
     )
     app.add_api_route(
+        "/workspace/new/describe",
+        hosted_describe,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="hosted_describe",
+    )
+    app.add_api_route(
+        "/workspace/new/describe",
+        save_hosted_description,
+        methods=["POST"],
+        name="save_hosted_description",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/upload",
+        hosted_upload,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="hosted_upload",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/upload",
+        upload_hosted_asset,
+        methods=["POST"],
+        name="upload_hosted_asset",
+    )
+    app.add_api_route(
         "/workspace",
         create_hosted_workspace,
         methods=["POST"],
@@ -3286,12 +3559,6 @@ def create_app(
         decide_hosted_workspace,
         methods=["POST"],
         name="decide_hosted_workspace",
-    )
-    app.add_api_route(
-        "/workspace/{workspace_id}/ask",
-        ask_hosted_workspace,
-        methods=["POST"],
-        name="ask_hosted_workspace",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/result",

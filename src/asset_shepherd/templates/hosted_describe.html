@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_workflow_components.html" import asset_description %}
+{% block content %}
+  <section class="single-step" data-focus-area="asset description" aria-label="Describe the asset">
+    {% if refusal %}<div class="intake-refusal" role="status">{{ error }}</div>
+    {% elif error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
+    <form action="{{ url_for('save_hosted_description') }}" method="post" class="single-step-form" data-busy-form>
+      {% if replace_workspace_id %}<input type="hidden" name="replace_workspace_id" value="{{ replace_workspace_id }}">{% endif %}
+      {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true) }}
+      <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
+    </form>
+  </section>
+{% endblock %}

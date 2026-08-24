@@ -1,13 +1,8 @@
 {% extends "base.html" %}
 {% from "_workflow_components.html" import asset_description, confirmation_decision %}
+{% block header_actions %}<button type="button" class="secondary-button compact-button" data-job-contract-open>Job details</button>{% endblock %}
 {% block content %}
   <section class="hosted-workspace" data-focus-area="asset conversation">
-    <header class="hosted-context">
-      <a class="back-link" href="{{ url_for('hosted_home') }}">← New asset</a>
-      <p><strong>{{ record.asset_name }}</strong><span>{{ result_presentation.state_label if result_presentation else record.phase|replace('_', ' ')|title }}</span></p>
-      <button type="button" class="secondary-button compact-button" data-job-contract-open>Job details</button>
-    </header>
-
     {% if error %}
       <div class="alert danger" role="alert"><strong>Could not continue</strong><span>{{ error }}</span></div>
     {% elif record.error %}
@@ -15,34 +10,19 @@
     {% endif %}
 
     <div class="hosted-columns">
-      <main class="conversation-pane" aria-labelledby="conversation-heading">
-        <header>
-          <p class="section-label">Asset conversation</p>
-          <h2 id="conversation-heading"{% if record.phase.value == 'APPROVAL' %} class="approval-heading"{% elif job and job.result %} class="completion-heading"{% endif %}>
+      <main class="conversation-pane" aria-label="Asset conversation">
+          {% if record.phase.value != 'APPROVAL' %}<p class="conversation-prompt{% if job and job.result %} completion-prompt{% endif %}">
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d inspect this as a {{ target_height_label }} {{ target_use_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' %}About how tall should it be?
-            {% elif record.phase.value == 'APPROVAL' and approval_card %}Normalize {{ approval_card.components|map(attribute='component')|join(', ') }}: {{ "%.3f"|format(approval_card.before_target_extent_m) }} m → {{ "%.3f"|format(approval_card.expected_target_extent_m) }} m?
             {% elif job and job.result %}{{ completion_sentence }}
             {% else %}The workflow stopped.{% endif %}
-          </h2>
-        </header>
+          </p>{% endif %}
 
         {% if inspection %}
           <div class="hosted-inspection" data-inspection-experience>
-            <section class="inspection-progress" aria-labelledby="inspection-progress-title">
+            <section class="inspection-progress" aria-label="Inspection checks">
               {% include "_inspection_checklist.html" %}
-              <details class="inspection-details">
-                <summary>More details</summary>
-                <div class="inspection-table-wrap">
-                  <table class="inspection-table">
-                    <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
-                    <tbody>{% for check in inspection_checks %}
-                      <tr><td>{{ check.label }}</td><td>{{ check.status|title }}</td><td>{{ check.detail }}</td></tr>
-                    {% endfor %}</tbody>
-                  </table>
-                </div>
-              </details>
             </section>
           </div>
         {% endif %}
@@ -72,9 +52,16 @@
             </div>
           {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}
-          <details class="approval-details"><summary>Details</summary>
-            {% for component in approval_card.components %}<p><strong>{{ component.component }}</strong> · {{ component.evidence }}</p>{% endfor %}
-          </details>
+          <ol class="approval-change-list" aria-label="Proposed changes">
+            {% for change in approval_changes %}
+              <li class="approval-change">
+                <strong>{{ change.title }}</strong>
+                <span>{{ change.summary }}</span>
+                <b class="{{ change.authorization|lower|replace(' ', '-') }}">{{ change.authorization }}</b>
+                {% if change.items %}<details><summary>Show exact names</summary>{% for item in change.items %}<p>{{ item }}</p>{% endfor %}</details>{% endif %}
+              </li>
+            {% endfor %}
+          </ol>
           <form action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form>
             <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
@@ -137,24 +124,6 @@
           </section>
         {% endif %}
 
-        {% if record.last_answer %}
-          <article class="conversation-message evidence-answer">
-            <strong>{{ record.last_answer.title }}</strong>
-            {% for statement in record.last_answer.statements %}<p>{{ statement }}</p>{% endfor %}
-            <small>Evidence: {{ record.last_answer.evidence_refs|join(', ') }}</small>
-          </article>
-        {% endif %}
-        <form action="{{ url_for('ask_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="evidence-question">
-          <label><span>Ask from recorded evidence</span>
-            <select name="category">
-              <option value="measurements">What did you measure?</option>
-              <option value="materials">What material metadata is declared?</option>
-              <option value="authorization">What can authorize a repair?</option>
-              <option value="result">What is the current result?</option>
-            </select>
-          </label>
-          <button class="secondary-button" type="submit">Ask</button>
-        </form>
       </main>
     </div>
 

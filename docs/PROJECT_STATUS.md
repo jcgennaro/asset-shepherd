@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-24
-**Current commit:** D040 resumable named-asset workspace (this file is included)
+**Current commit:** D041 four-step hosted flow and explicit approval surface (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery |  | Repeated feedback/action/approval turns, per-asset session state, and resumable seven-slot workspace are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 four-step hosted flow |  | Repeated feedback/action/approval turns, per-asset session state, resumable seven-slot workspace, and one-task-per-step hosted UX are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | NOT_STARTED |  |  |  |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -50,6 +50,14 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D041 hosted workflow simplification: the persistent rail is now **Assets → Describe → Upload →
+  Shepherd**. `/workspace` is only the seven-slot gallery; description and GLB upload are separate
+  screens; inspection and every repair/feedback iteration stay in Shepherd. Approval has one title,
+  one six-row checklist, one exact three-group change list, and Reject/Approve. Attention rows are
+  color-highlighted and their icons explain the condition on hover or keyboard focus. The duplicate
+  result table, completed count, context bar, hidden plan details, and recorded-evidence question are
+  removed. Live browser review of Polar Robot Puppy shows the exact 0.463 m → 1.500 m scale change
+  and both automatic name mappings before approval.
 - D040 named-asset workspace: the first intake turn now assigns a concise asset name used in the
   gallery, page title, and workspace context. `/workspace` shows up to seven source previews that
   resume the exact durable phase. An eighth upload requires an explicit replacement choice. Each
@@ -122,10 +130,10 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   offsets are unitless, and the one shared WebGL scene now visibly renders source, repaired, and
   optional banana GLBs. Browser acceptance exercised Both/Before/After fits, metric axes, banana,
   desktop, and 390 × 844 layouts with no warning or error.
-- Approval presentation now asks one compact question containing the exact before/target dimensions,
-  keeps component evidence behind one `Details` disclosure, and offers only Reject/Approve. The
-  redundant source-file reassurance and duplicate metric tiles are removed. Rendered browser
-  acceptance confirms the old sentence is absent and the compact state has one disclosure.
+- Approval presentation now asks one compact question and immediately lists the exact physical and
+  automatic display-name changes before Reject/Approve. The redundant source-file reassurance,
+  duplicate metric tiles, hidden component disclosure, second checklist table, and recorded-evidence
+  selector are removed.
 - Agent operating contract: prompt version 2 now defines the user's goal, evidence and authorization
   boundaries, concise technical-art voice, structured-control versus free-text explanation split,
   bounded tool workflow, stop conditions, prompt-injection handling, on-topic behavior, and private
@@ -189,7 +197,7 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   pass/attention markers. At 1366 × 900 the summary and fixability question share the working view;
   at 390 × 844 the three areas remain ordered with no page overflow, and opened tabular detail
   scrolls inside its own container. Browser console warnings and errors are empty.
-- Tests: `uv run pytest` — 117 passed and the opt-in live-provider test skipped. D019–D038 acceptance
+- Tests: `uv run pytest` — 121 passed and the opt-in live-provider test skipped. D019–D041 acceptance
   covers objective preflight, derived/custom policy validation, narrowed goals, clean no-mutation
   control, application/runtime restart at approval, chat non-authorization, duplicate decision
   replay, verification, and exact ZIP output.

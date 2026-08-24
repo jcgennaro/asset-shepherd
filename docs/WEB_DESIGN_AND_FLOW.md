@@ -59,15 +59,18 @@ and animation remain external work. This does not add those repair domains.
 | `/jobs/{job_id}?view=decide` | Approve or reject the grouped normalization | Only approval can authorize it |
 | `/jobs/{job_id}?view=download` | Review verification and retrieve the result package | No |
 | `/feedback` | Record bounded feedback with the originating workflow context | Local feedback record only |
-| `/workspace` | Resume one of seven named assets or start a new one | No until a GLB is submitted |
+| `/workspace` | Select a new slot or resume one of seven named assets | No |
+| `/workspace/new/describe` | Describe one new or replacement asset | No |
+| `/workspace/new/{draft_id}/upload` | Upload one GLB after semantic intake | Objective preflight only |
 | `/workspace/{workspace_id}` | Resume the exact persisted conversation phase for one asset | Only through its typed workflow controls |
 
 Former `/stories/{role}` bookmarks redirect to `/`. Audience modes are no longer a primary product
 choice. Internally retained presentation labels do not affect policy or deterministic behavior.
 
-The persistent left pane is now a compact workflow orientation rail: **Describe → Agree → Inspect
-→ Decide → Download**. The workspace still shows only one step at a time. The title reflects the
-current step, for example `Asset Shepherd -- Describe` or `Asset Shepherd -- Decide`.
+The hosted left pane is a compact four-step orientation rail: **Assets → Describe → Upload →
+Shepherd**. Assets selects a new slot or resumes one. Describe and Upload each contain exactly one
+task. Shepherd owns the checklist, exact actions, approval, repair, verification, user feedback, and
+every subsequent repair turn. The form-led reference route retains its own five-step rail.
 
 The persistent question-mark action opens a task-oriented **How it works** page. It presents only
 three steps: **Describe and upload**, **Review what we found**, and **Download the result**, plus one
@@ -77,15 +80,17 @@ only when the particular asset or intended result makes it relevant.
 
 ## Hosted asset workspace
 
-The conversation-led home is a visual gallery of up to seven processed assets. Intake assigns each
+The conversation-led home is only a visual gallery of up to seven processed assets. Intake assigns each
 asset a concise name from the user's description and cards show that name, current phase, and source
 preview rather than a filename or hash. Opening a card reconstructs that asset's exact persisted
 phase. The existing workspace ID remains the Strands session ID and each workspace owns a separate
 `strands_state` directory. No conversation state is shared across assets.
 
-At seven assets, the new-asset form requires an explicit choice of which workspace to replace. The
-selected workspace is removed only after the replacement upload and objective preflight persist
-successfully. The structured contract remains available through **Job details**, but it no longer
+Starting a new slot opens a description-only screen. A successful semantic intake advances to a
+separate upload-only screen; the inferred target contract is carried forward and is not recomputed
+after file selection. At seven assets, each gallery card offers an explicit replacement path before
+description. The selected workspace is removed only after the replacement upload and objective
+preflight persist successfully. The structured contract remains available through **Job details**, but it no longer
 occupies a permanent right-hand reading area. Completion presents one compact workflow-agent
 sentence, followed by the useful model comparison and Yes/No handoff. Yes changes the existing
 panel to fixed-model and evidence downloads without a page reload.
@@ -170,14 +175,16 @@ policy family before creating an isolated job.
 
 ### Inspect
 
-Inspect uses three sequential areas. **Checking your GLB** streams the sensors chosen by the agent
-and resolves each call to evidence available or attention required. **Summary** is the agent's compact
+The hosted Shepherd view streams one six-row checklist and resolves each call to evidence available
+or attention required. Each row appears once. A checkmark means pass; a colored exclamation row
+means attention, and hovering or focusing its icon exposes the reason. There is no completed-count
+label and no second table repeating the same statuses. **Summary** is the agent's compact
 assessment, grounded in the confirmed target, measurements, and renders; it compresses normal
 domains and groups every attention finding into no more than three readable areas. The next question
 reflects the agent's chosen disposition rather than mechanically assuming every finding is fixable.
 The conversation-led route uses the same shared checklist rather than bypassing this progress view.
 
-One closed **More details** disclosure retains the preview plus the full check log, target
+In the form-led reference route, one closed **More details** disclosure retains the preview plus the full check log, target
 expectations, universal invariants, measurements, findings, finding authority, exact rule
 provenance, agent-proposed actions, execution stages, and frozen policy in a scrollable table. The
 default view does not repeat the target story, a second workflow rail, or per-check explanatory
@@ -196,6 +203,9 @@ If the agent previews a consequential supported action, Decide presents that exa
 or Reject is bound to the action hash and exact Strands interrupt ID. Preauthorized display-name
 repairs still require an initiating agent tool call. Rejection is recorded in decisions and
 provenance, the proposed operation is not executed, and unresolved assessments remain explicit.
+The hosted approval surface shows the selected plan in at most three groups—physical normalization,
+mesh names, and node names—so it never says changes exist without displaying them. Exact single-name
+mappings remain visible. Job details retains the complete structured evidence on demand.
 
 ### Verify and download
 

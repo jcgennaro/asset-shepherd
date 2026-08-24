@@ -38,19 +38,38 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
 
     entry = client.get("/workspace")
     assert entry.status_code == 200
-    assert "Describe the model you\u2019re working on." in entry.text
+    assert "Asset Shepherd -- Assets" in entry.text
+    assert "New asset" in entry.text
+    assert "Model description" not in entry.text
+    assert "Choose or drop your GLB" not in entry.text
+    assert ">Assets</strong>" in entry.text
+    assert ">Describe</strong>" in entry.text
+    assert ">Upload</strong>" in entry.text
+    assert ">Shepherd</strong>" in entry.text
     assert "Use the form-led reference workflow instead" not in entry.text
     assert "durable workspace" not in entry.text
     assert "only your description is sent" not in entry.text
-    assert "One GLB · up to 50 MB" in entry.text
-    assert "Choose or drop your GLB" in entry.text
-    assert "Shepherd this asset" in entry.text
-    assert "Measure my asset" not in entry.text
     assert entry.text.count('data-focus-area="') == 1
 
-    created = client.post(
-        "/workspace",
+    describe = client.get("/workspace/new/describe")
+    assert "Model description" in describe.text
+    assert "Choose or drop your GLB" not in describe.text
+
+    described = client.post(
+        "/workspace/new/describe",
         data={"description": DESCRIPTION},
+        follow_redirects=False,
+    )
+    assert described.status_code == 303
+    upload_path = urlparse(described.headers["location"]).path
+    upload = client.get(upload_path)
+    assert "Choose or drop your GLB" in upload.text
+    assert "One GLB · up to 50 MB" in upload.text
+    assert "Model description" not in upload.text
+    assert "Shepherd this asset" in upload.text
+
+    created = client.post(
+        upload_path,
         files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
         follow_redirects=False,
     )
@@ -84,13 +103,19 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     )
     assert confirmed.status_code == 303
     pending = client.get(workspace_path)
-    assert "Normalize scale, orientation, grounding:" in pending.text
-    assert "Checking your GLB" in pending.text
+    assert "Asset Shepherd -- Friendly Humanoid Robot" in pending.text
     assert pending.text.count("data-inspection-check") == 6
-    assert "More details" in pending.text
-    assert re.search(r"\d+\.\d{3} m → 1\.800 m\?", pending.text)
-    assert pending.text.count('class="approval-details"') == 1
+    assert "6 complete" not in pending.text
+    assert "More details" not in pending.text
+    assert 'class="inspection-table"' not in pending.text
+    assert pending.text.count('class="approval-change"') == 3
+    assert "Height: " in pending.text
+    assert "1.800 m" in pending.text
+    assert "Mesh name" in pending.text
+    assert "Node name" in pending.text
+    assert pending.text.count('data-tooltip="') == 6
     assert "The original file remains untouched." not in pending.text
+    assert "Ask from recorded evidence" not in pending.text
     assert ">Approve <" in pending.text
     interrupt_id = _hidden(pending.text, "interrupt_id")
     decision_command = _hidden(pending.text, "command_id")
@@ -99,16 +124,6 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     resumed = restarted.get(workspace_path)
     assert resumed.status_code == 200
     assert _hidden(resumed.text, "interrupt_id") == interrupt_id
-
-    asked = restarted.post(
-        f"{workspace_path}/ask",
-        data={"category": "authorization"},
-        follow_redirects=False,
-    )
-    assert asked.status_code == 303
-    still_pending = restarted.get(workspace_path)
-    assert "Chat text cannot approve a repair." in still_pending.text
-    assert _hidden(still_pending.text, "interrupt_id") == interrupt_id
 
     approved = restarted.post(
         f"{workspace_path}/decision",
@@ -121,7 +136,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     )
     assert approved.status_code == 303
     completed = restarted.get(workspace_path)
-    assert 'class="completion-heading"' in completed.text
+    assert 'class="conversation-prompt completion-prompt"' in completed.text
     assert 'class="result-status' not in completed.text
     assert "Did we get it right?" in completed.text
     assert "data-result-accepted hidden" in completed.text
@@ -254,5 +269,12 @@ def test_full_gallery_requires_visible_replacement_choice(tmp_path: Path) -> Non
 
     gallery = client.get("/workspace")
     assert gallery.text.count('class="asset-gallery-card"') == 7
-    assert 'name="replace_workspace_id" required' in gallery.text
-    assert "Replace one existing asset" in gallery.text
+    assert gallery.text.count('class="asset-replace"') == 7
+    assert "New asset" not in gallery.text
+
+    replace_path = re.search(r'href="([^"]+replace_workspace_id=[^"]+)"', gallery.text)
+    assert replace_path is not None
+    replacement = client.get(replace_path.group(1))
+    assert replacement.status_code == 200
+    assert 'name="replace_workspace_id"' in replacement.text
+    assert "Choose or drop your GLB" not in replacement.text
