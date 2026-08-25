@@ -4,6 +4,37 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D052 — Make the asset gallery the persistent workflow home
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+A finished asset exposed an Assets link, but earlier workflow states relied on the placeholder logo
+or browser navigation. The gallery resumed durable workspaces, but did not offer a clear way to run
+the same source through a newly interpreted workflow.
+
+**Decision**
+
+Expose Assets as a persistent navigation control in the header and workflow rail. Returning to the
+gallery never advances, resets, or mutates a workspace. Selecting a gallery card reconstructs the
+workspace at its last persisted phase. Every card also exposes Redo: it stages the same original GLB
+and prefills the prior description for a fresh intake. The saved run remains intact until the new
+workspace is successfully created, at which point the new run explicitly replaces that slot.
+
+**Evidence and consequences**
+
+Route coverage proves approval and target-confirmation states resume independently, Redo preserves
+the prior run until submission, the replacement receives a new workspace identifier, and source
+bytes are identical. Browser review shows the seven-card gallery retains three visual regions per
+card: model/state, Redo, and the existing full-gallery Replace action.
+
 ### D051 — Use one inspection-lane table as the approval surface
 
 **Date:** 2026-08-25

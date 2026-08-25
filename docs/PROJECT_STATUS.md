@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D051 unified inspection-lane approval surface (this file is included)
+**Current commit:** D052 persistent gallery navigation and non-destructive redo (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -49,6 +49,13 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D052 persistent gallery home: Assets is now a clear header and workflow-rail destination during
+  every hosted step. Returning does not mutate the active workspace, and each gallery card resumes
+  the exact persisted phase. Redo reuses the original GLB and prior description while preserving
+  the saved run until the replacement workspace is successfully created. Route tests prove a new
+  workspace ID and byte-identical source; browser review confirms the seven-card gallery remains
+  compact and readable.
 
 - D051 single approval surface: the approval screen now has one semantic table with one row for
   each of five check lanes and columns for the finding, status, and proposed action. The duplicate

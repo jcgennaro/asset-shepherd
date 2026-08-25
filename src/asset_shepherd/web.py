@@ -7,6 +7,7 @@ import math
 import mimetypes
 import os
 import re
+import shutil
 import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -220,6 +221,7 @@ class HostedStartDraft:
     original_filename: str
     source_path: Path
     replace_workspace_id: str | None
+    initial_description: str = ""
 
 
 @dataclass(frozen=True)
@@ -2368,7 +2370,7 @@ def create_app(
             context={
                 "error": error,
                 "refusal": refusal,
-                "description": description,
+                "description": description or (draft.initial_description if draft else ""),
                 "draft": draft,
                 "active_mode": "conversation",
                 "active_style": "Describe",
@@ -3272,6 +3274,37 @@ def create_app(
             return render_hosted_upload(request, str(error), status_code=404)
         return render_hosted_describe(request, draft)
 
+    def redo_hosted_workspace(request: Request, workspace_id: str) -> Response:
+        """Stage the original GLB for a fresh run without discarding saved progress."""
+        draft_root: Path | None = None
+        source_path: Path | None = None
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            draft_id = uuid4().hex
+            draft_root = hosted_staging_root / draft_id
+            source_path = draft_root / "source.glb"
+            draft_root.mkdir(parents=True, exist_ok=False)
+            shutil.copyfile(workspace.source_path, source_path)
+            draft = HostedStartDraft(
+                draft_id=draft_id,
+                original_filename=workspace.record.original_filename,
+                source_path=source_path,
+                replace_workspace_id=workspace_id,
+                initial_description=workspace.record.private_description,
+            )
+            with hosted_start_lock:
+                hosted_start_drafts[draft_id] = draft
+        except (HostedWorkspaceError, OSError) as error:
+            if source_path is not None:
+                source_path.unlink(missing_ok=True)
+            if draft_root is not None and draft_root.is_dir():
+                draft_root.rmdir()
+            return render_hosted_home(request, str(error), status_code=400)
+        return RedirectResponse(
+            request.url_for("hosted_describe", draft_id=draft_id),
+            status_code=303,
+        )
+
     def create_hosted_workspace(
         request: Request,
         description: Annotated[str, Form()],
@@ -3753,6 +3786,12 @@ def create_app(
         methods=["GET"],
         response_class=HTMLResponse,
         name="hosted_workspace_page",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/redo",
+        redo_hosted_workspace,
+        methods=["POST"],
+        name="redo_hosted_workspace",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/target",

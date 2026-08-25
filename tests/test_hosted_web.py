@@ -361,11 +361,46 @@ def test_workspace_gallery_names_and_resumes_isolated_asset_state(tmp_path: Path
     assert all(path in gallery.text for path in created_paths)
     assert gallery.text.count('class="asset-gallery-card"') == 2
     assert gallery.text.count("<model-viewer") == 2
+    assert gallery.text.count('class="asset-redo"') == 2
 
     resumed_first = client.get(created_paths[0])
     resumed_second = client.get(created_paths[1])
     assert "Approve" in resumed_first.text
     assert "Did I get it right?" in resumed_second.text
+    assert ">Assets</a>" in resumed_first.text
+
+
+def test_gallery_redo_reuses_source_and_preserves_saved_run_until_submit(
+    tmp_path: Path,
+) -> None:
+    """Redo starts from the saved GLB while the prior resumable state remains intact."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    created = client.post(
+        "/workspace",
+        data={"description": DESCRIPTION},
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+    workspace_path = urlparse(created.headers["location"]).path
+    redo = client.post(f"{workspace_path}/redo", follow_redirects=False)
+    assert redo.status_code == 303
+    describe_path = urlparse(redo.headers["location"]).path
+    describe = client.get(describe_path)
+    assert DESCRIPTION in describe.text
+    assert client.get(workspace_path).status_code == 200
+
+    restarted = client.post(
+        describe_path,
+        data={"description": DESCRIPTION},
+        follow_redirects=False,
+    )
+    assert restarted.status_code == 303
+    restarted_path = urlparse(restarted.headers["location"]).path
+    assert restarted_path != workspace_path
+    assert client.get(workspace_path).status_code == 404
+    assert client.get(restarted_path).status_code == 200
+    assert client.get(f"{restarted_path}/source.glb").content == BROKEN_PATH.read_bytes()
 
 
 def test_full_gallery_requires_visible_replacement_choice(tmp_path: Path) -> None:

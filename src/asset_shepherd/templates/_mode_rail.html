@@ -6,7 +6,7 @@
   {% if active_mode in ['conversation', 'help', 'capabilities'] %}
   <nav class="mode-nav intent-rail" aria-label="Conversation-led workflow">
     <ol class="hosted-flow" aria-label="Asset workflow steps">
-      <li class="{% if hosted_step == 'gallery' %}active{% endif %}"><span>1</span><strong>Assets</strong></li>
+      <li class="{% if hosted_step == 'gallery' %}active{% endif %}"><a class="flow-step-link" href="{{ url_for('hosted_home') }}"><span>1</span><strong>Assets</strong></a></li>
       <li class="{% if hosted_step == 'upload' %}active{% endif %}"><span>2</span><strong>Upload</strong></li>
       <li class="{% if hosted_step == 'describe' %}active{% endif %}"><span>3</span><strong>Describe</strong></li>
       <li class="{% if hosted_step == 'shepherd' %}active{% endif %}"><span>4</span><strong>Shepherd</strong></li>
