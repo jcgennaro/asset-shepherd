@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-24
-**Current commit:** D045 endpoint/XYZ target contract and downloadable rejected candidates (this file is included)
+**Current commit:** D046 intake schema compatibility and on-demand description examples (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -49,6 +49,15 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D046 intake reliability and examples: the model-facing X/Y/Z shape now uses a closed object rather
+  than a fixed tuple that emitted unsupported `prefixItems`; the deterministic target contract still
+  freezes the canonical three-value tuple. Canonical Unity, Unreal, and Godot responses discard
+  redundant endpoint detail before semantic validation. Provider diagnostics remain server-side and
+  public failures use concise retry language. A configured live OpenAI request advanced a Unity
+  humanoid description to its durable workspace. The description screen replaces the ambiguous
+  question-mark control with one text link and a larger modal that leads with what to include and why,
+  followed by exactly three examples. Targeted analyzer/route tests and desktop browser review pass.
 
 - D045 endpoint, bounds, and candidate handoff: semantic intake now freezes Unity, Unreal, Godot, or
   a described Other endpoint and tight final-pose X/Y/Z bounds. Uniform scaling remains the only

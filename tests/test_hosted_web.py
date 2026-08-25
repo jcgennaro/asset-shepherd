@@ -77,6 +77,9 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Model description" in describe.text
     assert "Choose or drop your GLB" not in describe.text
     assert "Describe the model you\u2019re working on." in describe.text
+    assert "Show description examples" in describe.text
+    assert "data-description-examples-dialog" in describe.text
+    assert '<details class="description-help">' not in describe.text
     assert "Shepherd this asset" in describe.text
     assert describe.text.count("<h1") == 1
     assert "<h2" not in describe.text

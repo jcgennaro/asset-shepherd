@@ -4,6 +4,48 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D046 — Keep target intake API-compatible and move examples on demand
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+Adding tight X/Y/Z targets changed the model-facing Pydantic field from one number to a fixed tuple.
+Its generated JSON Schema used `prefixItems`, and the OpenAI Responses strict-output request failed
+with HTTP 400 before the model could interpret any description. A successful structured response
+could also redundantly populate `endpoint_detail` for a canonical Unity, Unreal, or Godot enum and
+then fail the stricter server-owned semantic validator. The description screen exposed its three
+examples through an unexplained question-mark control beside the field label.
+
+**Decision**
+
+Represent target dimensions at the model boundary as a closed `{x_cm, y_cm, z_cm}` object, then
+convert it to the existing immutable tuple before constructing the target contract. Canonical
+endpoint enums discard redundant model-authored detail; only `OTHER` may retain endpoint detail.
+Provider failures keep diagnostics in server logs and show concise retry copy instead of raw HTTP
+status language.
+
+Replace the question-mark disclosure with a small **Show description examples** text link. It opens
+one large native modal that first explains the four useful description clues and why they matter,
+then gives exactly three examples: a rigged humanoid, a static prop, and an animated multi-part
+system. The default screen does not gain another title or visible explanatory panel.
+
+**Evidence and consequences**
+
+The request-schema regression asserts that no `prefixItems` keyword is emitted. Analyzer tests cover
+X/Y/Z conversion, canonical endpoint-detail normalization, safe 400/429 copy, and credential/body
+redaction. A configured live OpenAI intake accepted a Unity humanoid description and redirected to
+a durable workspace. Browser review confirms the plain link, modal sizing, lead explanation, three
+examples, and absence of the former question-mark disclosure. The official OpenAI Responses API
+continues to receive one strict JSON Schema request with `store: false`; the frozen target and
+downstream deterministic authority boundary are unchanged.
+
 ### D045 — Freeze endpoint and three-axis target bounds; keep rejected candidates downloadable
 
 **Date:** 2026-08-24

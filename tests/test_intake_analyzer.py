@@ -10,6 +10,7 @@ from asset_shepherd.intake_analyzer import (
     OPENAI_INTAKE_MODEL,
     OpenAITargetIntakeAnalyzer,
     OpenAITargetIntakeConfiguration,
+    TargetDimensionsInference,
     TargetIntakeAnalysisError,
     TargetIntakeContentRefusal,
     TargetIntakeInference,
@@ -51,7 +52,11 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
                     "endpoint_detail": None,
                     "endpoint_confidence": 0.9,
                     "endpoint_evidence": "The surreal game is being built in Godot.",
-                    "target_dimensions_cm": [60000.0, 80000.0, 50000.0],
+                    "target_dimensions_cm": {
+                        "x_cm": 60000.0,
+                        "y_cm": 80000.0,
+                        "z_cm": 50000.0,
+                    },
                     "target_dimensions_confidence": 0.91,
                     "target_dimensions_evidence": (
                         "A mountain requires a kilometer-scale vertical target."
@@ -87,6 +92,7 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
     text = captured["text"]
     assert isinstance(text, dict)
     assert text["format"]["strict"] is True
+    assert "prefixItems" not in json.dumps(text["format"]["schema"])
     instructions = captured["instructions"]
     assert isinstance(instructions, str)
     assert "Usually this is 1" in instructions
@@ -136,6 +142,29 @@ def test_low_confidence_model_fields_become_questions() -> None:
             expected_piece_count=1,
             expected_piece_count_evidence="The description identifies one abstract asset.",
         )
+
+
+def test_canonical_endpoint_discards_redundant_model_detail() -> None:
+    """A correct canonical endpoint is not rejected because the model also names it in detail."""
+    inference = TargetIntakeInference(
+        engagement_decision="PROCEED",
+        asset_name="Maintenance Robot",
+        target_use=AssetTargetUse.PLAYABLE_CHARACTER,
+        target_use_confidence=0.95,
+        target_use_evidence="The robot has a walk cycle for player use.",
+        endpoint=AssetEndpoint.UNITY,
+        endpoint_detail="Unity third-person game",
+        endpoint_confidence=0.98,
+        endpoint_evidence="The user explicitly named Unity.",
+        target_dimensions_cm=TargetDimensionsInference(x_cm=80.0, y_cm=180.0, z_cm=50.0),
+        target_dimensions_confidence=0.99,
+        target_dimensions_evidence="The user explicitly specified 1.8 m height.",
+        expected_piece_count=1,
+        expected_piece_count_evidence="The description identifies one robot.",
+    )
+
+    assert inference.endpoint is AssetEndpoint.UNITY
+    assert inference.endpoint_detail is None
 
 
 def test_disallowed_intake_returns_only_a_concise_refusal() -> None:
@@ -192,9 +221,25 @@ def test_openai_failure_is_safe_and_does_not_expose_credentials() -> None:
     with pytest.raises(TargetIntakeAnalysisError) as caught:
         analyzer.analyze("A mountain of goop for a surreal game world.")
     message = str(caught.value)
-    assert "HTTP 429" in message
+    assert message == "The intake model is busy. Try again in a moment."
     assert "never-print-this" not in message
     assert "secret-provider-detail" not in message
+
+
+def test_openai_bad_request_uses_plain_public_copy() -> None:
+    """Schema/provider details stay in server diagnostics rather than the intake screen."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"error": {"message": "unsupported schema keyword"}})
+
+    analyzer = OpenAITargetIntakeAnalyzer(
+        OpenAITargetIntakeConfiguration(api_key="test-key"),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(TargetIntakeAnalysisError) as caught:
+        analyzer.analyze("A mountain of goop for a surreal game world.")
+    assert str(caught.value) == "I couldn't analyze that description right now. Try again."
 
 
 def test_provider_builder_requires_explicit_openai_configuration() -> None:

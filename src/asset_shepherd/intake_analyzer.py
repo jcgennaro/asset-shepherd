@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from os import environ
@@ -30,6 +31,7 @@ OPENAI_INTAKE_MODEL = "gpt-5.6-luna"
 OPENAI_REASONING_EFFORT = "xhigh"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 INTAKE_REFUSAL_MESSAGE = CONTENT_REFUSAL_MESSAGE
+LOGGER = logging.getLogger(__name__)
 
 TARGET_INTAKE_SYSTEM_PROMPT = f"""You define a proposed target for one uploaded 3D asset.
 Infer useful target state from the user's ordinary language instead of turning intake into a form.
@@ -88,6 +90,18 @@ class TargetIntakeContentRefusal(TargetIntakeAnalysisError):
     """Exact public refusal for content outside the intake model's allowed boundary."""
 
 
+class TargetDimensionsInference(ContractModel):
+    """Model-facing target bounds expressed without fixed-tuple JSON Schema keywords."""
+
+    x_cm: Annotated[float, Field(gt=0.0, le=100000.0)]
+    y_cm: Annotated[float, Field(gt=0.0, le=100000.0)]
+    z_cm: Annotated[float, Field(gt=0.0, le=100000.0)]
+
+    def as_tuple(self) -> tuple[float, float, float]:
+        """Return the deterministic contract's canonical X/Y/Z representation."""
+        return (self.x_cm, self.y_cm, self.z_cm)
+
+
 class TargetIntakeInference(ContractModel):
     """Strict model-only output before server-owned contract construction."""
 
@@ -100,18 +114,26 @@ class TargetIntakeInference(ContractModel):
     endpoint_detail: Annotated[str, Field(min_length=2, max_length=80)] | None
     endpoint_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
     endpoint_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
-    target_dimensions_cm: (
-        tuple[
-            Annotated[float, Field(gt=0.0, le=100000.0)],
-            Annotated[float, Field(gt=0.0, le=100000.0)],
-            Annotated[float, Field(gt=0.0, le=100000.0)],
-        ]
-        | None
-    )
+    target_dimensions_cm: TargetDimensionsInference | None
     target_dimensions_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
     target_dimensions_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
     expected_piece_count: Annotated[int, Field(ge=1, le=64)] | None
     expected_piece_count_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_redundant_canonical_endpoint_detail(cls, value: object) -> object:
+        """Canonical endpoint enums are authoritative; detail is meaningful only for OTHER."""
+        if not isinstance(value, dict):
+            return value
+        values = cast(dict[str, object], value)
+        if values.get("endpoint") in {
+            AssetEndpoint.UNITY.value,
+            AssetEndpoint.UNREAL.value,
+            AssetEndpoint.GODOT.value,
+        }:
+            return cast(object, {**values, "endpoint_detail": None})
+        return cast(object, value)
 
     @model_validator(mode="after")
     def evidence_matches_values(self) -> TargetIntakeInference:
@@ -218,8 +240,9 @@ def contract_from_inference(
         inference.endpoint if inference.endpoint_confidence >= MINIMUM_TARGET_CONFIDENCE else None
     )
     target_dimensions_cm = (
-        inference.target_dimensions_cm
+        inference.target_dimensions_cm.as_tuple()
         if inference.target_dimensions_confidence >= MINIMUM_TARGET_CONFIDENCE
+        and inference.target_dimensions_cm is not None
         else None
     )
     target_height_cm = target_dimensions_cm[1] if target_dimensions_cm is not None else None
@@ -408,14 +431,22 @@ class OpenAITargetIntakeAnalyzer:
                 self._output_text(response.json())
             )
         except httpx.HTTPStatusError as error:
-            raise TargetIntakeAnalysisError(
-                f"The intake model request failed with HTTP {error.response.status_code}."
-            ) from error
+            LOGGER.warning(
+                "OpenAI intake request failed with HTTP %s: %s",
+                error.response.status_code,
+                error.response.text[:1000],
+            )
+            if error.response.status_code == 429:
+                public_message = "The intake model is busy. Try again in a moment."
+            else:
+                public_message = "I couldn't analyze that description right now. Try again."
+            raise TargetIntakeAnalysisError(public_message) from error
         except httpx.RequestError as error:
             raise TargetIntakeAnalysisError("The intake model could not be reached.") from error
         except (json.JSONDecodeError, ValueError) as error:
             if isinstance(error, TargetIntakeAnalysisError):
                 raise
+            LOGGER.warning("OpenAI intake response failed validation: %s", error)
             raise TargetIntakeAnalysisError(
                 "The intake model did not return a valid target proposal."
             ) from error

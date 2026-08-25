@@ -17,6 +17,7 @@ from pygltflib import Skin
 from asset_shepherd.glb import load_glb, save_glb, world_bounds
 from asset_shepherd.intake_analyzer import (
     INTAKE_REFUSAL_MESSAGE,
+    TargetDimensionsInference,
     TargetIntakeContentRefusal,
     TargetIntakeInference,
     contract_from_inference,
@@ -341,7 +342,11 @@ def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
                     endpoint_detail=None,
                     endpoint_confidence=0.9,
                     endpoint_evidence="The asset is intended for Unity.",
-                    target_dimensions_cm=(height_cm * 0.5, height_cm, height_cm * 0.25),
+                    target_dimensions_cm=TargetDimensionsInference(
+                        x_cm=height_cm * 0.5,
+                        y_cm=height_cm,
+                        z_cm=height_cm * 0.25,
+                    ),
                     target_dimensions_confidence=0.91,
                     target_dimensions_evidence="The description states the intended scale.",
                     expected_piece_count=1,
@@ -572,7 +577,11 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
                     endpoint_detail=None,
                     endpoint_confidence=0.9,
                     endpoint_evidence="The surreal game is being built in Godot.",
-                    target_dimensions_cm=(height_cm * 0.75, height_cm, height_cm * 0.625),
+                    target_dimensions_cm=TargetDimensionsInference(
+                        x_cm=height_cm * 0.75,
+                        y_cm=height_cm,
+                        z_cm=height_cm * 0.625,
+                    ),
                     target_dimensions_confidence=0.91,
                     target_dimensions_evidence="A mountain is a kilometer-scale feature.",
                     expected_piece_count=1,

@@ -252,6 +252,30 @@ if (jobContractDialog instanceof HTMLDialogElement && jobContractOpen) {
   });
 }
 
+const descriptionExamplesDialog = document.querySelector(
+  "[data-description-examples-dialog]",
+);
+const descriptionExamplesOpen = document.querySelector(
+  "[data-description-examples-open]",
+);
+const descriptionExamplesClose = document.querySelector(
+  "[data-description-examples-close]",
+);
+
+if (descriptionExamplesDialog instanceof HTMLDialogElement && descriptionExamplesOpen) {
+  descriptionExamplesOpen.addEventListener("click", () =>
+    descriptionExamplesDialog.showModal(),
+  );
+  descriptionExamplesClose?.addEventListener("click", () =>
+    descriptionExamplesDialog.close(),
+  );
+  descriptionExamplesDialog.addEventListener("click", (event) => {
+    if (event.target === descriptionExamplesDialog) {
+      descriptionExamplesDialog.close();
+    }
+  });
+}
+
 for (const viewer of document.querySelectorAll("model-viewer")) {
   viewer.addEventListener("error", () => {
     viewer.classList.add("viewer-error");
