@@ -4,6 +4,41 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D051 — Use one inspection-lane table as the approval surface
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+The approval screen repeated inspection state in a six-row checklist and a separate three-row
+repair list. Users had to correlate two surfaces to discover what needed attention and what would
+happen after approval.
+
+**Decision**
+
+Present exactly one row for each of five check lanes: GLB structure, size and pose, topology,
+materials and textures, and display names. Each row owns its concise finding, status icon, and
+proposed action. Status icons expose the explanation on hover and keyboard focus. Do not create a
+synthetic `Repair plan` lane or a second repair table. Small measurements use adaptive metric units
+so the finding remains readable.
+
+The local OpenAI Responses adapter consumes a complete non-streaming response before leaving its
+client context. It preserves the response identifier and tool-call events while avoiding the
+non-fatal async stream-finalization warning observed after successful requests.
+
+**Evidence and consequences**
+
+Desktop and 390 px mobile browser checks show one table, five rows, no horizontal overflow, and no
+console errors. The Computer Chip topology row now states that 5,312 coincident positions preserve
+`TEXCOORD_0` seams and therefore proposes no weld. Targeted web and agent coverage passes with 44
+tests and one opt-in skip.
+
 ### D050 — Fit approximate target boxes proportionally and explain unavailable welding
 
 **Date:** 2026-08-25

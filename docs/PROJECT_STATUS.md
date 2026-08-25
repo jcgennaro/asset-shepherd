@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D050 proportional target-box fitting and weld disclosure (this file is included)
+**Current commit:** D051 unified inspection-lane approval surface (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -49,6 +49,16 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D051 single approval surface: the approval screen now has one semantic table with one row for
+  each of five check lanes and columns for the finding, status, and proposed action. The duplicate
+  repair list and synthetic `Repair plan` lane are gone. Attention icons retain hover/focus
+  explanations, adaptive metric units make small targets readable, and the Computer Chip topology
+  row explicitly says that no weld is proposed because 5,312 coincident positions preserve
+  `TEXCOORD_0` seams. Desktop and 390 px browser checks show one table with no horizontal overflow
+  or console errors. Local OpenAI Responses calls now consume a complete response inside the client
+  context, eliminating the observed non-fatal stream-finalization warning while retaining response
+  IDs and tool calls.
 
 - D050 proportional box fit and transparent weld disposition: unequal X/Y/Z targets now resolve to
   the geometric mean of their per-axis ratios, the scale-invariant least-squares optimum in log

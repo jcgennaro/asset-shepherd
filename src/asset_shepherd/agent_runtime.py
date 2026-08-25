@@ -9,12 +9,15 @@ from dataclasses import dataclass
 from os import environ
 from pathlib import Path
 from time import perf_counter
+from types import SimpleNamespace
 from typing import Any, TypeVar, cast
 
+import openai
 from pydantic import BaseModel
 from strands import Agent
 from strands.agent import AgentResult
 from strands.models import BedrockModel, Model
+from strands.models.openai_responses import OpenAIResponsesModel
 from strands.session import SessionManager, SnapshotSessionManager
 from strands.storage import LocalFileStorage
 from strands.types.agent import AgentInput
@@ -86,18 +89,106 @@ def load_model_configuration(
     )
 
 
+class CompleteResponseOpenAIModel(OpenAIResponsesModel):
+    """Adapt complete Responses API documents into Strands events without an SSE stream.
+
+    The local prototype does not expose token streaming. Reading each provider response to
+    completion before closing its client avoids leaving an asynchronous HTTP body pending when a
+    Strands approval interrupt ends the invocation.
+    """
+
+    async def stream(
+        self,
+        messages: Messages,
+        tool_specs: list[ToolSpec] | None = None,
+        system_prompt: str | None = None,
+        *,
+        tool_choice: ToolChoice | None = None,
+        model_state: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        """Read one complete response and emit its text or function calls as Strands events."""
+        del kwargs
+        request = self._format_request(  # pyright: ignore[reportPrivateUsage]
+            messages,
+            tool_specs,
+            system_prompt,
+            tool_choice,
+            model_state,
+        )
+        request["stream"] = False
+        async with openai.AsyncOpenAI(**self._resolve_client_args()) as client:  # pyright: ignore[reportPrivateUsage]
+            response = cast(Any, await client.responses.create(**request))
+
+        response_id = getattr(response, "id", None)
+        if model_state is not None and isinstance(response_id, str):
+            model_state["response_id"] = response_id
+        if getattr(response, "status", None) == "failed":
+            raise AgentWorkflowError("The workflow model failed before producing a plan")
+
+        yield self._format_chunk({"chunk_type": "message_start"})
+        text_parts: list[str] = []
+        function_calls: list[SimpleNamespace] = []
+        for item in getattr(response, "output", ()):
+            item_type = getattr(item, "type", None)
+            if item_type == "message":
+                for block in getattr(item, "content", ()):
+                    if getattr(block, "type", None) in {"output_text", "refusal"}:
+                        block_text = getattr(block, "text", None) or getattr(block, "refusal", None)
+                        if isinstance(block_text, str):
+                            text_parts.append(block_text)
+            elif item_type == "function_call":
+                function_calls.append(
+                    SimpleNamespace(
+                        function=SimpleNamespace(
+                            name=getattr(item, "name", ""),
+                            arguments=getattr(item, "arguments", "{}"),
+                        ),
+                        id=getattr(item, "call_id", ""),
+                    )
+                )
+
+        if text_parts:
+            yield self._format_chunk({"chunk_type": "content_start", "data_type": "text"})
+            yield self._format_chunk(
+                {
+                    "chunk_type": "content_delta",
+                    "data_type": "text",
+                    "data": "".join(text_parts),
+                }
+            )
+            yield self._format_chunk({"chunk_type": "content_stop", "data_type": "text"})
+        for tool_call in function_calls:
+            yield self._format_chunk(
+                {"chunk_type": "content_start", "data_type": "tool", "data": tool_call}
+            )
+            yield self._format_chunk(
+                {"chunk_type": "content_delta", "data_type": "tool", "data": tool_call}
+            )
+            yield self._format_chunk({"chunk_type": "content_stop", "data_type": "tool"})
+
+        if function_calls:
+            finish_reason = "tool_calls"
+        elif getattr(response, "status", None) == "incomplete":
+            finish_reason = "length"
+        else:
+            finish_reason = "stop"
+        yield self._format_chunk({"chunk_type": "message_stop", "data": finish_reason})
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            yield self._format_chunk({"chunk_type": "metadata", "data": usage})
+
+
 def build_environment_model(
     values: Mapping[str, str] = environ,
 ) -> tuple[Model, ModelConfiguration]:
     """Construct the configured provider; invocation remains caller-controlled and opt-in."""
     configuration = load_model_configuration(values)
     if configuration.provider == "openai":
-        from strands.models.openai_responses import OpenAIResponsesModel
-
         effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
         if effort not in {"low", "medium", "high", "xhigh", "max"}:
             raise AgentWorkflowError("Unsupported workflow reasoning effort")
-        model = OpenAIResponsesModel(
+        model = CompleteResponseOpenAIModel(
             client_args={"api_key": values["OPENAI_API_KEY"]},
             model_id=configuration.model_id,
             stateful=True,

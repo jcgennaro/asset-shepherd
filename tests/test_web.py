@@ -744,7 +744,7 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert "More details" in pending.text
     assert "Normalize physical scale, upright orientation, and grounding" not in pending.text
     assert 'class="inspect-storyboard"' not in pending.text
-    assert pending.text.count("data-inspection-check") == 6
+    assert pending.text.count("data-inspection-check") == 5
     assert "Confirmed target story" not in pending.text
     assert 'class="job-workflow-nav"' not in pending.text
     _assert_focus_area_budget(pending.text)

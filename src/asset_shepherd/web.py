@@ -62,9 +62,9 @@ from asset_shepherd.models import (
     DecisionRecord,
     DecisionValue,
     Finding,
+    NormalizationPayload,
     ProfilePolicyProvenance,
     ProjectProfile,
-    RenamePayload,
     RepairEligibility,
     RepairKind,
     Severity,
@@ -196,21 +196,20 @@ class ComparisonSceneView:
 
 @dataclass(frozen=True)
 class InspectionCheckView:
-    """One concise inspection-progress row backed by deterministic results."""
+    """One user-facing inspection lane with its result and any proposed action."""
 
     label: str
     status: str
-    detail: str
+    status_label: str
+    description: str
+    action: str
 
-
-@dataclass(frozen=True)
-class ApprovalChangeView:
-    """One visible group of exact changes in the approval decision."""
-
-    title: str
-    summary: str
-    authorization: str
-    items: tuple[str, ...] = ()
+    @property
+    def detail(self) -> str:
+        """Return the complete hover and accessibility explanation for this lane."""
+        if self.action == "—":
+            return self.description
+        return f"{self.description} Proposed action: {self.action}"
 
 
 @dataclass(frozen=True)
@@ -929,9 +928,25 @@ def _display_target_height(height_cm: float) -> str:
 
 
 def _display_target_bounds(dimensions_cm: tuple[float, float, float]) -> str:
-    """Format one tight final-pose X/Y/Z target box in meters."""
-    dimensions_m = tuple(value / 100.0 for value in dimensions_cm)
-    return f"{dimensions_m[0]:g} x {dimensions_m[1]:g} x {dimensions_m[2]:g} m"
+    """Format one tight final-pose X/Y/Z target box in readable metric units."""
+    return _display_dimensions_m(
+        (dimensions_cm[0] / 100.0, dimensions_cm[1] / 100.0, dimensions_cm[2] / 100.0)
+    )
+
+
+def _display_dimensions_m(dimensions_m: tuple[float, float, float]) -> str:
+    """Format X/Y/Z dimensions using one unit appropriate to the whole box."""
+    largest = max(abs(value) for value in dimensions_m)
+    if largest < 0.01:
+        values = tuple(value * 1000.0 for value in dimensions_m)
+        unit = "mm"
+    elif largest < 1.0:
+        values = tuple(value * 100.0 for value in dimensions_m)
+        unit = "cm"
+    else:
+        values = dimensions_m
+        unit = "m"
+    return f"{values[0]:.3g} x {values[1]:.3g} x {values[2]:.3g} {unit}"
 
 
 UNIVERSAL_EXPECTATIONS: tuple[tuple[str, str], ...] = (
@@ -1143,9 +1158,8 @@ def _expectation_groups(
     if len(expectations) != 7:
         return ()
     assert target.target_dimensions_cm is not None
-    dimensions_m = tuple(value / 100.0 for value in target.target_dimensions_cm)
     placement = [
-        f"{dimensions_m[0]:g} x {dimensions_m[1]:g} x {dimensions_m[2]:g} m",
+        _display_target_bounds(target.target_dimensions_cm),
         "Y-up" if profile.orientation.require_y_up_geometry else "orientation unrestricted",
         "grounded" if profile.orientation.require_ground_contact else "ground contact optional",
     ]
@@ -1473,27 +1487,25 @@ _NAME_CODES = {
 
 
 def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
-    """Reduce the full inspection into one progressive list of user-meaningful checks."""
+    """Build one non-repeating table of findings, states, and proposed actions."""
     inspection = core.inspection
     plan = core.selected_plan
     assessment = core.agent_assessment
     if inspection is None:
-        return (InspectionCheckView("GLB structure", "checking", "Inspection is running."),)
+        return (
+            InspectionCheckView(
+                "GLB structure",
+                "checking",
+                "Checking",
+                "Inspection is running.",
+                "—",
+            ),
+        )
 
-    def result(
-        label: str,
-        relevant_codes: set[str],
-        passed: str,
-        attention: str,
-    ) -> InspectionCheckView:
-        has_attention = any(
+    def has_attention(relevant_codes: set[str]) -> bool:
+        return any(
             finding.code in relevant_codes and finding.severity is not Severity.INFO
             for finding in inspection.findings
-        )
-        return InspectionCheckView(
-            label,
-            "attention" if has_attention else "pass",
-            attention if has_attention else passed,
         )
 
     size_pose_attention = bool(
@@ -1508,169 +1520,175 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     protected_duplicates = sum(
         primitive.protected_duplicate_count for primitive in diagnostic_primitives
     )
-    safe_merges = sum(primitive.attribute_safe_merge_count for primitive in diagnostic_primitives)
-    if protected_duplicates and not safe_merges:
-        topology_attention = (
-            f"No vertex weld is proposed: all {protected_duplicates:,} coincident positions are "
-            "protected UV or attribute seams. Remaining position topology needs attention."
-        )
-    elif safe_merges:
-        topology_attention = (
-            f"{safe_merges:,} complete duplicate vertex tuples can be compacted losslessly; "
-            "remaining geometry structure needs attention."
-        )
-    else:
-        topology_attention = "Geometry structure needs attention."
+    projected_boundaries = sum(
+        primitive.virtual_weld_boundary_edge_count for primitive in diagnostic_primitives
+    )
+    projected_non_manifold = sum(
+        primitive.virtual_weld_non_manifold_edge_count for primitive in diagnostic_primitives
+    )
+    projected_winding = sum(
+        primitive.virtual_weld_inconsistent_winding_edge_count
+        for primitive in diagnostic_primitives
+    )
+    protected_attributes = sorted(
+        {
+            attribute
+            for primitive in diagnostic_primitives
+            for attribute in primitive.protected_attribute_conflicts
+        }
+    )
 
-    checks = [
-        InspectionCheckView("GLB structure", "pass", "The GLB parsed successfully."),
-        (
-            InspectionCheckView(
-                "Size and pose",
-                "attention",
-                "The workflow agent proposed a target-dependent physical change.",
-            )
-            if size_pose_attention
-            else result(
-                "Size and pose",
-                _SIZE_POSE_CODES,
-                "The workflow agent found no supported size or pose change to propose.",
-                "One or more target dimensions need attention.",
-            )
-        ),
-        result(
-            "Topology",
-            _TOPOLOGY_CODES,
-            "Geometry structure passed the supported checks.",
-            topology_attention,
-        ),
-        result(
-            "Materials and textures",
-            _MATERIAL_CODES,
-            "Material and texture checks passed.",
-            "A material or texture check needs attention.",
-        ),
-        result(
-            "Display names",
-            _NAME_CODES,
-            "Display names match the project pattern.",
-            "One or more display names need cleanup.",
-        ),
-    ]
-    if plan is None:
-        checks.append(InspectionCheckView("Repair plan", "checking", "Planning is running."))
-    elif plan.blocked:
-        checks.append(
-            InspectionCheckView("Repair plan", "blocked", "No supported repair plan is available.")
-        )
-    elif plan.candidates:
-        checks.append(
-            InspectionCheckView(
-                "Repair plan",
-                "attention",
-                f"{len(plan.candidates)} proposed change"
-                f"{'s' if len(plan.candidates) != 1 else ''} need review.",
-            )
-        )
-    else:
-        checks.append(InspectionCheckView("Repair plan", "pass", "No changes are needed."))
-    return tuple(checks)
-
-
-def _approval_changes(
-    core: AgentJob,
-    approval_card: ApprovalCard | None,
-) -> tuple[ApprovalChangeView, ...]:
-    """Group the selected plan into at most three readable change categories."""
-    plan = core.selected_plan
-    if plan is None:
-        return ()
-
-    normalization: list[str] = []
+    normalization_action = ""
     mesh_names: list[str] = []
     node_names: list[str] = []
-    welds: list[str] = []
-    for candidate in plan.candidates:
-        if candidate.kind is RepairKind.NORMALIZATION_TRANSFORM:
-            if approval_card is not None and candidate.id == approval_card.candidate_id:
-                before = approval_card.before_bounds.dimensions_m
-                after = approval_card.expected_after_bounds.dimensions_m
-                normalization.append(
-                    f"X/Y/Z: {before[0]:.3g} x {before[1]:.3g} x {before[2]:.3g} m → "
-                    f"{after[0]:.3g} x {after[1]:.3g} x {after[2]:.3g} m"
+    weld_action = ""
+    if plan is not None:
+        for candidate in plan.candidates:
+            payload = candidate.payload
+            if isinstance(payload, NormalizationPayload):
+                requested: list[str] = []
+                if assessment is not None and assessment.scale_to_confirmed_height:
+                    requested.append("fit proportionally")
+                if assessment is not None and assessment.rotation_degrees:
+                    requested.append(
+                        f"rotate {assessment.rotation_axis} {assessment.rotation_degrees:+d}°"
+                    )
+                if assessment is not None and assessment.ground_to_y_zero:
+                    requested.append("ground at Y=0")
+                if not requested:
+                    requested = [component.component for component in payload.components]
+                normalization_action = (
+                    f"Approval required — {', '.join(requested)}; "
+                    f"{_display_dimensions_m(payload.before_bounds.dimensions_m)} → "
+                    f"{_display_dimensions_m(payload.expected_after_bounds.dimensions_m)}"
                 )
-            else:
-                normalization.append(candidate.description)
-            continue
-        payload = candidate.payload
-        if isinstance(payload, WeldPayload):
-            merge_count = sum(primitive.merge_count for primitive in payload.primitives)
-            welds.append(
-                f"Compact {merge_count:,} complete duplicate vertex tuple"
-                f"{'s' if merge_count != 1 else ''}; preserve every vertex attribute"
-            )
-            continue
-        if not isinstance(payload, RenamePayload):
-            continue
-        before_name = payload.before_name or "(unnamed)"
-        item = f"“{before_name}” → “{payload.after_name}”"
-        if candidate.kind is RepairKind.RENAME_MESH:
-            mesh_names.append(item)
-        elif candidate.kind is RepairKind.RENAME_NODE:
-            node_names.append(item)
-
-    groups: list[ApprovalChangeView] = []
-    if normalization:
-        component_title = "Physical normalization"
-        if approval_card is not None and approval_card.components:
-            component_title = ", ".join(
-                component.component.capitalize() for component in approval_card.components
-            )
-        groups.append(
-            ApprovalChangeView(
-                component_title,
-                normalization[0],
-                "Approval required",
-                tuple(normalization[1:]),
-            )
-        )
-    if welds and (mesh_names or node_names):
-        display_names = mesh_names + node_names
-        groups.append(
-            ApprovalChangeView(
-                "Display names",
-                (
-                    display_names[0]
-                    if len(display_names) == 1
-                    else f"Clean up {len(display_names)} node and mesh names"
-                ),
-                "Automatic",
-                tuple(display_names if len(display_names) > 1 else ()),
-            )
-        )
-    elif not welds:
-        for label, items in (("Mesh name", mesh_names), ("Node name", node_names)):
-            if not items:
                 continue
-            plural_label = f"{label}s" if len(items) != 1 else label
-            groups.append(
-                ApprovalChangeView(
-                    plural_label,
-                    items[0] if len(items) == 1 else f"Clean up {len(items)} names",
-                    "Automatic",
-                    tuple(items if len(items) > 1 else ()),
+            if isinstance(payload, WeldPayload):
+                merge_count = sum(primitive.merge_count for primitive in payload.primitives)
+                weld_action = (
+                    f"Automatic — compact {merge_count:,} byte-identical vertex tuple"
+                    f"{'s' if merge_count != 1 else ''}."
                 )
-            )
-    if welds:
-        groups.append(
-            ApprovalChangeView(
-                "Vertex compaction",
-                welds[0],
-                "Automatic",
-                tuple(welds[1:]),
-            )
+                continue
+            before_name = payload.before_name or "(unnamed)"
+            item = f"“{before_name}” → “{payload.after_name}”"
+            if candidate.kind is RepairKind.RENAME_MESH:
+                mesh_names.append(item)
+            elif candidate.kind is RepairKind.RENAME_NODE:
+                node_names.append(item)
+
+    geometry = inspection.geometry
+    measured_dimensions = (
+        _display_dimensions_m(geometry.bounds.dimensions_m)
+        if geometry is not None
+        else "unavailable"
+    )
+    target_dimensions = (
+        _display_target_bounds(core.asset_intent.target_dimensions_cm)
+        if core.asset_intent is not None and core.asset_intent.target_dimensions_cm is not None
+        else "unspecified"
+    )
+    structure_blocked = inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH
+    structure_status = "blocked" if structure_blocked else "pass"
+    structure_label = "Inspection only" if structure_blocked else "Pass"
+    structure_action = "No repair available for this GLB." if structure_blocked else "—"
+
+    size_warning = size_pose_attention or has_attention(_SIZE_POSE_CODES)
+    size_status = "attention" if size_warning else "pass"
+    size_label = (
+        "Needs approval" if normalization_action else ("Attention" if size_warning else "Pass")
+    )
+
+    topology_warning = has_attention(_TOPOLOGY_CODES) or bool(weld_action)
+    topology_status = "attention" if topology_warning else "pass"
+    topology_label = "Automatic" if weld_action else ("Report only" if topology_warning else "Pass")
+    if weld_action:
+        topology_action = weld_action
+    elif protected_duplicates and topology_warning:
+        seam_names = ", ".join(protected_attributes) or "vertex attribute"
+        topology_action = (
+            f"Report only — no weld; {protected_duplicates:,} coincident positions preserve "
+            f"{seam_names} seams."
         )
-    return tuple(groups)
+    elif topology_warning:
+        topology_action = "Report only — no supported topology change."
+    else:
+        topology_action = "—"
+
+    material_warning = has_attention(_MATERIAL_CODES)
+    material_status = "attention" if material_warning else "pass"
+    material_label = "Report only" if material_warning else "Pass"
+    material_action = "Report only — no material or texture change." if material_warning else "—"
+
+    name_items = mesh_names + node_names
+    name_warning = has_attention(_NAME_CODES) or bool(name_items)
+    name_status = "attention" if name_warning else "pass"
+    name_label = "Automatic" if name_items else ("Attention" if name_warning else "Pass")
+    name_action = f"Automatic — {'; '.join(name_items)}" if name_items else "—"
+
+    topology_description = (
+        f"{projected_boundaries:,} boundary · {projected_non_manifold:,} non-manifold · "
+        f"{projected_winding:,} winding edges after position projection."
+        if diagnostic_primitives
+        else "No triangle topology diagnostics were available."
+    )
+    material_description = (
+        f"{inspection.package.material_count:,} material"
+        f"{'s' if inspection.package.material_count != 1 else ''} · "
+        f"{inspection.package.texture_count:,} texture"
+        f"{'s' if inspection.package.texture_count != 1 else ''} · "
+        f"{inspection.package.image_count:,} image"
+        f"{'s' if inspection.package.image_count != 1 else ''}."
+    )
+    name_description = (
+        f"{len(name_items)} display name{'s' if len(name_items) != 1 else ''} need cleanup."
+        if name_items
+        else "Node and mesh display names need no change."
+    )
+    return (
+        InspectionCheckView(
+            "GLB structure",
+            structure_status,
+            structure_label,
+            (
+                f"{inspection.package.node_count:,} node"
+                f"{'s' if inspection.package.node_count != 1 else ''} · "
+                f"{inspection.package.mesh_count:,} mesh"
+                f"{'es' if inspection.package.mesh_count != 1 else ''} · "
+                f"{inspection.package.primitive_count:,} primitive"
+                f"{'s' if inspection.package.primitive_count != 1 else ''}."
+            ),
+            structure_action,
+        ),
+        InspectionCheckView(
+            "Size and pose",
+            size_status,
+            size_label,
+            f"Measured {measured_dimensions}; target approximately {target_dimensions}.",
+            normalization_action or "—",
+        ),
+        InspectionCheckView(
+            "Topology",
+            topology_status,
+            topology_label,
+            topology_description,
+            topology_action,
+        ),
+        InspectionCheckView(
+            "Materials and textures",
+            material_status,
+            material_label,
+            material_description,
+            material_action,
+        ),
+        InspectionCheckView(
+            "Display names",
+            name_status,
+            name_label,
+            name_description,
+            name_action,
+        ),
+    )
 
 
 def _inspection_summary(job: WebJob, cannot_repair: bool) -> InspectionSummaryView:
@@ -2478,9 +2496,6 @@ def create_app(
                     _decision_summary(runtime_job) if runtime_job is not None else "pending"
                 ),
                 "approval_card": approval_card,
-                "approval_changes": (
-                    _approval_changes(runtime_job, approval_card) if runtime_job is not None else ()
-                ),
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,
                 "target_draft": workspace.record.target_draft,

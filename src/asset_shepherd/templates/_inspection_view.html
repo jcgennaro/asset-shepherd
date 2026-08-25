@@ -20,9 +20,6 @@
           <table class="inspection-table">
             <thead><tr><th>Item</th><th>Result</th><th>Notes</th></tr></thead>
             <tbody>
-            {% for check in inspection_checks %}
-              <tr><td>{{ check.label }}</td><td>{{ check.status|title }}</td><td>{{ check.detail }}</td></tr>
-            {% endfor %}
             {% for expectation in target_expectations %}
               <tr><td>{{ expectation.label }}</td><td>{{ expectation.value }}</td><td>{{ expectation.source }}</td></tr>
             {% endfor %}

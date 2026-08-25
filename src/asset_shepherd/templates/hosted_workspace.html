@@ -87,16 +87,6 @@
             </div>
           {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}
-          <ol class="approval-change-list" aria-label="Proposed changes">
-            {% for change in approval_changes %}
-              <li class="approval-change">
-                <strong>{{ change.title }}</strong>
-                <span>{{ change.summary }}</span>
-                <b class="{{ change.authorization|lower|replace(' ', '-') }}">{{ change.authorization }}</b>
-                {% if change.items %}<details><summary>Show exact names</summary>{% for item in change.items %}<p>{{ item }}</p>{% endfor %}</details>{% endif %}
-              </li>
-            {% endfor %}
-          </ol>
           <form action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form>
             <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">

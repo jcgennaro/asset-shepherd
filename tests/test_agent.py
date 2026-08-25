@@ -2,16 +2,20 @@
 
 import json
 import os
+from asyncio import run
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from zipfile import ZipFile
 
 import pytest
 from jsonschema.validators import validator_for
 from strands.agent import AgentResult
+from strands.types.content import Messages
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
 from asset_shepherd.agent_runtime import (
+    CompleteResponseOpenAIModel,
     build_live_agent,
     build_scripted_agent,
     load_model_configuration,
@@ -281,6 +285,67 @@ def test_live_model_configuration_is_explicit_and_offline_tests_need_no_credenti
     )
     assert configuration.model_id == "configured-by-user"
     assert configuration.aws_profile == "asset-shepherd"
+
+
+def test_openai_model_reads_complete_response_before_closing_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The local OpenAI bridge avoids the dependency's abandoned SSE-generator cleanup path."""
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.request: dict[str, object] = {}
+
+        async def create(self, **request: object) -> SimpleNamespace:
+            self.request = request
+            return SimpleNamespace(
+                id="response-123",
+                status="completed",
+                output=(
+                    SimpleNamespace(
+                        type="message",
+                        content=(SimpleNamespace(type="output_text", text="Finished."),),
+                    ),
+                ),
+                usage=SimpleNamespace(input_tokens=7, output_tokens=3, total_tokens=10),
+            )
+
+    class FakeAsyncOpenAI:
+        instance: "FakeAsyncOpenAI | None" = None
+
+        def __init__(self, **client_args: object) -> None:
+            self.client_args = client_args
+            self.responses = FakeResponses()
+            self.exited = False
+            FakeAsyncOpenAI.instance = self
+
+        async def __aenter__(self) -> "FakeAsyncOpenAI":
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            self.exited = True
+
+    monkeypatch.setattr("asset_shepherd.agent_runtime.openai.AsyncOpenAI", FakeAsyncOpenAI)
+    model = CompleteResponseOpenAIModel(
+        client_args={"api_key": "test-only"},
+        model_id="gpt-test",
+        stateful=True,
+    )
+    messages: Messages = [{"role": "user", "content": [{"text": "Hello"}]}]
+    model_state: dict[str, object] = {}
+
+    async def collect() -> list[object]:
+        return [event async for event in model.stream(messages, model_state=model_state)]
+
+    events = run(collect())
+    client = FakeAsyncOpenAI.instance
+    assert client is not None
+    assert client.exited
+    assert client.responses.request["stream"] is False
+    assert client.responses.request["store"] is True
+    assert model_state == {"response_id": "response-123"}
+    assert events[0] == {"messageStart": {"role": "assistant"}}
+    assert {"contentBlockDelta": {"delta": {"text": "Finished."}}} in events
 
 
 def test_persistent_session_requires_both_identity_and_storage(tmp_path: Path) -> None:

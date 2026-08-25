@@ -128,15 +128,17 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert confirmed.status_code == 303
     pending = client.get(workspace_path)
     assert "Asset Shepherd -- Friendly Humanoid Robot" in pending.text
-    assert pending.text.count("data-inspection-check") == 6
+    assert pending.text.count("data-inspection-check") == 5
     assert "6 complete" not in pending.text
     assert "More details" not in pending.text
     assert 'class="inspection-table"' not in pending.text
-    assert pending.text.count('class="approval-change"') == 3
-    assert "X/Y/Z:" in pending.text
-    assert "Mesh name" in pending.text
-    assert "Node name" in pending.text
-    assert pending.text.count('data-tooltip="') == 6
+    assert pending.text.count('class="inspection-lane-table"') == 1
+    assert 'class="approval-change"' not in pending.text
+    assert "Proposed action" in pending.text
+    assert "Approval required" in pending.text
+    assert "Display names" in pending.text
+    assert "Repair plan" not in pending.text
+    assert pending.text.count('data-tooltip="') == 5
     assert "The original file remains untouched." not in pending.text
     assert "Ask from recorded evidence" not in pending.text
     assert "VERTEX REPRESENTATION" in pending.text
