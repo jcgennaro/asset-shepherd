@@ -29,7 +29,7 @@ from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
-    AGENT_SYSTEM_PROMPT_V7,
+    AGENT_SYSTEM_PROMPT_V8,
     build_agent_start_prompt,
 )
 from asset_shepherd.agent_tools import AssetShepherdTools
@@ -40,6 +40,7 @@ from asset_shepherd.models import (
     AgentWorkflowResult,
     ApprovalCard,
     ApprovalResponse,
+    ProposalResponse,
 )
 
 T = TypeVar("T", bound=BaseModel)
@@ -386,7 +387,7 @@ class AssetShepherdAgent:
         self.provider = provider
         self.model_id = model_id
         self.tools = AssetShepherdTools(job)
-        system_prompt = AGENT_SYSTEM_PROMPT_V7 if job.agent_orchestrated else AGENT_SYSTEM_PROMPT_V2
+        system_prompt = AGENT_SYSTEM_PROMPT_V8 if job.agent_orchestrated else AGENT_SYSTEM_PROMPT_V2
         tools = (
             self.tools.as_agent_orchestrated_list()
             if job.agent_orchestrated
@@ -440,8 +441,14 @@ class AssetShepherdAgent:
             self._capture_interrupt(result)
         return result
 
-    def resume(self, interrupt_id: str, *, approved: bool) -> AgentResult:
-        """Resume only the exact pending Strands interrupt with a validated decision."""
+    def resume(
+        self,
+        interrupt_id: str,
+        *,
+        approved: bool | None,
+        proposal_responses: tuple[ProposalResponse, ...] = (),
+    ) -> AgentResult:
+        """Resume the exact interrupt with approval, rejection, or plan feedback."""
         if self.job.pending_interrupt_id is None:
             raise AgentWorkflowError("No approval interrupt is pending")
         if interrupt_id != self.job.pending_interrupt_id:
@@ -462,13 +469,20 @@ class AssetShepherdAgent:
                     if interrupt.id == interrupt_id
                 )
             )
-        response = ApprovalResponse(candidate_id=card.candidate_id, approved=approved)
+        response = ApprovalResponse(
+            candidate_id=card.candidate_id,
+            approved=approved,
+            proposal_responses=proposal_responses,
+        )
+        response_payload = response.model_dump(mode="json")
+        if not proposal_responses:
+            response_payload.pop("proposal_responses", None)
         result = self._invoke(
             [
                 {
                     "interruptResponse": {
                         "interruptId": interrupt_id,
-                        "response": response.model_dump(mode="json"),
+                        "response": response_payload,
                     }
                 }
             ]

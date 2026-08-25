@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[7]] = 7
+AGENT_PROMPT_VERSION: Final[Literal[8]] = 8
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -251,6 +251,45 @@ AGENT_SYSTEM_PROMPT_V7: Final[str] = AGENT_SYSTEM_PROMPT_V6.replace(
     "or vertex-tuple\n",
     "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, "
     "naming, or vertex-tuple\n",
+)
+
+_AGENT_SYSTEM_PROMPT_V8_REVISION: Final[str] = AGENT_SYSTEM_PROMPT_V7.replace(
+    "3. Call propose_agent_repair_plan exactly once per repair turn.",
+    "3. Call propose_agent_repair_plan exactly once per repair proposal.",
+).replace(
+    "4. If the plan is blocked, call verify_and_package without executing. Otherwise call\n"
+    "   execute_selected_repairs. A physical action interrupts for the user's exact approval; "
+    "do not\n"
+    "   infer or fabricate it.",
+    "4. If the plan is blocked, call verify_and_package without executing. Otherwise call\n"
+    "   execute_selected_repairs. A physical action interrupts for the user's exact structured\n"
+    "   response; do not infer or fabricate it. If the tool returns PLAN_REVISION_REQUESTED, the\n"
+    "   archived proposal was not executed. Treat each accepted, rejected, or commented lane as "
+    "user\n"
+    "   context, obtain any needed evidence, and form a fresh proposal in the same turn. Never "
+    "reuse\n"
+    "   an archived action or argue past an explicit rejection.",
+)
+
+AGENT_SYSTEM_PROMPT_V8: Final[str] = (
+    _AGENT_SYSTEM_PROMPT_V8_REVISION.replace(
+        "5. After an action executes, call render_candidate_views_for_job.",
+        "5. After a physical or topology action executes, call render_candidate_views_for_job.",
+    )
+    .replace(
+        "   A rejection has no changed candidate and skips this comparison.",
+        "   A display-name-only action skips rendering and proceeds directly to independent "
+        "verification\n"
+        "   because index-preserving name edits cannot alter rendered appearance. A rejection has "
+        "no\n"
+        "   changed candidate and skips this comparison.",
+    )
+    .replace(
+        "6. Call verify_and_package only after the required candidate reassessment.",
+        "6. Call verify_and_package after any required candidate reassessment, or immediately "
+        "after a\n"
+        "   display-name-only action.",
+    )
 )
 
 

@@ -189,7 +189,7 @@ function showWorkflowActivity(form) {
     trace.dataset.workflowActivity = "";
     trace.setAttribute("role", "status");
     trace.setAttribute("aria-live", "polite");
-    form.insertAdjacentElement("afterend", trace);
+    host.append(trace);
   }
 
   const render = (payload) => {
@@ -209,6 +209,8 @@ function showWorkflowActivity(form) {
       trace.append(row);
     }
   };
+
+  render({ items: [{ label: "Starting the agent", status: "ACTIVE" }] });
 
   const poll = async () => {
     try {
@@ -241,8 +243,46 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
       submitter.setAttribute("aria-busy", "true");
       submitter.style.pointerEvents = "none";
     }
+    if (form.dataset.activityUrl) {
+      const scope = form.closest(".conversation-pane");
+      if (scope) {
+        scope.classList.add("is-working");
+        scope.setAttribute("aria-busy", "true");
+      }
+    }
     showWorkflowActivity(form);
   });
+}
+
+for (const form of document.querySelectorAll("[data-plan-response-form]")) {
+  const submit = form.querySelector("[data-plan-response-submit]");
+  const dispositions = Array.from(
+    document.querySelectorAll(`[form="${form.id}"][data-proposal-disposition]`),
+  );
+  const sync = () => {
+    let requestsRevision = false;
+    for (const disposition of dispositions) {
+      const response = disposition.closest("[data-proposal-response]");
+      const comment = response?.querySelector("[data-proposal-comment]");
+      const isComment = disposition.value === "comment";
+      if (comment instanceof HTMLTextAreaElement) {
+        comment.hidden = !isComment;
+        comment.required = isComment;
+      }
+      requestsRevision ||= disposition.value !== "accept";
+    }
+    if (submit instanceof HTMLButtonElement) {
+      submit.value = requestsRevision ? "revise" : "approve";
+      const label = submit.firstChild;
+      if (label) {
+        label.textContent = requestsRevision ? "Revise plan " : "Approve ";
+      }
+    }
+  };
+  for (const disposition of dispositions) {
+    disposition.addEventListener("change", sync);
+  }
+  sync();
 }
 
 for (const form of document.querySelectorAll("[data-result-accept]")) {

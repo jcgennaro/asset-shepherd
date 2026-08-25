@@ -698,12 +698,62 @@ class ApprovalCard(ContractModel):
     options: tuple[Literal["APPROVE", "REJECT"], ...] = ("APPROVE", "REJECT")
 
 
+class ProposalLane(StrEnum):
+    """User-visible repair-plan lane that can receive plan feedback."""
+
+    SIZE_AND_POSE = "SIZE_AND_POSE"
+    TOPOLOGY = "TOPOLOGY"
+    DISPLAY_NAMES = "DISPLAY_NAMES"
+
+
+class ProposalDisposition(StrEnum):
+    """One structured response to a proposed repair lane."""
+
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    COMMENT = "COMMENT"
+
+
+class ProposalResponse(ContractModel):
+    """Typed user feedback for one proposed repair lane."""
+
+    lane: ProposalLane
+    disposition: ProposalDisposition
+    comment: Annotated[str | None, Field(min_length=1, max_length=1000)] = None
+
+    @model_validator(mode="after")
+    def comment_matches_disposition(self) -> "ProposalResponse":
+        """Require prose only for the explicit comment disposition."""
+        if self.disposition is ProposalDisposition.COMMENT and self.comment is None:
+            raise ValueError("A commented proposal requires comment text")
+        if self.disposition is not ProposalDisposition.COMMENT and self.comment is not None:
+            raise ValueError("Only a commented proposal may include comment text")
+        return self
+
+
 class ApprovalResponse(ContractModel):
     """Validated human response returned through a Strands interrupt ID."""
 
     schema_version: Literal[1] = 1
     candidate_id: str
-    approved: bool
+    approved: bool | None
+    proposal_responses: tuple[ProposalResponse, ...] = ()
+
+    @model_validator(mode="after")
+    def approval_or_revision_is_unambiguous(self) -> "ApprovalResponse":
+        """Separate exact approval from a non-mutating plan-revision request."""
+        lanes = [response.lane for response in self.proposal_responses]
+        if len(lanes) != len(set(lanes)):
+            raise ValueError("A proposal lane may be answered only once")
+        requests_revision = any(
+            response.disposition is not ProposalDisposition.ACCEPT
+            for response in self.proposal_responses
+        )
+        if self.approved is None and not requests_revision:
+            raise ValueError("A plan revision requires a rejection or comment")
+        if self.approved is not None and requests_revision:
+            raise ValueError("A repair cannot be approved while plan revision is requested")
+        return self
 
 
 class RepairPlan(ContractModel):
@@ -946,7 +996,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7] = 7
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8] = 8
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

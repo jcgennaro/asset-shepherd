@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D054 proven multi-turn transforms, visual evidence, and tool activity (this file is included)
+**Current commit:** D055 typed proposal feedback and honest working state (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,19 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D055 proposal feedback and working-state checkpoint: each active repair lane now offers
+  Accept/Reject/Comment before execution. All accepted lanes retain one exact `Approve`; any
+  rejection or comment produces one `Revise plan` action, archives the pending plan and assessment,
+  records typed feedback, performs no mutation, and resumes the same workspace-scoped Strands
+  conversation. Pass and report-only rows have no controls. While that agent request is in flight,
+  stale questions and response controls are hidden and only observable tool activity remains. A
+  live browser check exercised the Size and pose comment field and button transition; the agent
+  honored “keep the present scale” and formed a names-only replacement plan. Display-name-only
+  candidates now use exact independent payload/inventory verification without a meaningless visual
+  gate, while physical and topology mutations still require before/after reassessment. Regression
+  coverage proves no candidate GLB exists during revision. The common gate passes with 148 tests,
+  one opt-in skip, lock validation, Ruff, formatting, and zero Pyright findings.
 
 - D054 multi-turn and observability checkpoint: a later repair now composes its delta into the exact
   immediately proven Asset Shepherd normalization root instead of adding another wrapper. Lineage

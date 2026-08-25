@@ -25,6 +25,9 @@ from asset_shepherd.models import (
     Bounds3D,
     NormalizationPayload,
     ProjectProfile,
+    ProposalDisposition,
+    ProposalLane,
+    ProposalResponse,
     Provenance,
 )
 from asset_shepherd.planner import plan_agent_repairs
@@ -32,6 +35,7 @@ from asset_shepherd.planner import plan_agent_repairs
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = PROJECT_ROOT / "profiles" / "unreal_indie_robot.json"
 CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
+BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
 
 
 def _profile() -> ProjectProfile:
@@ -199,6 +203,59 @@ def test_agent_plan_contains_only_explicitly_requested_transform_components() ->
         if isinstance(candidate.payload, NormalizationPayload)
     )
     assert tuple(component.component for component in payload.components) == ("scale",)
+
+
+def test_plan_feedback_archives_without_executing_and_reopens_agent_planning(
+    tmp_path: Path,
+) -> None:
+    """A commented proposal returns to the agent without creating a candidate GLB."""
+    output = tmp_path / "output"
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(height_cm=360.0),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+    plan = job.register_agent_plan(
+        initiating_tool_call_id="initial-plan-tool-call",
+        disposition="REPAIR",
+        summary="Uniformly scale the upright model to the proposed target.",
+        evidence=["The source views show Y as the semantic height axis."],
+        confidence=0.94,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=True,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=False,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+    job.set_pending_interrupt("pending-plan-feedback-v1")
+    responses = (
+        ProposalResponse(
+            lane=ProposalLane.SIZE_AND_POSE,
+            disposition=ProposalDisposition.COMMENT,
+            comment="Keep the present scale; only inspect the asset.",
+        ),
+    )
+
+    recorded = job.request_plan_revision(responses)
+    assert recorded == responses
+    assert job.outcome is None
+    assert job.selected_plan is None
+    assert job.agent_assessment is None
+    assert job.pending_interrupt_id is None
+    assert not (output / "candidate.glb").exists()
+    assert not (output / "repair_plan.json").exists()
+    revision_root = output.parent / "plan_revisions" / "turn-000-revision-001"
+    archived_plan = json.loads((revision_root / "repair_plan.json").read_text())
+    revision_request = json.loads((revision_root / "revision_request.json").read_text())
+    assert archived_plan["plan_id"] == plan.plan_id
+    assert revision_request["responses"][0]["lane"] == "SIZE_AND_POSE"
+    assert revision_request["responses"][0]["disposition"] == "COMMENT"
 
 
 def test_approximate_target_box_uses_one_robust_uniform_scale() -> None:
@@ -713,3 +770,40 @@ def test_conversation_loop_is_not_hard_coded_to_a_second_turn(tmp_path: Path) ->
         agent_orchestrated=True,
     )
     assert restored.accepted is True
+
+
+def test_display_name_only_action_packages_without_visual_reassessment(tmp_path: Path) -> None:
+    """Index-preserving names use exact inventory checks instead of a fake visual gate."""
+    output = tmp_path / "output"
+    job = AgentJob(
+        BROKEN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    job.register_agent_plan(
+        initiating_tool_call_id="names-only-plan-tool-call",
+        disposition="REPAIR",
+        summary="Keep the physical asset unchanged and repair only invalid display names.",
+        evidence=["Inspection found invalid and duplicate node and mesh display names."],
+        confidence=0.98,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=True,
+        source_views_used=[],
+    )
+    outcome = job.execute(approved=None, interrupt_id=None)
+
+    assert outcome.executed_action_ids
+    assert all(action_id.startswith("rename-") for action_id in outcome.executed_action_ids)
+    verification, result = job.verify_and_package()
+
+    assert result is not None
+    assert job.candidate_reassessment is None
+    assert all(check.code != "AGENT_VISUAL_REASSESSMENT" for check in verification.checks)
+    assert (output / "result.zip").is_file()

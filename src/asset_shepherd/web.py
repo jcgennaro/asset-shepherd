@@ -66,6 +66,9 @@ from asset_shepherd.models import (
     NormalizationPayload,
     ProfilePolicyProvenance,
     ProjectProfile,
+    ProposalDisposition,
+    ProposalLane,
+    ProposalResponse,
     RepairEligibility,
     RepairKind,
     Severity,
@@ -204,6 +207,7 @@ class InspectionCheckView:
     status_label: str
     description: str
     action: str
+    response_lane: ProposalLane | None = None
 
     @property
     def detail(self) -> str:
@@ -1674,6 +1678,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 f"{'s' if inspection.package.primitive_count != 1 else ''}."
             ),
             structure_action,
+            None,
         ),
         InspectionCheckView(
             "Size and pose",
@@ -1681,6 +1686,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             size_label,
             f"Measured {measured_dimensions}; target approximately {target_dimensions}.",
             normalization_action or "—",
+            ProposalLane.SIZE_AND_POSE if normalization_action else None,
         ),
         InspectionCheckView(
             "Topology",
@@ -1688,6 +1694,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             topology_label,
             topology_description,
             topology_action,
+            ProposalLane.TOPOLOGY if weld_action else None,
         ),
         InspectionCheckView(
             "Materials and textures",
@@ -1695,6 +1702,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             material_label,
             material_description,
             material_action,
+            None,
         ),
         InspectionCheckView(
             "Display names",
@@ -1702,6 +1710,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             name_label,
             name_description,
             name_action,
+            ProposalLane.DISPLAY_NAMES if name_items else None,
         ),
     )
 
@@ -3590,20 +3599,72 @@ def create_app(
         interrupt_id: Annotated[str, Form()],
         decision: Annotated[str, Form()],
         command_id: Annotated[str, Form()],
+        response_size_and_pose: Annotated[str | None, Form()] = None,
+        comment_size_and_pose: Annotated[str | None, Form()] = None,
+        response_topology: Annotated[str | None, Form()] = None,
+        comment_topology: Annotated[str | None, Form()] = None,
+        response_display_names: Annotated[str | None, Form()] = None,
+        comment_display_names: Annotated[str | None, Form()] = None,
     ) -> Response:
-        """Bind a structured decision to the exact durable Strands interrupt."""
+        """Bind exact approval or typed plan feedback to the durable Strands interrupt."""
         workspace: HostedWorkspace | None = None
         try:
             workspace = require_hosted_workspace(workspace_id)
-            if decision not in {"approve", "reject"}:
+            if decision not in {"approve", "reject", "revise"}:
                 raise HostedWorkspaceError("Choose approve or reject for this repair.")
-            hosted_store.decide(
-                workspace,
-                interrupt_id=interrupt_id,
-                approved=decision == "approve",
-                command_id=command_id,
+            raw_responses = (
+                (
+                    ProposalLane.SIZE_AND_POSE,
+                    response_size_and_pose,
+                    comment_size_and_pose,
+                ),
+                (ProposalLane.TOPOLOGY, response_topology, comment_topology),
+                (
+                    ProposalLane.DISPLAY_NAMES,
+                    response_display_names,
+                    comment_display_names,
+                ),
             )
-        except (HostedWorkspaceError, AgentWorkflowError) as error:
+            responses: list[ProposalResponse] = []
+            disposition_values = {
+                "accept": ProposalDisposition.ACCEPT,
+                "reject": ProposalDisposition.REJECT,
+                "comment": ProposalDisposition.COMMENT,
+            }
+            for lane, raw_disposition, raw_comment in raw_responses:
+                if raw_disposition is None:
+                    continue
+                disposition = disposition_values.get(raw_disposition)
+                if disposition is None:
+                    raise HostedWorkspaceError("A proposed-change response is invalid.")
+                comment = raw_comment.strip() if raw_comment else None
+                if disposition is ProposalDisposition.COMMENT and not comment:
+                    raise HostedWorkspaceError("Add a comment for the proposed change.")
+                responses.append(
+                    ProposalResponse(
+                        lane=lane,
+                        disposition=disposition,
+                        comment=comment if disposition is ProposalDisposition.COMMENT else None,
+                    )
+                )
+            requests_revision = any(
+                response.disposition is not ProposalDisposition.ACCEPT for response in responses
+            )
+            if decision == "revise" or requests_revision:
+                hosted_store.revise_plan(
+                    workspace,
+                    interrupt_id=interrupt_id,
+                    responses=tuple(responses),
+                    command_id=command_id,
+                )
+            else:
+                hosted_store.decide(
+                    workspace,
+                    interrupt_id=interrupt_id,
+                    approved=decision == "approve",
+                    command_id=command_id,
+                )
+        except (HostedWorkspaceError, AgentWorkflowError, ValueError) as error:
             if workspace is None:
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=409)

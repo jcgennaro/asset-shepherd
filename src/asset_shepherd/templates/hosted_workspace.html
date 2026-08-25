@@ -21,6 +21,7 @@
           </p>{% endif %}
 
         {% if inspection %}
+          {% set proposal_response_form_id = 'hosted-plan-response' if approval_card and record.pending_interrupt_id and job.agent_orchestrated else '' %}
           <div class="hosted-inspection" data-inspection-experience>
             <section class="inspection-progress" aria-label="Inspection checks">
               {% include "_inspection_checklist.html" %}
@@ -88,11 +89,15 @@
             </div>
           {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}
-          <form action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
+          <form id="hosted-plan-response" action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}"{% if job.agent_orchestrated %} data-plan-response-form{% endif %}>
             <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
-            <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
-            <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
+            {% if job.agent_orchestrated %}
+              <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button data-plan-response-submit>Approve <span aria-hidden="true">→</span></button>
+            {% else %}
+              <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
+              <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
+            {% endif %}
           </form>
         {% elif job and job.result %}
           {% if comparison_scene %}

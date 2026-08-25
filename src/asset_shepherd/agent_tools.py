@@ -3,6 +3,7 @@
 # Strands' overloaded decorator exposes a partially unknown bare-dict schema type to Pyright.
 # pyright: reportUnknownVariableType=false
 
+import json
 from typing import Any, Literal
 
 from strands import tool
@@ -305,9 +306,21 @@ class AssetShepherdTools:
             APPROVAL_INTERRUPT_NAME,
             reason=card.model_dump(mode="json"),
         )
-        response = ApprovalResponse.model_validate(response_value)
+        response = ApprovalResponse.model_validate_json(json.dumps(response_value))
         if response.candidate_id != card.candidate_id:
             raise AgentWorkflowError("Approval response references a different candidate")
+        if response.approved is None:
+            recorded = self.job.request_plan_revision(response.proposal_responses)
+            return {
+                "status": "PLAN_REVISION_REQUESTED",
+                "executed": False,
+                "previous_plan_id": card.plan_id,
+                "proposal_responses": [item.model_dump(mode="json") for item in recorded],
+                "instruction": (
+                    "Respect these user responses, obtain any needed evidence, and form a fresh "
+                    "plan. Do not execute or reuse the archived proposal."
+                ),
+            }
         if self.job.pending_interrupt_id is None:
             raise AgentWorkflowError(
                 "Approval response is not associated with a pending interrupt ID"

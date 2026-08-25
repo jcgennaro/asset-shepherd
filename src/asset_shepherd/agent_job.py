@@ -36,7 +36,11 @@ from asset_shepherd.models import (
     PlanSelection,
     ProfilePolicyProvenance,
     ProjectProfile,
+    ProposalDisposition,
+    ProposalLane,
+    ProposalResponse,
     Provenance,
+    RepairKind,
     RepairPlan,
     VerificationCheck,
     VerificationResult,
@@ -337,6 +341,67 @@ class AgentJob:
         """Persist the exact native interrupt identity or its durable resolution."""
         self.pending_interrupt_id = interrupt_id
         self._persist_runtime_state()
+
+    def request_plan_revision(
+        self, responses: tuple[ProposalResponse, ...]
+    ) -> tuple[ProposalResponse, ...]:
+        """Archive a pending agent plan and reopen planning without mutating the GLB."""
+        if not self.agent_orchestrated:
+            raise AgentWorkflowError("Plan revision requires agent-orchestrated mode")
+        if self.selected_plan is None or self.agent_assessment is None:
+            raise AgentWorkflowError("A pending agent plan is required for revision")
+        if self.pending_interrupt_id is None:
+            raise AgentWorkflowError("Plan revision requires the exact pending interrupt")
+        if self.outcome is not None:
+            raise AgentWorkflowError("An executed plan cannot be revised in place")
+        if not responses or all(
+            response.disposition is ProposalDisposition.ACCEPT for response in responses
+        ):
+            raise AgentWorkflowError("Plan revision requires a rejection or comment")
+
+        active_lanes: set[ProposalLane] = set()
+        for candidate in self.selected_plan.candidates:
+            if candidate.kind is RepairKind.NORMALIZATION_TRANSFORM:
+                active_lanes.add(ProposalLane.SIZE_AND_POSE)
+            elif candidate.kind is RepairKind.WELD_IDENTICAL_VERTICES:
+                active_lanes.add(ProposalLane.TOPOLOGY)
+            elif candidate.kind in {RepairKind.RENAME_MESH, RepairKind.RENAME_NODE}:
+                active_lanes.add(ProposalLane.DISPLAY_NAMES)
+        unknown_lanes = {response.lane for response in responses} - active_lanes
+        if unknown_lanes:
+            raise AgentWorkflowError(
+                f"Plan feedback references inactive proposal lanes: {sorted(unknown_lanes)}"
+            )
+
+        revision_root = self.output_dir.parent / "plan_revisions"
+        revision_index = (
+            len(tuple(revision_root.glob(f"turn-{self.turn_index:03d}-revision-*"))) + 1
+        )
+        plan_id = self.selected_plan.plan_id
+        plan_path = self.output_dir / "repair_plan.json"
+        if not plan_path.is_file() or not self.agent_assessment_path.is_file():
+            raise AgentWorkflowError("The pending plan is missing its durable evidence")
+        archive = revision_root / (f"turn-{self.turn_index:03d}-revision-{revision_index:03d}")
+        archive.mkdir(parents=True, exist_ok=False)
+        shutil.move(str(plan_path), str(archive / "repair_plan.json"))
+        shutil.move(str(self.agent_assessment_path), str(archive / "agent_assessment.json"))
+        _write_json(
+            archive / "revision_request.json",
+            {
+                "schema_version": 1,
+                "plan_id": plan_id,
+                "turn_index": self.turn_index,
+                "responses": [response.model_dump(mode="json") for response in responses],
+                "recorded_at": self.clock().isoformat(),
+            },
+        )
+        self.full_plan = None
+        self.selection = None
+        self.selected_plan = None
+        self.agent_assessment = None
+        self.pending_interrupt_id = None
+        self._persist_runtime_state()
+        return responses
 
     @property
     def turns_remaining(self) -> int:
@@ -1289,13 +1354,26 @@ class AgentJob:
             return verification, self.result
         if self.decisions is None or self.outcome is None or self.provenance is None:
             raise AgentWorkflowError("Repair must complete before verification")
+        visually_consequential_kinds = {
+            RepairKind.NORMALIZATION_TRANSFORM,
+            RepairKind.WELD_IDENTICAL_VERTICES,
+        }
+        visually_consequential_action_ids = {
+            candidate.id
+            for candidate in self.selected_plan.candidates
+            if candidate.kind in visually_consequential_kinds
+        }
+        requires_visual_reassessment = bool(
+            visually_consequential_action_ids.intersection(self.outcome.executed_action_ids)
+        )
         if (
             self.agent_orchestrated
-            and self.outcome.executed_action_ids
+            and requires_visual_reassessment
             and self.candidate_reassessment is None
         ):
             raise AgentWorkflowError(
-                "Executed agent actions require visual candidate reassessment before verification"
+                "Executed physical or topology actions require visual candidate reassessment "
+                "before verification"
             )
         if self.result is not None and self.last_verification is not None:
             return self.last_verification, self.result

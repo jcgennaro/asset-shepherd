@@ -42,6 +42,8 @@ from asset_shepherd.models import (
     PreflightResult,
     ProfilePolicyProvenance,
     ProjectProfile,
+    ProposalDisposition,
+    ProposalResponse,
     RepairEligibility,
 )
 from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
@@ -1155,6 +1157,103 @@ class HostedWorkspaceStore:
             }
             workspace.record = workspace.record.model_copy(update={"processed_commands": processed})
             self._sync_runtime(workspace)
+            self._record_runtime_events(workspace)
+            self._persist(workspace)
+            return workspace
+
+    def revise_plan(
+        self,
+        workspace: HostedWorkspace,
+        *,
+        interrupt_id: str,
+        responses: tuple[ProposalResponse, ...],
+        command_id: str,
+    ) -> HostedWorkspace:
+        """Return typed proposal feedback to the same agent without executing the plan."""
+        if _COMMAND_ID.fullmatch(command_id) is None:
+            raise HostedWorkspaceError("The plan-feedback command identifier is invalid.")
+        if not responses or all(
+            response.disposition is ProposalDisposition.ACCEPT for response in responses
+        ):
+            raise HostedWorkspaceError("Reject or comment on at least one proposed change.")
+        response_payload = [response.model_dump(mode="json") for response in responses]
+        response_hash = sha256(
+            json.dumps(response_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        expected = f"PLAN_REVISION:{interrupt_id}:{response_hash}"
+        with self._lock:
+            previous = workspace.record.processed_commands.get(command_id)
+            if previous is not None:
+                if previous == f"{expected}:COMPLETE":
+                    return workspace
+                raise HostedWorkspaceError("This command identifier was used for another action.")
+            if workspace.runtime is None:
+                raise HostedWorkspaceError("The agent runtime is unavailable.")
+            if workspace.runtime.job.pending_interrupt_id != interrupt_id:
+                raise HostedWorkspaceError(
+                    "The plan feedback does not match this workspace's pending action."
+                )
+            processed = {**workspace.record.processed_commands, command_id: expected}
+            workspace.record = workspace.record.model_copy(update={"processed_commands": processed})
+            workspace.record = self._append_event(
+                workspace.record,
+                "PLAN_REVISION_REQUESTED",
+                evidence_refs=(interrupt_id, response_hash),
+                payload={
+                    "responses": [
+                        {
+                            "lane": response.lane.value,
+                            "disposition": response.disposition.value,
+                            "comment_sha256": (
+                                sha256(response.comment.encode("utf-8")).hexdigest()
+                                if response.comment is not None
+                                else None
+                            ),
+                        }
+                        for response in responses
+                    ]
+                },
+            )
+            self._persist(workspace)
+            self._reset_activity(workspace, "Revising the repair plan")
+            try:
+                workspace.latest_result = workspace.runtime.resume(
+                    interrupt_id,
+                    approved=None,
+                    proposal_responses=responses,
+                )
+                workspace.workflow_result = None
+                if workspace.latest_result.stop_reason != "interrupt":
+                    workspace.workflow_result = workspace.runtime.complete(workspace.latest_result)
+            except Exception as error:
+                workspace.record = workspace.record.model_copy(
+                    update={"phase": WorkspacePhase.ERROR, "error": str(error)}
+                )
+                self._finish_activity(workspace, "ERROR")
+                self._persist(workspace)
+                return workspace
+            self._finish_activity(
+                workspace,
+                "WAITING" if workspace.latest_result.stop_reason == "interrupt" else "COMPLETE",
+            )
+            processed = {
+                **workspace.record.processed_commands,
+                command_id: f"{expected}:COMPLETE",
+            }
+            workspace.record = workspace.record.model_copy(update={"processed_commands": processed})
+            self._sync_runtime(workspace)
+            if workspace.runtime.job.selected_plan is not None:
+                workspace.record = self._append_event(
+                    workspace.record,
+                    "REPAIR_PLAN_REVISED",
+                    evidence_refs=(workspace.runtime.job.selected_plan.plan_id,),
+                    payload={
+                        "candidate_ids": [
+                            candidate.id
+                            for candidate in workspace.runtime.job.selected_plan.candidates
+                        ]
+                    },
+                )
             self._record_runtime_events(workspace)
             self._persist(workspace)
             return workspace

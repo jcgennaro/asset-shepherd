@@ -227,9 +227,18 @@ translation, pivot placement, or rename that the agent did not request.
 The agent explains the proposed result in one compact message. The exact typed proposal is shown
 through the structured decision control.
 
-Consequential changes require explicit user approval bound to the proposed action hash. Rejection is
-durable. Non-consequential actions may use an explicitly preauthorized project rule, but the agent
-must still initiate the action tool call; there is no background mutation pass.
+Each proposed repair lane offers `Accept`, `Reject`, or `Comment`. These are plan responses, not
+independent mutation buttons. If every active lane is accepted, the one overall `Approve` action
+binds consequential authorization to the exact proposed action hash. Any rejection or comment
+changes that action to `Revise plan`: the proposal and typed feedback are archived durably, no GLB
+mutation occurs, and the same workspace-scoped agent resumes to gather evidence and form a fresh
+proposal. It may not silently restore a rejected action or argue past the user's response.
+
+Non-consequential actions may use an explicitly preauthorized project rule, but the agent must still
+initiate the action tool call; there is no background mutation pass. While an agent request is in
+flight, the UI hides stale questions, decisions, and feedback controls and shows only the observable
+tool-activity list. A cancel control must not be shown until the runtime supports real cooperative
+cancellation.
 
 ### 8. Execute the approved action
 
@@ -245,11 +254,13 @@ wrapper node. A familiar root name without proven lineage grants no mutation aut
 
 ### 9. Re-observe and reassess
 
-The candidate is a new state of the same asset conversation. The agent calls fresh measurements and
-standardized renders, compares them with both the source and confirmed goal, and decides whether the
-change worked. Isolated source and candidate views establish presence and appearance; a separate
-shared-scale render establishes relative size. A candidate that is tiny in the shared view is not
-therefore absent.
+The candidate is a new state of the same asset conversation. After a physical or topology mutation,
+the agent calls fresh measurements and standardized renders, compares them with both the source and
+confirmed goal, and decides whether the change worked. Isolated source and candidate views
+establish presence and appearance; a separate shared-scale render establishes relative size. A
+candidate that is tiny in the shared view is not therefore absent. An index-preserving
+display-name-only candidate skips this visual gate because exact independent inventory and payload
+verification proves that those JSON edits cannot change rendered appearance.
 
 The before/after viewer is therefore more than decorative UI: its standardized render artifacts are
 available to a vision-capable workflow model as sensing evidence. Pixel metrics may detect change,

@@ -1914,6 +1914,38 @@ details[open] summary::after {
   overflow-wrap: anywhere;
 }
 
+.inspection-action > span {
+  display: block;
+}
+
+.inspection-proposal-response {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.inspection-proposal-response select,
+.inspection-proposal-response textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+}
+
+.inspection-proposal-response select {
+  min-height: 40px;
+  padding: 0 10px;
+}
+
+.inspection-proposal-response textarea {
+  min-height: 86px;
+  padding: 10px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
 .inspection-status {
   text-align: center;
 }
@@ -4162,6 +4194,19 @@ textarea.asset-description-input:focus {
   margin: 18px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.conversation-pane.is-working > :not([data-workflow-activity]) {
+  display: none !important;
+}
+
+.conversation-pane.is-working {
+  align-content: start;
+  min-height: 260px;
+}
+
+.conversation-pane.is-working .workflow-activity {
+  margin-top: 6px;
 }
 
 .workflow-activity-item {

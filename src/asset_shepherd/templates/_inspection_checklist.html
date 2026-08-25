@@ -11,7 +11,20 @@
           <td class="inspection-status">
             <span class="inspection-check-icon" tabindex="0" title="{{ check.status_label }} — {{ check.detail }}" data-tooltip="{{ check.status_label }} — {{ check.detail }}" aria-label="{{ check.status_label }}: {{ check.detail }}">{% if check.status == 'pass' %}✓{% elif check.status == 'blocked' %}×{% elif check.status == 'checking' %}…{% else %}!{% endif %}</span>
           </td>
-          <td class="inspection-action">{{ check.action }}</td>
+          <td class="inspection-action">
+            <span>{{ check.action }}</span>
+            {% if proposal_response_form_id and check.response_lane %}
+              {% set response_name = check.response_lane.value|lower %}
+              <div class="inspection-proposal-response" data-proposal-response>
+                <select name="response_{{ response_name }}" form="{{ proposal_response_form_id }}" aria-label="Response to {{ check.label }}" data-proposal-disposition>
+                  <option value="accept" selected>Accept</option>
+                  <option value="reject">Reject</option>
+                  <option value="comment">Comment</option>
+                </select>
+                <textarea name="comment_{{ response_name }}" form="{{ proposal_response_form_id }}" maxlength="1000" aria-label="Comment on {{ check.label }}" placeholder="Tell the agent what to change" hidden data-proposal-comment></textarea>
+              </div>
+            {% endif %}
+          </td>
         </tr>
       {% endfor %}
     </tbody>

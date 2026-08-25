@@ -4,6 +4,52 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D055 — Make proposal feedback typed and hide stale controls during agent work
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition
+
+**Context**
+
+The approval screen showed the agent's proposed actions but offered only one grouped approve/reject
+choice. Users could not accept one proposed lane, reject another, or explain a requested change to
+the same stateful agent. During long agent requests, the prior question and its Yes/No/feedback
+controls remained visible beside the tool-activity trace, implying they were still actionable.
+
+**Decision**
+
+Show `Accept`, `Reject`, and `Comment` only on inspection-table rows containing an actual proposed
+mutation. Keep one overall action: all accepted lanes expose `Approve`; any rejection or comment
+changes it to `Revise plan`. A revision is not authorization. Archive the exact pending plan,
+assessment, interrupt binding, and typed responses; execute nothing; then resume the same
+workspace-scoped Strands conversation so the agent can gather evidence and propose again. Keep pass
+and report-only rows non-interactive. Preserve the single grouped approval boundary for the exact
+consequential action hash.
+
+As soon as a request with observable agent activity is submitted, hide all stale workspace content
+and controls and show only the current tool-use summaries. Do not add a decorative Cancel button:
+the current synchronous provider call has no cooperative cancellation boundary, so such a control
+would be dishonest until cancellation can actually stop the backend operation.
+
+**Evidence and consequences**
+
+Browser verification against a live pending interrupt shows response controls only on Size and pose
+and Display names, changes the single button from `Approve` to `Revise plan` when Comment is chosen,
+reveals one required 1,000-character comment field, and restores `Approve` when the lane is accepted.
+Core regression coverage proves revision archives the pending plan and assessment, records the typed
+response, clears the interrupt, and creates no candidate GLB. Prompt version 8 requires the agent to
+respect rejected/commented lanes and forbids reusing the archived action. A live names-only revision
+honored the scale comment and proposed and executed only deterministic renames. That run exposed and
+closed an overbroad visual gate: index-preserving display-name-only candidates now proceed through
+exact inventory and payload verification without requiring a meaningless render comparison;
+physical and topology mutations still require it. The common gate passes with 148 tests, one opt-in
+skip, lock validation, Ruff, formatting, and zero Pyright findings.
+
 ### D054 — Flatten proven multi-turn transforms and expose observable agent activity
 
 **Date:** 2026-08-25
