@@ -24,16 +24,19 @@ the same source through a newly interpreted workflow.
 
 Expose Assets as a persistent navigation control in the header and workflow rail. Returning to the
 gallery never advances, resets, or mutates a workspace. Selecting a gallery card reconstructs the
-workspace at its last persisted phase. Every card also exposes Redo: it stages the same original GLB
-and prefills the prior description for a fresh intake. The saved run remains intact until the new
-workspace is successfully created, at which point the new run explicitly replaces that slot.
+workspace at its last persisted phase. An uploaded GLB awaiting description is also persisted and
+appears in the gallery, including after application restart. Every completed workspace card exposes
+Redo: it stages the same original GLB and prefills the prior description for a fresh intake. The
+saved run remains intact until the new workspace is successfully created, at which point the new
+run explicitly replaces that slot.
 
 **Evidence and consequences**
 
-Route coverage proves approval and target-confirmation states resume independently, Redo preserves
-the prior run until submission, the replacement receives a new workspace identifier, and source
-bytes are identical. Browser review shows the seven-card gallery retains three visual regions per
-card: model/state, Redo, and the existing full-gallery Replace action.
+Route coverage proves description drafts survive restart, approval and target-confirmation states
+resume independently, Redo preserves the prior run until submission, the replacement receives a
+new workspace identifier, and source bytes are identical. Browser review shows the seven-card
+gallery retains three visual regions per card: model/state, Redo, and the existing full-gallery
+Replace action.
 
 ### D051 — Use one inspection-lane table as the approval surface
 

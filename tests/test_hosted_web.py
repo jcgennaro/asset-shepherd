@@ -389,6 +389,9 @@ def test_gallery_redo_reuses_source_and_preserves_saved_run_until_submit(
     describe = client.get(describe_path)
     assert DESCRIPTION in describe.text
     assert client.get(workspace_path).status_code == 200
+    gallery = client.get("/workspace")
+    assert "Continue redo" in gallery.text
+    assert describe_path in gallery.text
 
     restarted = client.post(
         describe_path,
@@ -401,6 +404,32 @@ def test_gallery_redo_reuses_source_and_preserves_saved_run_until_submit(
     assert client.get(workspace_path).status_code == 404
     assert client.get(restarted_path).status_code == 200
     assert client.get(f"{restarted_path}/source.glb").content == BROKEN_PATH.read_bytes()
+
+
+def test_uploaded_description_draft_resumes_from_gallery_after_restart(tmp_path: Path) -> None:
+    """Leaving after upload preserves the GLB and the exact description step."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    uploaded = client.post(
+        "/workspace/new/upload",
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+    describe_path = urlparse(uploaded.headers["location"]).path
+
+    gallery = client.get("/workspace")
+    assert "Broken Robot" in gallery.text
+    assert "Describe" in gallery.text
+    assert describe_path in gallery.text
+
+    restarted = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    restarted_gallery = restarted.get("/workspace")
+    assert describe_path in restarted_gallery.text
+    assert restarted.get(describe_path).status_code == 200
+    draft_id = describe_path.split("/")[-2]
+    assert (
+        restarted.get(f"/workspace/new/{draft_id}/source.glb").content == BROKEN_PATH.read_bytes()
+    )
 
 
 def test_full_gallery_requires_visible_replacement_choice(tmp_path: Path) -> None:

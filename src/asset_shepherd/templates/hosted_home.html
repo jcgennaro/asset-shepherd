@@ -4,20 +4,33 @@
     {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
     <div class="asset-gallery" aria-label="Asset workspaces">
       {% for saved in workspace_records %}
+        {% set redo_draft = redo_drafts.get(saved.workspace_id) %}
         <article class="asset-gallery-card">
           <a class="asset-gallery-resume" href="{{ url_for('hosted_workspace_page', workspace_id=saved.workspace_id) }}">
             <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=saved.workspace_id) }}" alt="{{ saved.asset_name }}" camera-orbit="35deg 70deg auto" disable-zoom></model-viewer>
             <span><strong>{{ saved.asset_name }}</strong><small>{{ saved.phase.value|replace('_', ' ')|title }}</small></span>
           </a>
           <div class="asset-gallery-actions">
-            <form action="{{ url_for('redo_hosted_workspace', workspace_id=saved.workspace_id) }}" method="post">
-              <button type="submit" class="asset-redo" title="Start this GLB again with its previous description">Redo</button>
-            </form>
-            {% if workspace_records|length >= workspace_limit %}<a class="asset-replace" href="{{ url_for('hosted_upload') }}?replace_workspace_id={{ saved.workspace_id }}">Replace</a>{% endif %}
+            {% if redo_draft %}
+              <a class="asset-redo" href="{{ url_for('hosted_describe', draft_id=redo_draft.draft_id) }}">Continue redo</a>
+            {% else %}
+              <form action="{{ url_for('redo_hosted_workspace', workspace_id=saved.workspace_id) }}" method="post">
+                <button type="submit" class="asset-redo" title="Start this GLB again with its previous description">Redo</button>
+              </form>
+            {% endif %}
+            {% if gallery_full %}<a class="asset-replace" href="{{ url_for('hosted_upload') }}?replace_workspace_id={{ saved.workspace_id }}">Replace</a>{% endif %}
           </div>
         </article>
       {% endfor %}
-      {% if workspace_records|length < workspace_limit %}
+      {% for draft in new_drafts %}
+        <article class="asset-gallery-card">
+          <a class="asset-gallery-resume" href="{{ url_for('hosted_describe', draft_id=draft.draft_id) }}">
+            <model-viewer src="{{ url_for('hosted_draft_source_asset', draft_id=draft.draft_id) }}" alt="{{ draft.display_name }}" camera-orbit="35deg 70deg auto" disable-zoom></model-viewer>
+            <span><strong>{{ draft.display_name }}</strong><small>Describe</small></span>
+          </a>
+        </article>
+      {% endfor %}
+      {% if can_add_asset %}
         <a class="asset-gallery-card new-asset-card" href="{{ url_for('hosted_upload') }}"><span aria-hidden="true">＋</span><strong>New asset</strong></a>
       {% endif %}
     </div>

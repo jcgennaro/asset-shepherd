@@ -52,8 +52,9 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 - D052 persistent gallery home: Assets is now a clear header and workflow-rail destination during
   every hosted step. Returning does not mutate the active workspace, and each gallery card resumes
-  the exact persisted phase. Redo reuses the original GLB and prior description while preserving
-  the saved run until the replacement workspace is successfully created. Route tests prove a new
+  the exact persisted phase. Uploads awaiting description are gallery-visible and survive an
+  application restart. Redo reuses the original GLB and prior description while preserving the
+  saved run until the replacement workspace is successfully created. Route tests prove a new
   workspace ID and byte-identical source; browser review confirms the seven-card gallery remains
   compact and readable.
 

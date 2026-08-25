@@ -223,6 +223,12 @@ class HostedStartDraft:
     replace_workspace_id: str | None
     initial_description: str = ""
 
+    @property
+    def display_name(self) -> str:
+        """Return a readable temporary name until intake assigns the asset name."""
+        words = re.sub(r"[_-]+", " ", Path(self.original_filename).stem).strip()
+        return words.title()[:48] or "Uploaded asset"
+
 
 @dataclass(frozen=True)
 class InspectionSummaryView:
@@ -2305,6 +2311,56 @@ def create_app(
     app.state.hosted_workspace_store = hosted_store
     app.mount("/static", StaticFiles(directory=_PACKAGE_ROOT / "static"), name="static")
 
+    def persist_hosted_start_draft(draft: HostedStartDraft) -> None:
+        """Persist one resumable upload/description draft atomically."""
+        destination = draft.source_path.parent / "draft.json"
+        temporary = destination.with_suffix(".tmp")
+        payload = {
+            "draft_id": draft.draft_id,
+            "original_filename": draft.original_filename,
+            "replace_workspace_id": draft.replace_workspace_id,
+            "initial_description": draft.initial_description,
+        }
+        temporary.write_text(
+            f"{json.dumps(payload, indent=2, sort_keys=True)}\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        temporary.replace(destination)
+
+    def load_hosted_start_draft(draft_id: str) -> HostedStartDraft | None:
+        """Load one validated staged draft after application restart."""
+        if re.fullmatch(r"[0-9a-f]{32}", draft_id) is None:
+            return None
+        root = hosted_staging_root / draft_id
+        source_path = root / "source.glb"
+        metadata_path = root / "draft.json"
+        if not source_path.is_file() or not metadata_path.is_file():
+            return None
+        try:
+            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if payload.get("draft_id") != draft_id:
+                return None
+            return HostedStartDraft(
+                draft_id=draft_id,
+                original_filename=str(payload["original_filename"]),
+                source_path=source_path,
+                replace_workspace_id=payload.get("replace_workspace_id"),
+                initial_description=str(payload.get("initial_description", "")),
+            )
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+
+    def list_hosted_start_drafts() -> tuple[HostedStartDraft, ...]:
+        """Return resumable upload drafts, including drafts restored after restart."""
+        hosted_staging_root.mkdir(parents=True, exist_ok=True)
+        with hosted_start_lock:
+            for metadata_path in hosted_staging_root.glob("*/draft.json"):
+                draft = load_hosted_start_draft(metadata_path.parent.name)
+                if draft is not None:
+                    hosted_start_drafts[draft.draft_id] = draft
+            return tuple(hosted_start_drafts.values())
+
     def render_intent_home(
         request: Request,
         error: str | None = None,
@@ -2337,6 +2393,15 @@ def create_app(
         refusal: bool = False,
     ) -> Response:
         """Render the versioned D019 conversation-led entry point."""
+        records = hosted_store.list_records()
+        drafts = list_hosted_start_drafts()
+        new_drafts = tuple(draft for draft in drafts if draft.replace_workspace_id is None)
+        redo_drafts = {
+            draft.replace_workspace_id: draft
+            for draft in drafts
+            if draft.replace_workspace_id is not None
+        }
+        gallery_full = len(records) + len(new_drafts) >= MAX_HOSTED_WORKSPACES
         return templates.TemplateResponse(
             request=request,
             name="hosted_home.html",
@@ -2344,7 +2409,11 @@ def create_app(
                 "error": error,
                 "refusal": refusal,
                 "description": description,
-                "workspace_records": hosted_store.list_records(),
+                "workspace_records": records,
+                "new_drafts": new_drafts,
+                "redo_drafts": redo_drafts,
+                "gallery_full": gallery_full,
+                "can_add_asset": not gallery_full,
                 "workspace_limit": MAX_HOSTED_WORKSPACES,
                 "active_mode": "conversation",
                 "active_style": "Assets",
@@ -3120,8 +3189,14 @@ def create_app(
         replace_workspace_id: str | None,
     ) -> tuple[bool, str | None]:
         records = hosted_store.list_records()
+        draft_count = sum(
+            draft.replace_workspace_id is None for draft in list_hosted_start_drafts()
+        )
         record_ids = {record.workspace_id for record in records}
-        if len(records) >= MAX_HOSTED_WORKSPACES and replace_workspace_id not in record_ids:
+        if (
+            len(records) + draft_count >= MAX_HOSTED_WORKSPACES
+            and replace_workspace_id not in record_ids
+        ):
             return False, "Choose which existing asset to replace."
         if replace_workspace_id is not None and replace_workspace_id not in record_ids:
             return False, "That asset slot is unavailable."
@@ -3176,6 +3251,7 @@ def create_app(
                 source_path=source_path,
                 replace_workspace_id=replace_workspace_id,
             )
+            persist_hosted_start_draft(draft)
             with hosted_start_lock:
                 hosted_start_drafts[draft_id] = draft
         except (HostedWorkspaceError, ValueError, OSError) as upload_error:
@@ -3253,6 +3329,10 @@ def create_app(
             raise HostedWorkspaceError("This upload is unavailable. Choose the GLB again.")
         with hosted_start_lock:
             draft = hosted_start_drafts.get(draft_id)
+            if draft is None:
+                draft = load_hosted_start_draft(draft_id)
+                if draft is not None:
+                    hosted_start_drafts[draft_id] = draft
         if draft is None or not draft.source_path.is_file():
             raise HostedWorkspaceError("This upload is unavailable. Choose the GLB again.")
         return draft
@@ -3264,6 +3344,7 @@ def create_app(
         draft.source_path.unlink(missing_ok=True)
         draft_root = draft.source_path.parent
         if draft_root.parent == hosted_staging_root and draft_root.is_dir():
+            (draft_root / "draft.json").unlink(missing_ok=True)
             draft_root.rmdir()
 
     def hosted_describe(request: Request, draft_id: str) -> Response:
@@ -3292,6 +3373,7 @@ def create_app(
                 replace_workspace_id=workspace_id,
                 initial_description=workspace.record.private_description,
             )
+            persist_hosted_start_draft(draft)
             with hosted_start_lock:
                 hosted_start_drafts[draft_id] = draft
         except (HostedWorkspaceError, OSError) as error:
@@ -3565,6 +3647,18 @@ def create_app(
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
+    def hosted_draft_source_asset(draft_id: str) -> Response:
+        """Serve a staged GLB preview for a resumable description draft."""
+        try:
+            draft = require_hosted_start_draft(draft_id)
+        except HostedWorkspaceError:
+            return Response(status_code=404)
+        return FileResponse(
+            draft.source_path,
+            media_type="model/gltf-binary",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
     def hosted_repaired_asset(workspace_id: str) -> Response:
         """Serve only a verified hosted candidate."""
         workspace = hosted_store.get(workspace_id)
@@ -3828,6 +3922,12 @@ def create_app(
         hosted_source_asset,
         methods=["GET"],
         name="hosted_source_asset",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/source.glb",
+        hosted_draft_source_asset,
+        methods=["GET"],
+        name="hosted_draft_source_asset",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/repaired.glb",
