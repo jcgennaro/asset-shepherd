@@ -146,6 +146,14 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "POSITION TOPOLOGY" in pending.text
     assert "protected seams" not in pending.text
     assert ">Approve <" in pending.text
+    assert "data-activity-url=" in pending.text
+    assert f"{workspace_path}/activity" in pending.text
+    activity = client.get(f"{workspace_path}/activity")
+    assert activity.status_code == 200
+    activity_payload = activity.json()
+    assert activity_payload["state"] == "WAITING"
+    assert any(item["label"] == "Measuring the GLB" for item in activity_payload["items"])
+    assert all("reasoning" not in item for item in activity_payload["items"])
     interrupt_id = _hidden(pending.text, "interrupt_id")
     decision_command = _hidden(pending.text, "command_id")
 
@@ -177,6 +185,9 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert len(offsets) == 2
     assert all("m" not in offset for offset in offsets)
     assert "normal-size 20 cm banana" in completed.text
+    completed_activity = restarted.get(f"{workspace_path}/activity").json()
+    assert completed_activity["state"] == "COMPLETE"
+    assert completed_activity["items"][-1]["label"] == "Verifying and packaging the result"
 
     acceptance_command = _hidden(completed.text, "command_id")
     accepted = restarted.post(

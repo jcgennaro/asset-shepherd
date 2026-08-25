@@ -82,12 +82,13 @@
                 url_for('feedback_page') ~ "?context=target-confirmation&reference_id=" ~ record.workspace_id ~ "&return_path=" ~ request.url.path,
                 question_id="hosted-confirmation-question-title",
                 command_id=command_id,
-                accept_supported_goal=true
+                accept_supported_goal=true,
+                activity_url=url_for('hosted_workspace_activity', workspace_id=record.workspace_id)
               ) }}
             </div>
           {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}
-          <form action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form>
+          <form action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
             <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
             <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
@@ -124,7 +125,7 @@
                 {% if can_continue %}
                   <details>
                     <summary class="secondary-button">No</summary>
-                    <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form>
+                    <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
                       <input type="hidden" name="command_id" value="{{ command_id }}">
                       <input type="hidden" name="decision" value="continue">
                       <label for="hosted-repair-feedback">What still needs attention?</label>

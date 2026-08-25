@@ -10,6 +10,10 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Final, Literal, Protocol
 
+import numpy as np
+from PIL import Image, ImageStat, UnidentifiedImageError
+
+from asset_shepherd.glb import load_glb, node_local_matrix
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     AgentCandidateReassessment,
@@ -27,6 +31,7 @@ from asset_shepherd.models import (
     InspectionResult,
     JobResult,
     JobState,
+    Matrix4,
     NormalizationPayload,
     PlanSelection,
     ProfilePolicyProvenance,
@@ -85,7 +90,7 @@ def _write_json(path: Path, value: object) -> None:
 
 GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
     "schema_version": 1,
-    "render_contract_version": 2,
+    "render_contract_version": 3,
     "source_coordinate_system": "glTF right-handed",
     "source_up": "+Y",
     "source_forward": "+Z",
@@ -96,7 +101,24 @@ GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
         "back.png": "camera at source -Z; the back looks toward the camera",
         "left.png": "camera at source +X; the asset's left side looks toward the camera",
     },
+    "evidence_validation": {
+        "decodable_png": True,
+        "minimum_foreground_fraction": 0.005,
+        "minimum_projected_span_fraction": 0.08,
+        "maximum_foreground_fraction": 0.8,
+        "requires_clear_frame_margin": True,
+    },
 }
+
+
+def _matrix_contract(matrix: np.ndarray) -> Matrix4:
+    """Convert one finite NumPy matrix to the immutable public matrix shape."""
+    return (
+        (float(matrix[0, 0]), float(matrix[0, 1]), float(matrix[0, 2]), float(matrix[0, 3])),
+        (float(matrix[1, 0]), float(matrix[1, 1]), float(matrix[1, 2]), float(matrix[1, 3])),
+        (float(matrix[2, 0]), float(matrix[2, 1]), float(matrix[2, 2]), float(matrix[2, 3])),
+        (float(matrix[3, 0]), float(matrix[3, 1]), float(matrix[3, 2]), float(matrix[3, 3])),
+    )
 
 
 @dataclass
@@ -521,6 +543,81 @@ class AgentJob:
             ),
         }
 
+    def _trusted_existing_normalization_root(self) -> tuple[int, Matrix4] | None:
+        """Return a prior Asset Shepherd root only when the immediate lineage proves it."""
+        if self.turn_index <= 0 or not self.prior_turns:
+            return None
+        current_hash = sha256(self.source.read_bytes()).hexdigest()
+        prior_record = self.prior_turns[-1]
+        if prior_record.output_sha256 != current_hash:
+            return None
+        prior_output = (
+            self.output_dir.parent / "turns" / f"turn-{self.turn_index - 1:03d}" / "output"
+        )
+        plan_path = prior_output / "repair_plan.json"
+        provenance_path = prior_output / "provenance.json"
+        if not plan_path.is_file() or not provenance_path.is_file():
+            return None
+        try:
+            prior_plan = RepairPlan.model_validate_json(plan_path.read_text(encoding="utf-8"))
+            prior_provenance = Provenance.model_validate_json(
+                provenance_path.read_text(encoding="utf-8")
+            )
+            if prior_provenance.output_sha256 != current_hash:
+                return None
+            executed = {action.candidate_id for action in prior_provenance.executed_actions}
+            normalization = next(
+                (
+                    candidate.payload
+                    for candidate in prior_plan.candidates
+                    if candidate.id in executed
+                    and isinstance(candidate.payload, NormalizationPayload)
+                ),
+                None,
+            )
+            if normalization is None:
+                return None
+            gltf = load_glb(self.source)
+            if not gltf.scenes or not gltf.nodes:
+                return None
+            if normalization.application_mode == "COMPOSE_EXISTING_ROOT":
+                root_index = normalization.existing_root_index
+                expected_matrix = normalization.existing_root_after_matrix
+            else:
+                root_index = len(gltf.nodes) - 1
+                expected_matrix = normalization.proposed_matrix
+            if (
+                root_index is None
+                or expected_matrix is None
+                or not 0 <= root_index < len(gltf.nodes)
+            ):
+                return None
+            scene_index = gltf.scene or 0
+            if not 0 <= scene_index < len(gltf.scenes):
+                return None
+            roots = tuple(gltf.scenes[scene_index].nodes or ())
+            root = gltf.nodes[root_index]
+            if (
+                roots != (root_index,)
+                or not (root.name or "").startswith("AssetShepherdNormalization")
+                or root.mesh is not None
+                or root.camera is not None
+                or root.skin is not None
+                or not root.children
+            ):
+                return None
+            current_matrix = node_local_matrix(root)
+            if not np.allclose(
+                current_matrix,
+                np.asarray(expected_matrix, dtype=np.float64),
+                rtol=0.0,
+                atol=1e-12,
+            ):
+                return None
+            return root_index, _matrix_contract(current_matrix)
+        except (OSError, ValueError, TypeError, IndexError):
+            return None
+
     def _render_asset_views(
         self,
         asset: Path,
@@ -531,13 +628,18 @@ class AgentJob:
         """Render one trusted job asset into four standardized local views."""
         names = ("front.png", "right.png", "back.png", "left.png")
         existing = tuple(view_root / name for name in names)
+        masks = tuple(view_root / name.replace(".png", ".mask.png") for name in names)
         contract_path = view_root / "view_contract.json"
-        if all(path.is_file() for path in existing) and contract_path.is_file():
+        cached_evidence_error: AgentWorkflowError | None = None
+        if all(path.is_file() for path in (*existing, *masks)) and contract_path.is_file():
             try:
                 if json.loads(contract_path.read_text(encoding="utf-8")) == (
                     GLTF_SOURCE_VIEW_CONTRACT
                 ):
+                    self.validate_render_evidence(view_root, existing)
                     return existing
+            except AgentWorkflowError as error:
+                cached_evidence_error = error
             except (OSError, json.JSONDecodeError):
                 pass
         configured = shutil.which("blender")
@@ -547,6 +649,8 @@ class AgentJob:
             else Path("C:/Program Files/Blender Foundation/Blender 5.1/blender.exe")
         )
         if not blender.is_file():
+            if cached_evidence_error is not None:
+                raise cached_evidence_error
             raise AgentWorkflowError(
                 "Standardized visual sensing is unavailable: Blender not found"
             )
@@ -579,11 +683,101 @@ class AgentJob:
             text=True,
             timeout=180,
         )
-        if completed.returncode != 0 or not all(path.is_file() for path in existing):
+        if completed.returncode != 0 or not all(path.is_file() for path in (*existing, *masks)):
             detail = completed.stderr.strip().splitlines()[-1:] or ["unknown Blender error"]
             raise AgentWorkflowError(f"Standardized visual sensing failed: {detail[0]}")
+        self.validate_render_evidence(view_root, existing)
         _write_json(contract_path, GLTF_SOURCE_VIEW_CONTRACT)
         return existing
+
+    def validate_render_evidence(
+        self,
+        view_root: Path,
+        views: tuple[Path, ...],
+    ) -> dict[str, object]:
+        """Reject undecodable, blank, clipped, or ineffectively framed render evidence."""
+        metrics: dict[str, object] = {
+            "schema_version": 1,
+            "render_contract_version": GLTF_SOURCE_VIEW_CONTRACT["render_contract_version"],
+            "views": {},
+        }
+        view_metrics: dict[str, object] = {}
+        for path in views:
+            mask_path = view_root / path.name.replace(".png", ".mask.png")
+            try:
+                with Image.open(path) as opened:
+                    if opened.format != "PNG":
+                        raise AgentWorkflowError(
+                            f"Standardized visual sensing rejected {path.name}: not a PNG"
+                        )
+                    opened.load()
+                    width, height = opened.size
+                    rgb = opened.convert("RGB")
+                with Image.open(mask_path) as opened_mask:
+                    if opened_mask.format != "PNG" or opened_mask.size != (width, height):
+                        raise AgentWorkflowError(
+                            f"Standardized visual sensing rejected {path.name}: invalid object mask"
+                        )
+                    opened_mask.load()
+                    mask = opened_mask.convert("L")
+            except (FileNotFoundError, UnidentifiedImageError, OSError, ValueError) as error:
+                raise AgentWorkflowError(
+                    f"Standardized visual sensing rejected {path.name}: undecodable evidence"
+                ) from error
+            if width < 128 or height < 128:
+                raise AgentWorkflowError(
+                    f"Standardized visual sensing rejected {path.name}: resolution is too small"
+                )
+            extrema = ImageStat.Stat(rgb).extrema
+            if not any(high - low >= 4 for low, high in extrema):
+                raise AgentWorkflowError(
+                    f"Standardized visual sensing rejected {path.name}: image is visually blank"
+                )
+            mask_pixels = np.asarray(mask, dtype=np.uint8)
+            foreground = mask_pixels >= 128
+            foreground_pixels = int(np.count_nonzero(foreground))
+            foreground_fraction = foreground_pixels / float(width * height)
+            foreground_y, foreground_x = np.nonzero(foreground)
+            if foreground_pixels == 0 or foreground_fraction < 0.005:
+                raise AgentWorkflowError(
+                    f"Standardized visual sensing rejected {path.name}: asset is not visible"
+                )
+            if foreground_fraction > 0.8:
+                raise AgentWorkflowError(
+                    f"Standardized visual sensing rejected {path.name}: asset fills the frame"
+                )
+            left = int(foreground_x.min())
+            top = int(foreground_y.min())
+            right = int(foreground_x.max()) + 1
+            bottom = int(foreground_y.max()) + 1
+            span_fraction = max((right - left) / width, (bottom - top) / height)
+            if span_fraction < 0.08:
+                raise AgentWorkflowError(
+                    f"Standardized visual sensing rejected {path.name}: asset is too small"
+                )
+            if left <= 0 or top <= 0 or right >= width or bottom >= height:
+                raise AgentWorkflowError(
+                    f"Standardized visual sensing rejected {path.name}: asset is clipped"
+                )
+            margin_fraction = min(left, top, width - right, height - bottom) / max(width, height)
+            view_metrics[path.name] = {
+                "width": width,
+                "height": height,
+                "image_sha256": sha256(path.read_bytes()).hexdigest(),
+                "mask_sha256": sha256(mask_path.read_bytes()).hexdigest(),
+                "foreground_fraction": foreground_fraction,
+                "projected_span_fraction": span_fraction,
+                "minimum_frame_margin_fraction": margin_fraction,
+            }
+        metrics["views"] = view_metrics
+        _write_json(view_root / "render_evidence.json", metrics)
+        return metrics
+
+    def render_evidence_metrics(self, paths: tuple[Path, ...]) -> dict[str, object]:
+        """Return freshly validated quality metrics for a standardized render set."""
+        if not paths:
+            raise AgentWorkflowError("No standardized render evidence was provided")
+        return self.validate_render_evidence(paths[0].parent, paths)
 
     def render_source_views(self) -> tuple[Path, ...]:
         """Render four standardized model-consumable source views through local Blender."""
@@ -797,6 +991,7 @@ class AgentJob:
                 if self.asset_intent.target_dimensions_cm is not None
                 else None
             ),
+            existing_normalization_root=self._trusted_existing_normalization_root(),
         )
         self.agent_assessment = assessment
         self.full_plan = plan

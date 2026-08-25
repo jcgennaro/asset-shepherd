@@ -4,14 +4,14 @@ import json
 import math
 import re
 import shutil
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
-from typing import BinaryIO, Self
+from typing import BinaryIO, Self, cast
 from uuid import uuid4
 
 from pydantic import Field, JsonValue, model_validator
@@ -305,6 +305,97 @@ class HostedWorkspaceStore:
             workspace.root / "workspace.json",
             workspace.record.model_dump(mode="json"),
         )
+
+    def _activity_path(self, workspace_root: Path) -> Path:
+        """Return the isolated observable-activity file for one workspace."""
+        return workspace_root / "activity.json"
+
+    def _reset_activity(self, workspace: HostedWorkspace, label: str) -> None:
+        """Start a fresh concise activity sequence for one user transition."""
+        _write_json_atomic(
+            self._activity_path(workspace.root),
+            {
+                "schema_version": 1,
+                "state": "RUNNING",
+                "items": [{"sequence": 1, "label": label, "status": "ACTIVE"}],
+            },
+        )
+
+    def _activity_sink(self, workspace_root: Path) -> Callable[[str], None]:
+        """Build a Strands callback sink that records observable tool starts only."""
+
+        def record(label: str) -> None:
+            # The workflow mutation already holds the store lock. Strands can invoke callbacks
+            # from its event-loop worker, so reacquiring the thread-owned RLock here deadlocks.
+            path = self._activity_path(workspace_root)
+            value: dict[str, object]
+            try:
+                value = cast(
+                    dict[str, object],
+                    json.loads(path.read_text(encoding="utf-8")),
+                )
+            except (OSError, json.JSONDecodeError):
+                value = {"schema_version": 1, "state": "RUNNING", "items": []}
+            raw_items = value.get("items")
+            items: list[dict[str, object]] = []
+            if isinstance(raw_items, list):
+                for raw_item in cast(list[object], raw_items):
+                    if isinstance(raw_item, dict):
+                        items.append(cast(dict[str, object], raw_item))
+            for item in items:
+                if item.get("status") == "ACTIVE":
+                    item["status"] = "COMPLETE"
+            items.append({"sequence": len(items) + 1, "label": label, "status": "ACTIVE"})
+            _write_json_atomic(
+                path,
+                {"schema_version": 1, "state": "RUNNING", "items": items},
+            )
+
+        return record
+
+    def _finish_activity(self, workspace: HostedWorkspace, state: str) -> None:
+        """Close the current observable activity sequence."""
+        path = self._activity_path(workspace.root)
+        try:
+            value = cast(
+                dict[str, object],
+                json.loads(path.read_text(encoding="utf-8")),
+            )
+        except (OSError, json.JSONDecodeError):
+            return
+        raw_items = value.get("items")
+        items: list[dict[str, object]] = []
+        if isinstance(raw_items, list):
+            for raw_item in cast(list[object], raw_items):
+                if isinstance(raw_item, dict):
+                    items.append(cast(dict[str, object], raw_item))
+        for item in items:
+            if item.get("status") == "ACTIVE":
+                item["status"] = "COMPLETE" if state != "ERROR" else "ERROR"
+        _write_json_atomic(
+            path,
+            {"schema_version": 1, "state": state, "items": items},
+        )
+
+    def activity(self, workspace_id: str) -> dict[str, object] | None:
+        """Return one workspace's concise observable activity, never model reasoning text."""
+        try:
+            root = self._record_path(workspace_id).parent
+        except HostedWorkspaceError:
+            return None
+        if not (root / "workspace.json").is_file():
+            return None
+        path = self._activity_path(root)
+        if not path.is_file():
+            return {"schema_version": 1, "state": "IDLE", "items": []}
+        try:
+            value = cast(
+                dict[str, object],
+                json.loads(path.read_text(encoding="utf-8")),
+            )
+        except (OSError, json.JSONDecodeError):
+            return {"schema_version": 1, "state": "IDLE", "items": []}
+        return value
 
     def _append_event(
         self,
@@ -820,6 +911,7 @@ class HostedWorkspaceStore:
                 payload=event_payload,
             )
             self._persist(workspace)
+            self._reset_activity(workspace, "Choosing the next check")
             agent_mode = workflow_model_available()
             runtime_job = AgentJob(
                 workspace.source_path,
@@ -836,12 +928,14 @@ class HostedWorkspaceStore:
                     runtime_job,
                     session_id=workspace.record.workspace_id,
                     session_root=workspace.root / "strands_state",
+                    activity_sink=self._activity_sink(workspace.root),
                 )
                 if agent_mode
                 else build_scripted_agent(
                     runtime_job,
                     session_id=workspace.record.workspace_id,
                     session_root=workspace.root / "strands_state",
+                    activity_sink=self._activity_sink(workspace.root),
                 )
             )
             workspace.runtime = runtime
@@ -849,10 +943,15 @@ class HostedWorkspaceStore:
                 workspace.latest_result = runtime.start()
                 if workspace.latest_result.stop_reason != "interrupt":
                     workspace.workflow_result = runtime.complete(workspace.latest_result)
+                self._finish_activity(
+                    workspace,
+                    "WAITING" if workspace.latest_result.stop_reason == "interrupt" else "COMPLETE",
+                )
             except Exception as error:
                 workspace.record = workspace.record.model_copy(
                     update={"phase": WorkspacePhase.ERROR, "error": str(error)}
                 )
+                self._finish_activity(workspace, "ERROR")
             self._sync_runtime(workspace)
             self._record_runtime_events(workspace)
             self._persist(workspace)
@@ -886,12 +985,14 @@ class HostedWorkspaceStore:
                 runtime_job,
                 session_id=record.workspace_id,
                 session_root=workspace.root / "strands_state",
+                activity_sink=self._activity_sink(workspace.root),
             )
             if persisted_agent_mode
             else build_scripted_agent(
                 runtime_job,
                 session_id=record.workspace_id,
                 session_root=workspace.root / "strands_state",
+                activity_sink=self._activity_sink(workspace.root),
             )
         )
         result_path = workspace.output_dir / "agent_result.json"
@@ -1030,17 +1131,24 @@ class HostedWorkspaceStore:
                 payload={"approved": approved, "candidate_id": "normalize-root-v1"},
             )
             self._persist(workspace)
+            self._reset_activity(
+                workspace,
+                "Applying the approved repairs" if approved else "Recording the rejection",
+            )
             try:
                 workspace.latest_result = workspace.runtime.resume(interrupt_id, approved=approved)
                 workspace.workflow_result = workspace.runtime.complete(workspace.latest_result)
             except AgentWorkflowError:
+                self._finish_activity(workspace, "ERROR")
                 raise
             except Exception as error:
                 workspace.record = workspace.record.model_copy(
                     update={"phase": WorkspacePhase.ERROR, "error": str(error)}
                 )
+                self._finish_activity(workspace, "ERROR")
                 self._persist(workspace)
                 return workspace
+            self._finish_activity(workspace, "COMPLETE")
             processed = {
                 **workspace.record.processed_commands,
                 command_id: f"{expected_value}:COMPLETE",
@@ -1089,13 +1197,19 @@ class HostedWorkspaceStore:
                 )
                 self._persist(workspace)
                 return workspace
+            self._reset_activity(workspace, "Reviewing your feedback")
             try:
                 workspace.latest_result = workspace.runtime.continue_after_feedback(feedback)
                 workspace.workflow_result = None
                 if workspace.latest_result.stop_reason != "interrupt":
                     workspace.workflow_result = workspace.runtime.complete(workspace.latest_result)
             except AgentWorkflowError as error:
+                self._finish_activity(workspace, "ERROR")
                 raise HostedWorkspaceError(str(error)) from error
+            self._finish_activity(
+                workspace,
+                "WAITING" if workspace.latest_result.stop_reason == "interrupt" else "COMPLETE",
+            )
             workspace.record = workspace.record.model_copy(
                 update={"accepted": False, "processed_commands": processed, "last_answer": None}
             )

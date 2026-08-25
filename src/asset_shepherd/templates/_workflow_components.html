@@ -33,11 +33,11 @@
   </div>
 {%- endmacro %}
 
-{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false) -%}
+{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="") -%}
   <section class="confirmation-question" aria-labelledby="{{ question_id }}" data-confirmation-decision>
     <p class="decision-question" id="{{ question_id }}">Did I get it right?</p>
     <div class="confirmation-actions">
-      <form action="{{ confirm_url }}" method="post" data-busy-form>
+      <form action="{{ confirm_url }}" method="post" data-busy-form{% if activity_url %} data-activity-url="{{ activity_url }}"{% endif %}>
         {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
         {% if accept_supported_goal %}<input type="hidden" name="accept_supported_goal" value="true">{% endif %}
         <button class="primary-button" type="submit" data-submit-button>Yes</button>

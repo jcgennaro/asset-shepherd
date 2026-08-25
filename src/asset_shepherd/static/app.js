@@ -173,6 +173,60 @@ for (const textarea of document.querySelectorAll("textarea")) {
   });
 }
 
+function showWorkflowActivity(form) {
+  const activityUrl = form.dataset.activityUrl;
+  if (!activityUrl) {
+    return;
+  }
+  const host = form.closest(".conversation-pane") || form.parentElement;
+  if (!host) {
+    return;
+  }
+  let trace = host.querySelector("[data-workflow-activity]");
+  if (!trace) {
+    trace = document.createElement("ol");
+    trace.className = "workflow-activity";
+    trace.dataset.workflowActivity = "";
+    trace.setAttribute("role", "status");
+    trace.setAttribute("aria-live", "polite");
+    form.insertAdjacentElement("afterend", trace);
+  }
+
+  const render = (payload) => {
+    const items = Array.isArray(payload?.items) ? payload.items.slice(-3) : [];
+    trace.replaceChildren();
+    for (const item of items) {
+      const row = document.createElement("li");
+      const status = document.createElement("span");
+      const label = document.createElement("span");
+      const itemStatus = item?.status || "ACTIVE";
+      row.className = `workflow-activity-item ${itemStatus.toLowerCase()}`;
+      status.className = "workflow-activity-status";
+      status.setAttribute("aria-hidden", "true");
+      status.textContent = itemStatus === "COMPLETE" ? "✓" : itemStatus === "ERROR" ? "!" : "";
+      label.textContent = typeof item?.label === "string" ? item.label : "Running a bounded check";
+      row.append(status, label);
+      trace.append(row);
+    }
+  };
+
+  const poll = async () => {
+    try {
+      const response = await fetch(activityUrl, { cache: "no-store" });
+      if (response.ok) {
+        const payload = await response.json();
+        render(payload);
+        if (payload.state === "RUNNING") {
+          window.setTimeout(poll, 400);
+        }
+      }
+    } catch (_error) {
+      window.setTimeout(poll, 800);
+    }
+  };
+  window.setTimeout(poll, 250);
+}
+
 for (const form of document.querySelectorAll("[data-busy-form]")) {
   form.addEventListener("submit", (event) => {
     const submitter = event.submitter;
@@ -183,10 +237,11 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
     }
     if (submitter) {
       submitter.dataset.originalLabel = submitter.textContent;
-      submitter.textContent = "Working…";
+      submitter.textContent = form.dataset.activityUrl ? "Starting…" : "Submitting…";
       submitter.setAttribute("aria-busy", "true");
       submitter.style.pointerEvents = "none";
     }
+    showWorkflowActivity(form);
   });
 }
 

@@ -86,6 +86,7 @@ class AssetShepherdTools:
         return {
             "status": "success",
             "coordinate_contract": GLTF_SOURCE_VIEW_CONTRACT,
+            "evidence_quality": self.job.render_evidence_metrics(paths),
             "content": content,
         }
 
@@ -143,6 +144,10 @@ class AssetShepherdTools:
         return {
             "status": "success",
             "coordinate_contract": GLTF_SOURCE_VIEW_CONTRACT,
+            "evidence_quality": {
+                "candidate": self.job.render_evidence_metrics(paths),
+                "shared_scale_comparison": self.job.render_evidence_metrics(comparison_paths),
+            },
             "content": content,
         }
 

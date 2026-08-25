@@ -177,7 +177,21 @@ def main() -> None:
     scene.render.image_settings.color_mode = "RGBA"
     scene.world.color = (0.035, 0.045, 0.065)
 
-    distance = span * 2.8
+    mask_material = bpy.data.materials.new("EvidenceMaskMaterial")
+    mask_material.use_nodes = True
+    mask_nodes = mask_material.node_tree.nodes
+    mask_nodes.clear()
+    mask_output = mask_nodes.new("ShaderNodeOutputMaterial")
+    mask_emission = mask_nodes.new("ShaderNodeEmission")
+    mask_emission.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    mask_emission.inputs["Strength"].default_value = 1.0
+    mask_material.node_tree.links.new(
+        mask_emission.outputs["Emission"], mask_output.inputs["Surface"]
+    )
+
+    # Leave deterministic breathing room around wide comparison scenes. Evidence is rejected if
+    # the mask touches a frame edge, so a fixed conservative distance is preferable to clipping.
+    distance = span * 3.8
     camera_height = target.z + span * 0.18
     for view_name, direction in VIEWS.items():
         camera.location = Vector(
@@ -190,6 +204,15 @@ def main() -> None:
         _aim_at(camera, target)
         scene.render.filepath = str(output_dir / f"{view_name}.png")
         bpy.ops.render.render(write_still=True)
+        scene.view_layers[0].material_override = mask_material
+        ground.hide_render = True
+        previous_world_color = tuple(scene.world.color)
+        scene.world.color = (0.0, 0.0, 0.0)
+        scene.render.filepath = str(output_dir / f"{view_name}.mask.png")
+        bpy.ops.render.render(write_still=True)
+        scene.world.color = previous_world_color
+        ground.hide_render = False
+        scene.view_layers[0].material_override = None
 
 
 if __name__ == "__main__":

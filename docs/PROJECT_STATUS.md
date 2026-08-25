@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D053 bounded agent-selected pivot placement (this file is included)
+**Current commit:** D054 proven multi-turn transforms, visual evidence, and tool activity (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,24 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D054 multi-turn and observability checkpoint: a later repair now composes its delta into the exact
+  immediately proven Asset Shepherd normalization root instead of adding another wrapper. Lineage
+  requires the prior candidate hash, archived plan/provenance, active-root structure, identity, and
+  matrix to agree; the plan records before/after matrices and independent verification permits only
+  that mutation. A two-consequential-turn regression preserves node count and exactly one
+  normalization root.
+- Standardized source, candidate, and shared-scale renders now include object masks and fail closed
+  unless every PNG decodes, contains useful foreground, has adequate projected span, stays below
+  the maximum frame fill, and retains a clear margin. A real Blender fixture run measured 3.4–7.1%
+  foreground, 43–44% projected span, and 26–27% minimum margin. The workflow model receives these
+  quality metrics with all three render sets rather than trusting file existence.
+- Hosted agent transitions now show the current and two most recent observable Strands tool actions
+  instead of `Working…`. The per-workspace no-store activity record deliberately excludes reasoning
+  tokens and model prose. Approval-table text is approximately 17 px with tighter spacing; 3D HUD
+  labels are 13 px desktop and 11 px compact. Browser inspection confirms one title and one table.
+  The common gate passes with 146 tests, one opt-in skip, Ruff, formatting, lock validation, and zero
+  Pyright findings.
 
 - D053 pivot placement: objective sensing now reports the asset origin, world-bounds center,
   footprint center-bottom, and root world origins without choosing a target. Prompt version 7 lets

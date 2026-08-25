@@ -15,6 +15,7 @@ from asset_shepherd.glb import (
     GlbError,
     add_normalization_root,
     load_glb,
+    node_local_matrix,
     raw_glb_document,
     save_glb,
     weld_identical_vertex_tuples,
@@ -175,12 +176,49 @@ def apply_repairs(
             if not isinstance(payload, NormalizationPayload):
                 raise RepairInvariantError("Normalization candidate has the wrong payload")
             matrix = np.asarray(payload.proposed_matrix, dtype=np.float64)
-            existing_names = {node.name for node in gltf.nodes if node.name}
-            add_normalization_root(
-                gltf,
-                matrix,
-                name=_normalization_name(existing_names),
-            )
+            if payload.application_mode == "COMPOSE_EXISTING_ROOT":
+                root_index = payload.existing_root_index
+                before_matrix = payload.existing_root_before_matrix
+                after_matrix = payload.existing_root_after_matrix
+                if root_index is None or before_matrix is None or after_matrix is None:
+                    raise RepairInvariantError(
+                        "Composed normalization is missing its root contract"
+                    )
+                if not 0 <= root_index < len(gltf.nodes):
+                    raise RepairInvariantError("Composed normalization references an invalid root")
+                scene_index = gltf.scene or 0
+                if not 0 <= scene_index < len(gltf.scenes) or tuple(
+                    gltf.scenes[scene_index].nodes or ()
+                ) != (root_index,):
+                    raise RepairInvariantError(
+                        "Composed normalization root is no longer the active scene root"
+                    )
+                root = gltf.nodes[root_index]
+                if not (root.name or "").startswith("AssetShepherdNormalization"):
+                    raise RepairInvariantError("Composed normalization root identity changed")
+                current = node_local_matrix(root)
+                expected_before = np.asarray(before_matrix, dtype=np.float64)
+                expected_after = np.asarray(after_matrix, dtype=np.float64)
+                if not np.allclose(current, expected_before, rtol=0.0, atol=1e-12):
+                    raise RepairInvariantError("Composed normalization root matrix changed")
+                if not np.allclose(
+                    expected_after,
+                    matrix @ expected_before,
+                    rtol=0.0,
+                    atol=1e-12,
+                ):
+                    raise RepairInvariantError("Composed normalization matrix is inconsistent")
+                root.matrix = expected_after.T.reshape(-1).tolist()
+                root.translation = None
+                root.rotation = None
+                root.scale = None
+            else:
+                existing_names = {node.name for node in gltf.nodes if node.name}
+                add_normalization_root(
+                    gltf,
+                    matrix,
+                    name=_normalization_name(existing_names),
+                )
         elif candidate.kind is RepairKind.WELD_IDENTICAL_VERTICES:
             payload = candidate.payload
             if not isinstance(payload, WeldPayload):

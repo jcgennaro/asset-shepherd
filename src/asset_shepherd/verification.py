@@ -130,6 +130,21 @@ def _executed_weld(plan: RepairPlan, outcome: RepairOutcome) -> WeldPayload | No
     )
 
 
+def _executed_normalization(
+    plan: RepairPlan, outcome: RepairOutcome
+) -> NormalizationPayload | None:
+    """Return the exact executed normalization payload, if any."""
+    return next(
+        (
+            candidate.payload
+            for candidate in plan.candidates
+            if candidate.id in outcome.executed_action_ids
+            and isinstance(candidate.payload, NormalizationPayload)
+        ),
+        None,
+    )
+
+
 def _corner_attribute_hash(gltf: GLTF2) -> str:
     """Hash rendered primitive inputs after expanding every vertex attribute by index."""
     records: list[object] = []
@@ -185,6 +200,7 @@ def _preservation_checks(
     output_document = cast(dict[str, object], json.loads(output_gltf.to_json()))
     checks: list[VerificationCheck] = []
     weld = _executed_weld(plan, outcome)
+    normalization = _executed_normalization(plan, outcome)
 
     section_checks = (
         ("ACCESSOR_DEFINITIONS_PRESERVED", "accessors"),
@@ -266,15 +282,32 @@ def _preservation_checks(
 
     source_nodes = cast(list[object], _document_section(source_document, "nodes"))
     output_nodes = cast(list[object], _document_section(output_document, "nodes"))
-    source_node_hash = _canonical_hash(_without_display_names(source_nodes))
-    output_original_node_hash = _canonical_hash(
-        _without_display_names(output_nodes[: len(source_nodes)])
+    source_nodes_for_hash = cast(list[object], json.loads(json.dumps(source_nodes)))
+    output_nodes_for_hash = cast(
+        list[object], json.loads(json.dumps(output_nodes[: len(source_nodes)]))
     )
+    composed_root_index = (
+        normalization.existing_root_index
+        if normalization is not None and normalization.application_mode == "COMPOSE_EXISTING_ROOT"
+        else None
+    )
+    if composed_root_index is not None:
+        for records in (source_nodes_for_hash, output_nodes_for_hash):
+            record = records[composed_root_index]
+            if isinstance(record, dict):
+                cast(dict[str, object], record).pop("matrix", None)
+    source_node_hash = _canonical_hash(_without_display_names(source_nodes_for_hash))
+    output_original_node_hash = _canonical_hash(_without_display_names(output_nodes_for_hash))
     checks.append(
         _check(
             "ORIGINAL_NODE_REFERENCES_PRESERVED",
             source_node_hash == output_original_node_hash,
-            "Every original node keeps its non-name references and transform payload.",
+            (
+                "Every original node keeps its non-name references; only the proven prior "
+                "normalization root receives the approved composed matrix."
+                if composed_root_index is not None
+                else "Every original node keeps its non-name references and transform payload."
+            ),
             expected=source_node_hash,
             actual=output_original_node_hash,
         )
@@ -324,16 +357,9 @@ def _preservation_checks(
         )
     )
 
-    normalization = next(
-        (
-            candidate
-            for candidate in plan.candidates
-            if isinstance(candidate.payload, NormalizationPayload)
-            and candidate.id in outcome.executed_action_ids
-        ),
-        None,
+    expected_node_count = len(source_nodes) + (
+        1 if normalization is not None and normalization.application_mode == "ADD_ROOT" else 0
     )
-    expected_node_count = len(source_nodes) + (1 if normalization is not None else 0)
     checks.append(
         _check(
             "AUTHORIZED_NODE_COUNT_CHANGE_ONLY",
@@ -355,9 +381,23 @@ def _preservation_checks(
         root_actual: JsonValue = list(output_roots)
         root_expected: JsonValue = list(source_roots)
     else:
-        payload = normalization.payload
-        if not isinstance(payload, NormalizationPayload) or not output_nodes:
+        payload = normalization
+        if not output_nodes:
             root_change_valid = False
+        elif payload.application_mode == "COMPOSE_EXISTING_ROOT":
+            root_index = payload.existing_root_index
+            after_matrix = payload.existing_root_after_matrix
+            root_change_valid = (
+                root_index is not None
+                and after_matrix is not None
+                and source_roots == output_roots == (root_index,)
+                and np.allclose(
+                    node_local_matrix(output_gltf.nodes[root_index]),
+                    np.asarray(after_matrix, dtype=np.float64),
+                    rtol=0.0,
+                    atol=1e-12,
+                )
+            )
         else:
             root_index = len(output_nodes) - 1
             root_node = output_gltf.nodes[root_index]
@@ -371,11 +411,32 @@ def _preservation_checks(
                     atol=1e-12,
                 )
             )
+        expected_root_index = (
+            payload.existing_root_index
+            if payload.application_mode == "COMPOSE_EXISTING_ROOT"
+            else len(output_nodes) - 1
+        )
+        actual_root_available = expected_root_index is not None and 0 <= expected_root_index < len(
+            output_gltf.nodes
+        )
+        expected_children = (
+            list(source_gltf.nodes[expected_root_index].children or ())
+            if payload.application_mode == "COMPOSE_EXISTING_ROOT"
+            and expected_root_index is not None
+            and 0 <= expected_root_index < len(source_gltf.nodes)
+            else list(source_roots)
+        )
         root_expected = cast(
             JsonValue,
             {
-                "scene_roots": [len(output_nodes) - 1],
-                "normalization_children": list(source_roots),
+                "scene_roots": [expected_root_index],
+                "normalization_children": expected_children,
+                "matrix": np.asarray(
+                    payload.existing_root_after_matrix
+                    if payload.application_mode == "COMPOSE_EXISTING_ROOT"
+                    else payload.proposed_matrix,
+                    dtype=np.float64,
+                ).tolist(),
             },
         )
         root_actual = cast(
@@ -383,7 +444,14 @@ def _preservation_checks(
             {
                 "scene_roots": list(output_roots),
                 "normalization_children": (
-                    list(output_gltf.nodes[-1].children or ()) if output_nodes else []
+                    list(output_gltf.nodes[expected_root_index].children or ())
+                    if actual_root_available and expected_root_index is not None
+                    else []
+                ),
+                "matrix": (
+                    node_local_matrix(output_gltf.nodes[expected_root_index]).tolist()
+                    if actual_root_available and expected_root_index is not None
+                    else None
                 ),
             },
         )

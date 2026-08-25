@@ -237,6 +237,12 @@ The agent calls the execution tool. The deterministic layer checks the action ha
 workspace, source identity, idempotency key, and allowed mutation footprint before writing a
 candidate. It records exactly what changed.
 
+On a later repair turn, a new normalization delta is composed into the existing root only when the
+immediately preceding output hash, archived plan and provenance, active-root structure, root
+identity, and exact before matrix prove Asset Shepherd authored it. The action records `delta`,
+`before`, and `after = delta @ before`; verification permits that exact matrix change and no new
+wrapper node. A familiar root name without proven lineage grants no mutation authority.
+
 ### 9. Re-observe and reassess
 
 The candidate is a new state of the same asset conversation. The agent calls fresh measurements and
@@ -249,6 +255,10 @@ The before/after viewer is therefore more than decorative UI: its standardized r
 available to a vision-capable workflow model as sensing evidence. Pixel metrics may detect change,
 but semantic correctness remains an agent judgment with stated confidence. When vision is not
 available, the agent must mark visual claims as unevaluated or ask for human confirmation.
+
+File existence is not render evidence. Each standardized image must decode and its deterministic
+object mask must prove useful foreground occupancy, projected span, and frame margin before the
+image reaches the model. Evidence records the image and mask hashes plus these quality metrics.
 
 If a repair introduces or reveals another problem, the agent returns to inspection and may design a
 new action. Every new consequential action receives a fresh proposal and approval. Iteration is
@@ -291,6 +301,11 @@ Every product tool must satisfy these rules:
 
 The product does not give the model a shell, general filesystem access, or an unrestricted binary
 editor.
+
+The UI may stream concise summaries of observable tool starts so the user can see what is being
+measured, rendered, applied, or verified. It must not expose reasoning tokens, private
+chain-of-thought, or routine model prose as an execution trace, and activity is never proof that a
+tool succeeded.
 
 ### Prompt layering
 
@@ -345,6 +360,8 @@ The agent-orchestrated milestone is not complete until all of these pass:
 10. Invalid, unauthorized, out-of-scope, or corrupting action calls fail closed.
 11. The final package distinguishes measured facts, agent conclusions, user decisions, and invariant
     verification.
+12. Consequential later turns preserve one proven normalization root, and every model-visible
+    render passes deterministic decodability, occupancy, and framing checks.
 
 Until this gate passes, the existing deterministic run is a repair-engine test harness, not evidence
 that the Asset Shepherd product is agent orchestrated.

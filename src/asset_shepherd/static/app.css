@@ -1849,10 +1849,10 @@ details[open] summary::after {
 }
 
 .inspection-lane-table thead th {
-  padding: 12px 14px;
+  padding: 10px 13px;
   border-bottom: 1px solid var(--line-strong);
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-align: left;
@@ -1877,10 +1877,10 @@ details[open] summary::after {
 }
 
 .inspection-check > * {
-  padding: 14px;
+  padding: 12px 13px;
   border-bottom: 1px solid var(--line);
-  font-size: 0.94rem;
-  line-height: 1.4;
+  font-size: 1.06rem;
+  line-height: 1.45;
   text-align: left;
   vertical-align: middle;
 }
@@ -1906,7 +1906,7 @@ details[open] summary::after {
 }
 
 .inspection-check strong {
-  font-size: 0.96rem;
+  font-size: 1.08rem;
 }
 
 .inspection-finding,
@@ -1921,12 +1921,12 @@ details[open] summary::after {
 .inspection-check-icon {
   position: relative;
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border: 1px solid currentColor;
   border-radius: 50%;
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   font-weight: 850;
 }
 
@@ -2025,12 +2025,12 @@ details[open] summary::after {
 .inspection-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 0.94rem;
 }
 
 .inspection-table th,
 .inspection-table td {
-  padding: 10px 12px;
+  padding: 9px 11px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
@@ -2041,7 +2041,7 @@ details[open] summary::after {
   top: 0;
   color: var(--muted);
   background: var(--surface-raised);
-  font-size: 0.68rem;
+  font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -2509,7 +2509,7 @@ model-viewer {
 
 .comparison-header h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   font-weight: 680;
 }
 
@@ -2536,7 +2536,7 @@ model-viewer {
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
@@ -2648,7 +2648,7 @@ model-viewer {
 .comparison-axis-label,
 .comparison-banana-label {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.09em;
   paint-order: stroke;
@@ -2721,7 +2721,7 @@ model-viewer {
   padding: 9px 14px 10px;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.67rem;
+  font-size: 0.8rem;
   text-align: right;
 }
 
@@ -3174,7 +3174,7 @@ model-viewer {
   .comparison-target-label,
   .comparison-axis-label,
   .comparison-banana-label {
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .model-comparison figcaption {
@@ -4153,6 +4153,58 @@ textarea.asset-description-input:focus {
   padding: 20px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+}
+
+.workflow-activity {
+  display: grid;
+  gap: 8px;
+  width: min(680px, 100%);
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-activity-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.workflow-activity-item.active {
+  color: var(--text);
+}
+
+.workflow-activity-status {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--success);
+  font-weight: 800;
+}
+
+.workflow-activity-item.active .workflow-activity-status {
+  color: var(--accent);
+  border-style: dashed;
+  animation: activity-spin 900ms linear infinite;
+}
+
+.workflow-activity-item.error .workflow-activity-status {
+  color: var(--danger);
+}
+
+@keyframes activity-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-activity-item.active .workflow-activity-status { animation: none; }
 }
 
 .result-review .decision-question,

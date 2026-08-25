@@ -16,6 +16,7 @@ from strands.types.content import Messages
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
 from asset_shepherd.agent_runtime import (
     CompleteResponseOpenAIModel,
+    WorkflowActivityCallback,
     build_live_agent,
     build_scripted_agent,
     load_model_configuration,
@@ -49,6 +50,39 @@ PACKAGE_NAMES = {
     "repaired.glb",
     "verification.json",
 }
+
+
+def test_activity_callback_reports_tools_without_streaming_model_reasoning() -> None:
+    """The UI activity boundary exposes tool names, never text or chain-of-thought streams."""
+    labels: list[str] = []
+    callback = WorkflowActivityCallback(labels.append)
+    callback(reasoningText="private reasoning", data="model prose")
+    callback(
+        event={
+            "contentBlockStart": {
+                "start": {
+                    "toolUse": {
+                        "toolUseId": "tool-1",
+                        "name": "inspect_asset_for_job",
+                    }
+                }
+            }
+        }
+    )
+    callback(
+        event={
+            "contentBlockStart": {
+                "start": {
+                    "toolUse": {
+                        "toolUseId": "tool-1",
+                        "name": "inspect_asset_for_job",
+                    }
+                }
+            }
+        }
+    )
+
+    assert labels == ["Measuring the GLB"]
 
 
 def _fixed_clock() -> datetime:

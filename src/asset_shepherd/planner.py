@@ -223,6 +223,7 @@ def plan_agent_repairs(
     *,
     confirmed_target_height_m: float,
     confirmed_target_dimensions_m: tuple[float, float, float] | None = None,
+    existing_normalization_root: tuple[int, Matrix4] | None = None,
 ) -> RepairPlan:
     """Preview exactly the bounded actions requested by a model-authored assessment."""
     blocked_reasons: list[str] = []
@@ -398,6 +399,15 @@ def plan_agent_repairs(
                 )
 
             component_names = ", ".join(component.component for component in components)
+            existing_root_index: int | None = None
+            existing_root_before_matrix: Matrix4 | None = None
+            existing_root_after_matrix: Matrix4 | None = None
+            application_mode: Literal["ADD_ROOT", "COMPOSE_EXISTING_ROOT"] = "ADD_ROOT"
+            if existing_normalization_root is not None:
+                existing_root_index, existing_root_before_matrix = existing_normalization_root
+                existing_matrix = np.asarray(existing_root_before_matrix, dtype=np.float64)
+                existing_root_after_matrix = _matrix_model(matrix @ existing_matrix)
+                application_mode = "COMPOSE_EXISTING_ROOT"
             candidates.append(
                 CandidateRepair(
                     id="normalize-root-v1",
@@ -414,8 +424,17 @@ def plan_agent_repairs(
                         expected_after_bounds=_bounds_from_points(transformed),
                         components=tuple(components),
                         pivot_target=assessment.pivot_target,
+                        application_mode=application_mode,
+                        existing_root_index=existing_root_index,
+                        existing_root_before_matrix=existing_root_before_matrix,
+                        existing_root_after_matrix=existing_root_after_matrix,
                         consequence_summary=(
-                            f"This changes world-space {component_names} as assessed by the agent."
+                            f"This changes world-space {component_names} as assessed by the agent"
+                            + (
+                                " and composes it into the existing Asset Shepherd root."
+                                if existing_normalization_root is not None
+                                else "."
+                            )
                         ),
                     ),
                 )

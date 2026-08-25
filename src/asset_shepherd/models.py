@@ -6,6 +6,7 @@ from enum import StrEnum
 from re import compile as compile_pattern
 from typing import Annotated, Literal
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 NonNegativeInt = Annotated[int, Field(ge=0)]
@@ -491,6 +492,10 @@ class NormalizationPayload(ContractModel):
     expected_after_bounds: Bounds3D
     components: tuple[NormalizationComponent, ...]
     pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE"
+    application_mode: Literal["ADD_ROOT", "COMPOSE_EXISTING_ROOT"] = "ADD_ROOT"
+    existing_root_index: NonNegativeInt | None = None
+    existing_root_before_matrix: Matrix4 | None = None
+    existing_root_after_matrix: Matrix4 | None = None
     consequence_summary: str
 
     @model_validator(mode="after")
@@ -502,6 +507,21 @@ class NormalizationPayload(ContractModel):
             raise ValueError("Pivot target and normalization components are inconsistent")
         if self.pivot_target == "BOUNDS_CENTER" and "grounding" in component_names:
             raise ValueError("Bounds-center pivot and grounding are conflicting targets")
+        compose_values = (
+            self.existing_root_index,
+            self.existing_root_before_matrix,
+            self.existing_root_after_matrix,
+        )
+        if self.application_mode == "COMPOSE_EXISTING_ROOT":
+            if any(value is None for value in compose_values):
+                raise ValueError("Composed normalization requires the existing root mutation")
+            before = np.asarray(self.existing_root_before_matrix, dtype=np.float64)
+            delta = np.asarray(self.proposed_matrix, dtype=np.float64)
+            after = np.asarray(self.existing_root_after_matrix, dtype=np.float64)
+            if not np.allclose(after, delta @ before, rtol=0.0, atol=1e-12):
+                raise ValueError("Composed normalization matrix does not match delta @ existing")
+        elif any(value is not None for value in compose_values):
+            raise ValueError("A new normalization root cannot cite an existing root mutation")
         return self
 
 

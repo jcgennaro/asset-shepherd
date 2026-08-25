@@ -19,7 +19,7 @@ from typing import Annotated, BinaryIO, cast
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import JsonValue
@@ -3654,6 +3654,13 @@ def create_app(
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
+    def hosted_workspace_activity(workspace_id: str) -> Response:
+        """Expose concise observable tool activity without model reasoning or transcript text."""
+        activity = hosted_store.activity(workspace_id)
+        if activity is None:
+            return Response(status_code=404)
+        return JSONResponse(activity, headers={"Cache-Control": "private, no-store"})
+
     def hosted_draft_source_asset(draft_id: str) -> Response:
         """Serve a staged GLB preview for a resumable description draft."""
         try:
@@ -3929,6 +3936,12 @@ def create_app(
         hosted_source_asset,
         methods=["GET"],
         name="hosted_source_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/activity",
+        hosted_workspace_activity,
+        methods=["GET"],
+        name="hosted_workspace_activity",
     )
     app.add_api_route(
         "/workspace/new/{draft_id}/source.glb",

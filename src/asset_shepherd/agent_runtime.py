@@ -4,7 +4,7 @@
 # ruff: noqa: ANN401
 
 import json
-from collections.abc import AsyncGenerator, AsyncIterable, Mapping
+from collections.abc import AsyncGenerator, AsyncIterable, Callable, Mapping
 from dataclasses import dataclass
 from os import environ
 from pathlib import Path
@@ -43,6 +43,53 @@ from asset_shepherd.models import (
 )
 
 T = TypeVar("T", bound=BaseModel)
+
+ActivitySink = Callable[[str], None]
+
+_TOOL_ACTIVITY_LABELS: dict[str, str] = {
+    "inspect_asset_for_job": "Measuring the GLB",
+    "render_source_views_for_job": "Rendering source evidence",
+    "propose_agent_repair_plan": "Forming the repair plan",
+    "list_repair_candidates": "Reviewing available repairs",
+    "select_repair_candidates": "Recording the selected repairs",
+    "execute_selected_repairs": "Applying the approved repairs",
+    "render_candidate_views_for_job": "Rendering before-and-after evidence",
+    "record_candidate_reassessment": "Assessing the repaired candidate",
+    "verify_and_package": "Verifying and packaging the result",
+    "reassess_candidate_after_verification_failure": "Reassessing the failed check",
+}
+
+
+class WorkflowActivityCallback:
+    """Publish tool-use summaries while discarding text and private reasoning streams."""
+
+    def __init__(self, sink: ActivitySink) -> None:
+        """Bind one invocation-safe activity sink."""
+        self.sink = sink
+        self._seen_tool_ids: set[str] = set()
+
+    def __call__(self, **kwargs: Any) -> None:
+        """Publish only the first start event for each observable tool call."""
+        event = kwargs.get("event")
+        tool_use: object = None
+        if isinstance(event, dict):
+            event_value = cast(dict[str, object], event)
+            start = event_value.get("contentBlockStart")
+            if isinstance(start, dict):
+                start_value = cast(dict[str, object], start).get("start")
+                if isinstance(start_value, dict):
+                    tool_use = cast(dict[str, object], start_value).get("toolUse")
+        if not isinstance(tool_use, dict):
+            return
+        tool_use_value = cast(dict[str, object], tool_use)
+        tool_id = tool_use_value.get("toolUseId")
+        tool_name = tool_use_value.get("name")
+        if not isinstance(tool_id, str) or not isinstance(tool_name, str):
+            return
+        if tool_id in self._seen_tool_ids:
+            return
+        self._seen_tool_ids.add(tool_id)
+        self.sink(_TOOL_ACTIVITY_LABELS.get(tool_name, "Running a bounded asset check"))
 
 
 def _validate_approval_card(value: object) -> ApprovalCard:
@@ -332,6 +379,7 @@ class AssetShepherdAgent:
         provider: str,
         model_id: str,
         session_manager: SessionManager | None = None,
+        activity_sink: ActivitySink | None = None,
     ) -> None:
         """Create one primary agent with only the Asset Shepherd tool boundary."""
         self.job = job
@@ -348,7 +396,9 @@ class AssetShepherdAgent:
             model=model,
             tools=tools,
             system_prompt=system_prompt,
-            callback_handler=None,
+            callback_handler=(
+                WorkflowActivityCallback(activity_sink) if activity_sink is not None else None
+            ),
             load_tools_from_directory=False,
             agent_id=f"asset-shepherd-{job.source.stem}",
             name="Asset Shepherd",
@@ -533,6 +583,7 @@ def build_live_agent(
     *,
     session_id: str | None = None,
     session_root: Path | None = None,
+    activity_sink: ActivitySink | None = None,
 ) -> AssetShepherdAgent:
     """Build a live environment-configured agent with optional durable session state."""
     if not job.agent_orchestrated:
@@ -544,6 +595,7 @@ def build_live_agent(
         provider=configuration.provider,
         model_id=configuration.model_id,
         session_manager=_snapshot_session_manager(session_id, session_root),
+        activity_sink=activity_sink,
     )
 
 
@@ -552,6 +604,7 @@ def build_scripted_agent(
     *,
     session_id: str | None = None,
     session_root: Path | None = None,
+    activity_sink: ActivitySink | None = None,
 ) -> AssetShepherdAgent:
     """Build the zero-network harness over the real Strands agent runtime."""
     model = ScriptedWorkflowModel(job)
@@ -561,4 +614,5 @@ def build_scripted_agent(
         provider="scripted",
         model_id="asset-shepherd-scripted-v1",
         session_manager=_snapshot_session_manager(session_id, session_root),
+        activity_sink=activity_sink,
     )

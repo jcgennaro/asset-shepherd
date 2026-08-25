@@ -8,6 +8,7 @@ from zipfile import ZipFile
 
 import numpy as np
 import pytest
+from PIL import Image, ImageDraw
 
 from asset_shepherd.agent_job import (
     GLTF_SOURCE_VIEW_CONTRACT,
@@ -54,10 +55,32 @@ def _intent(height_cm: float = 180.0) -> AssetIntentProvenance:
 def _write_fake_views(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
     for name in ("front.png", "right.png", "back.png", "left.png"):
-        (root / name).write_bytes(b"recorded-test-view")
+        image = Image.new("RGB", (160, 160), (8, 14, 18))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle((35, 28, 125, 132), radius=12, fill=(96, 154, 178))
+        image.save(root / name, format="PNG")
+        mask = Image.new("L", image.size, 0)
+        ImageDraw.Draw(mask).rounded_rectangle((35, 28, 125, 132), radius=12, fill=255)
+        mask.save(root / name.replace(".png", ".mask.png"), format="PNG")
     (root / "view_contract.json").write_text(
         json.dumps(GLTF_SOURCE_VIEW_CONTRACT),
         encoding="utf-8",
+    )
+
+
+def _record_successful_candidate_reassessment(job: AgentJob, suffix: str) -> None:
+    evidence_root = job.output_dir.parent / "agent_evidence"
+    _write_fake_views(evidence_root / "candidate_views")
+    _write_fake_views(evidence_root / "comparison_views")
+    job.register_candidate_reassessment(
+        initiating_tool_call_id=f"reassessment-{suffix}",
+        candidate_satisfies_assessment=True,
+        summary="The isolated and shared-scale views show the requested bounded change.",
+        evidence=["The candidate remains visible and its silhouette is preserved in every view."],
+        confidence=0.95,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+        candidate_views_used=["front.png", "right.png", "back.png", "left.png"],
+        comparison_views_used=["front.png", "right.png", "back.png", "left.png"],
     )
 
 
@@ -373,6 +396,146 @@ def test_pivot_repair_executes_and_is_independently_verified(tmp_path: Path) -> 
     )
 
 
+def test_later_repair_composes_into_proven_normalization_root(tmp_path: Path) -> None:
+    """A later repair flattens its delta into the immediately proven Asset Shepherd root."""
+    source = tmp_path / "offset-source.glb"
+    gltf = load_glb(CLEAN_PATH)
+    authored_offset = np.eye(4, dtype=np.float64)
+    authored_offset[:3, 3] = [0.4, 0.2, -0.25]
+    add_normalization_root(gltf, authored_offset, name="AuthoredOffset")
+    save_glb(gltf, source)
+
+    output = tmp_path / "output"
+    job = AgentJob(
+        source,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(height_cm=360.0),
+        agent_orchestrated=True,
+        max_turns=3,
+    )
+    evidence_root = output.parent / "agent_evidence"
+    job.inspect()
+    _write_fake_views(evidence_root / "source_views")
+    first_plan = job.register_agent_plan(
+        initiating_tool_call_id="first-scale-plan",
+        disposition="REPAIR",
+        summary="The model is upright; uniformly scale it to the confirmed target height.",
+        evidence=["The source Y dimension is semantic height in all four rendered views."],
+        confidence=0.96,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=True,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=False,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+    first_payload = next(
+        candidate.payload
+        for candidate in first_plan.candidates
+        if isinstance(candidate.payload, NormalizationPayload)
+    )
+    assert first_payload.application_mode == "ADD_ROOT"
+    job.execute(approved=True, interrupt_id="first-scale-approval")
+    _record_successful_candidate_reassessment(job, "first")
+    first_verification, first_result = job.verify_and_package()
+    assert first_result is not None
+    assert first_verification.state.value == "PASSED_PROJECT_READY"
+    first_candidate = load_glb(output / "repaired.glb")
+    first_node_count = len(first_candidate.nodes)
+    assert first_candidate.scenes
+    first_scene_roots = first_candidate.scenes[first_candidate.scene or 0].nodes
+    assert first_scene_roots
+    first_root_index = first_scene_roots[0]
+    first_root_matrix = np.asarray(first_payload.proposed_matrix, dtype=np.float64)
+
+    job.begin_next_turn("Place the pivot at the center-bottom of the model footprint.")
+    job.inspect()
+    _write_fake_views(evidence_root / "source_views")
+    second_plan = job.register_agent_plan(
+        initiating_tool_call_id="second-pivot-plan",
+        disposition="REPAIR",
+        summary="Move the placement pivot to the measured footprint center-bottom.",
+        evidence=["The measured footprint anchor remains offset from the asset origin."],
+        confidence=0.95,
+        semantic_height_axis=None,
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        pivot_target="FOOTPRINT_CENTER_BOTTOM",
+        rename_invalid_display_names=False,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+    second_payload = next(
+        candidate.payload
+        for candidate in second_plan.candidates
+        if isinstance(candidate.payload, NormalizationPayload)
+    )
+    assert second_payload.application_mode == "COMPOSE_EXISTING_ROOT"
+    assert second_payload.existing_root_index == first_root_index
+    assert np.asarray(second_payload.existing_root_before_matrix) == pytest.approx(
+        first_root_matrix
+    )
+    job.execute(approved=True, interrupt_id="second-pivot-approval")
+    _record_successful_candidate_reassessment(job, "second")
+    second_verification, second_result = job.verify_and_package()
+
+    assert second_result is not None
+    assert second_verification.state.value == "PASSED_PROJECT_READY"
+    final_candidate = load_glb(output / "repaired.glb")
+    assert len(final_candidate.nodes) == first_node_count
+    assert (
+        sum(
+            1
+            for node in final_candidate.nodes
+            if (node.name or "").startswith("AssetShepherdNormalization")
+        )
+        == 1
+    )
+    assert final_candidate.scenes[final_candidate.scene or 0].nodes == [first_root_index]
+    assert np.asarray(second_payload.existing_root_after_matrix) == pytest.approx(
+        np.asarray(second_payload.proposed_matrix) @ first_root_matrix
+    )
+    assert any(
+        check.code == "SCENE_ROOT_CHANGE_AUTHORIZED" and check.status.value == "PASS"
+        for check in second_verification.checks
+    )
+
+
+def test_render_evidence_rejects_blank_and_clipped_views(tmp_path: Path) -> None:
+    """A file's existence cannot satisfy model-visible evidence requirements."""
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        tmp_path / "output",
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    view_root = tmp_path / "views"
+    _write_fake_views(view_root)
+    views = tuple(view_root / name for name in ("front.png", "right.png", "back.png", "left.png"))
+    metrics = job.validate_render_evidence(view_root, views)
+    assert set(cast(dict[str, object], metrics["views"])) == {
+        "front.png",
+        "right.png",
+        "back.png",
+        "left.png",
+    }
+
+    blank_mask = Image.new("L", (160, 160), 0)
+    blank_mask.save(view_root / "front.mask.png", format="PNG")
+    with pytest.raises(AgentWorkflowError, match="asset is not visible"):
+        job.validate_render_evidence(view_root, views)
+
+    clipped_mask = Image.new("L", (160, 160), 0)
+    ImageDraw.Draw(clipped_mask).rectangle((0, 20, 100, 140), fill=255)
+    clipped_mask.save(view_root / "front.mask.png", format="PNG")
+    with pytest.raises(AgentWorkflowError, match="asset is clipped"):
+        job.validate_render_evidence(view_root, views)
+
+
 def test_nonrepair_disposition_cannot_smuggle_mutation() -> None:
     """Typed assessment validation rejects an action attached to an accept disposition."""
     with pytest.raises(ValueError, match="Only a REPAIR disposition"):
@@ -454,6 +617,7 @@ def test_executed_agent_action_requires_and_packages_visual_reassessment(
         job.verify_and_package()
 
     _write_fake_views(evidence_root / "candidate_views")
+    _write_fake_views(evidence_root / "comparison_views")
     reassessment = job.register_candidate_reassessment(
         initiating_tool_call_id="unit-reassessment-tool-call",
         candidate_satisfies_assessment=True,

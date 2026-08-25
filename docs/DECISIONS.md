@@ -4,6 +4,60 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D054 — Flatten proven multi-turn transforms and expose observable agent activity
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 real-world evaluation
+
+**Context**
+
+Each repair turn promotes its candidate to the next immutable input. Adding another normalization
+node on every turn would accumulate a wrapper hierarchy even though the intended result is one
+reversible placement transform. Separately, standardized screenshots previously counted as
+evidence when the expected files merely existed; a blank, clipped, corrupt, or ineffectively framed
+image could therefore reach the workflow model. The browser showed only `Working…` during these
+long operations and the approval table and 3D HUD still spent too much space on small text.
+
+**Decision**
+
+When the immediately preceding turn's output hash, archived repair plan, provenance, active scene
+root, root identity, and root matrix all prove that Asset Shepherd created the current normalization
+root, compose the new agent-requested delta into that root as `delta @ existing`. Do not trust a
+name alone and do not mutate an arbitrary authored root. The typed action records the existing root
+index, before matrix, after matrix, and application mode; independent verification permits only
+that exact matrix change and no new node.
+
+Render an object mask with every standardized view. Before an image can become model evidence,
+require a decodable PNG, a matching mask, meaningful image range, measurable foreground, useful
+projected span, bounded occupancy, and a clear frame margin. Record image/mask hashes and framing
+metrics and return those metrics with the model-visible images. This evidence contract is portable
+to a later lightweight renderer; it does not make Blender a hosted dependency.
+
+Replace opaque busy copy on agent transitions with at most three observable action summaries from
+the Strands tool-use callback. Never publish reasoning tokens, streamed model prose, or private
+chain-of-thought. Keep the activity state isolated by workspace and available through a no-store
+endpoint while the form request is in flight. Increase approval-table body text and 3D axis,
+target-box, banana, control, and caption text without adding another title or panel.
+
+**Evidence and consequences**
+
+A two-turn regression first scales an offset source, then requests a footprint-center pivot. The
+second plan uses `COMPOSE_EXISTING_ROOT`, preserves node count, leaves exactly one Asset Shepherd
+root, and passes independent scene-root and payload verification. Invalid blank and clipped masks
+fail before visual reassessment. A real Blender 5.1 fixture render produced four decodable views
+with 3.4–7.1% foreground occupancy, 43–44% projected span, and 26–27% minimum frame margin.
+
+Hosted route coverage proves actual tool labels progress from measurement through verification,
+persist across restart, and contain no reasoning text. Browser inspection confirms one approval
+table, one main title, approximately 17 px table body text, 28 px status controls, and 13 px 3D HUD
+labels (11 px at the compact breakpoint). The common gate passes with 146 tests, one opt-in skip,
+lock validation, Ruff, formatting, and zero Pyright findings.
+
 ### D053 — Make pivot placement a bounded agent-selected target condition
 
 **Date:** 2026-08-25
