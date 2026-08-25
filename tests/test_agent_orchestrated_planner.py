@@ -210,11 +210,13 @@ def test_approximate_target_box_uses_one_robust_uniform_scale() -> None:
     )
 
     diagonal = tuple(payload.proposed_matrix[index][index] for index in range(3))
-    assert diagonal == pytest.approx((6.0, 6.0, 6.0))
+    expected_factor = (6.0 * 3.0 * 6.2) ** (1.0 / 3.0)
+    assert diagonal == pytest.approx((expected_factor,) * 3)
     assert payload.expected_after_bounds.dimensions_m == pytest.approx(
-        tuple(value * 6.0 for value in source_dimensions)
+        tuple(value * expected_factor for value in source_dimensions)
     )
-    assert "Proportions remain unchanged" in payload.components[0].evidence
+    assert "log-space best fit" in payload.components[0].evidence
+    assert "Residual differences are expected" in payload.components[0].evidence
 
 
 def test_nonrepair_disposition_cannot_smuggle_mutation() -> None:

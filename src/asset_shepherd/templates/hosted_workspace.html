@@ -14,7 +14,8 @@
           {% if record.phase.value != 'APPROVAL' %}<p class="conversation-prompt{% if job and job.result %} completion-prompt{% endif %}">
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d shepherd this for {{ endpoint_label }} within {{ target_bounds_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
-            {% elif record.phase.value == 'TARGET_CONFIRMATION' %}I need one missing target detail.
+            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}Select target engine.
+            {% elif record.phase.value == 'TARGET_CONFIRMATION' %}Enter the approximate target size.
             {% elif job and job.result %}{{ completion_sentence }}
             {% else %}The workflow stopped.{% endif %}
           </p>{% endif %}
@@ -35,11 +36,27 @@
                 {{ asset_description(record.private_description, label="Add how the model will be used") }}
               {% else %}
                 {% if "endpoint" in target_draft.missing_fields %}
-                  <fieldset class="endpoint-choice"><legend>Next tool</legend>
-                    <label title="Unity uses Y-up and +Z forward"><input type="radio" name="endpoint" value="UNITY" required>Unity</label>
-                    <label title="Unreal uses Z-up and +X forward"><input type="radio" name="endpoint" value="UNREAL" required>Unreal</label>
-                    <label title="Godot uses Y-up; imported asset front is +Z"><input type="radio" name="endpoint" value="GODOT" required>Godot</label>
-                    <label title="Blender animation, web, or another engine"><input type="radio" name="endpoint" value="OTHER" required>Other</label>
+                  <fieldset class="endpoint-choice" aria-label="Target engine">
+                    {% for value, name, hint, site in (
+                      ('UNITY', 'Unity', 'Y-up and +Z forward', 'https://unity.com/'),
+                      ('UNREAL', 'Unreal Engine', 'Z-up and +X forward', 'https://www.unrealengine.com/'),
+                      ('GODOT', 'Godot Engine', 'Y-up and +Z forward', 'https://godotengine.org/')) %}
+                      <div class="endpoint-option" title="{{ hint }}">
+                        <label>
+                          <input type="radio" name="endpoint" value="{{ value }}" required>
+                          <span class="endpoint-orbit" aria-hidden="true"><i></i></span>
+                          <strong>{{ name }}</strong>
+                        </label>
+                        <a href="{{ site }}" target="_blank" rel="noopener noreferrer" aria-label="Open the {{ name }} website">↗</a>
+                      </div>
+                    {% endfor %}
+                    <div class="endpoint-option" title="Blender animation, web, or another engine">
+                      <label>
+                        <input type="radio" name="endpoint" value="OTHER" required>
+                        <span class="endpoint-orbit other" aria-hidden="true"><i></i></span>
+                        <strong>Other</strong>
+                      </label>
+                    </div>
                     <input type="text" name="endpoint_detail" maxlength="80" placeholder="Other destination">
                   </fieldset>
                 {% endif %}

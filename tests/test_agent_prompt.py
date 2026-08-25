@@ -7,7 +7,7 @@ from pathlib import Path
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
-    AGENT_SYSTEM_PROMPT_V5,
+    AGENT_SYSTEM_PROMPT_V6,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -48,21 +48,25 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V2
 
 
-def test_v5_prompt_makes_target_dependent_planning_agent_owned() -> None:
+def test_v6_prompt_makes_target_dependent_planning_agent_owned() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 5
-    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V5
-    assert "source +Y" in AGENT_SYSTEM_PROMPT_V5
-    assert "Do not request no-op components" in AGENT_SYSTEM_PROMPT_V5
-    assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V5
-    assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V5
-    assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V5
-    assert "Treat mesh diagnostics as evidence" in AGENT_SYSTEM_PROMPT_V5
-    assert "expected glTF attribute seams" in AGENT_SYSTEM_PROMPT_V5
-    assert "Perform a yaw check" in AGENT_SYSTEM_PROMPT_V5
-    assert "source +Z" in AGENT_SYSTEM_PROMPT_V5
-    assert "+X needs -90 degrees" in AGENT_SYSTEM_PROMPT_V5
-    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V5
+    assert AGENT_PROMPT_VERSION == 6
+    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V6
+    assert "source +Y" in AGENT_SYSTEM_PROMPT_V6
+    assert "Do not request no-op components" in AGENT_SYSTEM_PROMPT_V6
+    assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V6
+    assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V6
+    assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V6
+    assert "Treat mesh diagnostics as evidence" in AGENT_SYSTEM_PROMPT_V6
+    assert "expected glTF attribute seams" in AGENT_SYSTEM_PROMPT_V6
+    assert "Perform a yaw check" in AGENT_SYSTEM_PROMPT_V6
+    assert "source +Z" in AGENT_SYSTEM_PROMPT_V6
+    assert "+X needs -90 degrees" in AGENT_SYSTEM_PROMPT_V6
+    assert "No single axis is an exact requirement" in AGENT_SYSTEM_PROMPT_V6
+    assert "never reject a candidate for those residuals alone" in " ".join(
+        AGENT_SYSTEM_PROMPT_V6.split()
+    )
+    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V6
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

@@ -163,7 +163,9 @@ class AssetShepherdTools:
         Args:
             tool_context: Strands call identity used only for durable provenance.
             candidate_satisfies_assessment: Whether the candidate achieved the proposed result
-                without a newly visible problem.
+                without a newly visible problem. For an approved uniform target-box fit, residual
+                per-axis size differences are expected when proportions differ and are not, by
+                themselves, a reason to return false.
             summary: Concise evidence-grounded comparison for the user and final provenance.
             evidence: Specific observations from both sets of standardized views.
             confidence: Confidence from 0 through 1; uncertainty must remain explicit.

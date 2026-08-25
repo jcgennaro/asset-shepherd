@@ -281,15 +281,20 @@ def plan_agent_repairs(
                     if np.any(source_dimensions <= 0):
                         raise ValueError("Every fitted source dimension must be positive")
                     axis_factors = target_dimensions / source_dimensions
-                    scale_factor = float(np.median(axis_factors))
+                    # Minimize squared multiplicative error across all three axes.  The
+                    # geometric mean is scale-invariant, treats over- and under-shooting
+                    # symmetrically, and—unlike a median ratio—does not make one arbitrary
+                    # axis look like an exact requirement.
+                    scale_factor = float(np.exp(np.mean(np.log(axis_factors))))
                     fitted_dimensions = source_dimensions * scale_factor
                     evidence = (
                         "The confirmed X/Y/Z dimensions are approximate. The deterministic "
-                        f"uniform median fit chose {scale_factor:.9g} from axis factors "
+                        f"uniform log-space best fit chose {scale_factor:.9g} from axis factors "
                         f"{axis_factors[0]:.6g}, {axis_factors[1]:.6g}, "
                         f"{axis_factors[2]:.6g}; expected extents are "
                         f"{fitted_dimensions[0]:.6g} x {fitted_dimensions[1]:.6g} x "
-                        f"{fitted_dimensions[2]:.6g} m. Proportions remain unchanged."
+                        f"{fitted_dimensions[2]:.6g} m. Residual differences are expected "
+                        "because proportions remain unchanged."
                     )
                 else:
                     axis = assessment.semantic_height_axis

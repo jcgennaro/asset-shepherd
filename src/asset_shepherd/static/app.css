@@ -3992,7 +3992,6 @@ textarea.asset-description-input {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.endpoint-choice legend,
 .target-bounds legend {
   grid-column: 1 / -1;
   margin-bottom: 4px;
@@ -4001,11 +4000,86 @@ textarea.asset-description-input {
   font-weight: 750;
 }
 
-.endpoint-choice label {
-  padding: 12px;
+.endpoint-option {
+  position: relative;
   border: 1px solid var(--line-strong);
   border-radius: 9px;
+  min-height: 118px;
+}
+
+.endpoint-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.endpoint-option label {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 116px;
+  padding: 16px;
   cursor: pointer;
+}
+
+.endpoint-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.endpoint-option > a {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.endpoint-orbit {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--accent);
+  animation: endpoint-orbit-spin 5s linear infinite;
+}
+
+.endpoint-orbit::before,
+.endpoint-orbit::after {
+  content: "";
+  position: absolute;
+  inset: 7px -5px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  transform: rotate(60deg);
+}
+
+.endpoint-orbit::after {
+  transform: rotate(-60deg);
+}
+
+.endpoint-orbit i {
+  position: absolute;
+  top: -3px;
+  left: 18px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.endpoint-orbit.other {
+  border-style: dashed;
+}
+
+@keyframes endpoint-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .endpoint-orbit { animation: none; }
 }
 
 .endpoint-choice > input[type="text"] {

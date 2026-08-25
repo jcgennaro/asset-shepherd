@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D049 subtitle-free task screens and tolerant intake normalization (this file is included)
+**Current commit:** D050 proportional target-box fitting and weld disclosure (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,16 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D050 proportional box fit and transparent weld disposition: unequal X/Y/Z targets now resolve to
+  the geometric mean of their per-axis ratios, the scale-invariant least-squares optimum in log
+  space. One uniform transform still preserves proportions, while prompt version 6 forbids treating
+  an expected residual as a failed exact-axis requirement. The supplied Computer Chip candidate's
+  SHA matches the rejected run; fresh inspection measures 5.000 × 4.452 × 1.732 cm and confirms no
+  weld occurred because all 5,312 coincident positions cross `TEXCOORD_0`. Topology hover evidence
+  now says when welding is unavailable, and an actual safe compaction appears in the visible repair
+  list. Endpoint clarification uses one sentence and product-neutral animated engine glyphs because
+  third-party logo animation is not assumed to be licensed.
+
 - D049 concise task screens and intake reliability: the Describe textarea no longer carries a
   visible `Model description` caption; its accessible name remains intact. The controlling contract
   now forbids visible subtitles or field captions that simply rename the only task or control.
@@ -77,8 +87,9 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   The live agent may explicitly request lossless compaction only when every vertex attribute is
   byte-identical. Append-only GLB rewriting and expanded per-corner verification prove a synthetic
   five-to-four vertex repair preserves triangles, bounds, attributes, and resources. Approximate
-  target X/Y/Z boxes now resolve to one median uniform factor with residuals recorded; non-uniform
-  scaling remains forbidden. Ruff, Pyright, 135 tests, schema regeneration, and browser review pass.
+  target X/Y/Z boxes originally resolved to one median uniform factor with residuals recorded; D050
+  supersedes that metric with a whole-box log-space optimum. Non-uniform scaling remains forbidden.
+  Ruff, Pyright, 135 tests, schema regeneration, and browser review pass.
 
 - D046 intake reliability and examples: the model-facing X/Y/Z shape now uses a closed object rather
   than a fixed tuple that emitted unsupported `prefixItems`; the deterministic target contract still

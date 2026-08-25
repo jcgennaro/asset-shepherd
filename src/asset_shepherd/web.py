@@ -69,6 +69,7 @@ from asset_shepherd.models import (
     RepairKind,
     Severity,
     VerificationState,
+    WeldPayload,
 )
 from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
 from asset_shepherd.profile_policy import canonical_profile_sha256
@@ -1503,6 +1504,24 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             or assessment.ground_to_y_zero
         )
     )
+    diagnostic_primitives = inspection.diagnostics.primitives if inspection.diagnostics else ()
+    protected_duplicates = sum(
+        primitive.protected_duplicate_count for primitive in diagnostic_primitives
+    )
+    safe_merges = sum(primitive.attribute_safe_merge_count for primitive in diagnostic_primitives)
+    if protected_duplicates and not safe_merges:
+        topology_attention = (
+            f"No vertex weld is proposed: all {protected_duplicates:,} coincident positions are "
+            "protected UV or attribute seams. Remaining position topology needs attention."
+        )
+    elif safe_merges:
+        topology_attention = (
+            f"{safe_merges:,} complete duplicate vertex tuples can be compacted losslessly; "
+            "remaining geometry structure needs attention."
+        )
+    else:
+        topology_attention = "Geometry structure needs attention."
+
     checks = [
         InspectionCheckView("GLB structure", "pass", "The GLB parsed successfully."),
         (
@@ -1523,7 +1542,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             "Topology",
             _TOPOLOGY_CODES,
             "Geometry structure passed the supported checks.",
-            "Geometry structure needs attention.",
+            topology_attention,
         ),
         result(
             "Materials and textures",
@@ -1570,6 +1589,7 @@ def _approval_changes(
     normalization: list[str] = []
     mesh_names: list[str] = []
     node_names: list[str] = []
+    welds: list[str] = []
     for candidate in plan.candidates:
         if candidate.kind is RepairKind.NORMALIZATION_TRANSFORM:
             if approval_card is not None and candidate.id == approval_card.candidate_id:
@@ -1583,6 +1603,13 @@ def _approval_changes(
                 normalization.append(candidate.description)
             continue
         payload = candidate.payload
+        if isinstance(payload, WeldPayload):
+            merge_count = sum(primitive.merge_count for primitive in payload.primitives)
+            welds.append(
+                f"Compact {merge_count:,} complete duplicate vertex tuple"
+                f"{'s' if merge_count != 1 else ''}; preserve every vertex attribute"
+            )
+            continue
         if not isinstance(payload, RenamePayload):
             continue
         before_name = payload.before_name or "(unnamed)"
@@ -1607,16 +1634,40 @@ def _approval_changes(
                 tuple(normalization[1:]),
             )
         )
-    for label, items in (("Mesh name", mesh_names), ("Node name", node_names)):
-        if not items:
-            continue
-        plural_label = f"{label}s" if len(items) != 1 else label
+    if welds and (mesh_names or node_names):
+        display_names = mesh_names + node_names
         groups.append(
             ApprovalChangeView(
-                plural_label,
-                items[0] if len(items) == 1 else f"{len(items)} names will be cleaned up",
+                "Display names",
+                (
+                    display_names[0]
+                    if len(display_names) == 1
+                    else f"Clean up {len(display_names)} node and mesh names"
+                ),
                 "Automatic",
-                tuple(items if len(items) > 1 else ()),
+                tuple(display_names if len(display_names) > 1 else ()),
+            )
+        )
+    elif not welds:
+        for label, items in (("Mesh name", mesh_names), ("Node name", node_names)):
+            if not items:
+                continue
+            plural_label = f"{label}s" if len(items) != 1 else label
+            groups.append(
+                ApprovalChangeView(
+                    plural_label,
+                    items[0] if len(items) == 1 else f"Clean up {len(items)} names",
+                    "Automatic",
+                    tuple(items if len(items) > 1 else ()),
+                )
+            )
+    if welds:
+        groups.append(
+            ApprovalChangeView(
+                "Vertex compaction",
+                welds[0],
+                "Automatic",
+                tuple(welds[1:]),
             )
         )
     return tuple(groups)

@@ -10,8 +10,14 @@ from fastapi.testclient import TestClient
 
 from asset_shepherd.agent_job import VerificationFunction
 from asset_shepherd.hosted_workspace import HostedWorkspaceStore
-from asset_shepherd.models import VerificationResult, VerificationState
+from asset_shepherd.intake_analyzer import (
+    TargetDimensionsInference,
+    TargetIntakeInference,
+    contract_from_inference,
+)
+from asset_shepherd.models import AssetTargetUse, VerificationResult, VerificationState
 from asset_shepherd.repair import RepairOutcome
+from asset_shepherd.target_intake import TargetIntakeContract
 from asset_shepherd.web import create_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -215,7 +221,7 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     workspace_path = urlparse(created.headers["location"]).path
 
     clarification = client.get(workspace_path)
-    assert "I need one missing target detail." in clarification.text
+    assert "Enter the approximate target size." in clarification.text
     assert 'name="target_x_m"' in clarification.text
     assert 'name="target_y_m"' in clarification.text
     assert 'name="target_z_m"' in clarification.text
@@ -241,6 +247,69 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     assert "valid GLB required" not in proposal.text
     assert 'name="target_use"' not in proposal.text
     assert "What real-world height should it have?" not in proposal.text
+
+
+def test_hosted_endpoint_clarification_is_one_focused_linked_choice(tmp_path: Path) -> None:
+    """A missing endpoint produces one sentence and four concise destination choices."""
+
+    class MissingEndpointAnalyzer:
+        provider = "test"
+        model_id = "semantic-test"
+
+        def analyze(self, description: str) -> TargetIntakeContract:
+            return contract_from_inference(
+                description,
+                TargetIntakeInference(
+                    engagement_decision="PROCEED",
+                    asset_name="Computer Chip",
+                    target_use=AssetTargetUse.STATIC_GAME_ASSET,
+                    target_use_confidence=0.99,
+                    target_use_evidence="The chip is a static prop.",
+                    endpoint=None,
+                    endpoint_detail=None,
+                    endpoint_confidence=0.2,
+                    endpoint_evidence=None,
+                    target_dimensions_cm=TargetDimensionsInference(
+                        x_cm=5.0,
+                        y_cm=2.0,
+                        z_cm=5.0,
+                    ),
+                    target_dimensions_confidence=0.99,
+                    target_dimensions_evidence="The description supplies approximate dimensions.",
+                    expected_piece_count=1,
+                    expected_piece_count_evidence="The description identifies one chip.",
+                ),
+                provider=self.provider,
+                model_id=self.model_id,
+            )
+
+    client = TestClient(
+        create_app(
+            project_root=PROJECT_ROOT,
+            work_root=tmp_path / "jobs",
+            intake_analyzer=MissingEndpointAnalyzer(),
+        )
+    )
+    uploaded = client.post(
+        "/workspace/new/upload",
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+    describe_path = urlparse(uploaded.headers["location"]).path
+    created = client.post(
+        describe_path,
+        data={"description": "A computer chip about 5 by 5 by 2 cm."},
+        follow_redirects=False,
+    )
+    page = client.get(urlparse(created.headers["location"]).path)
+
+    assert "Select target engine." in page.text
+    assert "I need one" not in page.text
+    assert page.text.count('class="endpoint-option"') == 4
+    assert 'href="https://unity.com/"' in page.text
+    assert 'href="https://www.unrealengine.com/"' in page.text
+    assert 'href="https://godotengine.org/"' in page.text
+    assert "endpoint-orbit" in page.text
 
 
 def test_upload_preflight_rejects_an_invalid_glb_before_description(tmp_path: Path) -> None:

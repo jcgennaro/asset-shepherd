@@ -162,6 +162,12 @@ agent focuses its topology explanation on the residual boundary, non-manifold, a
 from the read-only position projection. A human may decline a proposed supported repair, but cannot
 reclassify an attribute-damaging position weld as safe because that operation is not registered.
 
+Approximate target X/Y/Z lengths describe one box in the intended pose, not three independent scale
+commands. After any agent-requested rotation, the preview computes one log-space best uniform scale
+across the whole box and exposes the three residuals. The reassessing agent checks execution,
+appearance, pose, and whether a new defect appeared. It does not turn an expected residual into a
+failure merely because one fitted dimension is not numerically equal to the target.
+
 ### 4. Form an assessment
 
 The agent produces a compact assessment with:

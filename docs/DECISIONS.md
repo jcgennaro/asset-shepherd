@@ -4,6 +4,50 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D050 — Fit approximate target boxes proportionally and explain unavailable welding
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 real-world evaluation
+
+**Context**
+
+The Computer Chip target was approximately 5 × 5 × 2 cm. The prior median-ratio uniform fit made
+one axis exact, left expected residuals on the other two axes, and the candidate-reassessment agent
+then incorrectly rejected the result because one residual did not equal the target. The same run
+did not tell the user whether its 5,312 coincident positions had been welded. Engine clarification
+also needed a focused, concise choice rather than generic missing-information copy.
+
+**Decision**
+
+Treat confirmed X/Y/Z lengths as one approximate target box after any agent-requested orientation.
+Choose the single proportional scale that minimizes squared log-relative error across all three
+axes: the geometric mean of the three target/source ratios. Preserve proportions and report every
+residual. No individual axis is an exact acceptance requirement. Candidate reassessment may reject
+new damage, a wrongly executed transform, or a genuinely worse fit, but not an expected residual
+from the approved proportional best fit alone. Non-uniform scaling remains unavailable.
+
+Inspection must state whether attribute-safe vertex compaction is available. If every coincident
+position crosses a protected vertex attribute, the topology control explains that no weld is
+proposed and names the protected seam class. If lossless compaction is planned, it appears as an
+explicit repair item. Engine clarification says only `Select target engine.` and presents the three
+canonical engines plus Other. Use product-neutral animated orbit glyphs and linked engine names;
+do not animate third-party logos without the required trademark permission.
+
+**Evidence and consequences**
+
+The supplied `computer-chip-candidate.glb` has SHA-256
+`8918f4642787ea98b15dbbe001d364e5dcf18e27e59bb1941cf206518d528ed0`, matching the run's rejected
+candidate. Fresh inspection measures 5.000 × 4.452 × 1.732 cm and confirms 5,312 coincident
+positions, zero attribute-safe merges, and `TEXCOORD_0` as the protected conflict. The file was not
+welded: its vertex count and protected texture-coordinate seams were preserved. Planner tests prove
+one geometric-mean scale is applied to all axes, prompt version 6 makes residual acceptance
+explicit, and route coverage preserves the focused clarification flow.
+
 ### D049 — Ban redundant visible subtitles and normalize harmless provider orphans
 
 **Date:** 2026-08-25

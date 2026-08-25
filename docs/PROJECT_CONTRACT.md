@@ -5,13 +5,13 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.9
+**Document version:** 2.0
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
 D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
 sensing and disposition, D042 upload-first two-text UX, D047 seam-aware duplicate-position
-handling, D048 attribute-seam presentation, and D049 subtitle-free task screens and tolerant
-provider normalization, through 2026-08-25
+handling, D048 attribute-seam presentation, D049 subtitle-free task screens and tolerant provider
+normalization, and D050 proportional target-box fitting and weld disclosure, through 2026-08-25
 
 ---
 
@@ -515,6 +515,12 @@ The agent should group compatible scale, rotation, and translation into one cohe
 when its reasoning says they form one operation. The deterministic layer must neither insert a
 component the agent did not request nor split the decision into scripted fragments.
 
+Confirmed X/Y/Z target lengths are approximate evidence for one final-pose bounding box. After any
+agent-requested orientation, the deterministic preview chooses one uniform proportional scale that
+minimizes squared log-relative error across all three axes. It must preserve proportions and report
+the residual on every axis. A single residual is not an exact acceptance requirement and cannot, by
+itself, justify rejecting an otherwise correctly executed and visually preserved candidate.
+
 ### 9.4 `REPORT_ONLY` findings
 
 The MVP reports but does not repair:
@@ -747,6 +753,11 @@ input or repeats the instruction already given by the global title or agent sent
 names remain required through semantic markup or ARIA and need not be visible when the control's
 purpose is already unambiguous. New visible title-like copy requires task-specific information that
 the user could not infer from the existing title, sentence, control, or workflow rail.
+
+When endpoint clarification is necessary, the one agent sentence is `Select target engine.` The
+selector may link canonical engine names to their official sites, but it must not modify or animate
+third-party logos without applicable trademark permission. Product-owned abstract motion is
+acceptable and must respect reduced-motion preferences.
 
 The M8 form-led application remains the deterministic reference implementation, offline acceptance
 harness, comparison baseline, and deployment fallback. M9 may change hosted navigation without
