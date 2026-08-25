@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-24
-**Current commit:** D048 attribute-seam presentation and residual topology evidence (this file is included)
+**Last updated:** 2026-08-25
+**Current commit:** D049 subtitle-free task screens and tolerant intake normalization (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -49,6 +49,16 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D049 concise task screens and intake reliability: the Describe textarea no longer carries a
+  visible `Model description` caption; its accessible name remains intact. The controlling contract
+  now forbids visible subtitles or field captions that simply rename the only task or control.
+  Low-confidence model output that leaves a field null while explaining its absence is normalized
+  at the provider boundary, so the reproduced Computer Chip response advances with only `endpoint`
+  missing instead of returning HTTP 400. Contradictory high-confidence nulls still fail validation.
+  The exact description succeeds against configured Luna, desktop browser review confirms the
+  caption is absent, and the common gate passes with 136 tests, one opt-in skip, Ruff, formatting,
+  and zero Pyright findings.
 
 - D048 attribute-seam presentation: protected UV, normal, tangent, color, and skinning splits are
   now described as expected glTF representation rather than defects or user repair decisions. The

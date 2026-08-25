@@ -10,7 +10,6 @@
 
 {% macro asset_description(value="", label="Model description", placeholder="", autofocus=false, show_examples=false) -%}
   <div class="asset-description-field">
-    <span class="asset-description-label">{{ label }}</span>
     {% if show_examples %}
       <button class="description-examples-link" type="button" data-description-examples-open>Show description examples</button>
     {% endif %}

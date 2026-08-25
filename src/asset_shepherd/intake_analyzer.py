@@ -67,9 +67,10 @@ set all confidence values to 0. The application will respond only:
 
 Use confidence 0.8 or higher when a proposal is useful enough to confirm. Use null and confidence
 below 0.8 only when materially different interpretations are equally plausible and a question is
-truly necessary. Never infer intended height from uploaded-file measurements. Never propose repair
-operations, transformations, policies, or authorization. Evidence is one concise conclusion basis,
-not hidden reasoning or chain of thought.
+truly necessary. When a target field is null, its matching evidence must also be null. Never infer
+intended height from uploaded-file measurements. Never propose repair operations, transformations,
+policies, or authorization. Evidence is one concise conclusion basis, not hidden reasoning or chain
+of thought.
 
 Supported intended uses:
 - STATIC_GAME_ASSET: props, scenery, terrain, architecture, vehicles, creatures used statically.
@@ -122,18 +123,27 @@ class TargetIntakeInference(ContractModel):
 
     @model_validator(mode="before")
     @classmethod
-    def discard_redundant_canonical_endpoint_detail(cls, value: object) -> object:
-        """Canonical endpoint enums are authoritative; detail is meaningful only for OTHER."""
+    def normalize_provider_field_pairs(cls, value: object) -> object:
+        """Discard explanatory evidence for values the provider explicitly left unknown."""
         if not isinstance(value, dict):
             return value
-        values = cast(dict[str, object], value)
+        values = {**cast(dict[str, object], value)}
+        for value_field, evidence_field in (
+            ("target_use", "target_use_evidence"),
+            ("endpoint", "endpoint_evidence"),
+            ("target_dimensions_cm", "target_dimensions_evidence"),
+        ):
+            if values.get(value_field) is None:
+                values[evidence_field] = None
+        if values.get("endpoint") is None:
+            values["endpoint_detail"] = None
         if values.get("endpoint") in {
             AssetEndpoint.UNITY.value,
             AssetEndpoint.UNREAL.value,
             AssetEndpoint.GODOT.value,
         }:
-            return cast(object, {**values, "endpoint_detail": None})
-        return cast(object, value)
+            values["endpoint_detail"] = None
+        return cast(object, values)
 
     @model_validator(mode="after")
     def evidence_matches_values(self) -> TargetIntakeInference:

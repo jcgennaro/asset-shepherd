@@ -167,6 +167,43 @@ def test_canonical_endpoint_discards_redundant_model_detail() -> None:
     assert inference.endpoint_detail is None
 
 
+def test_unknown_endpoint_discards_explanatory_orphan_evidence() -> None:
+    """An unknown engine becomes one missing-field question instead of a failed intake."""
+    inference = TargetIntakeInference.model_validate_json(
+        json.dumps(
+            {
+                "engagement_decision": "PROCEED",
+                "asset_name": "Computer Chip",
+                "target_use": "STATIC_GAME_ASSET",
+                "target_use_confidence": 0.96,
+                "target_use_evidence": "The chip is a static game prop.",
+                "endpoint": None,
+                "endpoint_detail": None,
+                "endpoint_confidence": 0.3,
+                "endpoint_evidence": "No destination engine was specified.",
+                "target_dimensions_cm": {"x_cm": 5.0, "y_cm": 1.0, "z_cm": 5.0},
+                "target_dimensions_confidence": 0.99,
+                "target_dimensions_evidence": "The user supplied 5 by 5 by 1 cm bounds.",
+                "expected_piece_count": 1,
+                "expected_piece_count_evidence": "The description identifies one chip.",
+            }
+        )
+    )
+
+    contract = contract_from_inference(
+        "A computer chip, around 5x5x1 cm.",
+        inference,
+        provider="openai",
+        model_id=OPENAI_INTAKE_MODEL,
+    )
+
+    assert inference.endpoint is None
+    assert inference.endpoint_evidence is None
+    assert contract.missing_fields == ("endpoint",)
+    assert contract.asset_name == "Computer Chip"
+    assert contract.target_dimensions_cm == (5.0, 1.0, 5.0)
+
+
 def test_disallowed_intake_returns_only_a_concise_refusal() -> None:
     """The model can refuse without creating target fields or improvising public copy."""
     assert "can't engage with this type of content" in INTAKE_REFUSAL_MESSAGE

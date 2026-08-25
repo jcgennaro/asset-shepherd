@@ -5,12 +5,13 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.8
+**Document version:** 1.9
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
 D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
 sensing and disposition, D042 upload-first two-text UX, D047 seam-aware duplicate-position
-handling, and D048 attribute-seam presentation, 2026-08-24
+handling, D048 attribute-seam presentation, and D049 subtitle-free task screens and tolerant
+provider normalization, through 2026-08-25
 
 ---
 
@@ -740,6 +741,12 @@ titles, card titles, subtitles, or duplicate state summaries. Control labels and
 must be concise and must not restate the title. Complete policy, evidence, and provenance remain
 available through closed disclosures or the on-demand Job details dialog. Dialogs may carry the one
 title needed for their own accessible context.
+
+No default task screen may show a subtitle, field caption, or label that merely renames the only
+input or repeats the instruction already given by the global title or agent sentence. Accessible
+names remain required through semantic markup or ARIA and need not be visible when the control's
+purpose is already unambiguous. New visible title-like copy requires task-specific information that
+the user could not infer from the existing title, sentence, control, or workflow rail.
 
 The M8 form-led application remains the deterministic reference implementation, offline acceptance
 harness, comparison baseline, and deployment fallback. M9 may change hosted navigation without

@@ -4,6 +4,41 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D049 — Ban redundant visible subtitles and normalize harmless provider orphans
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+The Describe screen repeated its sole task with a visible `Model description` caption. A live
+computer-chip intake also returned `endpoint=null` plus evidence explaining that no endpoint was
+specified. The strict pair validator rejected the entire otherwise valid proposal instead of
+letting the workflow ask only for the missing endpoint.
+
+**Decision**
+
+Default task screens may not show subtitles, field captions, or labels that merely restate their
+single obvious task. Keep the textarea's accessible name through ARIA while removing the visible
+caption. This is a project-wide design rule, not a one-screen copy exception.
+
+At the semantic-provider boundary, discard evidence and endpoint detail attached to a field the
+provider explicitly returned as null. Preserve the reported confidence and continue rejecting a
+null field at or above the 0.8 confidence gate. A low-confidence unknown endpoint therefore becomes
+the existing focused clarification state rather than a provider-validation error.
+
+**Evidence and consequences**
+
+Route coverage requires no visible `Model description` text while retaining its accessible name.
+A reproduction of the chip response now produces a valid target contract whose only missing field
+is `endpoint`. No target is invented and the schema, confidence gate, and server-owned validation
+remain authoritative.
+
 ### D048 — Treat protected attribute splits as representation, not a repair decision
 
 **Date:** 2026-08-24
