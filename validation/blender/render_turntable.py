@@ -9,10 +9,12 @@ import bpy
 from mathutils import Vector
 
 VIEWS = {
+    # Blender imports glTF (X, Y, Z) as (X, -Z, Y). These camera positions therefore
+    # correspond to source +Z (front), -X (right), -Z (back), and +X (left).
     "front": Vector((0.0, -1.0, 0.0)),
-    "right": Vector((1.0, 0.0, 0.0)),
+    "right": Vector((-1.0, 0.0, 0.0)),
     "back": Vector((0.0, 1.0, 0.0)),
-    "left": Vector((-1.0, 0.0, 0.0)),
+    "left": Vector((1.0, 0.0, 0.0)),
 }
 
 

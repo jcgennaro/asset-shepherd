@@ -1,5 +1,7 @@
 # Asset Shepherd checks and authority
 
+The concise worker-facing overview is [`WHAT_IT_DOES.md`](WHAT_IT_DOES.md).
+
 Asset Shepherd separates **what the asset should become** from **what must always remain safe**.
 The workflow agent chooses sensing, interprets target-dependent evidence, and chooses supported
 actions. Deterministic tools measure, render, calculate exact action consequences, enforce
@@ -54,13 +56,14 @@ a universal blocker even if the user or model says the asset is acceptable.
 | Area | Checks | Basis | Implementation |
 | --- | --- | --- | --- |
 | Target dimensions | Axis-aligned bounds and exact extents are observations; the agent determines which dimension should match which target concept | Objective diagnostic plus agent assessment | NumPy world-space bounds, target, and any needed renders |
-| Orientation | Transforms, bounds, ground relationship, and views are observations; the agent decides whether pose is wrong | Objective diagnostic plus agent assessment | Deterministic traversal and standardized renders; never dominant extent alone |
+| Orientation | Transforms, bounds, ground relationship, and coordinate-labeled views are observations; the agent decides whether upright pose or front/yaw is wrong | Objective diagnostic plus agent assessment | Deterministic traversal and four standardized renders; glTF +Y is up and +Z is forward; never dominant extent alone |
 | Grounding | Minimum Y and support-plane relationship are observations; the agent decides whether the intended object should be grounded | Objective diagnostic plus agent assessment | Deterministic bounds plus target context and renders when needed |
 | Naming | Presence, duplicates, and pattern results are observations; the agent chooses disposition and replacement | Frozen policy plus agent assessment | Versioned regex and index-stable name scan |
 | Budgets | Counts and limits are observations; the agent explains their importance and normally reports them | Frozen policy plus agent assessment | Accessor/resource counts and Pillow image metadata |
 | Container and structure | GLB 2.0 header, scenes, references, supported repair domain | Universal invariant | `pygltflib` load plus local structural validation |
 | Geometry validity | Attribute cardinality; finite positions, normals, tangents, and UVs; unit normals; tangent handedness; index range | Universal invariant | Direct accessor decoding with NumPy; violations block repair |
-| Topology diagnostics | Repeated-index and scale-aware zero-area triangles | Objective diagnostic, report-only | Direct index and position analysis |
+| Topology diagnostics | Repeated-index and scale-aware zero-area triangles; boundary, non-manifold, and inconsistently wound edges; index-topology components; unused and coincident positions | Objective diagnostic, report-only | Direct index, triangle, edge, and position analysis |
+| Performance diagnostics | Vertex reuse and estimated FIFO-16 vertex-cache locality | Objective diagnostic, report-only | Deterministic index-stream simulation; target-engine profiling remains authoritative |
 | Attribute coverage | Presence of normals, tangents, and primary UVs per primitive | Objective diagnostic | Direct accessor inventory; absence alone is not universally invalid |
 | Hierarchy and resources | Empty leaves, unreachable nodes, unused resources, apparent duplicate materials/textures | Objective diagnostic | Active-scene reachability and canonical resource comparison |
 | Transform diagnostics | Root origins, ground-center reference, negative determinant, non-uniform scale | Objective diagnostic | Explicit world-matrix traversal |
@@ -108,8 +111,9 @@ verification fail. Asset Shepherd does not claim that it repaired source metadat
   report plus typed counts and codes.
 - `validation/blender/inspect_glb.py` imports in Blender, inventories scene/resources, and can
   re-export a control GLB.
-- `validation/blender/render_turntable.py` produces equally framed views that should become recorded
-  workflow sensor artifacts.
+- `validation/blender/render_turntable.py` produces equally framed, coordinate-labeled views. The
+  render contract maps front/right/back/left to source glTF +Z/-X/-Z/+X camera positions so the
+  agent can perform a semantic yaw check without guessing from extents.
 - `asset_shepherd.validation.visual_compare` verifies paired render sets and reports per-view MAE,
   RMSE, maximum channel delta, alpha MAE, and changed-pixel fraction. These metrics are external
   evidence, not an automated semantic judgment that appearance is correct.

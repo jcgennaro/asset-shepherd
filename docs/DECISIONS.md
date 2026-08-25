@@ -4,6 +4,44 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D044 — Public capabilities use three worker questions; yaw uses labeled visual evidence
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing / M10 evaluation
+
+**Context**
+
+Asset workers need a concise explanation of the defects Asset Shepherd looks for and why they
+matter. A separate failure mode remained in orientation reasoning: the semantic front of an asset
+can be obvious in an image while disagreeing with the file's declared forward direction. Bounds
+and dominant extents cannot resolve that question.
+
+**Decision**
+
+Add a brain-icon **What it does** utility page organized around three questions: whether the GLB
+will import, look as intended, and remain practical to ship. Keep the public page concise while the
+existing authority document retains the exhaustive implementation detail.
+
+Version the standardized render contract. In source glTF coordinates, +Y is up, +Z is forward, and
+-X is right. Front/right/back/left renders identify camera positions +Z/-X/-Z/+X respectively.
+The workflow agent compares semantic cues across all four views before requesting yaw. A clear
+front on +X, -X, or -Z may request the corresponding typed Y-axis quarter turn; an already-correct,
+symmetric, or ambiguous front requests no yaw. Deterministic code validates the typed action and
+requires all four labeled views, but never invents the rotation. Existing cached renders without
+the versioned coordinate contract are regenerated. Correct the former right/left source-axis labels.
+
+**Evidence and consequences**
+
+Route and focus-budget tests enforce one title and three public groups. Prompt and workflow tests
+enforce glTF axis semantics, semantic rather than extent-based reasoning, and four-view evidence for
+yaw. Blender scaffolding tests lock the source-to-Blender camera conversion. This adds no free-form
+matrix input, automated yaw heuristic, or new mutation domain.
+
 ### D043 — The agent owns semantic assembly expectations; tools expose mesh health facts
 
 **Date:** 2026-08-24

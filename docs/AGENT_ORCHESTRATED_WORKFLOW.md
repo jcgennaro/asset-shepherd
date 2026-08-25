@@ -140,7 +140,7 @@ sensing capabilities should include:
   and inconsistently wound edges; index-topology components; unused/coincident positions; vertex
   reuse; and estimated FIFO-16 cache locality;
 - material, texture, alpha, and emissive metadata;
-- standardized front, side, top, perspective, and turntable renders;
+- standardized coordinate-labeled front, right, back, and left renders plus other requested views;
 - before/after render and metric comparison; and
 - independent Blender or Unreal evidence when the configured environment provides it.
 
@@ -298,12 +298,14 @@ The agent-orchestrated milestone is not complete until all of these pass:
 5. The same GLB under materially different confirmed goals can produce different agent assessments
    without changing universal invariant results.
 6. An ambiguous orientation causes more sensing or a user question, not a confident scripted repair.
-7. Before/after standardized renders are available to the workflow model, and visual claims identify
+7. A yaw decision compares semantic front cues across all four labeled source views against glTF
+   +Z forward; it never derives front from the longest extent, and ambiguity produces no rotation.
+8. Before/after standardized renders are available to the workflow model, and visual claims identify
    their evidence and confidence.
-8. A consequential second repair requires a fresh approval and can complete within the same durable
+9. A consequential second repair requires a fresh approval and can complete within the same durable
    conversation.
-9. Invalid, unauthorized, out-of-scope, or corrupting action calls fail closed.
-10. The final package distinguishes measured facts, agent conclusions, user decisions, and invariant
+10. Invalid, unauthorized, out-of-scope, or corrupting action calls fail closed.
+11. The final package distinguishes measured facts, agent conclusions, user decisions, and invariant
     verification.
 
 Until this gate passes, the existing deterministic run is a repair-engine test harness, not evidence

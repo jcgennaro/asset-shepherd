@@ -7,7 +7,7 @@ from pathlib import Path
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
-    AGENT_SYSTEM_PROMPT_V3,
+    AGENT_SYSTEM_PROMPT_V4,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -48,17 +48,20 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V2
 
 
-def test_v3_prompt_makes_target_dependent_planning_agent_owned() -> None:
+def test_v4_prompt_makes_target_dependent_planning_agent_owned() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 3
-    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V3
-    assert "source +Y" in AGENT_SYSTEM_PROMPT_V3
-    assert "Do not request no-op components" in AGENT_SYSTEM_PROMPT_V3
-    assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V3
-    assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V3
-    assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V3
-    assert "Treat mesh diagnostics as evidence" in AGENT_SYSTEM_PROMPT_V3
-    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V3
+    assert AGENT_PROMPT_VERSION == 4
+    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V4
+    assert "source +Y" in AGENT_SYSTEM_PROMPT_V4
+    assert "Do not request no-op components" in AGENT_SYSTEM_PROMPT_V4
+    assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V4
+    assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V4
+    assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V4
+    assert "Treat mesh diagnostics as evidence" in AGENT_SYSTEM_PROMPT_V4
+    assert "Perform a yaw check" in AGENT_SYSTEM_PROMPT_V4
+    assert "source +Z" in AGENT_SYSTEM_PROMPT_V4
+    assert "+X needs -90 degrees" in AGENT_SYSTEM_PROMPT_V4
+    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V4
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

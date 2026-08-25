@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Final, Literal, Protocol
 
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
@@ -81,6 +81,22 @@ def _utc_now() -> datetime:
 def _write_json(path: Path, value: object) -> None:
     payload = json.dumps(value, indent=2, sort_keys=True)
     path.write_text(f"{payload}\n", encoding="utf-8", newline="\n")
+
+
+GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
+    "schema_version": 1,
+    "render_contract_version": 2,
+    "source_coordinate_system": "glTF right-handed",
+    "source_up": "+Y",
+    "source_forward": "+Z",
+    "source_right": "-X",
+    "views": {
+        "front.png": "camera at source +Z; a correctly facing front looks toward the camera",
+        "right.png": "camera at source -X; the asset's right side looks toward the camera",
+        "back.png": "camera at source -Z; the back looks toward the camera",
+        "left.png": "camera at source +X; the asset's left side looks toward the camera",
+    },
+}
 
 
 @dataclass
@@ -492,8 +508,15 @@ class AgentJob:
         """Render one trusted job asset into four standardized local views."""
         names = ("front.png", "right.png", "back.png", "left.png")
         existing = tuple(view_root / name for name in names)
-        if all(path.is_file() for path in existing):
-            return existing
+        contract_path = view_root / "view_contract.json"
+        if all(path.is_file() for path in existing) and contract_path.is_file():
+            try:
+                if json.loads(contract_path.read_text(encoding="utf-8")) == (
+                    GLTF_SOURCE_VIEW_CONTRACT
+                ):
+                    return existing
+            except (OSError, json.JSONDecodeError):
+                pass
         configured = shutil.which("blender")
         blender = (
             Path(configured)
@@ -533,6 +556,7 @@ class AgentJob:
         if completed.returncode != 0 or not all(path.is_file() for path in existing):
             detail = completed.stderr.strip().splitlines()[-1:] or ["unknown Blender error"]
             raise AgentWorkflowError(f"Standardized visual sensing failed: {detail[0]}")
+        _write_json(contract_path, GLTF_SOURCE_VIEW_CONTRACT)
         return existing
 
     def render_source_views(self) -> tuple[Path, ...]:
@@ -666,6 +690,10 @@ class AgentJob:
                 "uniform scale preserves it. Submit ground_to_y_zero=false."
             )
         effective_rotation_axis = None if rotation_degrees == 0 else rotation_axis
+        if effective_rotation_axis == "Y" and set(source_views_used) != available_views:
+            raise AgentWorkflowError(
+                "Yaw decisions require all four coordinate-labeled source views"
+            )
         assessment_payload = {
             "initiating_tool_call_id": initiating_tool_call_id,
             "disposition": disposition,

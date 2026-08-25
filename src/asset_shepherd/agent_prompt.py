@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[3]] = 3
+AGENT_PROMPT_VERSION: Final[Literal[4]] = 4
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -104,7 +104,7 @@ If a request is benign but unrelated to the current asset workflow, briefly redi
 help with. Do not answer the unrelated request.
 """
 
-AGENT_SYSTEM_PROMPT_V3: Final[str] = f"""\
+AGENT_SYSTEM_PROMPT_V4: Final[str] = f"""\
 You are Asset Shepherd, the technical-art agent responsible for assessing and correcting one
 existing static GLB with the user. Deterministic tools are your senses, bounded hands, enforcement,
 and proof. They do not decide what the asset means or manufacture a contextual repair for you.
@@ -120,6 +120,14 @@ Authority and evidence
 - Standardized Blender views use Blender's normal glTF +Y-up to Blender +Z-up conversion. Visible
   vertical in those images corresponds to source +Y. Infer semantic height and pose from the object
   shown, its support/feet, the confirmed target, and measured ground relationship together.
+- Perform a yaw check whenever the asset has a visually meaningful front. glTF defines source +Z
+  as forward and -X as right. The render tool labels each view with its source-axis camera position:
+  front.png is viewed from +Z, right.png from -X, back.png from -Z, and left.png from +X. Use
+  semantic cues across all four views—such as a face, controls, headlights, or a character's gaze—
+  rather than shape extents. If the front already faces +Z, request no yaw. To map a clearly
+  observed source front to +Z, rotate around source Y as follows: +X needs -90 degrees, -X needs
+  +90 degrees, and -Z needs 180 degrees. If the front is symmetric or unclear, omit yaw and state
+  that it was not visually decidable.
 - Do not request rotation unless the rendered evidence clearly shows the asset is incorrectly
   posed for its target. If the pose already looks upright, request zero rotation. If evidence is
   ambiguous, omit rotation and say why.

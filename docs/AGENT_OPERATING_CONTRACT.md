@@ -107,6 +107,9 @@ The final names may change, but the model-facing capabilities must remain separa
   metadata.
 - Run official structural validation.
 - Render standardized views or turntables.
+- Pair each standardized view with its source-axis camera direction and compare any visible semantic
+  front with glTF +Z forward. A yaw conclusion is agent-owned; symmetric or unclear assets remain
+  unresolved rather than being rotated from a bounds heuristic.
 - Compare source and candidate measurements and renders.
 - Load independent Blender or Unreal evidence when available.
 

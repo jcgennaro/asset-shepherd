@@ -1,12 +1,17 @@
 """D036 tests for model-authored target-dependent action previews."""
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
 
-from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
+from asset_shepherd.agent_job import (
+    GLTF_SOURCE_VIEW_CONTRACT,
+    AgentJob,
+    AgentWorkflowError,
+)
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     AgentDisposition,
@@ -47,6 +52,10 @@ def _write_fake_views(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
     for name in ("front.png", "right.png", "back.png", "left.png"):
         (root / name).write_bytes(b"recorded-test-view")
+    (root / "view_contract.json").write_text(
+        json.dumps(GLTF_SOURCE_VIEW_CONTRACT),
+        encoding="utf-8",
+    )
 
 
 def _complete_accept_turn(job: AgentJob, suffix: str) -> None:
@@ -177,6 +186,36 @@ def test_nonrepair_disposition_cannot_smuggle_mutation() -> None:
             confidence=0.9,
             semantic_height_axis="Y",
             scale_to_confirmed_height=True,
+        )
+
+
+def test_yaw_decision_requires_all_coordinate_labeled_views(tmp_path: Path) -> None:
+    """A model cannot authorize yaw from one ambiguous projection."""
+    output = tmp_path / "output"
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+
+    with pytest.raises(AgentWorkflowError, match="all four coordinate-labeled"):
+        job.register_agent_plan(
+            initiating_tool_call_id="yaw-tool-call",
+            disposition="REPAIR",
+            summary="The visible front faces source +X instead of glTF source +Z.",
+            evidence=["The face and gaze direction are visible in the right view."],
+            confidence=0.9,
+            semantic_height_axis="Y",
+            scale_to_confirmed_height=False,
+            rotation_axis="Y",
+            rotation_degrees=-90,
+            ground_to_y_zero=False,
+            rename_invalid_display_names=False,
+            source_views_used=["right.png"],
         )
 
 

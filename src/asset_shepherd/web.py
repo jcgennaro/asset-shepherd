@@ -2536,6 +2536,18 @@ def create_app(
             headers={"Cache-Control": "no-store"},
         )
 
+    def what_it_does(request: Request) -> Response:
+        """Summarize the three asset-worker problems covered by inspection."""
+        return templates.TemplateResponse(
+            request=request,
+            name="what_it_does.html",
+            context={
+                "active_mode": "capabilities",
+                "active_style": "What it does",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
     def render_feedback(
         request: Request,
         *,
@@ -3413,6 +3425,13 @@ def create_app(
         methods=["GET"],
         response_class=HTMLResponse,
         name="how_it_works",
+    )
+    app.add_api_route(
+        "/what-it-does",
+        what_it_does,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="what_it_does",
     )
     app.add_api_route(
         "/feedback",

@@ -83,6 +83,11 @@ start action. Release numbers, roadmap framing, internal tool or provenance term
 generic repair-scope inventory do not appear there. A limitation belongs in the active workflow
 only when the particular asset or intended result makes it relevant.
 
+A persistent brain-icon action opens **What it does**. That page answers only three worker
+questions: **Will it import?**, **Will it look right?**, and **Is it practical to ship?** Each group
+states the checks and their consequence in plain language; detailed authority and implementation
+remain in project documentation rather than becoming another dense UI panel.
+
 ## Hosted asset workspace
 
 The conversation-led home is only a visual gallery of up to seven processed assets. Intake assigns each

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="how-page" data-focus-area="what it does" aria-label="What Asset Shepherd checks">
+    <header class="how-hero">
+      <p class="conversation-prompt">We check whether your GLB will import, look right, and remain practical to ship.</p>
+    </header>
+
+    <ol class="how-flow" aria-label="Asset checks">
+      <li>
+        <span>01</span>
+        <div><strong>Imports cleanly</strong><p>Broken structure, references, numeric data, or unsupported features can stop an engine or editor from loading the asset.</p></div>
+      </li>
+      <li>
+        <span>02</span>
+        <div><strong>Looks as intended</strong><p>Scale, grounding, upright pose, forward direction, names, and appearance setup can make a valid model behave incorrectly in a project.</p></div>
+      </li>
+      <li>
+        <span>03</span>
+        <div><strong>Practical to ship</strong><p>Topology defects, excessive resources, unused data, and poor mesh locality can make an asset fragile, slow, or difficult to edit.</p></div>
+      </li>
+    </ol>
+
+    <div class="how-finish">
+      <a class="primary-button how-cta" href="{{ url_for('hosted_home') }}">Start with an asset <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+{% endblock %}

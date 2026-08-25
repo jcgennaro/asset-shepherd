@@ -290,6 +290,32 @@ def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
     _assert_focus_area_budget(help_page.text)
 
 
+def test_what_it_does_groups_worker_value_into_three_checks(tmp_path: Path) -> None:
+    """The brain action opens one concise worker-facing capability summary."""
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+
+    entry = client.get("/workspace")
+    assert 'href="http://testserver/what-it-does"' in entry.text
+    assert 'title="See what Asset Shepherd checks"' in entry.text
+    assert ">What it does</span>" in entry.text
+
+    page = client.get("/what-it-does")
+    assert page.status_code == 200
+    assert "<title>Asset Shepherd -- What it does</title>" in page.text
+    assert "will import, look right, and remain practical to ship" in page.text
+    assert "Imports cleanly" in page.text
+    assert "Looks as intended" in page.text
+    assert "Practical to ship" in page.text
+    assert "forward direction" in page.text
+    assert len(re.findall(r"<span>0[1-3]</span>", page.text)) == 3
+    assert "Version 1" not in page.text
+    assert "Deterministic" not in page.text
+    assert page.text.count("<h1") == 1
+    assert "<h2" not in page.text
+    assert "<h3" not in page.text
+    _assert_focus_area_budget(page.text)
+
+
 @pytest.mark.parametrize(
     ("height_cm", "expected_label"),
     ((0.5, "5 mm"), (2.0, "2 cm"), (120.0, "1.2 m"), (80000.0, "800 m")),

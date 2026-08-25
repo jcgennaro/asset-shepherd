@@ -8,7 +8,11 @@ from typing import Any, Literal
 from strands import tool
 from strands.types.tools import ToolContext
 
-from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
+from asset_shepherd.agent_job import (
+    GLTF_SOURCE_VIEW_CONTRACT,
+    AgentJob,
+    AgentWorkflowError,
+)
 from asset_shepherd.models import ApprovalResponse, VerificationState
 from asset_shepherd.repair import RepairOutcome
 
@@ -46,25 +50,31 @@ class AssetShepherdTools:
 
     @tool(name="render_source_views_for_job")
     def render_source_views_for_job(self) -> dict[str, Any]:
-        """Render four standardized source views for semantic size and pose assessment.
+        """Render four coordinate-labeled source views for size, pose, and yaw assessment.
 
         Call after inspection and before proposing any scale, rotation, or grounding change. The
         images show the GLB after Blender's normal glTF +Y-up to Blender +Z-up import conversion;
-        visible vertical therefore corresponds to source +Y. A long visible body axis is not
-        automatically height. Returns front, right, back, and left images as model-visible evidence.
+        visible vertical therefore corresponds to source +Y. glTF defines source +Z as forward.
+        Each image is paired with the source-axis camera direction so the model can check whether
+        the semantic front faces +Z. A long visible body axis is not automatically height. Returns
+        front, right, back, and left images as model-visible evidence.
 
         """
         paths = self.job.render_source_views()
         content: list[dict[str, object]] = [
             {
                 "text": (
-                    "Standardized Blender views. Blender converted glTF +Y-up to Blender +Z-up; "
-                    "the visible vertical direction corresponds to source +Y."
+                    "SOURCE GLB AXES: +Y is up, +Z is forward, and -X is right. Blender converted "
+                    "+Y-up to visible +Z-up. Use the camera-axis label beside each image to check "
+                    "upright pose and yaw; do not infer either from bounds alone."
                 )
             }
         ]
+        view_labels = GLTF_SOURCE_VIEW_CONTRACT["views"]
+        if not isinstance(view_labels, dict):
+            raise AgentWorkflowError("The source-view coordinate contract is invalid")
         for path in paths:
-            content.append({"text": f"VIEW {path.name}"})
+            content.append({"text": f"VIEW {path.name}: {view_labels[path.name]}"})
             content.append(
                 {
                     "image": {
@@ -73,7 +83,11 @@ class AssetShepherdTools:
                     }
                 }
             )
-        return {"status": "success", "content": content}
+        return {
+            "status": "success",
+            "coordinate_contract": GLTF_SOURCE_VIEW_CONTRACT,
+            "content": content,
+        }
 
     @tool(name="render_candidate_views_for_job")
     def render_candidate_views_for_job(self) -> dict[str, Any]:
@@ -93,8 +107,11 @@ class AssetShepherdTools:
                 )
             }
         ]
+        view_labels = GLTF_SOURCE_VIEW_CONTRACT["views"]
+        if not isinstance(view_labels, dict):
+            raise AgentWorkflowError("The source-view coordinate contract is invalid")
         for path in paths:
-            content.append({"text": f"CANDIDATE VIEW {path.name}"})
+            content.append({"text": f"CANDIDATE VIEW {path.name}: {view_labels[path.name]}"})
             content.append(
                 {
                     "image": {
@@ -103,7 +120,11 @@ class AssetShepherdTools:
                     }
                 }
             )
-        return {"status": "success", "content": content}
+        return {
+            "status": "success",
+            "coordinate_contract": GLTF_SOURCE_VIEW_CONTRACT,
+            "content": content,
+        }
 
     @tool(context=True, name="record_candidate_reassessment")
     def record_candidate_reassessment(
