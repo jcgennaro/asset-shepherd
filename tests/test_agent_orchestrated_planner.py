@@ -175,6 +175,48 @@ def test_agent_plan_contains_only_explicitly_requested_transform_components() ->
     assert tuple(component.component for component in payload.components) == ("scale",)
 
 
+def test_approximate_target_box_uses_one_robust_uniform_scale() -> None:
+    """Unequal per-axis target factors never become non-uniform mesh scaling."""
+    profile = _profile()
+    inspection = inspect_asset(CLEAN_PATH, profile)
+    assert inspection.geometry is not None
+    source_dimensions = inspection.geometry.bounds.dimensions_m
+    target_dimensions = (
+        source_dimensions[0] * 6.0,
+        source_dimensions[1] * 3.0,
+        source_dimensions[2] * 6.2,
+    )
+    assessment = AgentRepairAssessment(
+        assessment_id="assessment-1234567890abcdef-v1",
+        disposition=AgentDisposition.REPAIR,
+        summary="The approximate target box requires one proportional scale adjustment.",
+        evidence=("The target dimensions are approximate and the source proportions must remain.",),
+        confidence=0.9,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=True,
+    )
+
+    plan = plan_agent_repairs(
+        inspection,
+        profile,
+        assessment,
+        confirmed_target_height_m=target_dimensions[1],
+        confirmed_target_dimensions_m=target_dimensions,
+    )
+    payload = next(
+        candidate.payload
+        for candidate in plan.candidates
+        if isinstance(candidate.payload, NormalizationPayload)
+    )
+
+    diagonal = tuple(payload.proposed_matrix[index][index] for index in range(3))
+    assert diagonal == pytest.approx((6.0, 6.0, 6.0))
+    assert payload.expected_after_bounds.dimensions_m == pytest.approx(
+        tuple(value * 6.0 for value in source_dimensions)
+    )
+    assert "Proportions remain unchanged" in payload.components[0].evidence
+
+
 def test_nonrepair_disposition_cannot_smuggle_mutation() -> None:
     """Typed assessment validation rejects an action attached to an accept disposition."""
     with pytest.raises(ValueError, match="Only a REPAIR disposition"):

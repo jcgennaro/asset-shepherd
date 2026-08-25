@@ -7,10 +7,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 
-from asset_shepherd.glb import add_normalization_root, load_glb, save_glb
+from asset_shepherd.glb import (
+    GlbError,
+    add_normalization_root,
+    load_glb,
+    raw_glb_document,
+    save_glb,
+    weld_identical_vertex_tuples,
+)
 from asset_shepherd.models import (
     DecisionRecord,
     Decisions,
@@ -20,6 +28,7 @@ from asset_shepherd.models import (
     RenamePayload,
     RepairKind,
     RepairPlan,
+    WeldPayload,
 )
 
 
@@ -172,6 +181,52 @@ def apply_repairs(
                 matrix,
                 name=_normalization_name(existing_names),
             )
+        elif candidate.kind is RepairKind.WELD_IDENTICAL_VERTICES:
+            payload = candidate.payload
+            if not isinstance(payload, WeldPayload):
+                raise RepairInvariantError("Vertex weld candidate has the wrong payload")
+            expected_merges = {
+                (primitive.mesh_index, primitive.primitive_index): primitive.merge_count
+                for primitive in payload.primitives
+            }
+            try:
+                raw_document = raw_glb_document(source)
+                raw_meshes_value = raw_document.get("meshes")
+                if not isinstance(raw_meshes_value, list):
+                    raise GlbError("Weld source has no raw mesh records")
+                raw_meshes = cast(list[object], raw_meshes_value)
+                for primitive_payload in payload.primitives:
+                    raw_mesh_value = raw_meshes[primitive_payload.mesh_index]
+                    if not isinstance(raw_mesh_value, dict):
+                        raise GlbError("Weld source mesh record is invalid")
+                    raw_mesh = cast(dict[str, object], raw_mesh_value)
+                    raw_primitives_value = raw_mesh.get("primitives")
+                    if not isinstance(raw_primitives_value, list):
+                        raise GlbError("Weld source has no raw primitive records")
+                    raw_primitives = cast(list[object], raw_primitives_value)
+                    raw_primitive_value = raw_primitives[primitive_payload.primitive_index]
+                    if not isinstance(raw_primitive_value, dict):
+                        raise GlbError("Weld source primitive record is invalid")
+                    raw_primitive = cast(dict[str, object], raw_primitive_value)
+                    raw_attributes_value = raw_primitive.get("attributes")
+                    if not isinstance(raw_attributes_value, dict):
+                        raise GlbError("Weld source attributes are invalid")
+                    raw_attributes = cast(dict[str, object], raw_attributes_value)
+                    parsed_primitive = gltf.meshes[primitive_payload.mesh_index].primitives[
+                        primitive_payload.primitive_index
+                    ]
+                    parsed_semantics = {
+                        semantic
+                        for semantic, accessor_index in vars(parsed_primitive.attributes).items()
+                        if isinstance(accessor_index, int)
+                    }
+                    if set(raw_attributes) != parsed_semantics:
+                        raise GlbError(
+                            "Weld refuses vertex attributes that the GLB adapter cannot preserve"
+                        )
+                weld_identical_vertex_tuples(gltf, expected_merges)
+            except GlbError as error:
+                raise RepairInvariantError(str(error)) from error
         else:
             raise RepairInvariantError(f"Unregistered repair kind: {candidate.kind}")
         executed.append(candidate.id)

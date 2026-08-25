@@ -194,6 +194,12 @@
         </details>
         <details>
           <summary>Tool findings and action plan <span>{{ inspection.findings|length if inspection else "pending" }}</span></summary>
+          {% if inspection and inspection.diagnostics %}
+            {% set duplicate_positions = inspection.diagnostics.primitives|sum(attribute='duplicate_position_count') %}
+            {% set safe_merges = inspection.diagnostics.primitives|sum(attribute='attribute_safe_merge_count') %}
+            {% set protected_duplicates = inspection.diagnostics.primitives|sum(attribute='protected_duplicate_count') %}
+            <p class="contract-finding"><code>VERTEX TUPLES</code><span>{{ duplicate_positions }} coincident positions · {% if safe_merges + protected_duplicates == duplicate_positions %}{{ safe_merges }} attribute-safe merges · {{ protected_duplicates }} protected seams{% else %}weld safety was not classified in this earlier inspection{% endif %}</span></p>
+          {% endif %}
           {% if finding_groups %}{% for severity, findings in finding_groups %}{% for finding in findings %}
             <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }} · {{ basis_labels[finding.basis.value] }}</span></p>
           {% endfor %}{% endfor %}{% elif inspection %}<p>No policy findings.</p>{% else %}<p>No inspection exists before confirmation.</p>{% endif %}

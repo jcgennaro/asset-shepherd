@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-24
-**Current commit:** D046 intake schema compatibility and on-demand description examples (this file is included)
+**Current commit:** D047 seam-aware duplicate-position sensing and safe tuple compaction (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -49,6 +49,17 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D047 seam-aware duplicate positions: every triangle primitive now records exact coincident-position
+  groups, a position-only virtual-weld topology projection, complete-tuple mergeability, and the
+  attributes that prevent a merge. The Computer Chip reproduces the independent Blender probe:
+  5,312 coincident positions; virtual topology moves from 7,735 boundary plus 8 true non-manifold
+  edges to 91 plus 50; all 5,312 remain protected by `TEXCOORD_0`, so no chip weld is registered.
+  The live agent may explicitly request lossless compaction only when every vertex attribute is
+  byte-identical. Append-only GLB rewriting and expanded per-corner verification prove a synthetic
+  five-to-four vertex repair preserves triangles, bounds, attributes, and resources. Approximate
+  target X/Y/Z boxes now resolve to one median uniform factor with residuals recorded; non-uniform
+  scaling remains forbidden. Ruff, Pyright, 135 tests, schema regeneration, and browser review pass.
 
 - D046 intake reliability and examples: the model-facing X/Y/Z shape now uses a closed object rather
   than a fixed tuple that emitted unsupported `prefixItems`; the deterministic target contract still

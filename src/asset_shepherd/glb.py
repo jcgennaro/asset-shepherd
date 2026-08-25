@@ -3,18 +3,31 @@
 # pygltflib is typed internally but does not publish PEP 561 metadata.
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false
 
+import json
 import warnings
 from collections.abc import Iterator
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
 import numpy as np
 import numpy.typing as npt
-from pygltflib import FLOAT, GLTF2, TRIANGLE_FAN, TRIANGLE_STRIP, TRIANGLES, Node
+from pygltflib import (
+    FLOAT,
+    GLTF2,
+    TRIANGLE_FAN,
+    TRIANGLE_STRIP,
+    TRIANGLES,
+    Accessor,
+    BufferView,
+    Node,
+)
 from pygltflib.validator import validate as validate_gltf
 
 FloatArray = npt.NDArray[np.float64]
+ARRAY_BUFFER = 34962
+ELEMENT_ARRAY_BUFFER = 34963
 
 
 class GlbError(ValueError):
@@ -58,6 +71,24 @@ def load_glb(path: Path) -> GLTF2:
     if loaded is None:
         raise GlbError("pygltflib could not load the GLB")
     return loaded
+
+
+def raw_glb_document(path: Path) -> dict[str, object]:
+    """Decode the container JSON chunk without dropping unknown attribute semantics."""
+    payload = path.read_bytes()
+    if len(payload) < 20 or payload[:4] != b"glTF":
+        raise GlbError("File does not have a readable GLB JSON chunk")
+    json_length = int.from_bytes(payload[12:16], byteorder="little")
+    json_type = int.from_bytes(payload[16:20], byteorder="little")
+    if json_type != 0x4E4F534A or 20 + json_length > len(payload):
+        raise GlbError("GLB does not begin with a valid JSON chunk")
+    try:
+        document = json.loads(payload[20 : 20 + json_length].rstrip(b"\x00 ").decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise GlbError("GLB JSON chunk is unreadable") from error
+    if not isinstance(document, dict):
+        raise GlbError("GLB JSON document is not an object")
+    return cast(dict[str, object], document)
 
 
 def save_glb(gltf: GLTF2, path: Path) -> None:
@@ -242,3 +273,140 @@ def add_normalization_root(gltf: GLTF2, matrix: FloatArray, *, name: str) -> int
     gltf.nodes.append(Node(name=name, children=roots, matrix=matrix.T.reshape(-1).tolist()))
     scene.nodes = [root_index]
     return root_index
+
+
+def _append_packed_accessor(
+    gltf: GLTF2,
+    blob: bytearray,
+    values: npt.NDArray[np.generic],
+    template: Accessor,
+    *,
+    target: int,
+) -> int:
+    """Append one tightly packed accessor without rewriting existing binary content."""
+    while len(blob) % 4:
+        blob.append(0)
+    packed = np.ascontiguousarray(values).tobytes(order="C")
+    view_index = len(gltf.bufferViews)
+    gltf.bufferViews.append(
+        BufferView(
+            buffer=0,
+            byteOffset=len(blob),
+            byteLength=len(packed),
+            target=target,
+        )
+    )
+    blob.extend(packed)
+    accessor = deepcopy(template)
+    accessor.bufferView = view_index
+    accessor.byteOffset = 0
+    accessor.count = len(values)
+    accessor.sparse = None
+    accessor_index = len(gltf.accessors)
+    gltf.accessors.append(accessor)
+    return accessor_index
+
+
+def weld_identical_vertex_tuples(
+    gltf: GLTF2,
+    expected_merges: dict[tuple[int, int], int],
+) -> dict[tuple[int, int], int]:
+    """Compact byte-identical complete vertex tuples for selected primitives.
+
+    POSITION alone never determines mergeability. Every standard attribute on the primitive must
+    be present, dense, cardinality-matched, and byte-identical before two indices can be joined.
+    """
+    from asset_shepherd.mesh_diagnostics import attribute_safe_weld_mapping
+
+    original_blob = cast(bytes | bytearray | None, gltf.binary_blob())
+    if original_blob is None or not gltf.buffers:
+        raise GlbError("GLB has no primary binary buffer")
+    blob = bytearray(original_blob)
+    actual_merges: dict[tuple[int, int], int] = {}
+    for (mesh_index, primitive_index), expected_merge_count in sorted(expected_merges.items()):
+        if not 0 <= mesh_index < len(gltf.meshes):
+            raise GlbError("Weld references an invalid mesh")
+        mesh = gltf.meshes[mesh_index]
+        if not 0 <= primitive_index < len(mesh.primitives):
+            raise GlbError("Weld references an invalid primitive")
+        primitive = mesh.primitives[primitive_index]
+        if primitive.targets or primitive.extensions:
+            raise GlbError("Weld does not support morph targets or compressed primitives")
+
+        attribute_indices = {
+            semantic: accessor_index
+            for semantic, accessor_index in vars(primitive.attributes).items()
+            if isinstance(accessor_index, int)
+        }
+        position_index = attribute_indices.get("POSITION")
+        if position_index is None:
+            raise GlbError("Weld primitive has no POSITION accessor")
+        arrays = {
+            semantic: accessor_array(gltf, accessor_index)
+            for semantic, accessor_index in attribute_indices.items()
+        }
+        position_count = len(arrays["POSITION"])
+        if any(len(values) != position_count for values in arrays.values()):
+            raise GlbError("Weld requires matching attribute cardinalities")
+        for accessor_index in attribute_indices.values():
+            accessor = gltf.accessors[accessor_index]
+            view = gltf.bufferViews[cast(int, accessor.bufferView)]
+            if accessor.sparse is not None or accessor.extensions or view.extensions:
+                raise GlbError("Weld requires dense, unextended vertex accessors")
+
+        protected = {key: value for key, value in arrays.items() if key != "POSITION"}
+        inverse, representatives = attribute_safe_weld_mapping(arrays["POSITION"], protected)
+        merge_count = position_count - len(representatives)
+        if merge_count != expected_merge_count:
+            raise GlbError(
+                "Weld evidence changed since planning: "
+                f"expected {expected_merge_count}, measured {merge_count}"
+            )
+        if merge_count <= 0:
+            raise GlbError("Weld selected a primitive with no attribute-safe duplicate tuples")
+
+        for semantic, old_accessor_index in sorted(attribute_indices.items()):
+            compacted = arrays[semantic][representatives]
+            new_accessor_index = _append_packed_accessor(
+                gltf,
+                blob,
+                compacted,
+                gltf.accessors[old_accessor_index],
+                target=ARRAY_BUFFER,
+            )
+            setattr(primitive.attributes, semantic, new_accessor_index)
+
+        if primitive.indices is None:
+            old_indices = np.arange(position_count, dtype=np.int64)
+        else:
+            old_indices = np.asarray(
+                accessor_array(gltf, primitive.indices),
+                dtype=np.int64,
+            ).reshape(-1)
+        remapped = inverse[old_indices]
+        packed_indices: npt.NDArray[np.uint16] | npt.NDArray[np.uint32]
+        if len(representatives) <= 65535:
+            packed_indices = remapped.astype(np.uint16, copy=False).reshape((-1, 1))
+            component_type = 5123
+        else:
+            packed_indices = remapped.astype(np.uint32, copy=False).reshape((-1, 1))
+            component_type = 5125
+        index_template = Accessor(
+            componentType=component_type,
+            count=len(packed_indices),
+            type="SCALAR",
+            max=[int(remapped.max(initial=0))],
+            min=[int(remapped.min(initial=0))],
+        )
+        primitive.indices = _append_packed_accessor(
+            gltf,
+            blob,
+            packed_indices,
+            index_template,
+            target=ELEMENT_ARRAY_BUFFER,
+        )
+        actual_merges[(mesh_index, primitive_index)] = merge_count
+
+    gltf.set_binary_blob(bytes(blob))
+    gltf.buffers[0].byteLength = len(blob)
+    return actual_merges

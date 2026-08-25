@@ -684,6 +684,7 @@ class AgentJob:
         ground_to_y_zero: bool,
         rename_invalid_display_names: bool,
         source_views_used: list[str],
+        weld_identical_vertices: bool = False,
     ) -> RepairPlan:
         """Validate and register one model-authored disposition and exact action preview."""
         if not self.agent_orchestrated:
@@ -734,6 +735,7 @@ class AgentJob:
             "rotation_degrees": rotation_degrees,
             "ground_to_y_zero": ground_to_y_zero,
             "rename_invalid_display_names": rename_invalid_display_names,
+            "weld_identical_vertices": weld_identical_vertices,
             "source_views_used": source_views_used,
         }
         digest = sha256(
@@ -752,6 +754,7 @@ class AgentJob:
             rotation_degrees=rotation_degrees,
             ground_to_y_zero=ground_to_y_zero,
             rename_invalid_display_names=rename_invalid_display_names,
+            weld_identical_vertices=weld_identical_vertices,
             source_views_used=tuple(source_views_used),
         )
         plan = plan_agent_repairs(
@@ -759,6 +762,15 @@ class AgentJob:
             self.profile,
             assessment,
             confirmed_target_height_m=self.asset_intent.target_height_cm / 100.0,
+            confirmed_target_dimensions_m=(
+                (
+                    self.asset_intent.target_dimensions_cm[0] / 100.0,
+                    self.asset_intent.target_dimensions_cm[1] / 100.0,
+                    self.asset_intent.target_dimensions_cm[2] / 100.0,
+                )
+                if self.asset_intent.target_dimensions_cm is not None
+                else None
+            ),
         )
         self.agent_assessment = assessment
         self.full_plan = plan

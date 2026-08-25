@@ -771,6 +771,20 @@
           "title": "Attribute Count Mismatches",
           "type": "array"
         },
+        "attribute_safe_merge_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Attribute Safe Merge Count",
+          "type": "integer"
+        },
+        "attribute_semantics": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Attribute Semantics",
+          "type": "array"
+        },
         "average_vertex_reuse": {
           "default": 0.0,
           "minimum": 0.0,
@@ -781,6 +795,12 @@
           "default": 0,
           "minimum": 0,
           "title": "Boundary Edge Count",
+          "type": "integer"
+        },
+        "coincident_position_group_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Coincident Position Group Count",
           "type": "integer"
         },
         "connected_component_count": {
@@ -879,6 +899,20 @@
           "title": "Primitive Index",
           "type": "integer"
         },
+        "protected_attribute_conflicts": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Protected Attribute Conflicts",
+          "type": "array"
+        },
+        "protected_duplicate_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Protected Duplicate Count",
+          "type": "integer"
+        },
         "topology_analyzed": {
           "default": false,
           "title": "Topology Analyzed",
@@ -901,6 +935,42 @@
           "minimum": 0.0,
           "title": "Vertex Cache Acmr",
           "type": "number"
+        },
+        "virtual_weld_boundary_edge_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Virtual Weld Boundary Edge Count",
+          "type": "integer"
+        },
+        "virtual_weld_connected_component_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Virtual Weld Connected Component Count",
+          "type": "integer"
+        },
+        "virtual_weld_degenerate_triangle_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Virtual Weld Degenerate Triangle Count",
+          "type": "integer"
+        },
+        "virtual_weld_inconsistent_winding_edge_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Virtual Weld Inconsistent Winding Edge Count",
+          "type": "integer"
+        },
+        "virtual_weld_non_manifold_edge_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Virtual Weld Non Manifold Edge Count",
+          "type": "integer"
+        },
+        "virtual_weld_position_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Virtual Weld Position Count",
+          "type": "integer"
         }
       },
       "required": [

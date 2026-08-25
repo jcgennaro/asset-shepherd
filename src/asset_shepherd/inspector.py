@@ -29,7 +29,7 @@ from asset_shepherd.glb import (
     validate_loaded_glb,
     world_bounds,
 )
-from asset_shepherd.mesh_diagnostics import analyze_mesh_topology
+from asset_shepherd.mesh_diagnostics import analyze_duplicate_positions, analyze_mesh_topology
 from asset_shepherd.models import (
     ActionClass,
     Bounds3D,
@@ -472,10 +472,6 @@ def _primitive_diagnostics(
         raise GlbError("Mesh primitive has no POSITION accessor")
     positions = accessor_array(gltf, position_index)
     position_count = len(positions)
-    normal_index = _attribute_accessor_index(primitive.attributes, "NORMAL")
-    tangent_index = _attribute_accessor_index(primitive.attributes, "TANGENT")
-    texcoord_index = _attribute_accessor_index(primitive.attributes, "TEXCOORD_0")
-
     mismatches: list[str] = []
 
     def attribute_values(accessor_index: int | None, semantic: str) -> np.ndarray | None:
@@ -488,9 +484,17 @@ def _primitive_diagnostics(
             )
         return values
 
-    normals = attribute_values(normal_index, "NORMAL")
-    tangents = attribute_values(tangent_index, "TANGENT")
-    texcoords = attribute_values(texcoord_index, "TEXCOORD_0")
+    attribute_arrays: dict[str, np.ndarray] = {}
+    for semantic, accessor_index in vars(primitive.attributes).items():
+        if semantic == "POSITION" or not isinstance(accessor_index, int):
+            continue
+        values = attribute_values(accessor_index, semantic)
+        if values is not None:
+            attribute_arrays[semantic] = values
+    normal_index = _attribute_accessor_index(primitive.attributes, "NORMAL")
+    normals = attribute_arrays.get("NORMAL")
+    tangents = attribute_arrays.get("TANGENT")
+    texcoords = attribute_arrays.get("TEXCOORD_0")
 
     indices: npt.NDArray[np.int64]
     if primitive.indices is None:
@@ -564,6 +568,15 @@ def _primitive_diagnostics(
             axis=(1, 2)
         )
     topology = analyze_mesh_topology(positions, triangles[topology_mask])
+    duplicate_positions = analyze_duplicate_positions(
+        positions,
+        triangles[topology_mask],
+        {
+            semantic: values
+            for semantic, values in attribute_arrays.items()
+            if len(values) == position_count
+        },
+    )
     topology_analyzed = mode in {TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN}
 
     non_unit_normals = 0
@@ -590,6 +603,7 @@ def _primitive_diagnostics(
         has_normals=normals is not None,
         has_tangents=tangents is not None,
         has_texcoord_0=texcoords is not None,
+        attribute_semantics=tuple(sorted({"POSITION", *attribute_arrays})),
         attribute_count_mismatches=tuple(mismatches),
         non_finite_position_count=_non_finite_count(positions),
         non_finite_normal_count=0 if normals is None else _non_finite_count(normals),
@@ -607,6 +621,24 @@ def _primitive_diagnostics(
         connected_component_count=topology.connected_component_count,
         unused_position_count=topology.unused_position_count,
         duplicate_position_count=topology.duplicate_position_count,
+        coincident_position_group_count=(duplicate_positions.coincident_position_group_count),
+        virtual_weld_position_count=duplicate_positions.virtual_weld_position_count,
+        virtual_weld_boundary_edge_count=(duplicate_positions.virtual_weld_boundary_edge_count),
+        virtual_weld_non_manifold_edge_count=(
+            duplicate_positions.virtual_weld_non_manifold_edge_count
+        ),
+        virtual_weld_inconsistent_winding_edge_count=(
+            duplicate_positions.virtual_weld_inconsistent_winding_edge_count
+        ),
+        virtual_weld_connected_component_count=(
+            duplicate_positions.virtual_weld_connected_component_count
+        ),
+        virtual_weld_degenerate_triangle_count=(
+            duplicate_positions.virtual_weld_degenerate_triangle_count
+        ),
+        attribute_safe_merge_count=duplicate_positions.attribute_safe_merge_count,
+        protected_duplicate_count=duplicate_positions.protected_duplicate_count,
+        protected_attribute_conflicts=duplicate_positions.protected_attribute_conflicts,
         average_vertex_reuse=topology.average_vertex_reuse,
         vertex_cache_acmr=topology.vertex_cache_acmr,
     )
@@ -1020,6 +1052,45 @@ def _inspection_findings(
                     for item in topology_defects
                 ),
                 profile_rule=None,
+            )
+        )
+
+    safe_duplicate_primitives = tuple(
+        primitive for primitive in diagnostics.primitives if primitive.attribute_safe_merge_count
+    )
+    if safe_duplicate_primitives:
+        findings.append(
+            _finding(
+                code="ATTRIBUTE_SAFE_DUPLICATE_TUPLES_DETECTED",
+                domain="performance",
+                title="Redundant complete vertex tuples can be compacted",
+                description=(
+                    "Every attribute matches exactly for these tuples; the agent may request "
+                    "lossless index and vertex-buffer compaction."
+                ),
+                severity=Severity.INFO,
+                action_class=ActionClass.AUTO_SAFE,
+                confidence=1.0,
+                affected=tuple(
+                    f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
+                    for item in safe_duplicate_primitives
+                ),
+                evidence=tuple(
+                    FindingEvidence(
+                        observation=(
+                            f"Mesh {item.mesh_index} primitive {item.primitive_index} has "
+                            f"{item.attribute_safe_merge_count} byte-identical complete vertex "
+                            "tuples."
+                        ),
+                        observed_value=item.attribute_safe_merge_count,
+                        inference=(
+                            "Compaction preserves every expanded per-corner vertex attribute."
+                        ),
+                    )
+                    for item in safe_duplicate_primitives
+                ),
+                profile_rule=None,
+                candidates=("weld-identical-vertices-v1",),
             )
         )
 
@@ -1570,6 +1641,10 @@ def render_inspection_report(inspection: InspectionResult) -> str:
                 "inconsistent shared edges",
                 "- Mesh efficiency: "
                 f"{sum(item.unused_position_count for item in primitives)} unused positions; "
+                f"{sum(item.duplicate_position_count for item in primitives)} coincident "
+                "positions; "
+                f"{sum(item.attribute_safe_merge_count for item in primitives)} "
+                "attribute-safe welds; "
                 "FIFO-16 ACMR range "
                 f"{min((item.vertex_cache_acmr for item in primitives), default=0):.3g}-"
                 f"{max((item.vertex_cache_acmr for item in primitives), default=0):.3g}",

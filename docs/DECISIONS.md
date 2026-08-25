@@ -4,6 +4,47 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D047 — Separate virtual position welding from lossless vertex-tuple compaction
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 real-world evaluation
+
+**Context**
+
+The Computer Chip inspection contained 5,312 coincident positions. Blender's broad non-manifold
+selection fell from 7,743 to 141 after a position weld, but that result alone did not prove the GLB
+could be mutated without damaging its texture mapping. The user requested that Asset Shepherd detect
+duplicate positions and repair them when possible. The user also clarified that target X/Y/Z metrics
+are approximate fitting evidence and must never authorize non-uniform scaling.
+
+**Decision**
+
+Add two distinct deterministic topology facts. A read-only virtual weld groups exact POSITION values
+to estimate underlying position topology. A stricter attribute-safe count groups only complete
+byte-identical vertex tuples across every primitive attribute. Only the latter may become an
+agent-requested `WELD_IDENTICAL_VERTICES` action. It is preauthorized as a lossless representation
+compaction, never as topology reconstruction. Position-only welding, hole filling, remeshing, and
+normal recalculation remain unavailable.
+
+When confirmed X/Y/Z dimensions differ, treat them as approximate. Choose one deterministic median
+uniform factor after any requested orientation change, preserve proportions, and record the residual
+extent mismatch on all axes. Never expose or execute non-uniform scaling.
+
+**Evidence and consequences**
+
+The new sensor reproduces the chip evidence exactly: 7,811 source positions, 5,312 coincident
+positions, a 2,499-position virtual projection, 91 boundary edges, 50 true non-manifold edges, and
+11 inconsistently wound edges. It reports zero attribute-safe merges because all 5,312 duplicates
+cross `TEXCOORD_0`; therefore Asset Shepherd does not weld this chip. A synthetic complete-tuple
+duplicate compacts from five to four positions while preserving both triangles, all expanded
+per-corner attributes, bounds, materials, resources, and glTF validity under independent
+verification. Checked-in schemas and the on-demand job details expose the new provenance.
+
 ### D046 — Keep target intake API-compatible and move examples on demand
 
 **Date:** 2026-08-24

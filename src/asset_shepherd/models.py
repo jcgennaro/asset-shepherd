@@ -91,6 +91,7 @@ class RepairKind(StrEnum):
     RENAME_NODE = "RENAME_NODE"
     RENAME_MESH = "RENAME_MESH"
     NORMALIZATION_TRANSFORM = "NORMALIZATION_TRANSFORM"
+    WELD_IDENTICAL_VERTICES = "WELD_IDENTICAL_VERTICES"
 
 
 class AgentDisposition(StrEnum):
@@ -343,6 +344,7 @@ class PrimitiveAttributeDiagnostics(ContractModel):
     has_normals: bool
     has_tangents: bool
     has_texcoord_0: bool
+    attribute_semantics: tuple[str, ...] = ()
     attribute_count_mismatches: tuple[str, ...]
     non_finite_position_count: NonNegativeInt
     non_finite_normal_count: NonNegativeInt
@@ -360,6 +362,16 @@ class PrimitiveAttributeDiagnostics(ContractModel):
     connected_component_count: NonNegativeInt = 0
     unused_position_count: NonNegativeInt = 0
     duplicate_position_count: NonNegativeInt = 0
+    coincident_position_group_count: NonNegativeInt = 0
+    virtual_weld_position_count: NonNegativeInt = 0
+    virtual_weld_boundary_edge_count: NonNegativeInt = 0
+    virtual_weld_non_manifold_edge_count: NonNegativeInt = 0
+    virtual_weld_inconsistent_winding_edge_count: NonNegativeInt = 0
+    virtual_weld_connected_component_count: NonNegativeInt = 0
+    virtual_weld_degenerate_triangle_count: NonNegativeInt = 0
+    attribute_safe_merge_count: NonNegativeInt = 0
+    protected_duplicate_count: NonNegativeInt = 0
+    protected_attribute_conflicts: tuple[str, ...] = ()
     average_vertex_reuse: Annotated[float, Field(ge=0.0)] = 0.0
     vertex_cache_acmr: Annotated[float, Field(ge=0.0)] = 0.0
 
@@ -481,6 +493,39 @@ class NormalizationPayload(ContractModel):
     consequence_summary: str
 
 
+class WeldPrimitivePayload(ContractModel):
+    """Expected effect of one exact, attribute-preserving primitive weld."""
+
+    mesh_index: NonNegativeInt
+    primitive_index: NonNegativeInt
+    before_position_count: PositiveInt
+    after_position_count: PositiveInt
+    merge_count: PositiveInt
+
+
+class WeldPayload(ContractModel):
+    """Typed request to merge only byte-identical complete vertex tuples."""
+
+    payload_type: Literal["weld_identical_vertices"] = "weld_identical_vertices"
+    tolerance_m: Annotated[float, Field(ge=0.0, le=0.0)] = 0.0
+    primitives: tuple[WeldPrimitivePayload, ...]
+    protected_attributes: tuple[str, ...]
+    consequence_summary: str
+
+    @model_validator(mode="after")
+    def merge_counts_are_consistent(self) -> "WeldPayload":
+        """Bind every primitive count to the exact compacted vertex count."""
+        if not self.primitives:
+            raise ValueError("A weld payload requires at least one mergeable primitive")
+        for primitive in self.primitives:
+            if (
+                primitive.before_position_count - primitive.merge_count
+                != primitive.after_position_count
+            ):
+                raise ValueError("Weld primitive counts are inconsistent")
+        return self
+
+
 class CandidateRepair(ContractModel):
     """A registered repair derived from one or more findings."""
 
@@ -489,7 +534,10 @@ class CandidateRepair(ContractModel):
     action_class: ActionClass
     finding_ids: tuple[str, ...]
     description: str
-    payload: Annotated[RenamePayload | NormalizationPayload, Field(discriminator="payload_type")]
+    payload: Annotated[
+        RenamePayload | NormalizationPayload | WeldPayload,
+        Field(discriminator="payload_type"),
+    ]
 
     @model_validator(mode="after")
     def kind_matches_payload(self) -> "CandidateRepair":
@@ -497,6 +545,9 @@ class CandidateRepair(ContractModel):
         if self.kind is RepairKind.NORMALIZATION_TRANSFORM:
             if not isinstance(self.payload, NormalizationPayload):
                 raise ValueError("Normalization repair requires a normalization payload")
+        elif self.kind is RepairKind.WELD_IDENTICAL_VERTICES:
+            if not isinstance(self.payload, WeldPayload):
+                raise ValueError("Vertex weld repair requires a weld payload")
         elif not isinstance(self.payload, RenamePayload):
             raise ValueError("Rename repair requires a rename payload")
         return self
@@ -518,6 +569,7 @@ class AgentRepairAssessment(ContractModel):
     rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0
     ground_to_y_zero: bool = False
     rename_invalid_display_names: bool = False
+    weld_identical_vertices: bool = False
     source_views_used: tuple[str, ...] = ()
 
     @model_validator(mode="after")
@@ -529,6 +581,7 @@ class AgentRepairAssessment(ContractModel):
                 self.rotation_degrees != 0,
                 self.ground_to_y_zero,
                 self.rename_invalid_display_names,
+                self.weld_identical_vertices,
             )
         )
         if self.disposition is AgentDisposition.REPAIR and not has_action:

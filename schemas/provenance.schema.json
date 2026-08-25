@@ -228,6 +228,11 @@
           "minLength": 12,
           "title": "Summary",
           "type": "string"
+        },
+        "weld_identical_vertices": {
+          "default": false,
+          "title": "Weld Identical Vertices",
+          "type": "boolean"
         }
       },
       "required": [
@@ -637,7 +642,8 @@
       "enum": [
         "RENAME_NODE",
         "RENAME_MESH",
-        "NORMALIZATION_TRANSFORM"
+        "NORMALIZATION_TRANSFORM",
+        "WELD_IDENTICAL_VERTICES"
       ],
       "title": "RepairKind",
       "type": "string"

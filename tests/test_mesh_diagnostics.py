@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from asset_shepherd.mesh_diagnostics import analyze_mesh_topology
+from asset_shepherd.mesh_diagnostics import analyze_duplicate_positions, analyze_mesh_topology
 
 
 def test_closed_tetrahedron_is_one_consistently_wound_component() -> None:
@@ -56,3 +56,38 @@ def test_fifo_cache_metric_exposes_unreused_triangle_streams() -> None:
     assert result.vertex_cache_acmr == 3.0
     assert result.average_vertex_reuse == 1.0
     assert result.connected_component_count == 100
+
+
+def test_virtual_weld_distinguishes_attribute_seams_from_safe_duplicates() -> None:
+    """Position topology is projected while UV-crossing merges remain protected."""
+    positions = np.array(
+        [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 0], [1, 1, 0]],
+        dtype=np.float32,
+    )
+    triangles = np.array([[0, 1, 2], [3, 2, 4]], dtype=np.int64)
+    normals = np.tile(np.array([[0, 0, 1]], dtype=np.float32), (5, 1))
+    uv_seam = np.array(
+        [[0, 0], [1, 0], [0, 1], [0.5, 0.5], [1, 1]],
+        dtype=np.float32,
+    )
+
+    protected = analyze_duplicate_positions(
+        positions,
+        triangles,
+        {"NORMAL": normals, "TEXCOORD_0": uv_seam},
+    )
+    safe_uv = uv_seam.copy()
+    safe_uv[3] = safe_uv[0]
+    safe = analyze_duplicate_positions(
+        positions,
+        triangles,
+        {"NORMAL": normals, "TEXCOORD_0": safe_uv},
+    )
+
+    assert protected.duplicate_position_count == 1
+    assert protected.virtual_weld_position_count == 4
+    assert protected.attribute_safe_merge_count == 0
+    assert protected.protected_duplicate_count == 1
+    assert protected.protected_attribute_conflicts == ("TEXCOORD_0",)
+    assert safe.attribute_safe_merge_count == 1
+    assert safe.protected_duplicate_count == 0

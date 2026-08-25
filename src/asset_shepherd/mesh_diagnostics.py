@@ -23,6 +23,154 @@ class MeshTopologyMeasurements:
     vertex_cache_acmr: float
 
 
+@dataclass(frozen=True)
+class DuplicatePositionMeasurements:
+    """Exact-position weld projection with protected-attribute conflict evidence."""
+
+    duplicate_position_count: int
+    coincident_position_group_count: int
+    virtual_weld_position_count: int
+    virtual_weld_boundary_edge_count: int
+    virtual_weld_non_manifold_edge_count: int
+    virtual_weld_inconsistent_winding_edge_count: int
+    virtual_weld_connected_component_count: int
+    virtual_weld_degenerate_triangle_count: int
+    attribute_safe_merge_count: int
+    protected_duplicate_count: int
+    protected_attribute_conflicts: tuple[str, ...]
+
+
+def _row_keys(values: npt.NDArray[np.generic]) -> list[bytes]:
+    """Return stable exact byte keys without coercing integer attributes to floats."""
+    contiguous = np.ascontiguousarray(values)
+    return [contiguous[index].tobytes() for index in range(len(contiguous))]
+
+
+def _group_inverse(keys: list[bytes]) -> tuple[npt.NDArray[np.int64], int]:
+    """Map byte-identical rows to deterministic first-seen group indices."""
+    groups: dict[bytes, int] = {}
+    inverse = np.empty(len(keys), dtype=np.int64)
+    for index, key in enumerate(keys):
+        group = groups.get(key)
+        if group is None:
+            group = len(groups)
+            groups[key] = group
+        inverse[index] = group
+    return inverse, len(groups)
+
+
+def analyze_duplicate_positions(
+    positions: npt.NDArray[np.generic],
+    triangles: npt.NDArray[np.int64],
+    attributes: dict[str, npt.NDArray[np.generic]],
+) -> DuplicatePositionMeasurements:
+    """Project exact-position welding and prove which merges preserve every attribute.
+
+    The virtual projection intentionally ignores vertex-attribute seams so an agent can distinguish
+    split glTF tuples from the underlying position topology.  The safe count is stricter: vertices
+    are mergeable only when every supplied attribute row is byte-identical.
+    """
+    position_values = np.asarray(positions)[:, :3]
+    position_keys = _row_keys(position_values)
+    position_inverse, position_group_count = _group_inverse(position_keys)
+    duplicate_count = len(position_values) - position_group_count
+    group_sizes = np.bincount(position_inverse, minlength=position_group_count)
+    coincident_groups = int(np.count_nonzero(group_sizes > 1))
+
+    triangle_indices = np.asarray(triangles, dtype=np.int64).reshape((-1, 3))
+    projected = position_inverse[triangle_indices] if len(triangle_indices) else triangle_indices
+    projected_degenerate = (
+        (projected[:, 0] == projected[:, 1])
+        | (projected[:, 1] == projected[:, 2])
+        | (projected[:, 0] == projected[:, 2])
+        if len(projected)
+        else np.zeros(0, dtype=bool)
+    )
+    representative_indices = np.full(position_group_count, -1, dtype=np.int64)
+    for index, group in enumerate(position_inverse):
+        if representative_indices[group] < 0:
+            representative_indices[group] = index
+    projected_topology = analyze_mesh_topology(
+        position_values[representative_indices],
+        projected[~projected_degenerate],
+    )
+
+    ordered_semantics = tuple(sorted(attributes))
+    protected_keys: list[bytes] = []
+    attribute_keys = {semantic: _row_keys(attributes[semantic]) for semantic in ordered_semantics}
+    for index, position_key in enumerate(position_keys):
+        protected_keys.append(
+            b"".join(
+                (
+                    len(position_key).to_bytes(4, "little"),
+                    position_key,
+                    *(
+                        len(attribute_keys[semantic][index]).to_bytes(4, "little")
+                        + attribute_keys[semantic][index]
+                        for semantic in ordered_semantics
+                    ),
+                )
+            )
+        )
+    _, protected_group_count = _group_inverse(protected_keys)
+    safe_merge_count = len(position_values) - protected_group_count
+
+    conflicts: list[str] = []
+    duplicate_group_ids = np.flatnonzero(group_sizes > 1)
+    for semantic in ordered_semantics:
+        keys = attribute_keys[semantic]
+        if any(
+            len({keys[int(index)] for index in np.flatnonzero(position_inverse == group)}) > 1
+            for group in duplicate_group_ids
+        ):
+            conflicts.append(semantic)
+
+    return DuplicatePositionMeasurements(
+        duplicate_position_count=duplicate_count,
+        coincident_position_group_count=coincident_groups,
+        virtual_weld_position_count=position_group_count,
+        virtual_weld_boundary_edge_count=projected_topology.boundary_edge_count,
+        virtual_weld_non_manifold_edge_count=projected_topology.non_manifold_edge_count,
+        virtual_weld_inconsistent_winding_edge_count=(
+            projected_topology.inconsistent_winding_edge_count
+        ),
+        virtual_weld_connected_component_count=projected_topology.connected_component_count,
+        virtual_weld_degenerate_triangle_count=int(np.count_nonzero(projected_degenerate)),
+        attribute_safe_merge_count=safe_merge_count,
+        protected_duplicate_count=duplicate_count - safe_merge_count,
+        protected_attribute_conflicts=tuple(conflicts),
+    )
+
+
+def attribute_safe_weld_mapping(
+    positions: npt.NDArray[np.generic],
+    attributes: dict[str, npt.NDArray[np.generic]],
+) -> tuple[npt.NDArray[np.int64], npt.NDArray[np.int64]]:
+    """Return old-to-new indices and representatives for byte-identical vertex tuples."""
+    position_keys = _row_keys(np.asarray(positions)[:, :3])
+    ordered_semantics = tuple(sorted(attributes))
+    attribute_keys = {semantic: _row_keys(attributes[semantic]) for semantic in ordered_semantics}
+    complete_keys = [
+        b"".join(
+            (
+                position_keys[index],
+                *(
+                    len(attribute_keys[semantic][index]).to_bytes(4, "little")
+                    + attribute_keys[semantic][index]
+                    for semantic in ordered_semantics
+                ),
+            )
+        )
+        for index in range(len(position_keys))
+    ]
+    inverse, group_count = _group_inverse(complete_keys)
+    representatives = np.full(group_count, -1, dtype=np.int64)
+    for index, group in enumerate(inverse):
+        if representatives[group] < 0:
+            representatives[group] = index
+    return inverse, representatives
+
+
 def _connected_face_components(
     inverse_edges: npt.NDArray[np.int64],
     edge_counts: npt.NDArray[np.int64],

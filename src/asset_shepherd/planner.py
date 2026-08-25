@@ -21,6 +21,8 @@ from asset_shepherd.models import (
     RepairEligibility,
     RepairKind,
     RepairPlan,
+    WeldPayload,
+    WeldPrimitivePayload,
 )
 
 _NORMALIZATION_CODES = {
@@ -156,12 +158,71 @@ def _rename_candidates(
     return candidates
 
 
+def _attribute_safe_weld_candidate(
+    inspection: InspectionResult,
+) -> CandidateRepair | None:
+    """Register only complete vertex-tuple compaction proven by inspection evidence."""
+    if inspection.diagnostics is None:
+        return None
+    mergeable = tuple(
+        primitive
+        for primitive in inspection.diagnostics.primitives
+        if primitive.attribute_safe_merge_count > 0
+    )
+    if not mergeable:
+        return None
+    protected_attributes = tuple(
+        sorted(
+            {
+                semantic
+                for primitive in inspection.diagnostics.primitives
+                for semantic in primitive.attribute_semantics
+            }
+        )
+    )
+    duplicate_finding_ids = tuple(
+        finding.id
+        for finding in inspection.findings
+        if finding.code == "ATTRIBUTE_SAFE_DUPLICATE_TUPLES_DETECTED"
+    )
+    return CandidateRepair(
+        id="weld-identical-vertices-v1",
+        kind=RepairKind.WELD_IDENTICAL_VERTICES,
+        action_class=ActionClass.AUTO_SAFE,
+        finding_ids=duplicate_finding_ids,
+        description=(
+            "Compact byte-identical complete vertex tuples while retaining every protected "
+            "attribute seam."
+        ),
+        payload=WeldPayload(
+            primitives=tuple(
+                WeldPrimitivePayload(
+                    mesh_index=primitive.mesh_index,
+                    primitive_index=primitive.primitive_index,
+                    before_position_count=primitive.position_count,
+                    after_position_count=(
+                        primitive.position_count - primitive.attribute_safe_merge_count
+                    ),
+                    merge_count=primitive.attribute_safe_merge_count,
+                )
+                for primitive in mergeable
+            ),
+            protected_attributes=protected_attributes,
+            consequence_summary=(
+                "This changes index and vertex-buffer layout only where complete vertex tuples "
+                "are byte-identical; UV, normal, color, and skinning seams remain split."
+            ),
+        ),
+    )
+
+
 def plan_agent_repairs(
     inspection: InspectionResult,
     profile: ProjectProfile,
     assessment: AgentRepairAssessment,
     *,
     confirmed_target_height_m: float,
+    confirmed_target_dimensions_m: tuple[float, float, float] | None = None,
 ) -> RepairPlan:
     """Preview exactly the bounded actions requested by a model-authored assessment."""
     blocked_reasons: list[str] = []
@@ -175,6 +236,14 @@ def plan_agent_repairs(
     if not blocked_reasons and assessment.disposition is AgentDisposition.REPAIR:
         if assessment.rename_invalid_display_names:
             candidates.extend(_rename_candidates(inspection, profile))
+        if assessment.weld_identical_vertices:
+            weld_candidate = _attribute_safe_weld_candidate(inspection)
+            if weld_candidate is None:
+                raise ValueError(
+                    "The agent requested welding, but inspection found no attribute-safe "
+                    "duplicate vertex tuples"
+                )
+            candidates.append(weld_candidate)
 
         transform_requested = any(
             (
@@ -191,22 +260,55 @@ def plan_agent_repairs(
             components: list[NormalizationComponent] = []
 
             if assessment.scale_to_confirmed_height:
-                axis = assessment.semantic_height_axis
-                if axis is None:
-                    raise ValueError("Scaling requires an agent-selected semantic height axis")
-                extent = bounds.dimensions_m[{"X": 0, "Y": 1, "Z": 2}[axis]]
-                if extent <= 0:
-                    raise ValueError("The selected semantic height extent is not positive")
-                scale_factor = confirmed_target_height_m / extent
+                if confirmed_target_dimensions_m is not None:
+                    target_dimensions = np.asarray(
+                        confirmed_target_dimensions_m,
+                        dtype=np.float64,
+                    )
+                    if not np.isfinite(target_dimensions).all() or np.any(target_dimensions <= 0):
+                        raise ValueError("Confirmed target dimensions must be finite and positive")
+                    fitting_matrix = (
+                        _axis_rotation(assessment.rotation_axis, assessment.rotation_degrees)
+                        if assessment.rotation_degrees != 0 and assessment.rotation_axis is not None
+                        else np.eye(4, dtype=np.float64)
+                    )
+                    fitting_corners = _bounds_corners(bounds)
+                    fitting_homogeneous = np.column_stack(
+                        (fitting_corners, np.ones(len(fitting_corners), dtype=np.float64))
+                    )
+                    fitting_points = (fitting_matrix @ fitting_homogeneous.T).T[:, :3]
+                    source_dimensions = np.ptp(fitting_points, axis=0)
+                    if np.any(source_dimensions <= 0):
+                        raise ValueError("Every fitted source dimension must be positive")
+                    axis_factors = target_dimensions / source_dimensions
+                    scale_factor = float(np.median(axis_factors))
+                    fitted_dimensions = source_dimensions * scale_factor
+                    evidence = (
+                        "The confirmed X/Y/Z dimensions are approximate. The deterministic "
+                        f"uniform median fit chose {scale_factor:.9g} from axis factors "
+                        f"{axis_factors[0]:.6g}, {axis_factors[1]:.6g}, "
+                        f"{axis_factors[2]:.6g}; expected extents are "
+                        f"{fitted_dimensions[0]:.6g} x {fitted_dimensions[1]:.6g} x "
+                        f"{fitted_dimensions[2]:.6g} m. Proportions remain unchanged."
+                    )
+                else:
+                    axis = assessment.semantic_height_axis
+                    if axis is None:
+                        raise ValueError("Scaling requires an agent-selected semantic height axis")
+                    extent = bounds.dimensions_m[{"X": 0, "Y": 1, "Z": 2}[axis]]
+                    if extent <= 0:
+                        raise ValueError("The selected semantic height extent is not positive")
+                    scale_factor = confirmed_target_height_m / extent
+                    evidence = (
+                        f"The agent identified source {axis} ({extent:.9g} m) as semantic "
+                        f"height and requested the confirmed {confirmed_target_height_m:.9g} m "
+                        "target."
+                    )
                 matrix = np.diag([scale_factor, scale_factor, scale_factor, 1.0]) @ matrix
                 components.append(
                     NormalizationComponent(
                         component="scale",
-                        evidence=(
-                            f"The agent identified source {axis} ({extent:.9g} m) as semantic "
-                            f"height and requested the confirmed {confirmed_target_height_m:.9g} m "
-                            "target."
-                        ),
+                        evidence=evidence,
                         confidence=assessment.confidence,
                     )
                 )

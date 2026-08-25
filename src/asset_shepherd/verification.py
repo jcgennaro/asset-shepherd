@@ -14,7 +14,13 @@ import trimesh
 from pydantic import JsonValue
 from pygltflib import GLTF2
 
-from asset_shepherd.glb import GlbError, load_glb, node_local_matrix, validate_loaded_glb
+from asset_shepherd.glb import (
+    GlbError,
+    accessor_array,
+    load_glb,
+    node_local_matrix,
+    validate_loaded_glb,
+)
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.khronos import (
     KhronosValidatorError,
@@ -35,6 +41,7 @@ from asset_shepherd.models import (
     VerificationCheck,
     VerificationResult,
     VerificationState,
+    WeldPayload,
 )
 from asset_shepherd.planner import plan_repairs
 from asset_shepherd.repair import RepairOutcome
@@ -106,6 +113,65 @@ def _document_section(document: dict[str, object], name: str) -> object:
     return document.get(name, [])
 
 
+def _record_byte_length(record: dict[str, object]) -> int:
+    value = record.get("byteLength", 0)
+    return value if isinstance(value, int) else 0
+
+
+def _executed_weld(plan: RepairPlan, outcome: RepairOutcome) -> WeldPayload | None:
+    return next(
+        (
+            candidate.payload
+            for candidate in plan.candidates
+            if candidate.id in outcome.executed_action_ids
+            and isinstance(candidate.payload, WeldPayload)
+        ),
+        None,
+    )
+
+
+def _corner_attribute_hash(gltf: GLTF2) -> str:
+    """Hash rendered primitive inputs after expanding every vertex attribute by index."""
+    records: list[object] = []
+    for mesh_index, mesh in enumerate(gltf.meshes):
+        for primitive_index, primitive in enumerate(mesh.primitives):
+            attribute_indices = {
+                semantic: accessor_index
+                for semantic, accessor_index in vars(primitive.attributes).items()
+                if isinstance(accessor_index, int)
+            }
+            position_index = attribute_indices.get("POSITION")
+            if position_index is None:
+                raise GlbError("Primitive has no POSITION accessor")
+            position_count = len(accessor_array(gltf, position_index))
+            if primitive.indices is None:
+                indices = np.arange(position_count, dtype=np.int64)
+            else:
+                indices = np.asarray(
+                    accessor_array(gltf, primitive.indices),
+                    dtype=np.int64,
+                ).reshape(-1)
+            attributes = {
+                semantic: sha256(
+                    np.ascontiguousarray(accessor_array(gltf, accessor_index)[indices]).tobytes()
+                ).hexdigest()
+                for semantic, accessor_index in sorted(attribute_indices.items())
+            }
+            records.append(
+                {
+                    "mesh": mesh_index,
+                    "primitive": primitive_index,
+                    "mode": primitive.mode,
+                    "material": primitive.material,
+                    "attributes": attributes,
+                    "targets": primitive.targets,
+                    "extensions": primitive.extensions,
+                    "extras": primitive.extras,
+                }
+            )
+    return _canonical_hash(records)
+
+
 def _preservation_checks(
     source_gltf: GLTF2,
     output_gltf: GLTF2,
@@ -118,6 +184,7 @@ def _preservation_checks(
     source_document = cast(dict[str, object], json.loads(source_gltf.to_json()))
     output_document = cast(dict[str, object], json.loads(output_gltf.to_json()))
     checks: list[VerificationCheck] = []
+    weld = _executed_weld(plan, outcome)
 
     section_checks = (
         ("ACCESSOR_DEFINITIONS_PRESERVED", "accessors"),
@@ -132,29 +199,66 @@ def _preservation_checks(
         ("CAMERA_DEFINITIONS_PRESERVED", "cameras"),
     )
     for code, section in section_checks:
-        source_hash = _canonical_hash(_document_section(source_document, section))
-        output_hash = _canonical_hash(_document_section(output_document, section))
+        source_section = _document_section(source_document, section)
+        output_section = _document_section(output_document, section)
+        if weld is not None and section in {"accessors", "bufferViews"}:
+            source_records = cast(list[object], source_section)
+            output_records = cast(list[object], output_section)
+            preserved = source_records == output_records[: len(source_records)]
+            source_hash = _canonical_hash(source_records)
+            output_hash = _canonical_hash(output_records[: len(source_records)])
+        elif weld is not None and section == "buffers":
+            source_records = cast(list[dict[str, object]], source_section)
+            output_records = cast(list[dict[str, object]], output_section)
+            preserved = len(source_records) == len(output_records) and all(
+                {key: value for key, value in source_item.items() if key != "byteLength"}
+                == {key: value for key, value in output_item.items() if key != "byteLength"}
+                and _record_byte_length(output_item) >= _record_byte_length(source_item)
+                for source_item, output_item in zip(source_records, output_records, strict=True)
+            )
+            source_hash = _canonical_hash(source_records)
+            output_hash = _canonical_hash(output_records)
+        else:
+            source_hash = _canonical_hash(source_section)
+            output_hash = _canonical_hash(output_section)
+            preserved = source_hash == output_hash
         checks.append(
             _check(
                 code,
-                source_hash == output_hash,
-                f"The {section} records are semantically unchanged.",
+                preserved,
+                (
+                    f"The original {section} records are preserved and authorized weld data is "
+                    "append-only."
+                    if weld is not None and section in {"accessors", "bufferViews", "buffers"}
+                    else f"The {section} records are semantically unchanged."
+                ),
                 expected=source_hash,
                 actual=output_hash,
             )
         )
 
-    source_mesh_hash = _canonical_hash(
-        _without_display_names(_document_section(source_document, "meshes"))
-    )
-    output_mesh_hash = _canonical_hash(
-        _without_display_names(_document_section(output_document, "meshes"))
-    )
+    if weld is None:
+        source_mesh_hash = _canonical_hash(
+            _without_display_names(_document_section(source_document, "meshes"))
+        )
+        output_mesh_hash = _canonical_hash(
+            _without_display_names(_document_section(output_document, "meshes"))
+        )
+    else:
+        source_mesh_hash = _corner_attribute_hash(source_gltf)
+        output_mesh_hash = _corner_attribute_hash(output_gltf)
     checks.append(
         _check(
             "MESH_PRIMITIVES_PRESERVED",
             source_mesh_hash == output_mesh_hash,
-            "Mesh primitives, attributes, topology, material references, and extras are unchanged.",
+            (
+                "Every expanded primitive corner retains identical attributes and draw metadata."
+                if weld is not None
+                else (
+                    "Mesh primitives, attributes, topology, material references, and extras are "
+                    "unchanged."
+                )
+            ),
             expected=source_mesh_hash,
             actual=output_mesh_hash,
         )
@@ -180,11 +284,23 @@ def _preservation_checks(
     output_blob = cast(bytes | bytearray | None, output_gltf.binary_blob())
     source_blob_hash = sha256(bytes(source_blob or b"")).hexdigest()
     output_blob_hash = sha256(bytes(output_blob or b"")).hexdigest()
+    binary_preserved = (
+        source_blob_hash == output_blob_hash
+        if weld is None
+        else bytes(output_blob or b"").startswith(bytes(source_blob or b""))
+    )
     checks.append(
         _check(
             "BINARY_PAYLOAD_PRESERVED",
-            source_blob_hash == output_blob_hash,
-            "The complete embedded binary payload, including geometry and images, is unchanged.",
+            binary_preserved,
+            (
+                "The source binary payload is an unchanged prefix of append-only weld data."
+                if weld is not None
+                else (
+                    "The complete embedded binary payload, including geometry and images, is "
+                    "unchanged."
+                )
+            ),
             expected=source_blob_hash,
             actual=output_blob_hash,
         )
@@ -467,10 +583,14 @@ def verify_repair(
         )
     )
     if original.geometry is not None and output.geometry is not None:
+        weld = _executed_weld(plan, outcome)
+        expected_vertex_count = original.geometry.vertex_count - (
+            sum(primitive.merge_count for primitive in weld.primitives) if weld is not None else 0
+        )
         count_pairs = (
             (
                 "VERTEX_COUNT_PRESERVED",
-                original.geometry.vertex_count,
+                expected_vertex_count,
                 output.geometry.vertex_count,
             ),
             (
@@ -497,6 +617,34 @@ def verify_repair(
                     code.replace("_", " ").title(),
                     expected=expected,
                     actual=actual,
+                )
+            )
+        if weld is not None:
+            output_primitives = (
+                {
+                    (primitive.mesh_index, primitive.primitive_index): primitive
+                    for primitive in output.diagnostics.primitives
+                }
+                if output.diagnostics is not None
+                else {}
+            )
+            remaining_safe_merges = {
+                f"{primitive.mesh_index}:{primitive.primitive_index}": (
+                    output_primitives[
+                        (primitive.mesh_index, primitive.primitive_index)
+                    ].attribute_safe_merge_count
+                    if (primitive.mesh_index, primitive.primitive_index) in output_primitives
+                    else None
+                )
+                for primitive in weld.primitives
+            }
+            checks.append(
+                _check(
+                    "ATTRIBUTE_SAFE_WELD_EXHAUSTED",
+                    all(value == 0 for value in remaining_safe_merges.values()),
+                    "Every selected primitive has no remaining byte-identical vertex tuples.",
+                    expected=0,
+                    actual=cast(JsonValue, remaining_safe_merges),
                 )
             )
         naming_valid = output.naming is not None and not output.naming.proposed_replacements

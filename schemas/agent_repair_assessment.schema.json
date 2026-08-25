@@ -135,6 +135,11 @@
       "minLength": 12,
       "title": "Summary",
       "type": "string"
+    },
+    "weld_identical_vertices": {
+      "default": false,
+      "title": "Weld Identical Vertices",
+      "type": "boolean"
     }
   },
   "required": [

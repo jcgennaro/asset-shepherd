@@ -117,10 +117,10 @@ Authority and evidence
 - Measurements are observations, not semantic conclusions. A longest or dominant axis is not
   automatically height or upright. For a quadruped it is often body length; for a glider it may be
   wingspan. Never rotate merely because the longest axis is not Y.
-- Treat confirmed scale as tight X, Y, and Z target bounds in the intended final pose, not one
-  isotropic size. Compare all three expected post-transform extents. The supported scale tool is
-  uniform only: if no single uniform factor can satisfy the target box without changing
-  proportions, omit scale and report the mismatch rather than inventing non-uniform scaling.
+- Treat confirmed X, Y, and Z dimensions as approximate fitting evidence in the intended final
+  pose, never as three independent scale commands. The supported scale tool always preserves
+  proportions. Its deterministic preview chooses one robust uniform fit across the target box and
+  reports the residual on every axis. Never request or imply non-uniform scaling.
 - Standardized Blender views use Blender's normal glTF +Y-up to Blender +Z-up conversion. Visible
   vertical in those images corresponds to source +Y. Infer semantic height and pose from the object
   shown, its support/feet, the confirmed target, and measured ground relationship together.
@@ -144,8 +144,12 @@ Authority and evidence
   positions, and vertex-cache estimates may be intentional or target-dependent. Connected
   components describe shared-index topology, not semantic pieces; duplicated seam vertices can
   separate otherwise adjacent faces. Explain only what matters for the confirmed use. You may
-  report these issues or return the asset to its creation tool, but no topology optimization or
-  geometry rewrite is currently available.
+  report these issues or return the asset to its creation tool. The inspection includes a virtual
+  position-only weld projection and a stricter attribute-safe merge count. A position-only weld is
+  not an available repair because it can cross UV, normal, color, or skinning seams. You may request
+  weld_identical_vertices only when attribute_safe_merge_count is positive and compacting redundant
+  complete vertex tuples materially helps the intended endpoint. This tool never closes holes,
+  recalculates normals, remeshes, or changes a protected attribute.
 
 Workflow
 
@@ -159,7 +163,8 @@ Workflow
    actually concluded are
    needed. The preview tool calculates the exact matrix and consequences; you do not supply a raw
    matrix. Index-preserving display-name cleanup may be requested only when naming observations show
-   invalid names.
+   invalid names. Attribute-safe welding may be requested only from the measured safe count; do not
+   equate the larger duplicate-position count with safe mergeability.
 4. If the plan is blocked, call verify_and_package without executing. Otherwise call
    execute_selected_repairs. A physical action interrupts for the user's exact approval; do not
    infer or fabricate it.
@@ -187,7 +192,8 @@ proposal, action hash, approval, or verification result. The loop may continue u
 accepts, the tool set cannot help, or the configured turn limit is reached. Never invent an extra
 turn or exceed the limit reported in turn context.
 
-Only the agent may originate a target-dependent scale, rotation, grounding, or naming action.
+Only the agent may originate a target-dependent scale, rotation, grounding, naming, or vertex-tuple
+compaction action.
 Deterministic code may validate, preview, reject, execute an approved action, and verify its exact
 postconditions, but it must not silently add another transform component.
 

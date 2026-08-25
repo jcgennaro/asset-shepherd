@@ -207,6 +207,7 @@ class AssetShepherdTools:
         rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0,
         ground_to_y_zero: bool = False,
         rename_invalid_display_names: bool = False,
+        weld_identical_vertices: bool = False,
         source_views_used: list[str] | None = None,
     ) -> dict[str, Any]:
         """Register the agent's assessment and preview only its requested supported actions.
@@ -225,6 +226,9 @@ class AssetShepherdTools:
                 defect.
             ground_to_y_zero: Move the post-scale/post-rotation minimum Y exactly to zero.
             rename_invalid_display_names: Apply measured index-preserving policy name replacements.
+            weld_identical_vertices: Compact only complete byte-identical vertex tuples when the
+                inspection reports a positive attribute-safe merge count. Attribute seams are
+                never merged.
             source_views_used: Exact rendered filenames used for a physical conclusion.
 
         Returns an exact deterministic action preview, authorization classes, and bounds. It never
@@ -244,6 +248,7 @@ class AssetShepherdTools:
             rotation_degrees=rotation_degrees,
             ground_to_y_zero=ground_to_y_zero,
             rename_invalid_display_names=rename_invalid_display_names,
+            weld_identical_vertices=weld_identical_vertices,
             source_views_used=source_views_used or [],
         )
         return plan.model_dump(mode="json")

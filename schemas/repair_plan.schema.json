@@ -158,7 +158,8 @@
           "discriminator": {
             "mapping": {
               "normalization": "#/$defs/NormalizationPayload",
-              "rename": "#/$defs/RenamePayload"
+              "rename": "#/$defs/RenamePayload",
+              "weld_identical_vertices": "#/$defs/WeldPayload"
             },
             "propertyName": "payload_type"
           },
@@ -168,6 +169,9 @@
             },
             {
               "$ref": "#/$defs/NormalizationPayload"
+            },
+            {
+              "$ref": "#/$defs/WeldPayload"
             }
           ],
           "title": "Payload"
@@ -391,10 +395,95 @@
       "enum": [
         "RENAME_NODE",
         "RENAME_MESH",
-        "NORMALIZATION_TRANSFORM"
+        "NORMALIZATION_TRANSFORM",
+        "WELD_IDENTICAL_VERTICES"
       ],
       "title": "RepairKind",
       "type": "string"
+    },
+    "WeldPayload": {
+      "additionalProperties": false,
+      "description": "Typed request to merge only byte-identical complete vertex tuples.",
+      "properties": {
+        "consequence_summary": {
+          "title": "Consequence Summary",
+          "type": "string"
+        },
+        "payload_type": {
+          "const": "weld_identical_vertices",
+          "default": "weld_identical_vertices",
+          "title": "Payload Type",
+          "type": "string"
+        },
+        "primitives": {
+          "items": {
+            "$ref": "#/$defs/WeldPrimitivePayload"
+          },
+          "title": "Primitives",
+          "type": "array"
+        },
+        "protected_attributes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Protected Attributes",
+          "type": "array"
+        },
+        "tolerance_m": {
+          "default": 0.0,
+          "maximum": 0.0,
+          "minimum": 0.0,
+          "title": "Tolerance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "primitives",
+        "protected_attributes",
+        "consequence_summary"
+      ],
+      "title": "WeldPayload",
+      "type": "object"
+    },
+    "WeldPrimitivePayload": {
+      "additionalProperties": false,
+      "description": "Expected effect of one exact, attribute-preserving primitive weld.",
+      "properties": {
+        "after_position_count": {
+          "exclusiveMinimum": 0,
+          "title": "After Position Count",
+          "type": "integer"
+        },
+        "before_position_count": {
+          "exclusiveMinimum": 0,
+          "title": "Before Position Count",
+          "type": "integer"
+        },
+        "merge_count": {
+          "exclusiveMinimum": 0,
+          "title": "Merge Count",
+          "type": "integer"
+        },
+        "mesh_index": {
+          "minimum": 0,
+          "title": "Mesh Index",
+          "type": "integer"
+        },
+        "primitive_index": {
+          "minimum": 0,
+          "title": "Primitive Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mesh_index",
+        "primitive_index",
+        "before_position_count",
+        "after_position_count",
+        "merge_count"
+      ],
+      "title": "WeldPrimitivePayload",
+      "type": "object"
     }
   },
   "$id": "https://asset-shepherd.dev/schemas/v1/repair_plan.schema.json",
