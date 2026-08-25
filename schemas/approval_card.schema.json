@@ -126,7 +126,8 @@
           "enum": [
             "scale",
             "orientation",
-            "grounding"
+            "grounding",
+            "pivot"
           ],
           "title": "Component",
           "type": "string"

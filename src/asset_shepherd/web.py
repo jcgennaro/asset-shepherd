@@ -1522,6 +1522,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             assessment.scale_to_confirmed_height
             or assessment.rotation_degrees != 0
             or assessment.ground_to_y_zero
+            or assessment.pivot_target != "PRESERVE"
         )
     )
     diagnostic_primitives = inspection.diagnostics.primitives if inspection.diagnostics else ()
@@ -1563,6 +1564,12 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                     )
                 if assessment is not None and assessment.ground_to_y_zero:
                     requested.append("ground at Y=0")
+                if assessment is not None and assessment.pivot_target == "BOUNDS_CENTER":
+                    requested.append("center pivot in the bounds")
+                elif (
+                    assessment is not None and assessment.pivot_target == "FOOTPRINT_CENTER_BOTTOM"
+                ):
+                    requested.append("center pivot on the footprint")
                 if not requested:
                     requested = [component.component for component in payload.components]
                 normalization_action = (

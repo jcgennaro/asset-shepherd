@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[6]] = 6
+AGENT_PROMPT_VERSION: Final[Literal[7]] = 7
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -219,6 +219,38 @@ AGENT_SYSTEM_PROMPT_V6: Final[str] = AGENT_SYSTEM_PROMPT_V5.replace(
     "  the proportions and appearance stayed intact, and no new problem appeared. Never "
     "request or\n"
     "  imply non-uniform scaling.",
+)
+
+AGENT_SYSTEM_PROMPT_V7: Final[str] = AGENT_SYSTEM_PROMPT_V6.replace(
+    "- Do not request grounding when measured minimum Y is already zero and the only "
+    "other action is a\n"
+    "  uniform scale about the origin; that scale preserves grounding. Do not request "
+    "no-op components.",
+    "- Grounding and pivot placement are separate target conditions. The asset pivot is "
+    "the file's\n"
+    "  world origin; compare it with the measured bounds center and footprint "
+    "center-bottom. For a\n"
+    "  plainly grounded static prop or pickup, footprint center-bottom is often useful; "
+    "pickups that\n"
+    "  rotate freely may need bounds center; doors, wheels, hanging objects, rigs, and "
+    "ambiguous\n"
+    "  mechanisms may require a different authored pivot. In those cases preserve it "
+    "or ask rather\n"
+    "  than guessing. Only request BOUNDS_CENTER or FOOTPRINT_CENTER_BOTTOM when the "
+    "intended\n"
+    "  placement and evidence support it. Never supply an arbitrary translation.\n"
+    "- Do not request grounding when measured minimum Y is already zero and the only "
+    "other action is a\n"
+    "  uniform scale about the origin; that scale preserves grounding. A "
+    "footprint-center-bottom\n"
+    "  pivot also grounds the asset, but both conclusions must remain explicit. Do not "
+    "request no-op\n"
+    "  components.",
+).replace(
+    "Only the agent may originate a target-dependent scale, rotation, grounding, naming, "
+    "or vertex-tuple\n",
+    "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, "
+    "naming, or vertex-tuple\n",
 )
 
 

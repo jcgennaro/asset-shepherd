@@ -4,6 +4,51 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D053 — Make pivot placement a bounded agent-selected target condition
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 real-world evaluation
+
+**Context**
+
+The Computer Chip could be grounded at the project plane while retaining an inconvenient pivot on
+its rear edge. Ground contact therefore did not establish a useful placement anchor. Wider pipeline
+evidence also confirmed that glTF world bounds must include the complete hierarchy, attribute seams
+must not be welded by position alone, render topology need not be watertight, and visual-evidence
+failure must remain separate from structural or payload failure.
+
+**Decision**
+
+Expose the file world origin, world-bounds center, footprint center-bottom, and root origins as
+objective measurements. The workflow agent—not a shape heuristic—may request one of three typed
+states: preserve the authored pivot, put the world-bounds center at the origin, or put the footprint
+center-bottom at the origin. The deterministic preview derives the exact translation and groups it
+with any compatible approved root normalization. Grounding and pivot placement remain separate
+recorded conclusions even when footprint-center-bottom satisfies both. Bounds-center plus grounding
+is rejected as contradictory. Doors, wheels, hanging objects, rigs, and ambiguous mechanisms retain
+their authored pivot or trigger clarification. Arbitrary translations are not exposed.
+
+The ordinary-language target flow remains unchanged: the agent infers plausible intent and the user
+confirms it. Requiring users to manually populate every possible contract field would conflict with
+the approved minimum-information intake design. Stable authority and safety instructions remain
+always present; specialist playbooks may later become just-in-time skills, but the current prompt is
+not near its model context limit.
+
+**Evidence and consequences**
+
+Typed schemas bind pivot targets to explicit normalization components and reject incompatible
+targets. Planner tests prove a footprint-center-bottom request becomes only the derived translation,
+without invented scale or rotation. A full repair test writes a new GLB, reloads it independently,
+and verifies the requested footprint anchor at the origin. The approval table keeps this action in
+the existing Size and pose lane, and the What it does page now names pivot placement. Existing
+source hashing, hierarchy-aware bounds, seam-aware topology stop rules, exact-tuple compaction,
+payload preservation, and independent verification remain in force.
+
 ### D052 — Make the asset gallery the persistent workflow home
 
 **Date:** 2026-08-25

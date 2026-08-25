@@ -466,6 +466,22 @@ class AgentJob:
     def objective_observations(self) -> dict[str, object]:
         """Return measurements without deterministic target-dependent conclusions."""
         inspection = self.inspect()
+        pivot_observation: dict[str, object] | None = None
+        if inspection.geometry is not None and inspection.diagnostics is not None:
+            bounds = inspection.geometry.bounds
+            bounds_center = tuple(
+                (bounds.minimum_m[index] + bounds.maximum_m[index]) / 2.0 for index in range(3)
+            )
+            pivot_observation = {
+                "asset_origin_m": (0.0, 0.0, 0.0),
+                "bounds_center_m": bounds_center,
+                "footprint_center_bottom_m": inspection.diagnostics.bounds_ground_center_m,
+                "root_world_origins_m": inspection.diagnostics.root_world_origins_m,
+                "interpretation": (
+                    "Ground contact and pivot placement are separate target conditions. These "
+                    "coordinates are measurements only; intended placement determines the anchor."
+                ),
+            }
         return {
             "source_filename": inspection.source_filename,
             "package": inspection.package.model_dump(mode="json"),
@@ -493,6 +509,7 @@ class AgentJob:
                 if inspection.diagnostics is not None
                 else None
             ),
+            "pivot_observation": pivot_observation,
             "non_semantic_findings": [
                 finding.model_dump(mode="json") for finding in inspection.findings
             ],
@@ -685,6 +702,7 @@ class AgentJob:
         rename_invalid_display_names: bool,
         source_views_used: list[str],
         weld_identical_vertices: bool = False,
+        pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE",
     ) -> RepairPlan:
         """Validate and register one model-authored disposition and exact action preview."""
         if not self.agent_orchestrated:
@@ -694,7 +712,12 @@ class AgentJob:
         if self.selected_plan is not None or self.agent_assessment is not None:
             raise AgentWorkflowError("This source turn already has a registered assessment")
         physical_requested = any(
-            (scale_to_confirmed_height, rotation_degrees != 0, ground_to_y_zero)
+            (
+                scale_to_confirmed_height,
+                rotation_degrees != 0,
+                ground_to_y_zero,
+                pivot_target != "PRESERVE",
+            )
         )
         available_views: set[str] = (
             {path.name for path in self.render_source_views()} if physical_requested else set()
@@ -711,6 +734,7 @@ class AgentJob:
         if (
             ground_to_y_zero
             and rotation_degrees == 0
+            and pivot_target == "PRESERVE"
             and self.inspection.geometry is not None
             and abs(self.inspection.geometry.bounds.minimum_m[1]) <= 1e-9
         ):
@@ -734,6 +758,7 @@ class AgentJob:
             "rotation_axis": effective_rotation_axis,
             "rotation_degrees": rotation_degrees,
             "ground_to_y_zero": ground_to_y_zero,
+            "pivot_target": pivot_target,
             "rename_invalid_display_names": rename_invalid_display_names,
             "weld_identical_vertices": weld_identical_vertices,
             "source_views_used": source_views_used,
@@ -753,6 +778,7 @@ class AgentJob:
             rotation_axis=effective_rotation_axis,
             rotation_degrees=rotation_degrees,
             ground_to_y_zero=ground_to_y_zero,
+            pivot_target=pivot_target,
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
             source_views_used=tuple(source_views_used),
@@ -869,6 +895,7 @@ class AgentJob:
             "scale": "physical scale",
             "orientation": "upright orientation",
             "grounding": "grounding",
+            "pivot": "pivot placement",
         }
         requested = [labels[component.component] for component in candidate.payload.components]
         if len(requested) == 1:

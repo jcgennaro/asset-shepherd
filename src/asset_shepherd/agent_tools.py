@@ -208,6 +208,7 @@ class AssetShepherdTools:
         rotation_axis: Literal["X", "Y", "Z"] | None = None,
         rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0,
         ground_to_y_zero: bool = False,
+        pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE",
         rename_invalid_display_names: bool = False,
         weld_identical_vertices: bool = False,
         source_views_used: list[str] | None = None,
@@ -227,6 +228,9 @@ class AssetShepherdTools:
             rotation_degrees: One bounded right-handed quarter turn; use 0 unless views show a
                 defect.
             ground_to_y_zero: Move the post-scale/post-rotation minimum Y exactly to zero.
+            pivot_target: Preserve the asset origin, move the world-bounds center to it, or move
+                the footprint center-bottom to it. Choose from intended placement; never guess an
+                arbitrary translation. Grounding and pivot placement are separate conclusions.
             rename_invalid_display_names: Apply measured index-preserving policy name replacements.
             weld_identical_vertices: Compact only complete byte-identical vertex tuples when the
                 inspection reports a positive attribute-safe merge count. Attribute seams are
@@ -249,6 +253,7 @@ class AssetShepherdTools:
             rotation_axis=rotation_axis,
             rotation_degrees=rotation_degrees,
             ground_to_y_zero=ground_to_y_zero,
+            pivot_target=pivot_target,
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
             source_views_used=source_views_used or [],

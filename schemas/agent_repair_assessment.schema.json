@@ -60,6 +60,16 @@
       "default": null,
       "title": "Initiating Tool Call Id"
     },
+    "pivot_target": {
+      "default": "PRESERVE",
+      "enum": [
+        "PRESERVE",
+        "BOUNDS_CENTER",
+        "FOOTPRINT_CENTER_BOTTOM"
+      ],
+      "title": "Pivot Target",
+      "type": "string"
+    },
     "rename_invalid_display_names": {
       "default": false,
       "title": "Rename Invalid Display Names",

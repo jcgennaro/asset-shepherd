@@ -250,6 +250,7 @@ def plan_agent_repairs(
                 assessment.scale_to_confirmed_height,
                 assessment.rotation_degrees != 0,
                 assessment.ground_to_y_zero,
+                assessment.pivot_target != "PRESERVE",
             )
         )
         if transform_requested:
@@ -338,7 +339,51 @@ def plan_agent_repairs(
             corners = _bounds_corners(bounds)
             homogeneous = np.column_stack((corners, np.ones(len(corners), dtype=np.float64)))
             transformed = (matrix @ homogeneous.T).T[:, :3]
-            if assessment.ground_to_y_zero:
+            if assessment.pivot_target != "PRESERVE":
+                minimum = transformed.min(axis=0)
+                maximum = transformed.max(axis=0)
+                if assessment.pivot_target == "BOUNDS_CENTER":
+                    anchor = (minimum + maximum) / 2.0
+                    target_label = "world-bounds center"
+                else:
+                    anchor = np.asarray(
+                        [
+                            (minimum[0] + maximum[0]) / 2.0,
+                            minimum[1],
+                            (minimum[2] + maximum[2]) / 2.0,
+                        ],
+                        dtype=np.float64,
+                    )
+                    target_label = "footprint center-bottom"
+                if np.linalg.norm(anchor) <= 1e-9:
+                    raise ValueError(f"The requested {target_label} pivot is already at the origin")
+                translation = np.eye(4, dtype=np.float64)
+                translation[:3, 3] = -anchor
+                matrix = translation @ matrix
+                transformed = (matrix @ homogeneous.T).T[:, :3]
+                components.append(
+                    NormalizationComponent(
+                        component="pivot",
+                        evidence=(
+                            f"The agent requested the {target_label} move from "
+                            f"({anchor[0]:.9g}, {anchor[1]:.9g}, {anchor[2]:.9g}) m to the "
+                            "asset origin."
+                        ),
+                        confidence=assessment.confidence,
+                    )
+                )
+                if assessment.ground_to_y_zero:
+                    components.append(
+                        NormalizationComponent(
+                            component="grounding",
+                            evidence=(
+                                "The requested footprint center-bottom pivot also places the "
+                                "post-transform minimum Y at 0."
+                            ),
+                            confidence=assessment.confidence,
+                        )
+                    )
+            elif assessment.ground_to_y_zero:
                 minimum_y = float(transformed[:, 1].min())
                 translation = np.eye(4, dtype=np.float64)
                 translation[1, 3] = -minimum_y
@@ -368,6 +413,7 @@ def plan_agent_repairs(
                         proposed_matrix=_matrix_model(matrix),
                         expected_after_bounds=_bounds_from_points(transformed),
                         components=tuple(components),
+                        pivot_target=assessment.pivot_target,
                         consequence_summary=(
                             f"This changes world-space {component_names} as assessed by the agent."
                         ),

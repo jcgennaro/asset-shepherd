@@ -477,7 +477,7 @@ class RenamePayload(ContractModel):
 class NormalizationComponent(ContractModel):
     """Evidence for one component of a combined normalization transform."""
 
-    component: Literal["scale", "orientation", "grounding"]
+    component: Literal["scale", "orientation", "grounding", "pivot"]
     evidence: str
     confidence: UnitConfidence
 
@@ -490,7 +490,19 @@ class NormalizationPayload(ContractModel):
     proposed_matrix: Matrix4
     expected_after_bounds: Bounds3D
     components: tuple[NormalizationComponent, ...]
+    pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE"
     consequence_summary: str
+
+    @model_validator(mode="after")
+    def pivot_target_matches_components(self) -> "NormalizationPayload":
+        """Keep the bounded pivot target and the exact transform evidence inseparable."""
+        component_names = {component.component for component in self.components}
+        has_pivot = "pivot" in component_names
+        if has_pivot != (self.pivot_target != "PRESERVE"):
+            raise ValueError("Pivot target and normalization components are inconsistent")
+        if self.pivot_target == "BOUNDS_CENTER" and "grounding" in component_names:
+            raise ValueError("Bounds-center pivot and grounding are conflicting targets")
+        return self
 
 
 class WeldPrimitivePayload(ContractModel):
@@ -568,6 +580,7 @@ class AgentRepairAssessment(ContractModel):
     rotation_axis: Literal["X", "Y", "Z"] | None = None
     rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0
     ground_to_y_zero: bool = False
+    pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE"
     rename_invalid_display_names: bool = False
     weld_identical_vertices: bool = False
     source_views_used: tuple[str, ...] = ()
@@ -580,6 +593,7 @@ class AgentRepairAssessment(ContractModel):
                 self.scale_to_confirmed_height,
                 self.rotation_degrees != 0,
                 self.ground_to_y_zero,
+                self.pivot_target != "PRESERVE",
                 self.rename_invalid_display_names,
                 self.weld_identical_vertices,
             )
@@ -592,6 +606,8 @@ class AgentRepairAssessment(ContractModel):
             raise ValueError("Scaling requires the semantic height axis observed by the agent")
         if self.rotation_degrees != 0 and self.rotation_axis is None:
             raise ValueError("Rotation degrees require a rotation axis")
+        if self.pivot_target == "BOUNDS_CENTER" and self.ground_to_y_zero:
+            raise ValueError("Bounds-center pivot and ground-to-zero are conflicting targets")
         return self
 
 
@@ -910,7 +926,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6] = 6
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7] = 7
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

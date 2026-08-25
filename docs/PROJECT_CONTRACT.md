@@ -11,7 +11,8 @@
 D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
 sensing and disposition, D042 upload-first two-text UX, D047 seam-aware duplicate-position
 handling, D048 attribute-seam presentation, D049 subtitle-free task screens and tolerant provider
-normalization, and D050 proportional target-box fitting and weld disclosure, through 2026-08-25
+normalization, D050 proportional target-box fitting and weld disclosure, and D053 bounded
+agent-selected pivot placement, through 2026-08-25
 
 ---
 
@@ -351,6 +352,7 @@ The deterministic inspector must report facts before the agent interprets them.
 - World-space axis-aligned bounds.
 - Dimensions in meters and centimeters.
 - World-space minimum and maximum coordinates.
+- File world origin, root world origins, bounds center, and footprint center-bottom.
 - Dominant dimension axis.
 - Whether the asset intersects, floats above, or extends below the Y=0 ground plane.
 
@@ -499,6 +501,8 @@ explicitly chosen subset of:
 - Physical scale correction.
 - A specific root rotation selected by the agent from target and sensor evidence.
 - A specific root translation selected by the agent, including grounding when appropriate.
+- A bounded pivot-placement translation selected by the agent: preserve the authored origin, place
+  the world-bounds center at the origin, or place the footprint center-bottom at the origin.
 
 The deterministic preview of the agent-requested transform must include:
 
@@ -511,7 +515,14 @@ The deterministic preview of the agent-requested transform must include:
 
 The implementation should prefer a reversible, standards-compliant root normalization transform over destructive vertex baking for the MVP. A top-level normalization node is acceptable if it round-trips correctly and verification proves the resulting world-space asset is correct.
 
-The agent should group compatible scale, rotation, and translation into one coherent approval card
+Grounding and pivot placement are distinct target conditions. A grounded model may still have a
+rear-edge or otherwise inconvenient pivot. The agent may choose a bounded pivot target only when
+the confirmed use and measured evidence justify it. Hinged, hanging, rigged, articulated, or
+ambiguous assets retain their authored pivot or require clarification; neither the model nor the
+user supplies an arbitrary translation through this interface.
+
+The agent should group compatible scale, rotation, pivot placement, and translation into one
+coherent approval card
 when its reasoning says they form one operation. The deterministic layer must neither insert a
 component the agent did not request nor split the decision into scripted fragments.
 
@@ -530,7 +541,7 @@ The MVP reports but does not repair:
 - Texture count and dimension violations.
 - Negative or non-uniform transforms that are not part of the approved normalization operation.
 - Apparent duplicate materials or textures.
-- Pivot preferences beyond ground placement.
+- Pivot preferences beyond the two bounded center targets.
 
 ### 9.5 `BLOCKED` operations
 

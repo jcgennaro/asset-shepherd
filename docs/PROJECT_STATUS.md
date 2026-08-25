@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D052 persistent gallery navigation and non-destructive redo (this file is included)
+**Current commit:** D053 bounded agent-selected pivot placement (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -39,7 +39,8 @@
 M9 remains at the D036 acceptance gate. D037 replaces the first target-dependent planning pass with
 a live model-authored assessment and exact typed action preview. Agent-mode inspection exposes
 measurements without legacy height/orientation/grounding verdicts; the agent selects semantic axes
-and requested scale, rotation, grounding, and naming components; deterministic code adds none. An
+and requested scale, rotation, grounding, pivot, and naming components; deterministic code adds
+none. An
 executed action cannot verify until the agent compares recorded source and candidate renders.
 
 D038 makes that action cycle repeatable rather than adding a special second pass. User feedback
@@ -49,6 +50,17 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D053 pivot placement: objective sensing now reports the asset origin, world-bounds center,
+  footprint center-bottom, and root world origins without choosing a target. Prompt version 7 lets
+  the workflow agent preserve the authored pivot or request one of two bounded center targets based
+  on confirmed use and rendered/measured evidence. The deterministic planner derives the exact
+  translation, rejects bounds-center plus grounding, records pivot and grounding separately, and
+  independently reloads the written candidate to verify the requested anchor at the origin. Pivot
+  remains part of the one grouped Size and pose approval lane. The stable live prompt is about 9.3K
+  characters before job context; future specialist guidance may be delivered just in time without
+  making authority or safety rules optional. The common gate passes with 143 tests, one opt-in skip,
+  Ruff, formatting, lock validation, and zero Pyright findings.
 
 - D052 persistent gallery home: Assets is now a clear header and workflow-rail destination during
   every hosted step. Returning does not mutate the active workspace, and each gallery card resumes

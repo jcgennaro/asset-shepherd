@@ -3,8 +3,10 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 from zipfile import ZipFile
 
+import numpy as np
 import pytest
 
 from asset_shepherd.agent_job import (
@@ -12,6 +14,7 @@ from asset_shepherd.agent_job import (
     AgentJob,
     AgentWorkflowError,
 )
+from asset_shepherd.glb import add_normalization_root, load_glb, save_glb, world_bounds
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     AgentDisposition,
@@ -217,6 +220,157 @@ def test_approximate_target_box_uses_one_robust_uniform_scale() -> None:
     )
     assert "log-space best fit" in payload.components[0].evidence
     assert "Residual differences are expected" in payload.components[0].evidence
+
+
+def test_agent_can_recenter_pivot_to_footprint_without_inventing_scale_or_rotation() -> None:
+    """A requested pivot target becomes one exact translation in the grouped root action."""
+    profile = _profile()
+    inspection = inspect_asset(CLEAN_PATH, profile)
+    assert inspection.geometry is not None
+    bounds = Bounds3D(
+        minimum_m=(1.0, 2.0, 3.0),
+        maximum_m=(5.0, 6.0, 9.0),
+        dimensions_m=(4.0, 4.0, 6.0),
+        minimum_cm=(100.0, 200.0, 300.0),
+        maximum_cm=(500.0, 600.0, 900.0),
+        dimensions_cm=(400.0, 400.0, 600.0),
+    )
+    geometry = inspection.geometry.model_copy(update={"bounds": bounds})
+    inspection = inspection.model_copy(update={"geometry": geometry})
+    assessment = AgentRepairAssessment(
+        assessment_id="assessment-2468ace02468ace0-v1",
+        disposition=AgentDisposition.REPAIR,
+        summary="This grounded static prop needs its pivot at the center of its footprint.",
+        evidence=("World bounds place the footprint center-bottom at (3, 2, 6) m.",),
+        confidence=0.95,
+        pivot_target="FOOTPRINT_CENTER_BOTTOM",
+        source_views_used=("front.png", "right.png"),
+    )
+
+    plan = plan_agent_repairs(
+        inspection,
+        profile,
+        assessment,
+        confirmed_target_height_m=4.0,
+    )
+    payload = next(
+        candidate.payload
+        for candidate in plan.candidates
+        if isinstance(candidate.payload, NormalizationPayload)
+    )
+
+    assert payload.pivot_target == "FOOTPRINT_CENTER_BOTTOM"
+    assert tuple(component.component for component in payload.components) == ("pivot",)
+    assert payload.proposed_matrix[0][3] == pytest.approx(-3.0)
+    assert payload.proposed_matrix[1][3] == pytest.approx(-2.0)
+    assert payload.proposed_matrix[2][3] == pytest.approx(-6.0)
+    assert payload.expected_after_bounds.minimum_m == pytest.approx((-2.0, 0.0, -3.0))
+    assert payload.expected_after_bounds.maximum_m == pytest.approx((2.0, 4.0, 3.0))
+
+
+def test_bounds_center_pivot_cannot_be_combined_with_grounding() -> None:
+    """Conflicting target anchors fail before a plan or matrix can be registered."""
+    with pytest.raises(ValueError, match="conflicting targets"):
+        AgentRepairAssessment(
+            assessment_id="assessment-13579bdf13579bdf-v1",
+            disposition=AgentDisposition.REPAIR,
+            summary="The pickup should rotate around its center while also sitting on the floor.",
+            evidence=("The requested anchors have different vertical locations.",),
+            confidence=0.9,
+            ground_to_y_zero=True,
+            pivot_target="BOUNDS_CENTER",
+        )
+
+
+def test_pivot_repair_executes_and_is_independently_verified(tmp_path: Path) -> None:
+    """A written candidate is reloaded and its requested pivot anchor is measured at origin."""
+    source = tmp_path / "offset-source.glb"
+    gltf = load_glb(CLEAN_PATH)
+    original_bounds = world_bounds(gltf)
+    authored_offset = np.eye(4, dtype=np.float64)
+    authored_offset[:3, 3] = [0.4, 0.2, -0.25]
+    add_normalization_root(gltf, authored_offset, name="AuthoredOffset")
+    save_glb(gltf, source)
+
+    output = tmp_path / "output"
+    evidence_root = output.parent / "agent_evidence"
+    _write_fake_views(evidence_root / "source_views")
+    job = AgentJob(
+        source,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    observations = job.objective_observations()
+    pivot_observation = observations["pivot_observation"]
+    assert isinstance(pivot_observation, dict)
+    assert pivot_observation["asset_origin_m"] == (0.0, 0.0, 0.0)
+    expected_bounds_center = (
+        original_bounds.minimum + original_bounds.maximum
+    ) / 2.0 + authored_offset[:3, 3]
+    expected_footprint_center = (
+        expected_bounds_center[0],
+        original_bounds.minimum[1] + authored_offset[1, 3],
+        expected_bounds_center[2],
+    )
+    assert pivot_observation["bounds_center_m"] == pytest.approx(expected_bounds_center)
+    assert pivot_observation["footprint_center_bottom_m"] == pytest.approx(
+        expected_footprint_center
+    )
+    root_origins = cast(
+        tuple[tuple[float, float, float], ...], pivot_observation["root_world_origins_m"]
+    )
+    assert len(root_origins) == 1
+    assert root_origins[0] == pytest.approx((0.4, 0.2, -0.25))
+    interpretation = cast(str, pivot_observation["interpretation"])
+    assert isinstance(interpretation, str)
+    assert "measurements only" in interpretation
+    job.register_agent_plan(
+        initiating_tool_call_id="pivot-plan-tool-call",
+        disposition="REPAIR",
+        summary="Center this grounded prop's pivot on the bottom of its footprint.",
+        evidence=["The measured footprint center-bottom is offset from the asset origin."],
+        confidence=0.96,
+        semantic_height_axis=None,
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        pivot_target="FOOTPRINT_CENTER_BOTTOM",
+        rename_invalid_display_names=False,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+    job.execute(approved=True, interrupt_id="pivot-approval-v1")
+    _write_fake_views(evidence_root / "candidate_views")
+    _write_fake_views(evidence_root / "comparison_views")
+    job.register_candidate_reassessment(
+        initiating_tool_call_id="pivot-reassessment-tool-call",
+        candidate_satisfies_assessment=True,
+        summary="The candidate preserves the prop and moves its placement anchor as requested.",
+        evidence=["Independent candidate views show the same silhouette and grounded placement."],
+        confidence=0.95,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+        candidate_views_used=["front.png", "right.png", "back.png", "left.png"],
+        comparison_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+
+    verification, result = job.verify_and_package()
+
+    assert result is not None
+    pivot_check = next(
+        check for check in verification.checks if check.code == "APPROVED_PIVOT_AT_TARGET"
+    )
+    assert pivot_check.status.value == "PASS"
+    candidate_bounds = world_bounds(load_glb(output / "repaired.glb"))
+    assert candidate_bounds.minimum[1] == pytest.approx(0.0, abs=1e-8)
+    assert (candidate_bounds.minimum[0] + candidate_bounds.maximum[0]) / 2.0 == pytest.approx(
+        0.0, abs=1e-8
+    )
+    assert (candidate_bounds.minimum[2] + candidate_bounds.maximum[2]) / 2.0 == pytest.approx(
+        0.0, abs=1e-8
+    )
 
 
 def test_nonrepair_disposition_cannot_smuggle_mutation() -> None:

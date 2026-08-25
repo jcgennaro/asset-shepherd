@@ -79,12 +79,13 @@ Every statement in the job belongs to one of three classes.
    untouched content, independent reload, and honest artifact/readiness state. Deterministic code may
    always enforce these. An invariant check may block a tool call without asking the agent.
 2. **Observed evidence** is what a sensor measured or rendered: bounds, transforms, hierarchy,
-   topology, resources, ground-plane relationship, validator output, and standardized images. It has
-   no semantic conclusion hidden inside it.
+   topology, resources, ground-plane relationship, the asset origin relative to the bounds center
+   and footprint center-bottom, validator output, and standardized images. It has no semantic
+   conclusion hidden inside it.
 3. **Target-dependent conclusions** include intended size, which dimension represents height,
-   uprightness, forward direction, grounding intent, piece-count intent, naming expectations,
-   budgets, and whether a visible result matches the requested object. The agent owns these
-   conclusions and must cite the target plus observed evidence.
+   uprightness, forward direction, grounding intent, pivot intent, piece-count intent, naming
+   expectations, budgets, and whether a visible result matches the requested object. The agent owns
+   these conclusions and must cite the target plus observed evidence.
 
 A project policy may supply constraints or preferences, but it does not convert a heuristic into a
 fact. For example, "the project uses Y-up coordinates" does not prove that a quadruped's longest
@@ -121,10 +122,10 @@ approval, mutation, or readiness claim.
 
 ### 2. Understand the goal
 
-After upload, the user describes the model they already made. The agent extracts a provisional target including
-the object, intended use, relevant scale semantics, pose or support expectations, and any important
-appearance or assembly requirements. It asks one concise follow-up only when a materially different
-interpretation would change inspection or repair.
+After upload, the user describes the model they already made. The agent extracts a provisional
+target including the object, intended use, relevant scale semantics, pose, support or placement
+expectations, and any important appearance or assembly requirements. It asks one concise follow-up
+only when a materially different interpretation would change inspection or repair.
 
 The user confirms the target. Confirmation freezes a versioned target record; it does not choose a
 repair preset.
@@ -135,7 +136,8 @@ Using the confirmed goal and preflight evidence, the agent chooses the next sens
 sensing capabilities should include:
 
 - structural and official glTF validation;
-- world bounds, transforms, hierarchy, and ground-plane measurements;
+- world bounds, transforms, hierarchy, ground-plane measurements, and the asset origin relative to
+  the world-bounds center and footprint center-bottom;
 - geometry, normals, UV availability, and deterministic mesh diagnostics: boundary, non-manifold,
   and inconsistently wound edges; index-topology components; unused/coincident positions; a
   position-only virtual-weld projection; attribute-safe complete-tuple mergeability; vertex reuse;
@@ -167,6 +169,13 @@ commands. After any agent-requested rotation, the preview computes one log-space
 across the whole box and exposes the three residuals. The reassessing agent checks execution,
 appearance, pose, and whether a new defect appeared. It does not turn an expected residual into a
 failure merely because one fitted dimension is not numerically equal to the target.
+
+Grounding and pivot placement are measured and reasoned about separately. A model may touch the
+ground plane while its asset origin remains on a rear edge. For a plainly grounded static prop, the
+agent may request the footprint center-bottom as the placement anchor; a freely rotating pickup may
+use the bounds center. Doors, wheels, hanging objects, rigs, and ambiguous mechanisms may depend on
+an authored functional pivot, so the agent preserves it or asks rather than guessing. The action
+tool accepts only these bounded targets and never an arbitrary translation.
 
 ### 4. Form an assessment
 
@@ -201,7 +210,7 @@ preview tools for supported primitives such as:
 
 - uniform root scale;
 - root rotation;
-- root translation or grounding;
+- root translation for grounding or a bounded bounds-center/footprint-center-bottom pivot target;
 - node display-name change; and
 - mesh display-name change.
 
@@ -211,7 +220,7 @@ preservation obligations. It returns a hashed proposed action without mutating t
 
 The UI never exposes raw transform controls to the user. The deterministic layer may reject unsafe,
 unsupported, malformed, or out-of-scope parameters, but it does not add a scale, rotation,
-translation, or rename that the agent did not request.
+translation, pivot placement, or rename that the agent did not request.
 
 ### 7. Obtain the required decision
 
@@ -282,6 +291,16 @@ Every product tool must satisfy these rules:
 
 The product does not give the model a shell, general filesystem access, or an unrestricted binary
 editor.
+
+### Prompt layering
+
+The stable operating prompt keeps the authority boundary, safety constraints, approval rules,
+evidence requirements, and refusal behavior always present. Confirmed target data, current turn
+state, and sensor output form a second job-specific layer. Detailed topology, pivot, endpoint,
+rendering, or packaging playbooks may later be supplied just in time through versioned skills or
+tool resources, but those optional guides may never replace or weaken the stable operating layer.
+The current live prompt is small relative to the interim model context window; layering is intended
+to reduce instruction dilution and cost, not to evade a present hard prompt limit.
 
 ## 6. What must be removed from the current control flow
 

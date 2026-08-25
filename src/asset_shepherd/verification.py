@@ -769,6 +769,32 @@ def verify_repair(
                         actual=minimum_y_cm,
                     )
                 )
+            if "pivot" in component_names:
+                output_bounds = output.geometry.bounds
+                if normalization_payload.pivot_target == "BOUNDS_CENTER":
+                    actual_anchor = [
+                        (output_bounds.minimum_m[index] + output_bounds.maximum_m[index]) / 2.0
+                        for index in range(3)
+                    ]
+                    pivot_label = "world-bounds center"
+                elif normalization_payload.pivot_target == "FOOTPRINT_CENTER_BOTTOM":
+                    actual_anchor = [
+                        (output_bounds.minimum_m[0] + output_bounds.maximum_m[0]) / 2.0,
+                        output_bounds.minimum_m[1],
+                        (output_bounds.minimum_m[2] + output_bounds.maximum_m[2]) / 2.0,
+                    ]
+                    pivot_label = "footprint center-bottom"
+                else:
+                    raise ValueError("Pivot component has no bounded pivot target")
+                checks.append(
+                    _check(
+                        "APPROVED_PIVOT_AT_TARGET",
+                        np.allclose(actual_anchor, [0.0, 0.0, 0.0], rtol=0.0, atol=1e-8),
+                        f"Approved pivot placement puts the {pivot_label} at the asset origin.",
+                        expected=cast(JsonValue, [0.0, 0.0, 0.0]),
+                        actual=cast(JsonValue, actual_anchor),
+                    )
+                )
         else:
             unchanged_bounds = np.allclose(
                 [output.geometry.bounds.minimum_m, output.geometry.bounds.maximum_m],
