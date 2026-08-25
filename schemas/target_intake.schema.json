@@ -1,5 +1,16 @@
 {
   "$defs": {
+    "AssetEndpoint": {
+      "description": "User-confirmed next consumer for the prepared asset.",
+      "enum": [
+        "UNITY",
+        "UNREAL",
+        "GODOT",
+        "OTHER"
+      ],
+      "title": "AssetEndpoint",
+      "type": "string"
+    },
     "AssetTargetUse": {
       "description": "User-confirmed destination for the uploaded asset.",
       "enum": [
@@ -15,7 +26,8 @@
       "enum": [
         "EXPLICIT_USER_TEXT",
         "MODEL_INFERENCE",
-        "USER_CLARIFICATION"
+        "USER_CLARIFICATION",
+        "DETERMINISTIC_FALLBACK"
       ],
       "title": "TargetEvidenceSource",
       "type": "string"
@@ -39,6 +51,8 @@
         "field": {
           "enum": [
             "target_use",
+            "endpoint",
+            "target_dimensions_cm",
             "target_height_cm"
           ],
           "title": "Field",
@@ -90,6 +104,31 @@
       "title": "Description",
       "type": "string"
     },
+    "endpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssetEndpoint"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "endpoint_detail": {
+      "anyOf": [
+        {
+          "maxLength": 80,
+          "minLength": 2,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Endpoint Detail"
+    },
     "evidence": {
       "default": [],
       "items": {
@@ -116,6 +155,8 @@
       "items": {
         "enum": [
           "target_use",
+          "endpoint",
+          "target_dimensions_cm",
           "target_height_cm"
         ],
         "type": "string"
@@ -129,10 +170,42 @@
         1,
         2,
         3,
-        4
+        4,
+        5
       ],
       "title": "Schema Version",
       "type": "integer"
+    },
+    "target_dimensions_cm": {
+      "anyOf": [
+        {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 100000.0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 100000.0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 100000.0,
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Dimensions Cm"
     },
     "target_height_cm": {
       "anyOf": [

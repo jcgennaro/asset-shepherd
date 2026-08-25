@@ -24,7 +24,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import JsonValue
 from strands.agent import AgentResult
 
-from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
+from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
 from asset_shepherd.agent_runtime import (
     AssetShepherdAgent,
     build_live_agent,
@@ -46,6 +46,7 @@ from asset_shepherd.intake_analyzer import (
     TargetIntakeContentRefusal,
 )
 from asset_shepherd.intent import (
+    ENDPOINT_LABELS,
     TARGET_USE_LABELS,
     build_asset_intent,
     craft_confirmed_story,
@@ -55,6 +56,7 @@ from asset_shepherd.intent import (
 from asset_shepherd.models import (
     AgentWorkflowResult,
     ApprovalCard,
+    AssetEndpoint,
     AssetIntentProvenance,
     AssetTargetUse,
     DecisionRecord,
@@ -75,6 +77,7 @@ from asset_shepherd.target_intake import (
     TargetIntakeContract,
     clarify_target_intake,
 )
+from asset_shepherd.verification import verify_repair
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -924,6 +927,12 @@ def _display_target_height(height_cm: float) -> str:
     return f"{height_cm / 100:g} m"
 
 
+def _display_target_bounds(dimensions_cm: tuple[float, float, float]) -> str:
+    """Format one tight final-pose X/Y/Z target box in meters."""
+    dimensions_m = tuple(value / 100.0 for value in dimensions_cm)
+    return f"{dimensions_m[0]:g} x {dimensions_m[1]:g} x {dimensions_m[2]:g} m"
+
+
 UNIVERSAL_EXPECTATIONS: tuple[tuple[str, str], ...] = (
     (
         "Readable structure",
@@ -1018,6 +1027,7 @@ def _evidence_source_label(evidence: TargetFieldEvidence | None) -> str:
         "EXPLICIT_USER_TEXT": "Explicit in your description",
         "MODEL_INFERENCE": "Inferred from your description",
         "USER_CLARIFICATION": "Confirmed by you",
+        "DETERMINISTIC_FALLBACK": "Offline test fallback",
     }
     return labels[evidence.source.value]
 
@@ -1039,11 +1049,18 @@ def _target_expectations(
     policy_sources: Mapping[str, str],
 ) -> tuple[ExpectationView, ...]:
     """Expose every current target assumption separately from measured GLB facts."""
-    if target.target_use is None or target.target_height_cm is None:
+    if target.target_use is None or target.target_dimensions_cm is None or target.endpoint is None:
         return ()
     evidence = {item.field: item for item in target.evidence}
     use_evidence = evidence.get("target_use")
-    height_evidence = evidence.get("target_height_cm")
+    dimensions_evidence = evidence.get("target_dimensions_cm")
+    endpoint_evidence = evidence.get("endpoint")
+    endpoint_label = (
+        target.endpoint_detail
+        if target.endpoint is AssetEndpoint.OTHER
+        else ENDPOINT_LABELS[target.endpoint]
+    )
+    dimensions_m = tuple(value / 100.0 for value in target.target_dimensions_cm)
     full_static = target.target_use is AssetTargetUse.STATIC_GAME_ASSET
     orientation_value = (
         "Y-up; propose upright normalization if the measured dominant axis disagrees"
@@ -1063,6 +1080,12 @@ def _target_expectations(
             detail=use_evidence.evidence if use_evidence else "",
         ),
         ExpectationView(
+            label="Next tool",
+            value=endpoint_label or "Other",
+            source=_evidence_source_label(endpoint_evidence),
+            detail=endpoint_evidence.evidence if endpoint_evidence else "",
+        ),
+        ExpectationView(
             label="What happens here",
             value=(
                 "Full static inspect → repair → verify workflow"
@@ -1080,10 +1103,10 @@ def _target_expectations(
             ),
         ),
         ExpectationView(
-            label="Real-world size",
-            value=f"About {_display_target_height(target.target_height_cm)} tall",
-            source=_evidence_source_label(height_evidence),
-            detail=height_evidence.evidence if height_evidence else "",
+            label="Tight X/Y/Z bounds",
+            value=(f"{dimensions_m[0]:g} x {dimensions_m[1]:g} x {dimensions_m[2]:g} m"),
+            source=_evidence_source_label(dimensions_evidence),
+            detail=dimensions_evidence.evidence if dimensions_evidence else "",
         ),
         ExpectationView(
             label="Orientation",
@@ -1116,15 +1139,12 @@ def _expectation_groups(
 ) -> tuple[ExpectationGroupView, ...]:
     """Compress the review into three conclusions with details on demand."""
     expectations = _target_expectations(target, profile, policy_sources)
-    if len(expectations) != 6:
+    if len(expectations) != 7:
         return ()
-    assert target.target_height_cm is not None
-    full_static = target.target_use is AssetTargetUse.STATIC_GAME_ASSET
-    workflow_summary = (
-        "full static repair workflow" if full_static else "static inspection and handoff"
-    )
+    assert target.target_dimensions_cm is not None
+    dimensions_m = tuple(value / 100.0 for value in target.target_dimensions_cm)
     placement = [
-        f"About {_display_target_height(target.target_height_cm)} tall",
+        f"{dimensions_m[0]:g} x {dimensions_m[1]:g} x {dimensions_m[2]:g} m",
         "Y-up" if profile.orientation.require_y_up_geometry else "orientation unrestricted",
         "grounded" if profile.orientation.require_ground_contact else "ground contact optional",
     ]
@@ -1132,18 +1152,18 @@ def _expectation_groups(
     return (
         ExpectationGroupView(
             label="Purpose",
-            summary=f"{expectations[0].value} → {workflow_summary}",
-            items=expectations[0:2],
+            summary=f"{expectations[0].value} → {expectations[1].value}",
+            items=expectations[0:3],
         ),
         ExpectationGroupView(
             label="Scale and pose",
             summary=" · ".join(placement),
-            items=expectations[2:5],
+            items=expectations[3:6],
         ),
         ExpectationGroupView(
             label="Structure",
             summary=f"{target.expected_piece_count} expected semantic {piece_label}",
-            items=(expectations[5],),
+            items=(expectations[6],),
         ),
     )
 
@@ -1190,6 +1210,9 @@ class WebJobStore:
         *,
         target_use_value: str | None,
         target_height_m: str | None,
+        target_x_m: str | None = None,
+        target_y_m: str | None = None,
+        target_z_m: str | None = None,
     ) -> WebIntent:
         """Fill only fields that the minimum target contract could not extract."""
         with self._lock:
@@ -1200,6 +1223,9 @@ class WebJobStore:
                     intent.target,
                     target_use_value=target_use_value,
                     target_height_m=target_height_m,
+                    target_x_m=target_x_m,
+                    target_y_m=target_y_m,
+                    target_z_m=target_z_m,
                 )
             except ValueError as error:
                 raise UploadValidationError(str(error)) from error
@@ -1241,6 +1267,9 @@ class WebJobStore:
                     expected_piece_count=intent.target.expected_piece_count,
                     expected_piece_count_evidence=(intent.target.expected_piece_count_evidence),
                     intent_id=intent.intent_id,
+                    endpoint=intent.target.endpoint,
+                    endpoint_detail=intent.target.endpoint_detail,
+                    target_dimensions_cm=intent.target.target_dimensions_cm,
                 )
             return intent.confirmed
 
@@ -1538,10 +1567,11 @@ def _approval_changes(
     for candidate in plan.candidates:
         if candidate.kind is RepairKind.NORMALIZATION_TRANSFORM:
             if approval_card is not None and candidate.id == approval_card.candidate_id:
+                before = approval_card.before_bounds.dimensions_m
+                after = approval_card.expected_after_bounds.dimensions_m
                 normalization.append(
-                    f"{approval_card.target_extent_label}: "
-                    f"{approval_card.before_target_extent_m:.3f} m → "
-                    f"{approval_card.expected_target_extent_m:.3f} m"
+                    f"X/Y/Z: {before[0]:.3g} x {before[1]:.3g} x {before[2]:.3g} m → "
+                    f"{after[0]:.3g} x {after[1]:.3g} x {after[2]:.3g} m"
                 )
             else:
                 normalization.append(candidate.description)
@@ -1700,7 +1730,7 @@ def _default_job_view(job: WebJob) -> str:
 
 
 def _failed_candidate_path(job: AgentJob) -> Path | None:
-    """Return a view-only rejected candidate after deterministic verification fails."""
+    """Return a downloadable rejected candidate after deterministic verification fails."""
     candidate_path = job.output_dir / "candidate.glb"
     if (
         job.last_verification is not None
@@ -1787,8 +1817,8 @@ def _result_presentation(job: AgentJob) -> ResultPresentationView | None:
             attention_title=attention_title,
             attention_detail=attention_detail,
             next_step=(
-                "The candidate is withheld. A newly derived physical correction must be "
-                "shown to you and approved before another repair."
+                "You can download the candidate for human review or ask the agent to try again. "
+                "It is not labeled verified or project-ready."
             ),
             package_label="Diagnostics and recorded evidence",
             download_label="Download diagnostics ZIP",
@@ -2162,6 +2192,7 @@ def create_app(
     work_root: Path = _DEFAULT_WORK_ROOT,
     intake_analyzer: TargetIntakeAnalyzer | None = None,
     max_agent_turns: int | None = None,
+    verification_function: VerificationFunction = verify_repair,
 ) -> FastAPI:
     """Create a local Asset Shepherd web application and isolated job store."""
     family = discover_policy_family(project_root.resolve(strict=True))
@@ -2178,6 +2209,7 @@ def create_app(
         family.profile,
         analyzer,
         configured_turns,
+        verification_function,
     )
     hosted_start_drafts: dict[str, HostedStartDraft] = {}
     hosted_start_lock = RLock()
@@ -2191,6 +2223,8 @@ def create_app(
         docs_url=None,
         redoc_url=None,
     )
+    app.state.job_store = store
+    app.state.hosted_workspace_store = hosted_store
     app.mount("/static", StaticFiles(directory=_PACKAGE_ROOT / "static"), name="static")
 
     def render_intent_home(
@@ -2406,6 +2440,21 @@ def create_app(
                     and workspace.record.target_draft.target_height_cm is not None
                     else None
                 ),
+                "target_bounds_label": (
+                    _display_target_bounds(workspace.record.target_draft.target_dimensions_cm)
+                    if workspace.record.target_draft is not None
+                    and workspace.record.target_draft.target_dimensions_cm is not None
+                    else None
+                ),
+                "endpoint_label": (
+                    workspace.record.target_draft.endpoint_detail
+                    if workspace.record.target_draft is not None
+                    and workspace.record.target_draft.endpoint is AssetEndpoint.OTHER
+                    else ENDPOINT_LABELS.get(workspace.record.target_draft.endpoint)
+                    if workspace.record.target_draft is not None
+                    and workspace.record.target_draft.endpoint is not None
+                    else None
+                ),
                 "command_id": uuid4().hex,
                 "can_continue": bool(
                     runtime_job
@@ -2472,6 +2521,14 @@ def create_app(
                 "intent": intent,
                 "target_use_label": TARGET_USE_LABELS[intent.target_use],
                 "target_height_label": _display_target_height(intent.target_height_cm),
+                "target_bounds_label": _display_target_bounds(
+                    cast(tuple[float, float, float], intent.target.target_dimensions_cm)
+                ),
+                "endpoint_label": (
+                    intent.target.endpoint_detail
+                    if intent.target.endpoint is AssetEndpoint.OTHER
+                    else ENDPOINT_LABELS[cast(AssetEndpoint, intent.target.endpoint)]
+                ),
                 "expectation_groups": _expectation_groups(
                     intent.target,
                     policy_proposal.resolution.profile,
@@ -2668,6 +2725,9 @@ def create_app(
         description: Annotated[str | None, Form()] = None,
         target_use: Annotated[str | None, Form()] = None,
         target_height_m: Annotated[str | None, Form()] = None,
+        target_x_m: Annotated[str | None, Form()] = None,
+        target_y_m: Annotated[str | None, Form()] = None,
+        target_z_m: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Complete only missing minimum target fields and return to proposal review."""
         try:
@@ -2679,6 +2739,9 @@ def create_app(
                     intent,
                     target_use_value=target_use,
                     target_height_m=target_height_m,
+                    target_x_m=target_x_m,
+                    target_y_m=target_y_m,
+                    target_z_m=target_z_m,
                 )
         except UploadValidationError as error:
             intent = store.get_intent(intent_id)
@@ -2945,14 +3008,17 @@ def create_app(
         )
 
     def rejected_candidate_asset(job_id: str) -> Response:
-        """Serve a failed candidate only for an explicitly labeled comparison preview."""
+        """Serve an executed candidate even when automated verification rejected it."""
         job = store.get(job_id)
-        candidate_path = _failed_candidate_path(job.runtime.job) if job is not None else None
+        if job is None:
+            return Response(status_code=404)
+        candidate_path = _failed_candidate_path(job.runtime.job)
         if candidate_path is None:
             return Response(status_code=404)
         return FileResponse(
             candidate_path,
             media_type="model/gltf-binary",
+            filename=f"{_asset_download_stem(job.target_intake.asset_name)}-candidate.glb",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
@@ -3190,7 +3256,11 @@ def create_app(
         command_id: Annotated[str, Form()],
         description: Annotated[str | None, Form()] = None,
         target_use: Annotated[str | None, Form()] = None,
-        target_height_m: Annotated[str | None, Form()] = None,
+        endpoint: Annotated[str | None, Form()] = None,
+        endpoint_detail: Annotated[str | None, Form()] = None,
+        target_x_m: Annotated[str | None, Form()] = None,
+        target_y_m: Annotated[str | None, Form()] = None,
+        target_z_m: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Answer only target fields missing from the durable minimum contract."""
         try:
@@ -3205,7 +3275,11 @@ def create_app(
                 hosted_store.clarify_target(
                     workspace,
                     target_use_value=target_use,
-                    target_height_m=target_height_m,
+                    endpoint_value=endpoint,
+                    endpoint_detail=endpoint_detail,
+                    target_x_m=target_x_m,
+                    target_y_m=target_y_m,
+                    target_z_m=target_z_m,
                     command_id=command_id,
                 )
         except HostedWorkspaceError as error:
@@ -3225,7 +3299,11 @@ def create_app(
         command_id: Annotated[str, Form()],
         description: Annotated[str | None, Form()] = None,
         target_use: Annotated[str | None, Form()] = None,
-        target_height_m: Annotated[str | None, Form()] = None,
+        endpoint: Annotated[str | None, Form()] = None,
+        endpoint_detail: Annotated[str | None, Form()] = None,
+        target_x_m: Annotated[str | None, Form()] = None,
+        target_y_m: Annotated[str | None, Form()] = None,
+        target_z_m: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Reinterpret natural-language corrections to an unfrozen target proposal."""
         try:
@@ -3236,11 +3314,21 @@ def create_app(
                     description=description,
                     command_id=command_id,
                 )
-            elif target_use is not None and target_height_m is not None:
+            elif (
+                target_use is not None
+                and endpoint is not None
+                and target_x_m is not None
+                and target_y_m is not None
+                and target_z_m is not None
+            ):
                 hosted_store.revise_target(
                     workspace,
                     target_use_value=target_use,
-                    target_height_m=target_height_m,
+                    endpoint_value=endpoint,
+                    endpoint_detail=endpoint_detail,
+                    target_x_m=target_x_m,
+                    target_y_m=target_y_m,
+                    target_z_m=target_z_m,
                     command_id=command_id,
                 )
             else:
@@ -3384,18 +3472,17 @@ def create_app(
         )
 
     def hosted_rejected_candidate_asset(workspace_id: str) -> Response:
-        """Serve one rejected hosted candidate as a view-only diagnostic."""
+        """Serve an executed candidate even when automated verification rejected it."""
         workspace = hosted_store.get(workspace_id)
-        candidate_path = (
-            _failed_candidate_path(workspace.runtime.job)
-            if workspace is not None and workspace.runtime is not None
-            else None
-        )
+        if workspace is None or workspace.runtime is None:
+            return Response(status_code=404)
+        candidate_path = _failed_candidate_path(workspace.runtime.job)
         if candidate_path is None:
             return Response(status_code=404)
         return FileResponse(
             candidate_path,
             media_type="model/gltf-binary",
+            filename=f"{_asset_download_stem(workspace.record.asset_name)}-candidate.glb",
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 

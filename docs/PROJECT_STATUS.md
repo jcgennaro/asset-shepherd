@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-24
-**Current commit:** D044 capabilities summary and coordinate-aware yaw sensing (this file is included)
+**Current commit:** D045 endpoint/XYZ target contract and downloadable rejected candidates (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -49,6 +49,15 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D045 endpoint, bounds, and candidate handoff: semantic intake now freezes Unity, Unreal, Godot, or
+  a described Other endpoint and tight final-pose X/Y/Z bounds. Uniform scaling remains the only
+  supported scale mutation. Source and candidate visual sensing now records isolated renders plus a
+  shared-scale comparison; local Blender evidence derives camera clipping from asset bounds, while
+  Blender remains excluded from the hosted runtime. The rejected 1 cm Computer Chip candidate is
+  visible in its isolated render, retains all deterministic preservation passes, and remains
+  downloadable before human acceptance as `computer-chip-candidate.glb`; its topology warning and
+  rejected verification state are preserved.
 
 - D044 capabilities and yaw: a brain-icon **What it does** page reduces the worker-facing scope to
   import, appearance, and shipping practicality, with one sentence and three groups. Standardized

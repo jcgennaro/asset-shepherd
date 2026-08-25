@@ -256,7 +256,7 @@ def test_missing_target_answer_is_durable_and_confirmation_never_reasks_it(
     assert draft is not None
     assert draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
     assert draft.target_height_cm is None
-    assert draft.missing_fields == ("target_height_cm",)
+    assert draft.missing_fields == ("target_dimensions_cm",)
 
     clarified = store.clarify_target(
         workspace,
@@ -270,6 +270,7 @@ def test_missing_target_answer_is_durable_and_confirmation_never_reasks_it(
     assert completed_draft is not None
     assert completed_draft.ready_for_confirmation
     assert completed_draft.target_height_cm == 180.0
+    assert completed_draft.target_dimensions_cm == (180.0, 180.0, 180.0)
     assert completed_draft.evidence[-1].source.value == "USER_CLARIFICATION"
 
     completed = store.confirm_target(

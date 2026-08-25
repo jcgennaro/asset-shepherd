@@ -17,7 +17,7 @@ from uuid import uuid4
 from pydantic import Field, JsonValue, model_validator
 from strands.agent import AgentResult
 
-from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
+from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
 from asset_shepherd.agent_runtime import (
     AssetShepherdAgent,
     build_live_agent,
@@ -35,6 +35,7 @@ from asset_shepherd.intent import (
 )
 from asset_shepherd.models import (
     AgentWorkflowResult,
+    AssetEndpoint,
     AssetIntentProvenance,
     AssetTargetUse,
     ContractModel,
@@ -50,6 +51,7 @@ from asset_shepherd.target_intake import (
     fallback_asset_name,
     revise_target_intake,
 )
+from asset_shepherd.verification import verify_repair
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 MAX_EVENTS = 64
@@ -102,6 +104,9 @@ class TargetContract(ContractModel):
     original_intent: str = Field(min_length=12, max_length=600)
     requested_use: AssetTargetUse
     target_height_cm: float = Field(gt=0.0, le=100000.0)
+    endpoint: AssetEndpoint | None = None
+    endpoint_detail: str | None = Field(default=None, min_length=2, max_length=80)
+    target_dimensions_cm: tuple[float, float, float] | None = None
     supported_job_goal: SupportedJobGoal
     support_status: SupportStatus
     external_handoffs: tuple[str, ...] = ()
@@ -239,6 +244,7 @@ class HostedWorkspaceStore:
         family: ProjectProfile,
         intake_analyzer: TargetIntakeAnalyzer | None = None,
         max_agent_turns: int = 5,
+        verification_function: VerificationFunction = verify_repair,
     ) -> None:
         """Bind durable workspaces to one trusted parameterized policy family."""
         self.work_root = work_root.resolve(strict=False)
@@ -247,6 +253,7 @@ class HostedWorkspaceStore:
         if not 1 <= max_agent_turns <= 50:
             raise ValueError("Agent turn limit must be between 1 and 50")
         self.max_agent_turns = max_agent_turns
+        self.verification_function = verification_function
         self._lock = RLock()
 
     def _record_path(self, workspace_id: str) -> Path:
@@ -519,7 +526,12 @@ class HostedWorkspaceStore:
         workspace: HostedWorkspace,
         *,
         target_use_value: str | None,
-        target_height_m: str | None,
+        endpoint_value: str | None = None,
+        endpoint_detail: str | None = None,
+        target_x_m: str | None = None,
+        target_y_m: str | None = None,
+        target_z_m: str | None = None,
+        target_height_m: str | None = None,
         command_id: str,
     ) -> HostedWorkspace:
         """Persist answers only for required target fields missing from the extracted contract."""
@@ -537,6 +549,11 @@ class HostedWorkspaceStore:
                 target_draft = clarify_target_intake(
                     workspace.record.target_draft,
                     target_use_value=target_use_value,
+                    endpoint_value=endpoint_value,
+                    endpoint_detail=endpoint_detail,
+                    target_x_m=target_x_m,
+                    target_y_m=target_y_m,
+                    target_z_m=target_z_m,
                     target_height_m=target_height_m,
                 )
             except ValueError as error:
@@ -562,7 +579,12 @@ class HostedWorkspaceStore:
         workspace: HostedWorkspace,
         *,
         target_use_value: str,
-        target_height_m: str,
+        endpoint_value: str = AssetEndpoint.OTHER.value,
+        endpoint_detail: str | None = None,
+        target_x_m: str | None = None,
+        target_y_m: str | None = None,
+        target_z_m: str | None = None,
+        target_height_m: str | None = None,
         command_id: str,
     ) -> HostedWorkspace:
         """Replace an unconfirmed model proposal with explicit target values exactly once."""
@@ -579,6 +601,11 @@ class HostedWorkspaceStore:
                 target_draft = revise_target_intake(
                     workspace.record.target_draft,
                     target_use_value=target_use_value,
+                    endpoint_value=endpoint_value,
+                    endpoint_detail=endpoint_detail,
+                    target_x_m=target_x_m,
+                    target_y_m=target_y_m,
+                    target_z_m=target_z_m,
                     target_height_m=target_height_m,
                 )
             except ValueError as error:
@@ -590,7 +617,7 @@ class HostedWorkspaceStore:
             workspace.record = self._append_event(
                 workspace.record,
                 "TARGET_REVISED",
-                payload={"completed_fields": ["target_use", "target_height_cm"]},
+                payload={"completed_fields": ["target_use", "endpoint", "target_dimensions_cm"]},
             )
             _write_json_atomic(
                 workspace.root / "target_intake.json",
@@ -646,6 +673,9 @@ class HostedWorkspaceStore:
         record: HostedWorkspaceRecord,
         target_use: AssetTargetUse,
         target_height_cm: float,
+        endpoint: AssetEndpoint,
+        endpoint_detail: str | None,
+        target_dimensions_cm: tuple[float, float, float],
         accept_supported_goal: bool,
     ) -> TargetContract:
         if record.preflight.structural_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH:
@@ -671,6 +701,9 @@ class HostedWorkspaceStore:
                 ).hexdigest(),
                 "requested_use": target_use.value,
                 "target_height_cm": target_height_cm,
+                "endpoint": endpoint.value,
+                "endpoint_detail": endpoint_detail,
+                "target_dimensions_cm": list(target_dimensions_cm),
                 "supported_job_goal": goal.value,
                 "support_status": status.value,
                 "external_handoffs": list(handoffs),
@@ -680,6 +713,9 @@ class HostedWorkspaceStore:
             original_intent=record.private_description,
             requested_use=target_use,
             target_height_cm=target_height_cm,
+            endpoint=endpoint,
+            endpoint_detail=endpoint_detail,
+            target_dimensions_cm=target_dimensions_cm,
             supported_job_goal=goal,
             support_status=status,
             external_handoffs=handoffs,
@@ -710,12 +746,22 @@ class HostedWorkspaceStore:
                 )
             target_use = target_draft.target_use
             target_height_cm = target_draft.target_height_cm
-            if target_use is None or target_height_cm is None:
+            endpoint = target_draft.endpoint
+            target_dimensions_cm = target_draft.target_dimensions_cm
+            if (
+                target_use is None
+                or target_height_cm is None
+                or endpoint is None
+                or target_dimensions_cm is None
+            ):
                 raise HostedWorkspaceError("The minimum target contract is incomplete.")
             target = self._target_contract(
                 workspace.record,
                 target_use,
                 target_height_cm,
+                endpoint,
+                target_draft.endpoint_detail,
+                target_dimensions_cm,
                 accept_supported_goal,
             )
             resolution = self._derive_profile(
@@ -734,6 +780,9 @@ class HostedWorkspaceStore:
                 expected_piece_count=target_draft.expected_piece_count,
                 expected_piece_count_evidence=target_draft.expected_piece_count_evidence,
                 intent_id=workspace.record.workspace_id,
+                endpoint=endpoint,
+                endpoint_detail=target_draft.endpoint_detail,
+                target_dimensions_cm=target_dimensions_cm,
             )
             _write_json_atomic(workspace.root / "profile.json", profile.model_dump(mode="json"))
             _write_json_atomic(workspace.root / "intent.json", intent.model_dump(mode="json"))
@@ -755,6 +804,9 @@ class HostedWorkspaceStore:
                 "supported_job_goal": target.supported_job_goal.value,
                 "support_status": target.support_status.value,
                 "target_height_cm": target.target_height_cm,
+                "endpoint": endpoint.value,
+                "endpoint_detail": target.endpoint_detail,
+                "target_dimensions_cm": list(target_dimensions_cm),
                 "frozen_profile_id": policy.frozen_profile_id,
                 "base_preset_id": policy.base_preset_id,
                 "policy_family_id": policy.policy_family_id,
@@ -777,6 +829,7 @@ class HostedWorkspaceStore:
                 asset_intent=intent,
                 agent_orchestrated=agent_mode,
                 max_turns=workspace.record.max_turns,
+                verification_function=self.verification_function,
             )
             runtime = (
                 build_live_agent(
@@ -826,6 +879,7 @@ class HostedWorkspaceStore:
             asset_intent=record.intent,
             agent_orchestrated=persisted_agent_mode,
             max_turns=record.max_turns,
+            verification_function=self.verification_function,
         )
         workspace.runtime = (
             build_live_agent(

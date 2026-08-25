@@ -1,5 +1,6 @@
 """Versioned JSON models shared by the deterministic core and agent boundary."""
 
+import math
 from datetime import datetime
 from enum import StrEnum
 from re import compile as compile_pattern
@@ -65,6 +66,15 @@ class AssetTargetUse(StrEnum):
     STATIC_GAME_ASSET = "STATIC_GAME_ASSET"
     RIG_READY_CHARACTER = "RIG_READY_CHARACTER"
     PLAYABLE_CHARACTER = "PLAYABLE_CHARACTER"
+
+
+class AssetEndpoint(StrEnum):
+    """User-confirmed next consumer for the prepared asset."""
+
+    UNITY = "UNITY"
+    UNREAL = "UNREAL"
+    GODOT = "GODOT"
+    OTHER = "OTHER"
 
 
 class RepairEligibility(StrEnum):
@@ -545,6 +555,7 @@ class AgentCandidateReassessment(ContractModel):
     confidence: UnitConfidence
     source_views_used: tuple[str, ...]
     candidate_views_used: tuple[str, ...]
+    comparison_views_used: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def comparison_has_visual_evidence(self) -> "AgentCandidateReassessment":
@@ -704,11 +715,21 @@ class ProfilePolicyProvenance(ContractModel):
 class AssetIntentProvenance(ContractModel):
     """Immutable user-confirmed target story bound to one inspection job."""
 
-    intent_version: Literal[1, 2] = 2
+    intent_version: Literal[1, 2, 3] = 2
     intent_id: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
     original_description: Annotated[str, Field(min_length=12, max_length=600)]
     target_use: AssetTargetUse
     target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)]
+    endpoint: AssetEndpoint | None = None
+    endpoint_detail: Annotated[str, Field(min_length=2, max_length=80)] | None = None
+    target_dimensions_cm: (
+        tuple[
+            Annotated[float, Field(gt=0.0, le=100000.0)],
+            Annotated[float, Field(gt=0.0, le=100000.0)],
+            Annotated[float, Field(gt=0.0, le=100000.0)],
+        ]
+        | None
+    ) = None
     expected_piece_count: Annotated[int, Field(ge=1, le=64)] = 1
     expected_piece_count_evidence: Annotated[str, Field(min_length=1, max_length=160)] = (
         "A single asset is normally expected as one semantic piece."
@@ -716,6 +737,25 @@ class AssetIntentProvenance(ContractModel):
     confirmed_story: Annotated[str, Field(min_length=20, max_length=1000)]
     confirmed_at: datetime
     canonical_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+    @model_validator(mode="after")
+    def versioned_target_fields_are_consistent(self) -> "AssetIntentProvenance":
+        """Require endpoint and tight XYZ bounds for version-3 intent records."""
+        if self.intent_version >= 3:
+            if self.endpoint is None or self.target_dimensions_cm is None:
+                raise ValueError("Version-3 intent requires endpoint and target XYZ bounds")
+            if not math.isclose(
+                self.target_height_cm,
+                self.target_dimensions_cm[1],
+                rel_tol=0.0,
+                abs_tol=1e-6,
+            ):
+                raise ValueError("Target height must equal the Y target bound")
+            if self.endpoint is AssetEndpoint.OTHER and self.endpoint_detail is None:
+                raise ValueError("Other endpoint requires a short endpoint description")
+            if self.endpoint is not AssetEndpoint.OTHER and self.endpoint_detail is not None:
+                raise ValueError("Canonical endpoints do not accept endpoint_detail")
+        return self
 
 
 class Provenance(ContractModel):

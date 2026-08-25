@@ -7,12 +7,19 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from uuid import uuid4
 
-from asset_shepherd.models import AssetIntentProvenance, AssetTargetUse
+from asset_shepherd.models import AssetEndpoint, AssetIntentProvenance, AssetTargetUse
 
 TARGET_USE_LABELS = {
     AssetTargetUse.STATIC_GAME_ASSET: "static game asset",
     AssetTargetUse.RIG_READY_CHARACTER: "rig-ready character",
     AssetTargetUse.PLAYABLE_CHARACTER: "playable animated character",
+}
+
+ENDPOINT_LABELS = {
+    AssetEndpoint.UNITY: "Unity",
+    AssetEndpoint.UNREAL: "Unreal",
+    AssetEndpoint.GODOT: "Godot",
+    AssetEndpoint.OTHER: "another tool",
 }
 
 
@@ -43,14 +50,29 @@ def craft_confirmed_story(
     description: str,
     target_use: AssetTargetUse,
     target_height_cm: float,
+    *,
+    endpoint: AssetEndpoint | None = None,
+    endpoint_detail: str | None = None,
+    target_dimensions_cm: tuple[float, float, float] | None = None,
 ) -> str:
     """Turn bounded structured intent into the exact story the user will confirm."""
     description_text = description.rstrip(".?!")
     height_m = target_height_cm / 100.0
+    if endpoint is None or target_dimensions_cm is None:
+        return (
+            f"Here is what I am trying to make: {description_text}. I need it prepared as a "
+            f"{TARGET_USE_LABELS[target_use]} at {height_m:g} m tall, while surfacing any work "
+            "Asset Shepherd cannot perform."
+        )
+    endpoint_label = (
+        endpoint_detail if endpoint is AssetEndpoint.OTHER else ENDPOINT_LABELS[endpoint]
+    )
+    bounds_m = tuple(value / 100.0 for value in target_dimensions_cm)
     return (
         f"Here is what I am trying to make: {description_text}. I need it prepared as a "
-        f"{TARGET_USE_LABELS[target_use]} for Unreal at {height_m:g} m tall, while preserving "
-        "the described appearance and surfacing any work Asset Shepherd cannot safely perform."
+        f"{TARGET_USE_LABELS[target_use]} for {endpoint_label}, within tight X/Y/Z bounds of "
+        f"{bounds_m[0]:g} x {bounds_m[1]:g} x {bounds_m[2]:g} m, while surfacing any work "
+        "Asset Shepherd cannot perform."
     )
 
 
@@ -65,6 +87,9 @@ def _canonical_payload(
     confirmed_at: datetime,
     expected_piece_count: int,
     expected_piece_count_evidence: str,
+    endpoint: AssetEndpoint | None = None,
+    endpoint_detail: str | None = None,
+    target_dimensions_cm: tuple[float, float, float] | None = None,
 ) -> dict[str, object]:
     timestamp = confirmed_at.astimezone(UTC).isoformat().replace("+00:00", "Z")
     payload: dict[str, object] = {
@@ -79,6 +104,10 @@ def _canonical_payload(
     if intent_version >= 2:
         payload["expected_piece_count"] = expected_piece_count
         payload["expected_piece_count_evidence"] = expected_piece_count_evidence
+    if intent_version >= 3:
+        payload["endpoint"] = endpoint.value if endpoint is not None else None
+        payload["endpoint_detail"] = endpoint_detail
+        payload["target_dimensions_cm"] = list(target_dimensions_cm or ())
     return payload
 
 
@@ -104,14 +133,25 @@ def build_asset_intent(
     ),
     intent_id: str | None = None,
     confirmed_at: datetime | None = None,
+    endpoint: AssetEndpoint | None = None,
+    endpoint_detail: str | None = None,
+    target_dimensions_cm: tuple[float, float, float] | None = None,
 ) -> AssetIntentProvenance:
     """Build one immutable, canonically hashed target story."""
     normalized = normalize_intent_description(description)
     resolved_id = intent_id or uuid4().hex
     resolved_time = confirmed_at or datetime.now(UTC)
-    story = craft_confirmed_story(normalized, target_use, target_height_cm)
+    version = 3 if endpoint is not None and target_dimensions_cm is not None else 2
+    story = craft_confirmed_story(
+        normalized,
+        target_use,
+        target_height_cm,
+        endpoint=endpoint,
+        endpoint_detail=endpoint_detail,
+        target_dimensions_cm=target_dimensions_cm,
+    )
     payload = _canonical_payload(
-        intent_version=2,
+        intent_version=version,
         intent_id=resolved_id,
         original_description=normalized,
         target_use=target_use,
@@ -120,12 +160,19 @@ def build_asset_intent(
         confirmed_at=resolved_time,
         expected_piece_count=expected_piece_count,
         expected_piece_count_evidence=expected_piece_count_evidence,
+        endpoint=endpoint,
+        endpoint_detail=endpoint_detail,
+        target_dimensions_cm=target_dimensions_cm,
     )
     return AssetIntentProvenance(
+        intent_version=version,
         intent_id=resolved_id,
         original_description=normalized,
         target_use=target_use,
         target_height_cm=target_height_cm,
+        endpoint=endpoint,
+        endpoint_detail=endpoint_detail,
+        target_dimensions_cm=target_dimensions_cm,
         expected_piece_count=expected_piece_count,
         expected_piece_count_evidence=expected_piece_count_evidence,
         confirmed_story=story,
@@ -146,6 +193,9 @@ def validate_asset_intent(intent: AssetIntentProvenance) -> None:
         confirmed_at=intent.confirmed_at,
         expected_piece_count=intent.expected_piece_count,
         expected_piece_count_evidence=intent.expected_piece_count_evidence,
+        endpoint=intent.endpoint,
+        endpoint_detail=intent.endpoint_detail,
+        target_dimensions_cm=intent.target_dimensions_cm,
     )
     if intent.canonical_sha256 != _canonical_sha256(payload):
         raise ValueError("Confirmed asset intent hash does not match its fields")

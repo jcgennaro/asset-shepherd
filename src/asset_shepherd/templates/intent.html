@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_workflow_components.html" import confirmation_decision, workflow_stage %}
 {% block content %}
-  {% call workflow_stage("intent-confirmation", "confirm intent", "confirm-title", "I’d inspect this as a " ~ target_height_label ~ " " ~ target_use_label|lower ~ ".") %}
+  {% call workflow_stage("intent-confirmation", "confirm intent", "confirm-title", "I’d shepherd this for " ~ endpoint_label ~ " within " ~ target_bounds_label ~ ".") %}
     {% if error %}<div class="alert danger" role="alert"><strong>Check the target</strong><span>{{ error }}</span></div>{% endif %}
 
     <section class="expectation-sheet" aria-label="Review the proposed target">

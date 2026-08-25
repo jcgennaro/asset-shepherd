@@ -504,7 +504,13 @@ class AgentJob:
             ),
         }
 
-    def _render_asset_views(self, asset: Path, view_root: Path) -> tuple[Path, ...]:
+    def _render_asset_views(
+        self,
+        asset: Path,
+        view_root: Path,
+        *,
+        reference_asset: Path | None = None,
+    ) -> tuple[Path, ...]:
         """Render one trusted job asset into four standardized local views."""
         names = ("front.png", "right.png", "back.png", "left.png")
         existing = tuple(view_root / name for name in names)
@@ -533,21 +539,24 @@ class AgentJob:
         if not script.is_file():
             raise AgentWorkflowError("Standardized visual sensing script is unavailable")
         view_root.mkdir(parents=True, exist_ok=True)
+        command = [
+            str(blender),
+            "--background",
+            "--factory-startup",
+            "--python",
+            str(script),
+            "--",
+            "--asset",
+            str(asset),
+            "--output-dir",
+            str(view_root),
+            "--resolution",
+            "512",
+        ]
+        if reference_asset is not None:
+            command.extend(["--reference-asset", str(reference_asset)])
         completed = subprocess.run(
-            [
-                str(blender),
-                "--background",
-                "--factory-startup",
-                "--python",
-                str(script),
-                "--",
-                "--asset",
-                str(asset),
-                "--output-dir",
-                str(view_root),
-                "--resolution",
-                "512",
-            ],
+            command,
             check=False,
             capture_output=True,
             text=True,
@@ -579,6 +588,18 @@ class AgentJob:
             self.output_dir.parent / "agent_evidence" / "candidate_views",
         )
 
+    def render_candidate_comparison_views(self) -> tuple[Path, ...]:
+        """Render source and candidate together at unchanged relative scale."""
+        if self.outcome is None or not self.outcome.executed_action_ids:
+            raise AgentWorkflowError("Comparison views require an executed candidate")
+        if not self.candidate_path.is_file():
+            raise AgentWorkflowError("Executed candidate is unavailable for visual sensing")
+        return self._render_asset_views(
+            self.candidate_path,
+            self.output_dir.parent / "agent_evidence" / "comparison_views",
+            reference_asset=self.source,
+        )
+
     def register_candidate_reassessment(
         self,
         *,
@@ -589,6 +610,7 @@ class AgentJob:
         confidence: float,
         source_views_used: list[str],
         candidate_views_used: list[str],
+        comparison_views_used: list[str] | None = None,
     ) -> AgentCandidateReassessment:
         """Record the model's visual comparison after an authorized action executes."""
         if not self.agent_orchestrated or self.agent_assessment is None:
@@ -597,12 +619,16 @@ class AgentJob:
             raise AgentWorkflowError("Candidate visual reassessment is already recorded")
         available_source = {path.name for path in self.render_source_views()}
         available_candidate = {path.name for path in self.render_candidate_views()}
+        available_comparison = {path.name for path in self.render_candidate_comparison_views()}
         unknown_source = set(source_views_used) - available_source
         unknown_candidate = set(candidate_views_used) - available_candidate
-        if unknown_source or unknown_candidate:
+        comparison_names = comparison_views_used or []
+        unknown_comparison = set(comparison_names) - available_comparison
+        if unknown_source or unknown_candidate or unknown_comparison:
             raise AgentWorkflowError(
                 "Candidate reassessment cites unavailable views: "
-                f"source={sorted(unknown_source)}, candidate={sorted(unknown_candidate)}"
+                f"source={sorted(unknown_source)}, candidate={sorted(unknown_candidate)}, "
+                f"comparison={sorted(unknown_comparison)}"
             )
         payload = {
             "initiating_tool_call_id": initiating_tool_call_id,
@@ -613,6 +639,7 @@ class AgentJob:
             "confidence": confidence,
             "source_views_used": source_views_used,
             "candidate_views_used": candidate_views_used,
+            "comparison_views_used": comparison_names,
         }
         digest = sha256(
             json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
@@ -627,6 +654,7 @@ class AgentJob:
             confidence=confidence,
             source_views_used=tuple(source_views_used),
             candidate_views_used=tuple(candidate_views_used),
+            comparison_views_used=tuple(comparison_names),
         )
         self.candidate_reassessment = reassessment
         _write_json(self.candidate_reassessment_path, reassessment.model_dump(mode="json"))

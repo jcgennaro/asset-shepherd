@@ -32,7 +32,7 @@ def test_asset_intent_is_canonical_and_reproducible() -> None:
 
     assert first == second
     assert first.original_description == ("A shader lantern with warm light and translucent glass.")
-    assert "static game asset for Unreal at 1.2 m tall" in first.confirmed_story
+    assert "static game asset at 1.2 m tall" in first.confirmed_story
     assert first.expected_piece_count == 2
     validate_asset_intent(first)
 

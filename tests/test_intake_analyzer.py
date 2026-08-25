@@ -16,7 +16,7 @@ from asset_shepherd.intake_analyzer import (
     build_target_intake_analyzer,
     contract_from_inference,
 )
-from asset_shepherd.models import AssetTargetUse
+from asset_shepherd.models import AssetEndpoint, AssetTargetUse
 from asset_shepherd.target_intake import TargetEvidenceSource
 
 
@@ -47,9 +47,13 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
                     "target_use": "STATIC_GAME_ASSET",
                     "target_use_confidence": 0.96,
                     "target_use_evidence": "A mountain is an environmental game-world feature.",
-                    "target_height_cm": 80000.0,
-                    "target_height_confidence": 0.91,
-                    "target_height_evidence": (
+                    "endpoint": "GODOT",
+                    "endpoint_detail": None,
+                    "endpoint_confidence": 0.9,
+                    "endpoint_evidence": "The surreal game is being built in Godot.",
+                    "target_dimensions_cm": [60000.0, 80000.0, 50000.0],
+                    "target_dimensions_confidence": 0.91,
+                    "target_dimensions_evidence": (
                         "A mountain requires a kilometer-scale vertical target."
                     ),
                     "expected_piece_count": 1,
@@ -69,6 +73,8 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
     assert contract.ready_for_confirmation
     assert contract.target_use is AssetTargetUse.STATIC_GAME_ASSET
     assert contract.target_height_cm == 80000.0
+    assert contract.target_dimensions_cm == (60000.0, 80000.0, 50000.0)
+    assert contract.endpoint is AssetEndpoint.GODOT
     assert contract.analyzer_provider == "openai"
     assert contract.analyzer_model == OPENAI_INTAKE_MODEL
     assert contract.asset_name == "Goop Mountain"
@@ -96,9 +102,13 @@ def test_low_confidence_model_fields_become_questions() -> None:
             target_use=None,
             target_use_confidence=0.4,
             target_use_evidence=None,
-            target_height_cm=None,
-            target_height_confidence=0.3,
-            target_height_evidence=None,
+            endpoint=None,
+            endpoint_detail=None,
+            endpoint_confidence=0.3,
+            endpoint_evidence=None,
+            target_dimensions_cm=None,
+            target_dimensions_confidence=0.3,
+            target_dimensions_evidence=None,
             expected_piece_count=1,
             expected_piece_count_evidence="The description identifies one abstract asset.",
         ),
@@ -106,7 +116,7 @@ def test_low_confidence_model_fields_become_questions() -> None:
         model_id=OPENAI_INTAKE_MODEL,
     )
 
-    assert contract.missing_fields == ("target_use", "target_height_cm")
+    assert contract.missing_fields == ("target_use", "endpoint", "target_dimensions_cm")
     assert not contract.ready_for_confirmation
 
     with pytest.raises(ValueError, match="confidence gate"):
@@ -116,9 +126,13 @@ def test_low_confidence_model_fields_become_questions() -> None:
             target_use=None,
             target_use_confidence=0.9,
             target_use_evidence=None,
-            target_height_cm=None,
-            target_height_confidence=0.3,
-            target_height_evidence=None,
+            endpoint=None,
+            endpoint_detail=None,
+            endpoint_confidence=0.3,
+            endpoint_evidence=None,
+            target_dimensions_cm=None,
+            target_dimensions_confidence=0.3,
+            target_dimensions_evidence=None,
             expected_piece_count=1,
             expected_piece_count_evidence="The description identifies one abstract asset.",
         )
@@ -141,9 +155,13 @@ def test_disallowed_intake_returns_only_a_concise_refusal() -> None:
                     "target_use": None,
                     "target_use_confidence": 0.0,
                     "target_use_evidence": None,
-                    "target_height_cm": None,
-                    "target_height_confidence": 0.0,
-                    "target_height_evidence": None,
+                    "endpoint": None,
+                    "endpoint_detail": None,
+                    "endpoint_confidence": 0.0,
+                    "endpoint_evidence": None,
+                    "target_dimensions_cm": None,
+                    "target_dimensions_confidence": 0.0,
+                    "target_dimensions_evidence": None,
                     "expected_piece_count": None,
                     "expected_piece_count_evidence": None,
                 }

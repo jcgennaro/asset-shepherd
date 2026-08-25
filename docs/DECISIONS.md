@@ -4,6 +4,55 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D045 — Freeze endpoint and three-axis target bounds; keep rejected candidates downloadable
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing / M10 evaluation
+
+**Context**
+
+A single target height can misdescribe wide, flat, or deep assets, while an engine-neutral target
+omits useful Unity, Unreal, or Godot import expectations. A one-centimeter Computer Chip repair also
+exposed two visual-review errors: Blender's fixed near-clipping distance made an isolated candidate
+look absent, and a shared-scale source/candidate view could not by itself prove that a much smaller
+candidate was missing. Automated rejection then made a mechanically valid candidate unnecessarily
+difficult for its human owner to retrieve.
+
+**Decision**
+
+Version 3 target intent freezes the inferred endpoint as Unity, Unreal, Godot, or a described Other,
+plus tight final-pose X/Y/Z bounds. The agent extracts these values from the user's description and
+asks only when the minimum contract remains ambiguous. These are target-state dimensions, not raw
+transform controls. Repairs remain uniform-scale-only; incompatible proportions are reported rather
+than silently corrected with non-uniform scaling.
+
+Visual reassessment uses three complementary evidence sets: isolated source views, isolated
+candidate views, and a shared-scale comparison. Presence and appearance are judged from isolated
+views; relative size is judged from the shared view. The local Blender acceptance camera derives
+near/far clipping from measured bounds. Blender remains a local development and acceptance consumer,
+not a hosted AgentCore dependency; the competition renderer remains a separate lightweight-runtime
+decision.
+
+An executed candidate rejected by automated verification remains directly downloadable under the
+agent-assigned asset name. Download does not change the verification record, confer a verified or
+project-ready label, or suppress diagnostics. The human may use the candidate or request another
+agent turn.
+
+**Evidence and consequences**
+
+Strict schemas, intake tests, provenance tests, and route tests cover endpoint and three-axis target
+state. A real 1 cm Computer Chip candidate renders visibly in an isolated 256 px Blender view after
+proportional clipping; its deterministic preservation checks pass while its report-only topology
+warning remains explicit. Browser acceptance exposes `Download candidate` before human acceptance,
+and the route returns the exact candidate bytes as `computer-chip-candidate.glb` with private,
+no-store headers. The official Khronos executable was not configured on this workstation, so that
+optional validation layer was not rerun for this candidate.
+
 ### D044 — Public capabilities use three worker questions; yaw uses labeled visual evidence
 
 **Date:** 2026-08-24

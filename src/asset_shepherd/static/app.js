@@ -290,7 +290,6 @@ function initializeModelComparison(comparison) {
   let axesVisible = false;
   let bananaVisible = false;
   let renderFrame = 0;
-  let bananaBounds = null;
   let bananaFinalOffset = null;
   let bananaAnimationFrame = 0;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -520,22 +519,6 @@ function initializeModelComparison(comparison) {
       bounds.minimum[1] + 0.015916550531983376,
       bounds.minimum[2] - gap - 0.015987513586878777,
     ];
-    const minimum = [
-      offset[0] - 0.0865677,
-      offset[1] - 0.01591656,
-      offset[2] - 0.01598752,
-    ];
-    const maximum = [
-      offset[0] + 0.0865677,
-      offset[1] + 0.05696436,
-      offset[2] + 0.01598752,
-    ];
-    bananaBounds = {
-      minimum,
-      maximum,
-      center: minimum.map((value, index) => (value + maximum[index]) / 2),
-      longest: Math.max(...minimum.map((value, index) => maximum[index] - value)),
-    };
     bananaFinalOffset = offset;
     bananaModel?.setAttribute("offset", offset.join(" "));
     viewer.updateHotspot({
@@ -640,17 +623,6 @@ function initializeModelComparison(comparison) {
     bananaAnimationFrame = window.requestAnimationFrame(animate);
   }
 
-  function unionBounds(left, right) {
-    const minimum = left.minimum.map((value, index) => Math.min(value, right.minimum[index]));
-    const maximum = left.maximum.map((value, index) => Math.max(value, right.maximum[index]));
-    return {
-      minimum,
-      maximum,
-      center: minimum.map((value, index) => (value + maximum[index]) / 2),
-      longest: Math.max(...minimum.map((value, index) => maximum[index] - value)),
-    };
-  }
-
   function frameBounds(bounds) {
     const spans = bounds.maximum.map((maximum, index) => maximum - bounds.minimum[index]);
     const radius = Math.max(Math.hypot(...spans) / 2, 1e-5);
@@ -658,7 +630,7 @@ function initializeModelComparison(comparison) {
     const aspect = Math.max(viewer.clientWidth / viewer.clientHeight, 0.1);
     const horizontalField = 2 * Math.atan(Math.tan(verticalField / 2) * aspect);
     const limitingField = Math.min(verticalField, horizontalField);
-    const distance = Math.max((radius / Math.tan(limitingField / 2)) * 1.18, 1e-4);
+    const distance = Math.max((radius / Math.tan(limitingField / 2)) * 1.04, 1e-7);
     viewer.cameraTarget = bounds.center.map((component) => `${component}m`).join(" ");
     viewer.cameraOrbit = `35deg 70deg ${distance}m`;
     viewer.fieldOfView = "45deg";
@@ -671,7 +643,9 @@ function initializeModelComparison(comparison) {
     const bounds = config[mode];
     updateAxes(bounds);
     placeBanana(bounds);
-    frameBounds(bananaVisible && bananaBounds ? unionBounds(bounds, bananaBounds) : bounds);
+    // Fit is always driven by the selected asset bounds. A 20 cm banana must not make a 1 cm
+    // candidate occupy only a few pixels; it is a reference, never a camera target.
+    frameBounds(bounds);
     if (bananaVisible && bananaFinalOffset) {
       setBananaPose(bananaFinalOffset, [1, 1, 1], 0);
     }

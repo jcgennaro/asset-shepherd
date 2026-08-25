@@ -25,7 +25,11 @@ def test_explicit_description_completes_minimum_contract_without_questions() -> 
     assert draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
     assert draft.target_height_cm == 120.0
     assert draft.missing_fields == ()
-    assert {item.source for item in draft.evidence} == {TargetEvidenceSource.EXPLICIT_USER_TEXT}
+    assert {item.source for item in draft.evidence} == {
+        TargetEvidenceSource.EXPLICIT_USER_TEXT,
+        TargetEvidenceSource.DETERMINISTIC_FALLBACK,
+    }
+    assert draft.target_dimensions_cm == (120.0, 120.0, 120.0)
 
 
 def test_only_missing_fields_are_requested_and_clarification_completes_them() -> None:
@@ -34,13 +38,15 @@ def test_only_missing_fields_are_requested_and_clarification_completes_them() ->
 
     assert draft.target_use is AssetTargetUse.STATIC_GAME_ASSET
     assert draft.target_height_cm is None
-    assert draft.missing_fields == ("target_height_cm",)
+    assert draft.missing_fields == ("target_dimensions_cm",)
 
     complete = clarify_target_intake(draft, target_height_m="1.2")
     assert complete.ready_for_confirmation
     assert complete.target_height_cm == 120.0
-    height_evidence = next(item for item in complete.evidence if item.field == "target_height_cm")
-    assert height_evidence.source is TargetEvidenceSource.USER_CLARIFICATION
+    bounds_evidence = next(
+        item for item in complete.evidence if item.field == "target_dimensions_cm"
+    )
+    assert bounds_evidence.source is TargetEvidenceSource.USER_CLARIFICATION
 
 
 def test_conflicting_or_absent_use_does_not_silently_choose_a_target() -> None:

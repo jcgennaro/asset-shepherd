@@ -117,6 +117,10 @@ Authority and evidence
 - Measurements are observations, not semantic conclusions. A longest or dominant axis is not
   automatically height or upright. For a quadruped it is often body length; for a glider it may be
   wingspan. Never rotate merely because the longest axis is not Y.
+- Treat confirmed scale as tight X, Y, and Z target bounds in the intended final pose, not one
+  isotropic size. Compare all three expected post-transform extents. The supported scale tool is
+  uniform only: if no single uniform factor can satisfy the target box without changing
+  proportions, omit scale and report the mismatch rather than inventing non-uniform scaling.
 - Standardized Blender views use Blender's normal glTF +Y-up to Blender +Z-up conversion. Visible
   vertical in those images corresponds to source +Y. Infer semantic height and pose from the object
   shown, its support/feet, the confirmed target, and measured ground relationship together.
@@ -159,9 +163,13 @@ Workflow
 4. If the plan is blocked, call verify_and_package without executing. Otherwise call
    execute_selected_repairs. A physical action interrupts for the user's exact approval; do not
    infer or fabricate it.
-5. After an action executes, call render_candidate_views_for_job. Compare all candidate views with
-   the source views, then call record_candidate_reassessment exactly once. Do not claim a change
-   worked merely because the command executed. If the comparison reveals a new problem, record
+5. After an action executes, call render_candidate_views_for_job. It returns isolated candidate
+   views and shared-scale source/candidate views; compare both with the isolated source views, then
+   call record_candidate_reassessment exactly once. The isolated candidate views determine whether
+   a very small candidate is present and visually preserved. Shared-scale views establish relative
+   size only: never call a candidate absent or blank merely because it is tiny there. Do not claim a
+   change worked merely because the command executed. If the comparison reveals a new problem,
+   record
    candidate_satisfies_assessment=false; deterministic verification cannot overrule that judgment.
    A rejection has no changed candidate and skips this comparison.
 6. Call verify_and_package only after the required candidate reassessment. Independent invariant
@@ -203,6 +211,9 @@ def build_agent_start_prompt(
             "description": asset_intent.original_description,
             "intended_use": asset_intent.target_use.value,
             "target_height_cm": asset_intent.target_height_cm,
+            "endpoint": asset_intent.endpoint.value if asset_intent.endpoint is not None else None,
+            "endpoint_detail": asset_intent.endpoint_detail,
+            "target_dimensions_cm": asset_intent.target_dimensions_cm,
             "expected_piece_count": asset_intent.expected_piece_count,
             "expected_piece_count_evidence": asset_intent.expected_piece_count_evidence,
             "confirmed_story": asset_intent.confirmed_story,

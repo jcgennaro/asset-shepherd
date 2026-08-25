@@ -99,6 +99,7 @@ class AssetShepherdTools:
 
         """
         paths = self.job.render_candidate_views()
+        comparison_paths = self.job.render_candidate_comparison_views()
         content: list[dict[str, object]] = [
             {
                 "text": (
@@ -112,6 +113,25 @@ class AssetShepherdTools:
             raise AgentWorkflowError("The source-view coordinate contract is invalid")
         for path in paths:
             content.append({"text": f"CANDIDATE VIEW {path.name}: {view_labels[path.name]}"})
+            content.append(
+                {
+                    "image": {
+                        "format": "png",
+                        "source": {"bytes": path.read_bytes()},
+                    }
+                }
+            )
+        content.append(
+            {
+                "text": (
+                    "SHARED-SCALE COMPARISONS: source and candidate are staged together without "
+                    "rescaling. A very small candidate may be hard to see here; use the isolated "
+                    "candidate views above to determine whether it is present and preserved."
+                )
+            }
+        )
+        for path in comparison_paths:
+            content.append({"text": f"SHARED-SCALE VIEW {path.name}: {view_labels[path.name]}"})
             content.append(
                 {
                     "image": {
@@ -136,6 +156,7 @@ class AssetShepherdTools:
         confidence: float,
         source_views_used: list[str],
         candidate_views_used: list[str],
+        comparison_views_used: list[str],
     ) -> dict[str, Any]:
         """Record the agent's visual comparison of source and executed candidate.
 
@@ -148,6 +169,7 @@ class AssetShepherdTools:
             confidence: Confidence from 0 through 1; uncertainty must remain explicit.
             source_views_used: Exact source filenames consulted.
             candidate_views_used: Exact candidate filenames consulted.
+            comparison_views_used: Exact shared-scale comparison filenames consulted.
 
         A false result prevents project-ready completion. This judgment does not replace independent
         invariant verification and cannot authorize another action.
@@ -161,6 +183,7 @@ class AssetShepherdTools:
             confidence=confidence,
             source_views_used=source_views_used,
             candidate_views_used=candidate_views_used,
+            comparison_views_used=comparison_views_used,
         )
         return reassessment.model_dump(mode="json")
 

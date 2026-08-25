@@ -1,5 +1,5 @@
 <aside class="mode-rail" aria-label="Asset Shepherd workflow">
-  <a class="rail-logo" href="{{ url_for('hosted_home') if active_mode in ['conversation', 'help', 'capabilities'] else url_for('home') }}" aria-label="Asset Shepherd home">
+  <a class="rail-logo" href="/workspace" aria-label="Asset Shepherd assets">
     <span>LOGO</span>
   </a>
 
@@ -12,11 +12,11 @@
       <li class="{% if hosted_step == 'shepherd' %}active{% endif %}"><span>4</span><strong>Shepherd</strong></li>
     </ol>
     <div class="rail-actions">
-      <a class="mode-link utility-tile{% if active_mode == 'capabilities' %} active{% endif %}" href="{{ url_for('what_it_does') }}" title="See what Asset Shepherd checks">
+      <a class="mode-link utility-tile{% if active_mode == 'capabilities' %} active{% endif %}" href="/what-it-does" title="See what Asset Shepherd checks">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 4.5A3.5 3.5 0 0 0 5 9a3.5 3.5 0 0 0 .5 6.9A3.5 3.5 0 0 0 12 18V6a3 3 0 0 0-2.5-1.5ZM14.5 4.5A3.5 3.5 0 0 1 19 9a3.5 3.5 0 0 1-.5 6.9A3.5 3.5 0 0 1 12 18V6a3 3 0 0 1 2.5-1.5Z"/><path d="M8 9h4M12 13h4M8 16h4"/></svg>
         <span class="mode-label">What it does</span>
       </a>
-      <a class="mode-link utility-tile help-tile{% if active_mode == 'help' %} active{% endif %}" href="{{ url_for('how_it_works') }}" title="See how Asset Shepherd works">
+      <a class="mode-link utility-tile help-tile{% if active_mode == 'help' %} active{% endif %}" href="/how-it-works" title="See how Asset Shepherd works">
         <span class="help-icon" aria-hidden="true">?</span>
         <span class="mode-label">How it works</span>
       </a>
@@ -31,15 +31,15 @@
       <li class="{% if active_mode in ['inspect', 'decide', 'download'] %}active{% endif %}"><span>4</span><strong>Shepherd</strong></li>
     </ol>
     <div class="rail-actions">
-      <a class="mode-link utility-tile" href="{{ url_for('hosted_home') }}" title="Start a new asset">
+      <a class="mode-link utility-tile" href="/workspace" title="Start a new asset">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span class="mode-label">New asset</span>
       </a>
-      <a class="mode-link utility-tile" href="{{ url_for('what_it_does') }}" title="See what Asset Shepherd checks">
+      <a class="mode-link utility-tile" href="/what-it-does" title="See what Asset Shepherd checks">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 4.5A3.5 3.5 0 0 0 5 9a3.5 3.5 0 0 0 .5 6.9A3.5 3.5 0 0 0 12 18V6a3 3 0 0 0-2.5-1.5ZM14.5 4.5A3.5 3.5 0 0 1 19 9a3.5 3.5 0 0 1-.5 6.9A3.5 3.5 0 0 1 12 18V6a3 3 0 0 1 2.5-1.5Z"/><path d="M8 9h4M12 13h4M8 16h4"/></svg>
         <span class="mode-label">What it does</span>
       </a>
-      <a class="mode-link utility-tile help-tile" href="{{ url_for('how_it_works') }}" title="See how Asset Shepherd works">
+      <a class="mode-link utility-tile help-tile" href="/how-it-works" title="See how Asset Shepherd works">
         <span class="help-icon" aria-hidden="true">?</span>
         <span class="mode-label">How it works</span>
       </a>

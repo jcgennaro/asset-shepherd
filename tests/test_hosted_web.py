@@ -2,11 +2,16 @@
 
 import re
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 
+from asset_shepherd.agent_job import VerificationFunction
+from asset_shepherd.hosted_workspace import HostedWorkspaceStore
+from asset_shepherd.models import VerificationResult, VerificationState
+from asset_shepherd.repair import RepairOutcome
 from asset_shepherd.web import create_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -88,7 +93,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
 
     measured = client.get(workspace_path)
     assert measured.status_code == 200
-    assert "inspect this as a 1.8 m static game asset." in measured.text
+    assert "shepherd this for Unspecified endpoint within 1.8 x 1.8 x 1.8 m." in measured.text
     assert measured.text.count('class="expectation-group"') == 3
     assert "Did I get it right?" in measured.text
     assert "<summary>No</summary>" in measured.text
@@ -118,8 +123,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "More details" not in pending.text
     assert 'class="inspection-table"' not in pending.text
     assert pending.text.count('class="approval-change"') == 3
-    assert "Height: " in pending.text
-    assert "1.800 m" in pending.text
+    assert "X/Y/Z:" in pending.text
     assert "Mesh name" in pending.text
     assert "Node name" in pending.text
     assert pending.text.count('data-tooltip="') == 6
@@ -170,6 +174,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Did we get it right?" not in accepted_page.text
     assert "data-result-accepted hidden" not in accepted_page.text
     assert "Ready to download." in accepted_page.text
+    assert ">Assets</a>" in accepted_page.text
 
     archive_response = restarted.get(f"{workspace_path}/download")
     assert archive_response.status_code == 200
@@ -202,20 +207,26 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     workspace_path = urlparse(created.headers["location"]).path
 
     clarification = client.get(workspace_path)
-    assert "About how tall should it be?" in clarification.text
-    assert 'name="target_height_m"' in clarification.text
+    assert "I need one missing target detail." in clarification.text
+    assert 'name="target_x_m"' in clarification.text
+    assert 'name="target_y_m"' in clarification.text
+    assert 'name="target_z_m"' in clarification.text
     assert 'name="target_use"' not in clarification.text
     command_id = _hidden(clarification.text, "command_id")
 
     answered = client.post(
         f"{workspace_path}/target/clarify",
-        data={"target_height_m": "1.8", "command_id": command_id},
+        data={
+            "target_x_m": "0.8",
+            "target_y_m": "1.8",
+            "target_z_m": "0.6",
+            "command_id": command_id,
+        },
         follow_redirects=False,
     )
     assert answered.status_code == 303
     proposal = client.get(workspace_path)
-    assert "inspect this as a 1.8 m static game asset." in proposal.text
-    assert "1.8 m" in proposal.text
+    assert "within 0.8 x 1.8 x 0.6 m." in proposal.text
     assert "<summary>No</summary>" in proposal.text
     assert proposal.text.count('class="expectation-group"') == 3
     assert "1 expected semantic piece" in proposal.text
@@ -306,3 +317,73 @@ def test_full_gallery_requires_visible_replacement_choice(tmp_path: Path) -> Non
     assert 'name="replace_workspace_id"' in replacement.text
     assert "Choose or drop your GLB" in replacement.text
     assert "Model description" not in replacement.text
+
+
+def test_rejected_candidate_remains_downloadable_before_human_acceptance(
+    tmp_path: Path,
+) -> None:
+    """Automated rejection removes the verified label, not the user's candidate file."""
+
+    def reject_verification(*args: object) -> VerificationResult:
+        outcome = cast(RepairOutcome, args[6])
+        return VerificationResult(
+            verification_id="verification-forced-rejection-v1",
+            source_sha256=outcome.source_sha256,
+            output_sha256=outcome.output_sha256,
+            state=VerificationState.FAILED,
+            checks=(),
+            remaining_warnings=("FORCED_TEST_REJECTION",),
+            second_plan_candidate_count=1,
+        )
+
+    app = create_app(
+        project_root=PROJECT_ROOT,
+        work_root=tmp_path / "jobs",
+        verification_function=cast(VerificationFunction, reject_verification),
+    )
+    client = TestClient(app)
+    uploaded = client.post(
+        "/workspace/new/upload",
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+    describe_path = urlparse(uploaded.headers["location"]).path
+    created = client.post(
+        describe_path,
+        data={"description": "A 1.8 m friendly humanoid robot static game asset."},
+        follow_redirects=False,
+    )
+    workspace_path = urlparse(created.headers["location"]).path
+    workspace_id = workspace_path.rsplit("/", 1)[-1]
+    proposal = client.get(workspace_path)
+    client.post(
+        f"{workspace_path}/target",
+        data={"command_id": _hidden(proposal.text, "command_id")},
+        follow_redirects=False,
+    )
+
+    hosted_store = cast(HostedWorkspaceStore, app.state.hosted_workspace_store)
+    workspace = hosted_store.get(workspace_id)
+    assert workspace is not None and workspace.runtime is not None
+
+    pending = client.get(workspace_path)
+    completed = client.post(
+        f"{workspace_path}/decision",
+        data={
+            "interrupt_id": _hidden(pending.text, "interrupt_id"),
+            "decision": "approve",
+            "command_id": _hidden(pending.text, "command_id"),
+        },
+        follow_redirects=False,
+    )
+    assert completed.status_code == 303
+
+    result = client.get(workspace_path)
+    assert "Did we get it right?" in result.text
+    assert "Download candidate" in result.text
+    assert "data-result-accepted hidden" in result.text
+    candidate = client.get(f"{workspace_path}/candidate-preview.glb")
+    assert candidate.status_code == 200
+    assert candidate.headers["content-type"] == "model/gltf-binary"
+    assert candidate.headers["content-disposition"].endswith('-candidate.glb"')
+    assert candidate.content == workspace.runtime.job.candidate_path.read_bytes()

@@ -23,6 +23,7 @@ from asset_shepherd.intake_analyzer import (
 )
 from asset_shepherd.intent import validate_asset_intent
 from asset_shepherd.models import (
+    AssetEndpoint,
     AssetIntentProvenance,
     AssetTargetUse,
     Decisions,
@@ -263,7 +264,7 @@ def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
     assert ">Shepherd</strong>" in entry.text
     assert entry.text.index(">Upload</strong>") < entry.text.index(">Describe</strong>")
     assert 'class="help-icon" aria-hidden="true">?</span>' in entry.text
-    assert 'href="http://testserver/how-it-works"' in entry.text
+    assert 'href="/how-it-works"' in entry.text
 
     help_page = client.get("/how-it-works")
     assert help_page.status_code == 200
@@ -295,7 +296,7 @@ def test_what_it_does_groups_worker_value_into_three_checks(tmp_path: Path) -> N
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
 
     entry = client.get("/workspace")
-    assert 'href="http://testserver/what-it-does"' in entry.text
+    assert 'href="/what-it-does"' in entry.text
     assert 'title="See what Asset Shepherd checks"' in entry.text
     assert ">What it does</span>" in entry.text
 
@@ -316,16 +317,12 @@ def test_what_it_does_groups_worker_value_into_three_checks(tmp_path: Path) -> N
     _assert_focus_area_budget(page.text)
 
 
-@pytest.mark.parametrize(
-    ("height_cm", "expected_label"),
-    ((0.5, "5 mm"), (2.0, "2 cm"), (120.0, "1.2 m"), (80000.0, "800 m")),
-)
+@pytest.mark.parametrize("height_cm", (0.5, 2.0, 120.0, 80000.0))
 def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
     tmp_path: Path,
     height_cm: float,
-    expected_label: str,
 ) -> None:
-    """Human-readable scale avoids tiny decimal meters on the public confirmation page."""
+    """Confirmation presents the complete tight X/Y/Z target box."""
 
     class ScaleAnalyzer:
         provider = "openai"
@@ -340,9 +337,13 @@ def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
                     target_use=AssetTargetUse.STATIC_GAME_ASSET,
                     target_use_confidence=0.96,
                     target_use_evidence="The description identifies a static prop.",
-                    target_height_cm=height_cm,
-                    target_height_confidence=0.91,
-                    target_height_evidence="The description states the intended scale.",
+                    endpoint=AssetEndpoint.UNITY,
+                    endpoint_detail=None,
+                    endpoint_confidence=0.9,
+                    endpoint_evidence="The asset is intended for Unity.",
+                    target_dimensions_cm=(height_cm * 0.5, height_cm, height_cm * 0.25),
+                    target_dimensions_confidence=0.91,
+                    target_dimensions_evidence="The description states the intended scale.",
                     expected_piece_count=1,
                     expected_piece_count_evidence="The description identifies one bracelet.",
                 ),
@@ -365,7 +366,8 @@ def test_confirmation_uses_a_readable_metric_unit_for_target_scale(
     review = client.get(urlparse(created.headers["location"]).path)
 
     assert review.status_code == 200
-    assert f"About {expected_label} tall" in review.text
+    meters = height_cm / 100
+    assert f"{meters * 0.5:g} x {meters:g} x {meters * 0.25:g} m" in review.text
 
 
 def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path) -> None:
@@ -380,9 +382,12 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
 
     review = client.get(intent_path)
     assert review.status_code == 200
-    assert "I\u2019d inspect this as a 1.72 m playable animated character." in review.text
+    assert (
+        "I\u2019d shepherd this for Unspecified endpoint within 1.72 x 1.72 x 1.72 m."
+        in review.text
+    )
     assert "Playable animated character" in review.text
-    assert "About 1.72 m tall" in review.text
+    assert "1.72 x 1.72 x 1.72 m" in review.text
     assert "Static inspection and handoff; no rigging or animation repair" in review.text
     assert review.text.count('class="expectation-group"') == 3
     assert "Purpose" in review.text
@@ -493,9 +498,9 @@ def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: P
 
     clarification = client.get(intent_path)
     assert clarification.status_code == 200
-    assert "About how tall should it be?" in clarification.text
+    assert "What should its tight X/Y/Z bounds be?" in clarification.text
     assert "treating it as static game asset" in clarification.text
-    assert "What real-world height should it have?" in clarification.text
+    assert "Tight target bounds" in clarification.text
     assert "What should this asset become?" not in clarification.text
     assert "Agree and continue" not in clarification.text
 
@@ -514,7 +519,7 @@ def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: P
     assert completed.status_code == 303
     review = client.get(intent_path)
     assert "Static game asset" in review.text
-    assert "About 1.2 m tall" in review.text
+    assert "1.2 x 1.2 x 1.2 m" in review.text
 
 
 def test_missing_intent_is_clarified_in_words_without_a_mode_selector(tmp_path: Path) -> None:
@@ -541,7 +546,7 @@ def test_missing_intent_is_clarified_in_words_without_a_mode_selector(tmp_path: 
     assert completed.status_code == 303
     review = client.get(intent_path)
     assert "Static game asset" in review.text
-    assert "About 600 m tall" in review.text
+    assert "600 x 600 x 600 m" in review.text
 
 
 def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questions(
@@ -563,9 +568,13 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
                     target_use=AssetTargetUse.STATIC_GAME_ASSET,
                     target_use_confidence=0.96,
                     target_use_evidence="A mountain is an environmental feature.",
-                    target_height_cm=height_cm,
-                    target_height_confidence=0.91,
-                    target_height_evidence="A mountain is a kilometer-scale feature.",
+                    endpoint=AssetEndpoint.GODOT,
+                    endpoint_detail=None,
+                    endpoint_confidence=0.9,
+                    endpoint_evidence="The surreal game is being built in Godot.",
+                    target_dimensions_cm=(height_cm * 0.75, height_cm, height_cm * 0.625),
+                    target_dimensions_confidence=0.91,
+                    target_dimensions_evidence="A mountain is a kilometer-scale feature.",
                     expected_piece_count=1,
                     expected_piece_count_evidence="The description identifies one mountain.",
                 ),
@@ -590,7 +599,7 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
 
     assert proposal.status_code == 200
     assert "Static game asset" in proposal.text
-    assert "About 800 m tall" in proposal.text
+    assert "600 x 800 x 500 m" in proposal.text
     assert "quick answer" not in proposal.text
     assert "<summary>No</summary>" in proposal.text
     assert "Show inference evidence" not in proposal.text
@@ -609,7 +618,7 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     )
     assert revised.status_code == 303
     adjusted = client.get(intent_path)
-    assert "About 600 m tall" in adjusted.text
+    assert "450 x 600 x 375 m" in adjusted.text
 
 
 def test_shared_feedback_page_records_workflow_context(tmp_path: Path) -> None:

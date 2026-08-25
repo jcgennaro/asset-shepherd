@@ -1,5 +1,16 @@
 {
   "$defs": {
+    "AssetEndpoint": {
+      "description": "User-confirmed next consumer for the prepared asset.",
+      "enum": [
+        "UNITY",
+        "UNREAL",
+        "GODOT",
+        "OTHER"
+      ],
+      "title": "AssetEndpoint",
+      "type": "string"
+    },
     "AssetTargetUse": {
       "description": "User-confirmed destination for the uploaded asset.",
       "enum": [
@@ -32,6 +43,31 @@
       "title": "Confirmed Story",
       "type": "string"
     },
+    "endpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssetEndpoint"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "endpoint_detail": {
+      "anyOf": [
+        {
+          "maxLength": 80,
+          "minLength": 2,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Endpoint Detail"
+    },
     "expected_piece_count": {
       "default": 1,
       "maximum": 64,
@@ -55,7 +91,8 @@
       "default": 2,
       "enum": [
         1,
-        2
+        2,
+        3
       ],
       "title": "Intent Version",
       "type": "integer"
@@ -65,6 +102,37 @@
       "minLength": 12,
       "title": "Original Description",
       "type": "string"
+    },
+    "target_dimensions_cm": {
+      "anyOf": [
+        {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 100000.0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 100000.0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 100000.0,
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Dimensions Cm"
     },
     "target_height_cm": {
       "exclusiveMinimum": 0.0,

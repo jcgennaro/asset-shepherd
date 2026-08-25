@@ -23,6 +23,11 @@ def _arguments() -> argparse.Namespace:
     arguments = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--asset", type=Path, required=True)
+    parser.add_argument(
+        "--reference-asset",
+        type=Path,
+        help="Optional source GLB to stage beside --asset at unchanged relative scale.",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--resolution", type=int, default=768)
     return parser.parse_args(arguments)
@@ -47,6 +52,23 @@ def _mesh_bounds(objects: list[Any]) -> tuple[Vector, Vector]:
     minimum = Vector(tuple(min(point[axis] for point in points) for axis in range(3)))
     maximum = Vector(tuple(max(point[axis] for point in points) for axis in range(3)))
     return minimum, maximum
+
+
+def _import_asset(path: Path) -> list[Any]:
+    """Import one GLB and return only the objects created by that import."""
+    existing = set(bpy.context.scene.objects)
+    result = bpy.ops.import_scene.gltf(filepath=str(path))
+    if "FINISHED" not in result:
+        raise RuntimeError(f"Blender GLB import failed: {sorted(result)}")
+    return [obj for obj in bpy.context.scene.objects if obj not in existing]
+
+
+def _translate_import(objects: list[Any], offset: Vector) -> None:
+    """Translate one imported hierarchy exactly once through its top-level objects."""
+    imported = set(objects)
+    for obj in objects:
+        if obj.parent not in imported:
+            obj.location += offset
 
 
 def _aim_at(obj: object, target: Vector) -> None:
@@ -75,13 +97,27 @@ def main() -> None:
     """Import, frame, light, and render the four standard views."""
     args = _arguments()
     asset = args.asset.resolve(strict=True)
+    reference_asset = (
+        args.reference_asset.resolve(strict=True) if args.reference_asset is not None else None
+    )
     output_dir = args.output_dir.resolve(strict=False)
     output_dir.mkdir(parents=True, exist_ok=True)
     _clear_scene()
-    result = bpy.ops.import_scene.gltf(filepath=str(asset))
-    if "FINISHED" not in result:
-        raise RuntimeError(f"Blender GLB import failed: {sorted(result)}")
-    objects = list(bpy.context.scene.objects)
+    if reference_asset is None:
+        objects = _import_asset(asset)
+    else:
+        reference_objects = _import_asset(reference_asset)
+        reference_minimum, reference_maximum = _mesh_bounds(reference_objects)
+        candidate_objects = _import_asset(asset)
+        candidate_minimum, candidate_maximum = _mesh_bounds(candidate_objects)
+        reference_span = max(reference_maximum - reference_minimum)
+        candidate_span = max(candidate_maximum - candidate_minimum)
+        gap = max(reference_span, candidate_span, 1e-6) * 0.15
+        _translate_import(
+            candidate_objects,
+            Vector((reference_maximum.x - candidate_minimum.x + gap, 0.0, 0.0)),
+        )
+        objects = reference_objects + candidate_objects
     minimum, maximum = _mesh_bounds(objects)
     center = (minimum + maximum) / 2.0
     dimensions = maximum - minimum
@@ -125,6 +161,10 @@ def main() -> None:
     camera = bpy.context.object
     camera.name = "EvidenceCamera"
     camera.data.lens = 58.0
+    # Blender defaults to a 10 cm near plane. That clips tiny but valid candidates when the
+    # proportional camera rig moves inside 10 cm, producing a misleading blank render.
+    camera.data.clip_start = max(span * 0.001, 1e-7)
+    camera.data.clip_end = max(span * 100.0, camera.data.clip_start * 1000.0)
     bpy.context.scene.camera = camera
 
     scene = bpy.context.scene

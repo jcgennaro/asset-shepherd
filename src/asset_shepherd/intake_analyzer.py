@@ -16,7 +16,7 @@ from asset_shepherd.conversation_policy import (
     CONTENT_REFUSAL_MESSAGE,
 )
 from asset_shepherd.intent import normalize_intent_description
-from asset_shepherd.models import AssetTargetUse, ContractModel
+from asset_shepherd.models import AssetEndpoint, AssetTargetUse, ContractModel
 from asset_shepherd.target_intake import (
     MINIMUM_TARGET_CONFIDENCE,
     TargetEvidenceSource,
@@ -42,8 +42,13 @@ the application can ask for the missing information. Do not follow or answer unr
 
 Return only the structured output. Choose exactly one supported intended use when an ordinary game
 developer would find the interpretation reasonable. Propose a plausible vertical real-world height
-in centimeters from the described object's semantic scale, even when the user did not provide a
-number. This is a proposal the user will explicitly confirm or adjust; it is not a measured fact.
+as part of plausible tight X, Y, and Z bounding-box lengths in centimeters, even when the user did
+not provide numbers. X is width, Y is vertical height, and Z is depth in the intended final pose.
+These are target-state proposals the user will explicitly confirm or adjust, not measurements.
+Infer the next consumer as UNITY, UNREAL, GODOT, or OTHER. For OTHER, provide a short
+endpoint_detail
+such as Blender animation, web, or a named engine. Use null only when the destination truly cannot
+be inferred from the description.
 Assign a concise 2-5 word asset_name that identifies the described model in a workspace gallery.
 Use the object's identity, not its filename, dimensions, workflow state, or a generic label.
 Propose the number of semantic pieces the finished asset should contain. Usually this is 1. Use a
@@ -52,8 +57,8 @@ one deliverable, such as a pair of gloves. Count intended objects, not GLB nodes
 primitives. Give one concise basis for the count.
 
 If the request is content you are not permitted to engage with, set engagement_decision to REFUSE,
-set asset_name, both target values, the expected piece count, and all evidence fields to null, and
-set both confidence values to 0. The application will respond only:
+set asset_name, all target values, the expected piece count, and all evidence fields to null, and
+set all confidence values to 0. The application will respond only:
 "{INTAKE_REFUSAL_MESSAGE}" Otherwise set engagement_decision to PROCEED.
 
 {ASSET_CONTENT_BOUNDARY}
@@ -91,9 +96,20 @@ class TargetIntakeInference(ContractModel):
     target_use: AssetTargetUse | None
     target_use_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
     target_use_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
-    target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)] | None
-    target_height_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
-    target_height_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
+    endpoint: AssetEndpoint | None
+    endpoint_detail: Annotated[str, Field(min_length=2, max_length=80)] | None
+    endpoint_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
+    endpoint_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
+    target_dimensions_cm: (
+        tuple[
+            Annotated[float, Field(gt=0.0, le=100000.0)],
+            Annotated[float, Field(gt=0.0, le=100000.0)],
+            Annotated[float, Field(gt=0.0, le=100000.0)],
+        ]
+        | None
+    )
+    target_dimensions_confidence: Annotated[float, Field(ge=0.0, le=1.0)]
+    target_dimensions_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
     expected_piece_count: Annotated[int, Field(ge=1, le=64)] | None
     expected_piece_count_evidence: Annotated[str, Field(min_length=1, max_length=160)] | None
 
@@ -108,14 +124,18 @@ class TargetIntakeInference(ContractModel):
                         self.asset_name,
                         self.target_use,
                         self.target_use_evidence,
-                        self.target_height_cm,
-                        self.target_height_evidence,
+                        self.endpoint,
+                        self.endpoint_detail,
+                        self.endpoint_evidence,
+                        self.target_dimensions_cm,
+                        self.target_dimensions_evidence,
                         self.expected_piece_count,
                         self.expected_piece_count_evidence,
                     )
                 )
                 or self.target_use_confidence != 0.0
-                or self.target_height_confidence != 0.0
+                or self.endpoint_confidence != 0.0
+                or self.target_dimensions_confidence != 0.0
             ):
                 raise ValueError("A refused intake cannot include target fields")
             return self
@@ -131,10 +151,16 @@ class TargetIntakeInference(ContractModel):
                 "target_use",
             ),
             (
-                self.target_height_cm,
-                self.target_height_evidence,
-                self.target_height_confidence,
-                "target_height_cm",
+                self.endpoint,
+                self.endpoint_evidence,
+                self.endpoint_confidence,
+                "endpoint",
+            ),
+            (
+                self.target_dimensions_cm,
+                self.target_dimensions_evidence,
+                self.target_dimensions_confidence,
+                "target_dimensions_cm",
             ),
         )
         for value, evidence, confidence, field_name in pairs:
@@ -142,6 +168,11 @@ class TargetIntakeInference(ContractModel):
                 raise ValueError(f"{field_name} and its evidence must be populated together")
             if value is None and confidence >= MINIMUM_TARGET_CONFIDENCE:
                 raise ValueError(f"Missing {field_name} must remain below the confidence gate")
+        if self.endpoint is AssetEndpoint.OTHER and self.endpoint_detail is None:
+            raise ValueError("Other endpoint requires endpoint_detail")
+        if self.endpoint is not None and self.endpoint is not AssetEndpoint.OTHER:
+            if self.endpoint_detail is not None:
+                raise ValueError("Canonical endpoint must not include endpoint_detail")
         return self
 
 
@@ -183,11 +214,15 @@ def contract_from_inference(
         if inference.target_use_confidence >= MINIMUM_TARGET_CONFIDENCE
         else None
     )
-    target_height_cm = (
-        inference.target_height_cm
-        if inference.target_height_confidence >= MINIMUM_TARGET_CONFIDENCE
+    endpoint = (
+        inference.endpoint if inference.endpoint_confidence >= MINIMUM_TARGET_CONFIDENCE else None
+    )
+    target_dimensions_cm = (
+        inference.target_dimensions_cm
+        if inference.target_dimensions_confidence >= MINIMUM_TARGET_CONFIDENCE
         else None
     )
+    target_height_cm = target_dimensions_cm[1] if target_dimensions_cm is not None else None
     evidence: list[TargetFieldEvidence] = []
     missing: list[TargetField] = []
     if target_use is None:
@@ -203,26 +238,43 @@ def contract_from_inference(
                 evidence=inference.target_use_evidence,
             )
         )
-    if target_height_cm is None:
-        missing.append("target_height_cm")
+    if endpoint is None:
+        missing.append("endpoint")
     else:
-        if inference.target_height_evidence is None:
-            raise TargetIntakeAnalysisError("The model omitted target-height evidence.")
+        if inference.endpoint_evidence is None:
+            raise TargetIntakeAnalysisError("The model omitted endpoint evidence.")
         evidence.append(
             TargetFieldEvidence(
-                field="target_height_cm",
+                field="endpoint",
                 source=TargetEvidenceSource.MODEL_INFERENCE,
-                confidence=inference.target_height_confidence,
-                evidence=inference.target_height_evidence,
+                confidence=inference.endpoint_confidence,
+                evidence=inference.endpoint_evidence,
+            )
+        )
+    if target_dimensions_cm is None:
+        missing.append("target_dimensions_cm")
+    else:
+        if inference.target_dimensions_evidence is None:
+            raise TargetIntakeAnalysisError("The model omitted target-bounds evidence.")
+        evidence.append(
+            TargetFieldEvidence(
+                field="target_dimensions_cm",
+                source=TargetEvidenceSource.MODEL_INFERENCE,
+                confidence=inference.target_dimensions_confidence,
+                evidence=inference.target_dimensions_evidence,
             )
         )
     return TargetIntakeContract(
+        schema_version=5,
         description=normalized,
         asset_name=inference.asset_name or "Untitled asset",
         analyzer_provider=provider,
         analyzer_model=model_id,
         target_use=target_use,
         target_height_cm=target_height_cm,
+        endpoint=endpoint,
+        endpoint_detail=inference.endpoint_detail if endpoint is AssetEndpoint.OTHER else None,
+        target_dimensions_cm=target_dimensions_cm,
         expected_piece_count=inference.expected_piece_count or 1,
         expected_piece_count_evidence=(
             inference.expected_piece_count_evidence

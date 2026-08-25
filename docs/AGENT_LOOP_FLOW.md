@@ -46,13 +46,13 @@ job from `ASSET_SHEPHERD_MAX_TURNS` (default `5`, allowed `1..50`).
 |---|---|---|---|---|
 | Intake | User description; uploaded GLB stays outside the text-model call | Structured target-intake model | No | `target_intake.json`, confirmed intent |
 | Objective observation | Current-turn GLB; Python GLB parser; NumPy/accessor analysis; Khronos validator when configured | `inspect_asset_for_job` | No | `inspection.json` |
-| Visual sensing | Current-turn GLB; local Blender render process; four standardized 512 px views | `render_source_views_for_job` | No | Private turn-scoped source renders |
+| Visual sensing | Current-turn GLB; four standardized isolated views; local Blender acceptance harness pending a lightweight hosted replacement | `render_source_views_for_job` | No | Private turn-scoped source renders |
 | Assessment and preview | Frozen target and policy; inspection and cited renders | `propose_agent_repair_plan` | No; tool computes and hashes consequences | Agent assessment and `repair_plan.json` |
 | Approval | Exact preview, action ID/hash, Strands interrupt | `execute_selected_repairs` pauses for structured Approve/Reject | Only after exact approval | `decisions.json` |
 | Execution | Current-turn GLB; deterministic GLB writer | Resumed `execute_selected_repairs` | Yes, within the approved footprint only | Candidate GLB and action provenance |
-| Candidate sensing | Candidate GLB; Blender; source/candidate evidence | `render_candidate_views_for_job` | No | Private turn-scoped candidate renders |
+| Candidate sensing | Candidate GLB; isolated source/candidate views; shared-scale comparison; local Blender acceptance harness pending a lightweight hosted replacement | `render_candidate_views_for_job` | No | Private turn-scoped candidate and comparison renders |
 | Reassessment | Source and candidate renders plus declared postconditions | `record_candidate_reassessment` | No | Typed candidate reassessment |
-| Verification/package | Independent reload, bounds, source-preservation and declared-action checks | `verify_and_package` | No | Seven-file result ZIP |
+| Verification/package | Independent reload, bounds, source-preservation and declared-action checks | `verify_and_package` | No | Seven-file result ZIP; a rejected candidate remains a separate labeled download |
 | User feedback | Yes/No plus up to 1,000 characters when No | New agent invocation over the same Strands conversation | No | Append-only turn record and feedback hash/event |
 
 ## Supported mutation tools

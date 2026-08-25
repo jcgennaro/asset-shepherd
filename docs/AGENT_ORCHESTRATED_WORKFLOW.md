@@ -217,7 +217,9 @@ candidate. It records exactly what changed.
 
 The candidate is a new state of the same asset conversation. The agent calls fresh measurements and
 standardized renders, compares them with both the source and confirmed goal, and decides whether the
-change worked.
+change worked. Isolated source and candidate views establish presence and appearance; a separate
+shared-scale render establishes relative size. A candidate that is tiny in the shared view is not
+therefore absent.
 
 The before/after viewer is therefore more than decorative UI: its standardized render artifacts are
 available to a vision-capable workflow model as sensing evidence. Pixel metrics may detect change,
@@ -242,8 +244,10 @@ tool set cannot finish the job.
 ### 11. Package and remain available
 
 The agent calls packaging after verification and returns the candidate, structured evidence,
-decisions, verification, provenance, and concise summary. The conversation remains available for
-questions and further agent-led repair turns until the user starts a new asset or the job expires.
+decisions, verification, provenance, and concise summary. A candidate rejected by automated
+verification remains downloadable for human review, but it never receives a verified or
+project-ready label. The conversation remains available for questions and further agent-led repair
+turns until the user starts a new asset or the job expires.
 
 ## 5. Tool-design rules
 

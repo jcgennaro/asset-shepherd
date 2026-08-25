@@ -12,9 +12,9 @@
     <div class="hosted-columns">
       <main class="conversation-pane" aria-label="Asset conversation">
           {% if record.phase.value != 'APPROVAL' %}<p class="conversation-prompt{% if job and job.result %} completion-prompt{% endif %}">
-            {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d inspect this as a {{ target_height_label }} {{ target_use_label }}.
+            {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d shepherd this for {{ endpoint_label }} within {{ target_bounds_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
-            {% elif record.phase.value == 'TARGET_CONFIRMATION' %}About how tall should it be?
+            {% elif record.phase.value == 'TARGET_CONFIRMATION' %}I need one missing target detail.
             {% elif job and job.result %}{{ completion_sentence }}
             {% else %}The workflow stopped.{% endif %}
           </p>{% endif %}
@@ -31,8 +31,26 @@
           {% if target_draft and not target_draft.ready_for_confirmation %}
             <form action="{{ url_for('clarify_hosted_target', workspace_id=record.workspace_id) }}" method="post" class="target-card" data-busy-form>
               <input type="hidden" name="command_id" value="{{ command_id }}">
-              {% if target_draft.target_use %}<p class="fine-print">I’m treating it as {{ target_use_label }}; I only need the size.</p>{% elif target_draft.target_height_cm %}<p class="fine-print">I have the {{ target_height_label }} height; I need clearer intended use.</p>{% endif %}
-              {% if "target_use" in target_draft.missing_fields %}{{ asset_description(record.private_description, label="Add what this should be, how it will be used, and any scale clue you know") }}{% elif "target_height_cm" in target_draft.missing_fields %}<label><span>What real-world height should it have?</span><span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>{% endif %}
+              {% if "target_use" in target_draft.missing_fields %}
+                {{ asset_description(record.private_description, label="Add how the model will be used") }}
+              {% else %}
+                {% if "endpoint" in target_draft.missing_fields %}
+                  <fieldset class="endpoint-choice"><legend>Next tool</legend>
+                    <label title="Unity uses Y-up and +Z forward"><input type="radio" name="endpoint" value="UNITY" required>Unity</label>
+                    <label title="Unreal uses Z-up and +X forward"><input type="radio" name="endpoint" value="UNREAL" required>Unreal</label>
+                    <label title="Godot uses Y-up; imported asset front is +Z"><input type="radio" name="endpoint" value="GODOT" required>Godot</label>
+                    <label title="Blender animation, web, or another engine"><input type="radio" name="endpoint" value="OTHER" required>Other</label>
+                    <input type="text" name="endpoint_detail" maxlength="80" placeholder="Other destination">
+                  </fieldset>
+                {% endif %}
+                {% if "target_dimensions_cm" in target_draft.missing_fields %}
+                  <fieldset class="target-bounds"><legend>Tight target bounds</legend>
+                    <label>X <span class="number-with-unit"><input type="number" name="target_x_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
+                    <label>Y <span class="number-with-unit"><input type="number" name="target_y_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
+                    <label>Z <span class="number-with-unit"><input type="number" name="target_z_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
+                  </fieldset>
+                {% endif %}
+              {% endif %}
               <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
             </form>
           {% elif target_draft %}
@@ -88,6 +106,9 @@
               <div class="result-review-question" data-result-question>
               <p class="decision-question" id="hosted-result-review-title" data-result-title>Did we get it right?</p>
               <div class="result-review-actions">
+                {% if comparison_scene and not workspace.ready_candidate %}
+                  <a class="secondary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download title="Automated verification rejected this candidate; download it for human review">Download candidate</a>
+                {% endif %}
                 <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-result-accept>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
                   <input type="hidden" name="decision" value="accept">
@@ -116,9 +137,13 @@
                 {% if workspace.ready_candidate %}
                   <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
                   <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Evidence package</a>
+                {% elif comparison_scene %}
+                  <a class="primary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download>Download candidate <span aria-hidden="true">↓</span></a>
+                  <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Diagnostics</a>
                 {% else %}
                   <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
                 {% endif %}
+                <a class="text-link" href="/workspace">Assets</a>
               </div>
             </div>
           </section>
@@ -148,12 +173,13 @@
             <div><dt>Original intent</dt><dd>{{ record.target.original_intent }}</dd></div>
             <div><dt>Requested</dt><dd>{{ record.target.requested_use }}</dd></div>
             <div><dt>Supported goal</dt><dd>{{ record.target.supported_job_goal }}</dd></div>
-            <div><dt>Height</dt><dd>{{ "%g"|format(record.target.target_height_cm / 100) }} m</dd></div>
+            <div><dt>Target bounds</dt><dd>{% if record.target.target_dimensions_cm %}{{ "%g"|format(record.target.target_dimensions_cm[0] / 100) }} × {{ "%g"|format(record.target.target_dimensions_cm[1] / 100) }} × {{ "%g"|format(record.target.target_dimensions_cm[2] / 100) }} m{% else %}{{ "%g"|format(record.target.target_height_cm / 100) }} m tall{% endif %}</dd></div>
+            {% if record.target.endpoint %}<div><dt>Next tool</dt><dd>{{ record.target.endpoint_detail or record.target.endpoint.value|title }}</dd></div>{% endif %}
             <div><dt>Support</dt><dd>{{ record.target.support_status }}</dd></div>
             {% if record.target.external_handoffs %}<div><dt>Handoff</dt><dd>{{ record.target.external_handoffs|join(' ') }}</dd></div>{% endif %}
           </dl>{% elif target_draft %}<dl>
             <div><dt>Use</dt><dd>{{ target_use_label|capitalize if target_use_label else "needs clarification" }}</dd></div>
-            <div><dt>Height</dt><dd>{{ ("%g"|format(target_draft.target_height_cm / 100)) ~ " m" if target_draft.target_height_cm else "needs clarification" }}</dd></div>
+            <div><dt>Target bounds</dt><dd>{{ target_bounds_label or "needs clarification" }}</dd></div>
             <div><dt>Minimum contract</dt><dd>{{ "complete; awaiting confirmation" if target_draft.ready_for_confirmation else (target_draft.missing_fields|join(", ")) }}</dd></div>
           </dl>{% else %}<p>Waiting for typed target extraction.</p>{% endif %}
         </details>

@@ -4,10 +4,10 @@
   {% if "target_use" in intent.target.missing_fields %}
     {% set clarify_title = "Tell me the missing intent in your own words." %}
   {% else %}
-    {% set clarify_title = "About how tall should it be?" %}
+    {% set clarify_title = "What should its tight X/Y/Z bounds be?" %}
   {% endif %}
   {% if target_use_label %}
-    {% set clarify_note = "I’m treating it as " ~ target_use_label ~ "; I only need the size." %}
+    {% set clarify_note = "I’m treating it as " ~ target_use_label ~ "." %}
   {% elif intent.target.target_height_cm %}
     {% set clarify_note = "I have the " ~ ("%g"|format(intent.target.target_height_cm / 100)) ~ " m height; I only need its use." %}
   {% else %}
@@ -21,11 +21,12 @@
     <form action="{{ url_for('clarify_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form clarification-form" data-busy-form>
       {% if "target_use" in intent.target.missing_fields %}
         {{ asset_description(intent.original_description, label="Add what this should be, how it will be used, and any scale clue you know") }}
-      {% elif "target_height_cm" in intent.target.missing_fields %}
-        <label>
-          <span>What real-world height should it have?</span>
-          <span class="number-with-unit"><input type="number" name="target_height_m" min="0.001" max="1000" step="0.001" required><b>m</b></span>
-        </label>
+      {% elif "target_dimensions_cm" in intent.target.missing_fields %}
+        <fieldset class="target-bounds"><legend>Tight target bounds</legend>
+          <label>X <span class="number-with-unit"><input type="number" name="target_x_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
+          <label>Y <span class="number-with-unit"><input type="number" name="target_y_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
+          <label>Z <span class="number-with-unit"><input type="number" name="target_z_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
+        </fieldset>
       {% endif %}
       <div class="intent-confirm-actions">
         <a class="secondary-button" href="{{ url_for('home') }}">← Start over</a>
