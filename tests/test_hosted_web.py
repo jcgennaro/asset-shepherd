@@ -175,6 +175,11 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     completed = restarted.get(workspace_path)
     assert 'class="conversation-prompt completion-prompt"' in completed.text
     assert 'class="result-status' not in completed.text
+    assert "Action taken" in completed.text
+    assert "Proposed action" not in completed.text
+    assert completed.text.count("!→✓") == 2
+    assert "Addressed —" in completed.text
+    assert "Applied —" in completed.text
     assert "Did we get it right?" in completed.text
     assert "data-result-accepted hidden" in completed.text
     assert "Download fixed model" in completed.text
@@ -533,6 +538,9 @@ def test_rejected_candidate_remains_downloadable_before_human_acceptance(
     assert completed.status_code == 303
 
     result = client.get(workspace_path)
+    assert "Action taken" in result.text
+    assert "Attempted — verification did not confirm" in result.text
+    assert "!→✓" not in result.text
     assert "Did we get it right?" in result.text
     assert "Download candidate" in result.text
     assert "data-result-accepted hidden" in result.text

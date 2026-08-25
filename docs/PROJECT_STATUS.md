@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D055 typed proposal feedback and honest working state (this file is included)
+**Current commit:** D056 phase-aware after-action report (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,16 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D056 phase-aware action report: the shared five-lane inspection table now labels its final column
+  `Proposed action` before authorization and `Action taken` after execution. Executed repairs become
+  `!→✓` only when independent verification confirms their postcondition; the hover explanation
+  identifies them as addressed and names the applied action. Rejected, report-only, unresolved, and
+  verification-failed work retains attention styling and plainly records that no verified correction
+  occurred. Route coverage exercises both a successful candidate and a forced verification failure;
+  browser acceptance confirms the final table and hover explanation without horizontal overflow.
+  The common gate passes with 148 tests, one opt-in skip, lock validation, Ruff, formatting, and zero
+  Pyright findings.
 
 - D055 proposal feedback and working-state checkpoint: each active repair lane now offers
   Accept/Reject/Comment before execution. All accepted lanes retain one exact `Approve`; any

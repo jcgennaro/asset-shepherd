@@ -4,6 +4,41 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D056 — Make the action report reflect verified outcomes
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition
+
+**Context**
+
+The same inspection table appears before authorization and after execution. The completion view
+continued to label its final column `Proposed action` and retained attention icons for findings that
+the approved candidate had already corrected. That made a finished report look like another pending
+proposal and obscured the distinction between attempted, verified, rejected, and report-only work.
+
+**Decision**
+
+Keep one five-lane table, but make it phase-aware. Before execution, show `Proposed action` and the
+existing attention state. After execution, show `Action taken`. A previously detected problem that
+was executed and independently verified uses the compact `!→✓` transition and an `Addressed` hover
+explanation. An attempted action that verification did not confirm, a rejected action, and an
+unresolved or report-only finding retain attention styling and explicitly say that no verified
+correction occurred. Passing invariant lanes remain plain checks.
+
+**Evidence and consequences**
+
+Hosted route coverage distinguishes successful normalization/name repairs from failed verification:
+the accepted candidate renders two `!→✓` outcomes and `Applied` actions, while the forced-failure
+candidate renders no repaired transition and says verification did not confirm the attempt. Browser
+acceptance checks the completion header, repaired rows, unresolved warning, hover explanation, and
+absence of horizontal overflow. The common gate passes with 148 tests, one opt-in skip, lock
+validation, Ruff, formatting, and zero Pyright findings.
+
 ### D055 — Make proposal feedback typed and hide stale controls during agent work
 
 **Date:** 2026-08-25

@@ -1,7 +1,7 @@
 <div class="inspection-stream" role="log" aria-live="polite" data-inspection-stream>
   <table class="inspection-lane-table">
     <thead>
-      <tr><th>Check</th><th>Finding</th><th>Status</th><th>Proposed action</th></tr>
+      <tr><th>Check</th><th>Finding</th><th>Status</th><th>{{ inspection_checks[0].action_heading if inspection_checks else 'Proposed action' }}</th></tr>
     </thead>
     <tbody>
       {% for check in inspection_checks %}
@@ -9,7 +9,7 @@
           <th scope="row"><strong>{{ check.label }}</strong></th>
           <td class="inspection-finding">{{ check.description }}</td>
           <td class="inspection-status">
-            <span class="inspection-check-icon" tabindex="0" title="{{ check.status_label }} — {{ check.detail }}" data-tooltip="{{ check.status_label }} — {{ check.detail }}" aria-label="{{ check.status_label }}: {{ check.detail }}">{% if check.status == 'pass' %}✓{% elif check.status == 'blocked' %}×{% elif check.status == 'checking' %}…{% else %}!{% endif %}</span>
+            <span class="inspection-check-icon" tabindex="0" title="{{ check.status_label }} — {{ check.detail }}" data-tooltip="{{ check.status_label }} — {{ check.detail }}" aria-label="{{ check.status_label }}: {{ check.detail }}">{% if check.status == 'pass' %}✓{% elif check.status == 'repaired' %}!→✓{% elif check.status == 'blocked' %}×{% elif check.status == 'checking' %}…{% else %}!{% endif %}</span>
           </td>
           <td class="inspection-action">
             <span>{{ check.action }}</span>

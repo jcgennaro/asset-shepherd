@@ -846,7 +846,15 @@ if (inspectionExperience && !window.matchMedia("(prefers-reduced-motion: reduce)
       row.classList.add(status);
       row.querySelector("strong").textContent = row.dataset.label;
       row.querySelector(".inspection-check-icon").textContent =
-        status === "pass" ? "✓" : status === "blocked" ? "×" : status === "checking" ? "…" : "!";
+        status === "pass"
+          ? "✓"
+          : status === "repaired"
+            ? "!→✓"
+            : status === "blocked"
+              ? "×"
+              : status === "checking"
+                ? "…"
+                : "!";
       if (count) {
         count.textContent = `${index + 1} of ${rows.length}`;
       }

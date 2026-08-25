@@ -294,6 +294,12 @@ verification remains downloadable for human review, but it never receives a veri
 project-ready label. The conversation remains available for questions and further agent-led repair
 turns until the user starts a new asset or the job expires.
 
+The shared inspection table is also the after-action report. Before execution its last column is
+`Proposed action`; afterward it is `Action taken`. A warning becomes the compact `!→✓` transition
+only when the corresponding action executed and independent verification confirmed its
+postcondition. Attempted-but-unverified, rejected, unresolved, and report-only concerns remain
+warnings, so the report never presents an attempted mutation as a completed correction.
+
 ## 5. Tool-design rules
 
 Every product tool must satisfy these rules:

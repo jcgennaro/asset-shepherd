@@ -1893,6 +1893,14 @@ details[open] summary::after {
   border-left: 4px solid var(--attention);
 }
 
+.inspection-check.repaired > * {
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+}
+
+.inspection-check.repaired > :first-child {
+  border-left: 4px solid var(--success);
+}
+
 .inspection-check.blocked > * {
   background: rgba(239, 141, 132, 0.09);
 }
@@ -1964,7 +1972,9 @@ details[open] summary::after {
 
 .inspection-check-icon::after {
   position: absolute;
+  display: none;
   z-index: 80;
+  box-sizing: border-box;
   top: 50%;
   left: calc(100% + 12px);
   width: max-content;
@@ -1987,6 +1997,7 @@ details[open] summary::after {
 
 .inspection-check-icon:hover::after,
 .inspection-check-icon:focus-visible::after {
+  display: block;
   opacity: 1;
   transform: translate(0, -50%);
 }
@@ -1998,6 +2009,12 @@ details[open] summary::after {
 
 .inspection-check.pass .inspection-check-icon {
   color: var(--success);
+}
+
+.inspection-check.repaired .inspection-check-icon {
+  width: 48px;
+  color: var(--success);
+  border-radius: 999px;
 }
 
 .inspection-check.attention .inspection-check-icon {

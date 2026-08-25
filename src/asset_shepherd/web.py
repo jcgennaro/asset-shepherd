@@ -60,6 +60,7 @@ from asset_shepherd.models import (
     AssetEndpoint,
     AssetIntentProvenance,
     AssetTargetUse,
+    CheckStatus,
     DecisionRecord,
     DecisionValue,
     Finding,
@@ -200,7 +201,7 @@ class ComparisonSceneView:
 
 @dataclass(frozen=True)
 class InspectionCheckView:
-    """One user-facing inspection lane with its result and any proposed action."""
+    """One user-facing inspection lane with its result and phase-aware action."""
 
     label: str
     status: str
@@ -208,13 +209,14 @@ class InspectionCheckView:
     description: str
     action: str
     response_lane: ProposalLane | None = None
+    action_heading: str = "Proposed action"
 
     @property
     def detail(self) -> str:
         """Return the complete hover and accessibility explanation for this lane."""
         if self.action == "—":
             return self.description
-        return f"{self.description} Proposed action: {self.action}"
+        return f"{self.description} {self.action_heading}: {self.action}"
 
 
 @dataclass(frozen=True)
@@ -1499,10 +1501,12 @@ _NAME_CODES = {
 
 
 def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
-    """Build one non-repeating table of findings, states, and proposed actions."""
+    """Build one non-repeating table of findings and phase-aware actions."""
     inspection = core.inspection
     plan = core.selected_plan
     assessment = core.agent_assessment
+    after_action = core.outcome is not None
+    action_heading = "Action taken" if after_action else "Proposed action"
     if inspection is None:
         return (
             InspectionCheckView(
@@ -1511,8 +1515,32 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 "Checking",
                 "Inspection is running.",
                 "—",
+                action_heading=action_heading,
             ),
         )
+
+    executed_ids: set[str] = (
+        set(core.outcome.executed_action_ids) if core.outcome is not None else set()
+    )
+    rejected_ids: set[str] = (
+        set(core.outcome.rejected_action_ids) if core.outcome is not None else set()
+    )
+    verification_checks = (
+        {check.code: check.status for check in core.last_verification.checks}
+        if core.last_verification is not None
+        else {}
+    )
+    verification_passed = bool(
+        core.last_verification is not None
+        and core.last_verification.state
+        in {
+            VerificationState.PASSED_PROJECT_READY,
+            VerificationState.PASSED_WITH_REMAINING_WARNINGS,
+        }
+    )
+
+    def check_passed(code: str) -> bool:
+        return verification_checks.get(code) is CheckStatus.PASS
 
     def has_attention(relevant_codes: set[str]) -> bool:
         return any(
@@ -1552,13 +1580,17 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     )
 
     normalization_action = ""
+    normalization_id: str | None = None
     mesh_names: list[str] = []
     node_names: list[str] = []
+    name_ids: list[str] = []
     weld_action = ""
+    weld_ids: list[str] = []
     if plan is not None:
         for candidate in plan.candidates:
             payload = candidate.payload
             if isinstance(payload, NormalizationPayload):
+                normalization_id = candidate.id
                 requested: list[str] = []
                 if assessment is not None and assessment.scale_to_confirmed_height:
                     requested.append("fit proportionally")
@@ -1583,6 +1615,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 )
                 continue
             if isinstance(payload, WeldPayload):
+                weld_ids.append(candidate.id)
                 merge_count = sum(primitive.merge_count for primitive in payload.primitives)
                 weld_action = (
                     f"Automatic — compact {merge_count:,} byte-identical vertex tuple"
@@ -1593,8 +1626,10 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             item = f"“{before_name}” → “{payload.after_name}”"
             if candidate.kind is RepairKind.RENAME_MESH:
                 mesh_names.append(item)
+                name_ids.append(candidate.id)
             elif candidate.kind is RepairKind.RENAME_NODE:
                 node_names.append(item)
+                name_ids.append(candidate.id)
 
     geometry = inspection.geometry
     measured_dimensions = (
@@ -1645,6 +1680,55 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     name_label = "Automatic" if name_items else ("Attention" if name_warning else "Pass")
     name_action = f"Automatic — {'; '.join(name_items)}" if name_items else "—"
 
+    if after_action:
+        if normalization_id is not None and normalization_id in executed_ids:
+            normalized_detail = normalization_action.removeprefix("Approval required — ")
+            if verification_passed:
+                size_status = "repaired"
+                size_label = "Addressed"
+                normalization_action = f"Applied — {normalized_detail}"
+            else:
+                size_status = "attention"
+                size_label = "Needs review"
+                normalization_action = (
+                    f"Attempted — verification did not confirm {normalized_detail}"
+                )
+        elif normalization_id is not None and normalization_id in rejected_ids:
+            size_status = "attention"
+            size_label = "Unresolved"
+            normalization_action = "Not applied — rejected."
+        elif size_warning:
+            normalization_action = "No change — report only."
+
+        if weld_ids and all(candidate_id in executed_ids for candidate_id in weld_ids):
+            weld_detail = weld_action.removeprefix("Automatic — ")
+            if check_passed("ATTRIBUTE_SAFE_WELD_EXHAUSTED"):
+                topology_status = "repaired"
+                topology_label = "Addressed"
+                topology_action = f"Applied — {weld_detail}"
+            else:
+                topology_status = "attention"
+                topology_label = "Needs review"
+                topology_action = f"Attempted — verification did not confirm {weld_detail}"
+        elif topology_warning:
+            topology_action = topology_action.replace("Report only —", "No change —", 1)
+
+        if material_warning:
+            material_action = "No change — report only."
+
+        if name_ids and all(candidate_id in executed_ids for candidate_id in name_ids):
+            name_detail = name_action.removeprefix("Automatic — ")
+            if check_passed("NAMES_VALID_AND_UNIQUE"):
+                name_status = "repaired"
+                name_label = "Addressed"
+                name_action = f"Applied — {name_detail}"
+            else:
+                name_status = "attention"
+                name_label = "Needs review"
+                name_action = f"Attempted — verification did not confirm {name_detail}"
+        elif name_warning:
+            name_action = "No change — names remain unresolved."
+
     topology_description = (
         f"{projected_boundaries:,} boundary · {projected_non_manifold:,} non-manifold · "
         f"{projected_winding:,} winding edges after position projection."
@@ -1679,6 +1763,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             ),
             structure_action,
             None,
+            action_heading,
         ),
         InspectionCheckView(
             "Size and pose",
@@ -1686,7 +1771,8 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             size_label,
             f"Measured {measured_dimensions}; target approximately {target_dimensions}.",
             normalization_action or "—",
-            ProposalLane.SIZE_AND_POSE if normalization_action else None,
+            ProposalLane.SIZE_AND_POSE if normalization_action and not after_action else None,
+            action_heading,
         ),
         InspectionCheckView(
             "Topology",
@@ -1694,7 +1780,8 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             topology_label,
             topology_description,
             topology_action,
-            ProposalLane.TOPOLOGY if weld_action else None,
+            ProposalLane.TOPOLOGY if weld_action and not after_action else None,
+            action_heading,
         ),
         InspectionCheckView(
             "Materials and textures",
@@ -1703,6 +1790,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             material_description,
             material_action,
             None,
+            action_heading,
         ),
         InspectionCheckView(
             "Display names",
@@ -1710,7 +1798,8 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             name_label,
             name_description,
             name_action,
-            ProposalLane.DISPLAY_NAMES if name_items else None,
+            ProposalLane.DISPLAY_NAMES if name_items and not after_action else None,
+            action_heading,
         ),
     )
 
