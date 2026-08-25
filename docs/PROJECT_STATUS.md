@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-24
-**Current commit:** D047 seam-aware duplicate-position sensing and safe tuple compaction (this file is included)
+**Current commit:** D048 attribute-seam presentation and residual topology evidence (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -49,6 +49,15 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D048 attribute-seam presentation: protected UV, normal, tangent, color, and skinning splits are
+  now described as expected glTF representation rather than defects or user repair decisions. The
+  agent is instructed to ignore those counts when deciding whether the asset needs work and instead
+  assess the residual position-projection boundary, non-manifold, and winding evidence. On-demand
+  job details and the Markdown inspection report show those concepts separately. Position-only
+  welding remains unavailable and the exact complete-tuple compaction gate is unchanged. Prompt
+  version 5, route coverage, and schema provenance are current; browser review passed, and the
+  common gate passes with 135 tests, one opt-in skip, Ruff, formatting, and zero Pyright findings.
 
 - D047 seam-aware duplicate positions: every triangle primitive now records exact coincident-position
   groups, a position-only virtual-weld topology projection, complete-tuple mergeability, and the

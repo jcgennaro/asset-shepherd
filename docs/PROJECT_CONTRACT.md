@@ -5,12 +5,12 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 1.7
+**Document version:** 1.8
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
 D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
-sensing and disposition, D042 upload-first two-text UX, and D047 seam-aware duplicate-position
-handling, 2026-08-24
+sensing and disposition, D042 upload-first two-text UX, D047 seam-aware duplicate-position
+handling, and D048 attribute-seam presentation, 2026-08-24
 
 ---
 
@@ -478,6 +478,11 @@ preauthorize them:
 - Compact exact duplicate complete vertex tuples only when the agent explicitly requests it and
   deterministic inspection proves that POSITION and every accompanying attribute are byte-identical.
   Position-only matches across UV, normal, tangent, color, joint, or weight seams are never merged.
+
+Attribute-separated duplicates are normal glTF representation, not user-facing defects. They must
+not be presented as a choice whose approval could make an attribute-damaging weld safe. The
+read-only position projection may expose residual boundary, non-manifold, and winding evidence for
+agent interpretation, but it never authorizes topology mutation.
 
 Name changes may be considered non-consequential because glTF references nodes and meshes by index,
 not by display name. The implementation must still prove that indices and references remain intact.

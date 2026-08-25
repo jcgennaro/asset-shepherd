@@ -156,6 +156,12 @@ lossless compaction; hole closing, remeshing, normal recalculation, and position
 unavailable. Non-manifold or inconsistently wound shared edges remain report-only. Performance
 estimates identify likely risk; target-engine/GPU profiling is decisive.
 
+Duplicate positions separated by UVs, normals, tangents, colors, joints, or weights are expected
+glTF representation and are not presented to the user as defects or as a safe/unsafe choice. The
+agent focuses its topology explanation on the residual boundary, non-manifold, and winding evidence
+from the read-only position projection. A human may decline a proposed supported repair, but cannot
+reclassify an attribute-damaging position weld as safe because that operation is not registered.
+
 ### 4. Form an assessment
 
 The agent produces a compact assessment with:

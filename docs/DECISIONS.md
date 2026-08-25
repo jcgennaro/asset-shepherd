@@ -4,6 +4,37 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D048 — Treat protected attribute splits as representation, not a repair decision
+
+**Date:** 2026-08-24
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 real-world evaluation
+
+**Context**
+
+The Computer Chip has 5,312 duplicate POSITION rows, but every potential merge crosses a
+`TEXCOORD_0` difference. The user asked whether those merges could be exposed as a safe/unsafe
+choice, then agreed that approval cannot turn texture-coordinate loss into a safe operation.
+
+**Decision**
+
+Treat duplicates separated by UVs or another protected vertex attribute as expected glTF
+representation. Do not present their count as a defect, wasted data, or a repair choice. Continue
+to refuse position-only welding. Show the read-only position projection separately and direct the
+agent's topology explanation toward residual boundary, non-manifold, and winding evidence. Keep
+lossless complete-tuple compaction available only when every attribute is byte-identical.
+
+**Evidence and consequences**
+
+The Computer Chip remains unchanged: 5,312 UV seam splits are ignored as repair candidates, while
+the projected 91 boundary edges, 50 non-manifold edges, and 11 inconsistent shared edges remain
+available for agent interpretation and downstream repair-tool planning. No topology reconstruction,
+hole closing, normal recalculation, or destructive override is added.
+
 ### D047 — Separate virtual position welding from lossless vertex-tuple compaction
 
 **Date:** 2026-08-24

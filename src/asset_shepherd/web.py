@@ -1449,6 +1449,10 @@ _TOPOLOGY_CODES = {
     "UNSUPPORTED_REPAIR_FEATURES",
     "MALFORMED_GEOMETRY_ATTRIBUTES",
     "DEGENERATE_TRIANGLES_DETECTED",
+    "MESH_TOPOLOGY_DEFECTS_DETECTED",
+    "ATTRIBUTE_SAFE_DUPLICATE_TUPLES_DETECTED",
+    "UNUSED_VERTEX_DATA_DETECTED",
+    "VERTEX_CACHE_LOCALITY_WARNING",
     "TRIANGLE_BUDGET_EXCEEDED",
 }
 _MATERIAL_CODES = {
@@ -1474,7 +1478,6 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     assessment = core.agent_assessment
     if inspection is None:
         return (InspectionCheckView("GLB structure", "checking", "Inspection is running."),)
-    codes = {finding.code for finding in inspection.findings}
 
     def result(
         label: str,
@@ -1482,7 +1485,10 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         passed: str,
         attention: str,
     ) -> InspectionCheckView:
-        has_attention = bool(codes & relevant_codes)
+        has_attention = any(
+            finding.code in relevant_codes and finding.severity is not Severity.INFO
+            for finding in inspection.findings
+        )
         return InspectionCheckView(
             label,
             "attention" if has_attention else "pass",
@@ -1679,7 +1685,8 @@ def _inspection_summary(job: WebJob, cannot_repair: bool) -> InspectionSummaryVi
     data_findings = [
         finding
         for finding in findings
-        if finding.code in _TOPOLOGY_CODES or finding.code in _MATERIAL_CODES
+        if (finding.code in _TOPOLOGY_CODES or finding.code in _MATERIAL_CODES)
+        and finding.severity is not Severity.INFO
     ]
     if data_findings:
         attention.append(

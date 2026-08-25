@@ -132,6 +132,10 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert pending.text.count('data-tooltip="') == 6
     assert "The original file remains untouched." not in pending.text
     assert "Ask from recorded evidence" not in pending.text
+    assert "VERTEX REPRESENTATION" in pending.text
+    assert "expected attribute-seam splits" in pending.text
+    assert "POSITION TOPOLOGY" in pending.text
+    assert "protected seams" not in pending.text
     assert ">Approve <" in pending.text
     interrupt_id = _hidden(pending.text, "interrupt_id")
     decision_command = _hidden(pending.text, "command_id")

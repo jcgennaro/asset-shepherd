@@ -198,7 +198,11 @@
             {% set duplicate_positions = inspection.diagnostics.primitives|sum(attribute='duplicate_position_count') %}
             {% set safe_merges = inspection.diagnostics.primitives|sum(attribute='attribute_safe_merge_count') %}
             {% set protected_duplicates = inspection.diagnostics.primitives|sum(attribute='protected_duplicate_count') %}
-            <p class="contract-finding"><code>VERTEX TUPLES</code><span>{{ duplicate_positions }} coincident positions · {% if safe_merges + protected_duplicates == duplicate_positions %}{{ safe_merges }} attribute-safe merges · {{ protected_duplicates }} protected seams{% else %}weld safety was not classified in this earlier inspection{% endif %}</span></p>
+            {% set projected_boundaries = inspection.diagnostics.primitives|sum(attribute='virtual_weld_boundary_edge_count') %}
+            {% set projected_non_manifold = inspection.diagnostics.primitives|sum(attribute='virtual_weld_non_manifold_edge_count') %}
+            {% set projected_winding = inspection.diagnostics.primitives|sum(attribute='virtual_weld_inconsistent_winding_edge_count') %}
+            <p class="contract-finding"><code>VERTEX REPRESENTATION</code><span>{% if safe_merges + protected_duplicates == duplicate_positions %}{{ protected_duplicates }} expected attribute-seam splits · {{ safe_merges }} losslessly compactable duplicate tuples{% else %}weld safety was not classified in this earlier inspection{% endif %}</span></p>
+            <p class="contract-finding"><code>POSITION TOPOLOGY</code><span>{{ projected_boundaries }} boundary edges · {{ projected_non_manifold }} non-manifold edges · {{ projected_winding }} inconsistent shared edges</span></p>
           {% endif %}
           {% if finding_groups %}{% for severity, findings in finding_groups %}{% for finding in findings %}
             <p class="contract-finding"><code>{{ finding.code }}</code><span>{{ severity }} · {{ finding.action_class }} · {{ basis_labels[finding.basis.value] }}</span></p>

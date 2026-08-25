@@ -189,3 +189,7 @@ def test_chip_uv_seams_are_detected_but_not_registered_as_safe_weld() -> None:
     assert primitive.attribute_safe_merge_count == 0
     assert primitive.protected_duplicate_count == 5312
     assert primitive.protected_attribute_conflicts == ("TEXCOORD_0",)
+    assert not any(
+        finding.code == "ATTRIBUTE_SAFE_DUPLICATE_TUPLES_DETECTED"
+        for finding in inspection.findings
+    )
