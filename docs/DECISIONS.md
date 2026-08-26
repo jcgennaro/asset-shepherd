@@ -4,6 +4,51 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D059 — Show workflow status on every gallery project
+
+**Date:** 2026-08-26
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted agent workflow
+
+**Context**
+
+Gallery cards printed raw durable phase names such as `TARGET_CONFIRMATION` and `APPROVAL`. Those
+names exposed implementation state, did not locate the asset in the three-step user workflow, and
+made successful, attention, blocked, and failed projects visually indistinguishable.
+
+**Decision**
+
+Give every valid persisted asset one compact status line under its agent-assigned name. Translate
+the durable phases as follows:
+
+| Durable phase | Gallery status | Tone |
+|---|---|---|
+| `TARGET_CONFIRMATION` or uploaded draft | `Step 2 · Describe` | Neutral |
+| `APPROVAL` | `Step 3 · Review` | Amber |
+| `COMPLETE` | `Step 3 · Ready` | Green |
+| `BLOCKED` | `Step 3 · Blocked` | Red |
+| `ERROR` | `Step 3 · Failed` | Red |
+
+Use both words and a colored dot so color is never the only status carrier. Keep the text at 15 px
+and add no legend, status panel, subtitle, or duplicate progress summary.
+
+A rejected Step 1 upload does not have a valid source and therefore is not yet a project. Keep the
+user on Upload with the actionable error, create no gallery record, and consume none of the seven
+slots. Once a GLB passes upload preflight, its draft appears as `Step 2 · Describe`.
+
+**Evidence and consequences**
+
+Typed mapping coverage exercises all five durable phases. Hosted-route coverage proves one
+description card and one approval card render the correct status, tone, and no raw phase name; draft
+coverage proves an upload awaiting description survives with the same Step 2 status. Browser
+acceptance confirms the compact status line is visually legible in the existing card without adding
+another attention region. The common gate passes with 156 tests, one opt-in skip, lock validation,
+Ruff, formatting, and zero Pyright findings.
+
 ### D058 — Keep source context visible during Shepherd work and reject unusable uploads early
 
 **Date:** 2026-08-26

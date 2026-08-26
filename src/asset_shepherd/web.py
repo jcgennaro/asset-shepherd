@@ -40,6 +40,7 @@ from asset_shepherd.hosted_workspace import (
     HostedWorkspace,
     HostedWorkspaceError,
     HostedWorkspaceStore,
+    WorkspacePhase,
     copy_validated_upload,
 )
 from asset_shepherd.inspector import inspect_asset, preflight_asset
@@ -249,6 +250,25 @@ class HostedStartDraft:
         """Return a readable temporary name until intake assigns the asset name."""
         words = re.sub(r"[_-]+", " ", Path(self.original_filename).stem).strip()
         return words.title()[:48] or "Uploaded asset"
+
+
+@dataclass(frozen=True)
+class GalleryStatusView:
+    """Compact user-facing progress state for one persisted asset workspace."""
+
+    label: str
+    tone: str
+
+
+def gallery_status(phase: WorkspacePhase) -> GalleryStatusView:
+    """Translate an internal durable phase into concise workflow language."""
+    return {
+        WorkspacePhase.TARGET_CONFIRMATION: GalleryStatusView("Step 2 · Describe", "pending"),
+        WorkspacePhase.APPROVAL: GalleryStatusView("Step 3 · Review", "attention"),
+        WorkspacePhase.COMPLETE: GalleryStatusView("Step 3 · Ready", "success"),
+        WorkspacePhase.BLOCKED: GalleryStatusView("Step 3 · Blocked", "danger"),
+        WorkspacePhase.ERROR: GalleryStatusView("Step 3 · Failed", "danger"),
+    }[phase]
 
 
 @dataclass(frozen=True)
@@ -2581,6 +2601,9 @@ def create_app(
                 "refusal": refusal,
                 "description": description,
                 "workspace_records": records,
+                "workspace_statuses": {
+                    record.workspace_id: gallery_status(record.phase) for record in records
+                },
                 "new_drafts": new_drafts,
                 "redo_drafts": redo_drafts,
                 "gallery_full": gallery_full,

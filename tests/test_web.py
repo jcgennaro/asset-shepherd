@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from pygltflib import Skin
 
 from asset_shepherd.glb import load_glb, save_glb, world_bounds
+from asset_shepherd.hosted_workspace import WorkspacePhase
 from asset_shepherd.intake_analyzer import (
     INTAKE_REFUSAL_MESSAGE,
     TargetDimensionsInference,
@@ -35,7 +36,7 @@ from asset_shepherd.models import (
 )
 from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.target_intake import TargetIntakeContract
-from asset_shepherd.web import create_app
+from asset_shepherd.web import create_app, gallery_status
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
@@ -70,6 +71,28 @@ _USE_DESCRIPTION = {
     AssetTargetUse.RIG_READY_CHARACTER.value: "a rig-ready character",
     AssetTargetUse.PLAYABLE_CHARACTER.value: "a playable character",
 }
+
+
+@pytest.mark.parametrize(
+    ("phase", "label", "tone"),
+    (
+        (WorkspacePhase.TARGET_CONFIRMATION, "Step 2 · Describe", "pending"),
+        (WorkspacePhase.APPROVAL, "Step 3 · Review", "attention"),
+        (WorkspacePhase.COMPLETE, "Step 3 · Ready", "success"),
+        (WorkspacePhase.BLOCKED, "Step 3 · Blocked", "danger"),
+        (WorkspacePhase.ERROR, "Step 3 · Failed", "danger"),
+    ),
+)
+def test_gallery_status_uses_workflow_language_and_accessible_tone(
+    phase: WorkspacePhase,
+    label: str,
+    tone: str,
+) -> None:
+    """Every durable state maps to one concise gallery status."""
+    status = gallery_status(phase)
+
+    assert status.label == label
+    assert status.tone == tone
 
 
 def _draft_intent(

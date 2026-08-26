@@ -5,10 +5,11 @@
     <div class="asset-gallery" aria-label="Asset workspaces">
       {% for saved in workspace_records %}
         {% set redo_draft = redo_drafts.get(saved.workspace_id) %}
+        {% set status = workspace_statuses[saved.workspace_id] %}
         <article class="asset-gallery-card">
           <a class="asset-gallery-resume" href="{{ url_for('hosted_workspace_page', workspace_id=saved.workspace_id) }}">
             <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=saved.workspace_id) }}" alt="{{ saved.asset_name }}" camera-orbit="35deg 70deg auto" disable-zoom></model-viewer>
-            <span><strong>{{ saved.asset_name }}</strong><small>{{ saved.phase.value|replace('_', ' ')|title }}</small></span>
+            <span><strong>{{ saved.asset_name }}</strong><small class="asset-gallery-status {{ status.tone }}"><i aria-hidden="true"></i>{{ status.label }}</small></span>
           </a>
           <div class="asset-gallery-actions">
             {% if redo_draft %}
@@ -26,7 +27,7 @@
         <article class="asset-gallery-card">
           <a class="asset-gallery-resume" href="{{ url_for('hosted_describe', draft_id=draft.draft_id) }}">
             <model-viewer src="{{ url_for('hosted_draft_source_asset', draft_id=draft.draft_id) }}" alt="{{ draft.display_name }}" camera-orbit="35deg 70deg auto" disable-zoom></model-viewer>
-            <span><strong>{{ draft.display_name }}</strong><small>Describe</small></span>
+            <span><strong>{{ draft.display_name }}</strong><small class="asset-gallery-status pending"><i aria-hidden="true"></i>Step 2 · Describe</small></span>
           </a>
         </article>
       {% endfor %}

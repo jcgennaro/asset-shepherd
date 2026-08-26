@@ -3583,6 +3583,40 @@ model-viewer {
   color: var(--muted);
 }
 
+.asset-gallery-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.asset-gallery-status i {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.asset-gallery-status.pending {
+  color: var(--muted);
+}
+
+.asset-gallery-status.attention {
+  color: var(--attention);
+}
+
+.asset-gallery-status.success {
+  color: var(--success);
+}
+
+.asset-gallery-status.danger {
+  color: var(--danger);
+}
+
 .new-asset-panel {
   border-top: 1px solid var(--line);
 }

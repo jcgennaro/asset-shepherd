@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-26
-**Current commit:** D058 working source context and upload preflight (this file is included)
+**Current commit:** D059 gallery workflow status (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,17 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D059 gallery status checkpoint: every persisted asset card now shows one plain-language workflow
+  state with a visible dot and text, rather than exposing the internal phase enum. Pending
+  description is `Step 2 · Describe`; approval is `Step 3 · Review`; verified completion is `Step 3
+  · Ready`; unresolved work is `Step 3 · Blocked`; and runtime failure is `Step 3 · Failed`.
+  Neutral, amber, green, and red treatments supplement rather than replace the words. A file rejected
+  during Upload does not create a project card or consume one of the seven slots; its concise error
+  remains on Step 1. Route and mapping coverage exercise every durable state, and browser acceptance
+  confirms the status remains readable without adding another panel or heading. The common gate
+  passes with 156 tests, one opt-in skip, lock validation, Ruff, formatting, and zero Pyright
+  findings.
 
 - D058 working source and upload-preflight checkpoint: the source-only 3D viewer remains visible
   beside observable tool activity throughout Shepherd work and orbits slowly unless the user prefers

@@ -448,6 +448,11 @@ def test_workspace_gallery_names_and_resumes_isolated_asset_state(tmp_path: Path
     assert gallery.text.count('class="asset-gallery-card"') == 2
     assert gallery.text.count("<model-viewer") == 2
     assert gallery.text.count('class="asset-redo"') == 2
+    assert 'class="asset-gallery-status attention"' in gallery.text
+    assert "Step 3 · Review" in gallery.text
+    assert 'class="asset-gallery-status pending"' in gallery.text
+    assert "Step 2 · Describe" in gallery.text
+    assert "Target Confirmation" not in gallery.text
 
     resumed_first = client.get(created_paths[0])
     resumed_second = client.get(created_paths[1])
@@ -505,7 +510,8 @@ def test_uploaded_description_draft_resumes_from_gallery_after_restart(tmp_path:
 
     gallery = client.get("/workspace")
     assert "Broken Robot" in gallery.text
-    assert "Describe" in gallery.text
+    assert "Step 2 · Describe" in gallery.text
+    assert 'class="asset-gallery-status pending"' in gallery.text
     assert describe_path in gallery.text
 
     restarted = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
