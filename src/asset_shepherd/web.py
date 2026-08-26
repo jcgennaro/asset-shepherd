@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import mimetypes
 import os
@@ -35,6 +36,7 @@ from asset_shepherd.agent_runtime import (
 from asset_shepherd.glb import load_glb, world_bounds
 from asset_shepherd.hosted_workspace import (
     MAX_HOSTED_WORKSPACES,
+    UNREADABLE_GLB_MESSAGE,
     HostedWorkspace,
     HostedWorkspaceError,
     HostedWorkspaceStore,
@@ -90,6 +92,7 @@ _PACKAGE_ROOT = Path(__file__).resolve().parent
 _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
 _DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
 mimetypes.add_type("model/gltf-binary", ".glb")
+logger = logging.getLogger(__name__)
 
 
 def _asset_download_stem(asset_name: str) -> str:
@@ -3422,8 +3425,11 @@ def create_app(
             copy_validated_upload(asset.file, source_path)
             preflight = preflight_asset(source_path)
             if not preflight.package.parse_success:
+                logger.info("Rejected unreadable hosted GLB: %s", preflight.parse_error)
+                raise HostedWorkspaceError(UNREADABLE_GLB_MESSAGE)
+            if preflight.structural_eligibility is RepairEligibility.INVALID_OR_UNREADABLE:
                 raise HostedWorkspaceError(
-                    f"This GLB could not be read: {preflight.parse_error or 'unknown parse error'}"
+                    preflight.parse_error or "This GLB cannot enter the Shepherd workflow."
                 )
             draft = HostedStartDraft(
                 draft_id=draft_id,

@@ -117,15 +117,21 @@ turn, not a substitute for agent reassessment.
 The product navigation has two levels. **Gallery** selects a saved workspace or starts a new one;
 it is not a numbered workflow step. A selected workspace exposes **1 Upload, 2 Describe, 3
 Shepherd**. From Describe onward, the immutable source remains visible with its measured wireframe
-world bounds and optional metric axes or banana reference. Target agreement, sensing, proposals,
-authorization, reassessment, verification, and download all remain iterative states inside
-Shepherd rather than becoming additional top-level pages.
+world bounds and optional metric axes or banana reference. During Shepherd tool work, that source
+context remains visible and orbits slowly unless reduced motion is requested. Target agreement,
+sensing, proposals, authorization, reassessment, verification, and download all remain iterative
+states inside Shepherd rather than becoming additional top-level pages.
 
 ### 1. Register the source
 
 The user uploads the GLB first. Container validation, hashing, structural eligibility, and objective
 preflight may run immediately. These tools create no target-dependent finding, repair proposal,
 approval, mutation, or readiness claim.
+
+Objective preflight requires three positive finite world-space extents and rejects an asset whose
+largest extent is more than 10,000 times its smallest. This is a framing and numerical-workability
+invariant, not an agent inference about what shape the object ought to have. Malformed containers,
+damaged GLBs, pathological bounds, and unsupported file formats stop before target intake.
 
 ### 2. Understand the goal
 

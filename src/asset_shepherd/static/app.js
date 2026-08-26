@@ -405,6 +405,8 @@ function initializeModelComparison(comparison) {
 
   const config = JSON.parse(configElement.textContent || "{}");
   const afterLabel = comparison.dataset.afterLabel || "After";
+  const sourceOnly = comparison.classList.contains("source-only");
+  const workingScope = comparison.closest(".conversation-pane");
   let activeFitMode = "both";
   let axesVisible = false;
   let bananaVisible = false;
@@ -424,6 +426,28 @@ function initializeModelComparison(comparison) {
 
   function clamp(value, minimum, maximum) {
     return Math.min(maximum, Math.max(minimum, value));
+  }
+
+  function adaptiveMetricUnit(longestM) {
+    if (longestM >= 1000) {
+      return { symbol: "km", multiplier: 0.001 };
+    }
+    if (longestM >= 1) {
+      return { symbol: "m", multiplier: 1 };
+    }
+    if (longestM >= 0.01) {
+      return { symbol: "cm", multiplier: 100 };
+    }
+    return { symbol: "mm", multiplier: 1000 };
+  }
+
+  function formatBoundsDimensions(bounds) {
+    const unit = adaptiveMetricUnit(bounds.longest);
+    const dimensions = bounds.maximum.map(
+      (maximum, index) => (maximum - bounds.minimum[index]) * unit.multiplier,
+    );
+    const values = dimensions.map((value) => Number(value.toPrecision(3)));
+    return `X ${values[0]} × Y ${values[1]} × Z ${values[2]} ${unit.symbol}`;
   }
 
   function hotspotPoint(name) {
@@ -502,6 +526,19 @@ function initializeModelComparison(comparison) {
         .join(""),
     );
 
+    if (sourceOnly && target === "before") {
+      graphics.label.textContent = formatBoundsDimensions(config.before);
+      graphics.label.setAttribute("x", clamp((rawLeft + rawRight) / 2, 8, width - 8));
+      graphics.label.setAttribute(
+        "y",
+        clamp(rawTop > 34 ? rawTop - 14 : rawBottom + 22, 14, height - 8),
+      );
+      graphics.label.setAttribute("text-anchor", "middle");
+      graphics.leader.setAttribute("visibility", "hidden");
+      return;
+    }
+
+    graphics.leader.removeAttribute("visibility");
     const other = target === "before" ? "after" : "before";
     const tiny = Boolean(config[other]) && config[target].longest / config[other].longest < 0.18;
     const targetLabel = target === "after"
@@ -817,6 +854,18 @@ function initializeModelComparison(comparison) {
     }
   });
   new ResizeObserver(scheduleHud).observe(viewer);
+
+  if (sourceOnly && workingScope) {
+    const syncWorkingOrbit = () => {
+      const shouldOrbit = workingScope.classList.contains("is-working") && !reduceMotion;
+      viewer.toggleAttribute("auto-rotate", shouldOrbit);
+    };
+    new MutationObserver(syncWorkingOrbit).observe(workingScope, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    syncWorkingOrbit();
+  }
 }
 
 if (document.querySelector("[data-model-comparison]")) {

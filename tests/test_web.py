@@ -1145,6 +1145,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'axisLayer.toggleAttribute("hidden"' in script.text
     assert "function animateBananaIn(bounds)" in script.text
     assert "function animateBananaOut()" in script.text
+    assert "function adaptiveMetricUnit(longestM)" in script.text
+    assert "function formatBoundsDimensions(bounds)" in script.text
+    assert 'viewer.toggleAttribute("auto-rotate", shouldOrbit)' in script.text
     assert "viewer.jumpCameraToGoal" not in script.text
     assert "const boundingBoxEdges = [" in script.text
     assert "[5, 7], [6, 7]" in script.text
@@ -1154,6 +1157,11 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"
     ).read_text(encoding="utf-8")
     assert 'interpolation-decay="240"' in comparison_template
+    assert 'auto-rotate-delay="0" rotation-per-second="4deg"' in comparison_template
+
+    stylesheet = client.get("/static/app.css")
+    assert stylesheet.status_code == 200
+    assert ":not([data-workflow-activity]):not([data-model-comparison])" in stylesheet.text
 
 
 def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:

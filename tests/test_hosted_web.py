@@ -9,6 +9,7 @@ from zipfile import ZipFile
 from fastapi.testclient import TestClient
 
 from asset_shepherd.agent_job import VerificationFunction
+from asset_shepherd.glb import load_glb, save_glb
 from asset_shepherd.hosted_workspace import HostedWorkspaceStore
 from asset_shepherd.intake_analyzer import (
     TargetDimensionsInference,
@@ -32,6 +33,36 @@ PACKAGE_NAMES = {
     "repaired.glb",
     "verification.json",
 }
+
+
+def test_upload_rejects_pathological_world_bounds_before_description(tmp_path: Path) -> None:
+    """Objective extent-ratio rejection happens before target intake or agent work."""
+    pathological_path = tmp_path / "pathological-bounds.glb"
+    gltf = load_glb(PROJECT_ROOT / "fixtures" / "clean_robot.glb")
+    assert gltf.scenes is not None
+    scene_nodes = gltf.scenes[gltf.scene].nodes
+    assert scene_nodes is not None
+    assert gltf.nodes is not None
+    root_index = scene_nodes[0]
+    gltf.nodes[root_index].scale = [100_000.0, 1.0, 1.0]
+    save_glb(gltf, pathological_path)
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+
+    response = client.post(
+        "/workspace/new/upload",
+        files={
+            "asset": (
+                pathological_path.name,
+                pathological_path.read_bytes(),
+                "model/gltf-binary",
+            )
+        },
+    )
+
+    assert response.status_code == 400
+    assert "too disproportionate to shepherd" in response.text
+    assert "limit 10,000x" in response.text
+    assert "/describe" not in response.url.path
 
 
 def _hidden(html: str, name: str) -> str:
@@ -94,6 +125,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert f"{describe_path.rsplit('/describe', 1)[0]}/source.glb" in describe.text
     assert describe.text.count('data-comparison-target="before"') == 1
     assert 'data-comparison-target="after"' not in describe.text
+    assert 'rotation-per-second="4deg"' in describe.text
 
     created = client.post(
         describe_path,
@@ -349,6 +381,39 @@ def test_upload_preflight_rejects_an_invalid_glb_before_description(tmp_path: Pa
     assert "The upload is not a GLB 2.0 binary container." in rejected.text
     assert "Model description" not in rejected.text
     assert "Upload the GLB you want me to shepherd." in rejected.text
+    assert not tuple(work_root.rglob("source.glb"))
+
+
+def test_invalid_upload_fixture_set_fails_concisely_before_agent_work(tmp_path: Path) -> None:
+    """Malformed GLBs and unsupported FBX fail at the appropriate upload boundary."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    fixture_root = PROJECT_ROOT / "fixtures" / "invalid_uploads"
+    cases = (
+        ("tiny-gibberish.glb", "The upload is not a GLB 2.0 binary container."),
+        (
+            "truncated-clean-robot.glb",
+            "This GLB is damaged or incomplete and could not be read.",
+        ),
+        (
+            "invalid-json-chunk.glb",
+            "This GLB is damaged or incomplete and could not be read.",
+        ),
+        ("minimal-ascii.fbx", "Choose exactly one file with a .glb extension."),
+    )
+
+    for filename, expected_message in cases:
+        path = fixture_root / filename
+        assert path.stat().st_size < 1024
+        response = client.post(
+            "/workspace/new/upload",
+            files={"asset": (filename, path.read_bytes(), "application/octet-stream")},
+        )
+        assert response.status_code == 400
+        assert expected_message in response.text
+        assert "Model description" not in response.text
+        assert "Upload the GLB you want me to shepherd." in response.text
+
     assert not tuple(work_root.rglob("source.glb"))
 
 

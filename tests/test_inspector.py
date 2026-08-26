@@ -12,7 +12,7 @@ from pygltflib import Skin
 
 from asset_shepherd.cli import run_cli
 from asset_shepherd.glb import load_glb, save_glb
-from asset_shepherd.inspector import inspect_asset, render_inspection_report
+from asset_shepherd.inspector import inspect_asset, preflight_asset, render_inspection_report
 from asset_shepherd.models import (
     ActionClass,
     AssetTargetUse,
@@ -234,3 +234,25 @@ def test_degenerate_triangle_is_an_objective_report_only_diagnostic(tmp_path: Pa
     assert finding.action_class is ActionClass.REPORT_ONLY
     assert finding.rule_provenance is None
     assert inspection.repair_eligibility is RepairEligibility.ELIGIBLE_STATIC_MESH
+
+
+def test_preflight_rejects_world_bounds_over_ten_thousand_to_one(tmp_path: Path) -> None:
+    """A parseable but pathological source cannot enter the agent workflow."""
+    pathological_path = tmp_path / "pathological-bounds.glb"
+    gltf = load_glb(CLEAN_PATH)
+    assert gltf.scenes is not None
+    scene_nodes = gltf.scenes[gltf.scene].nodes
+    assert scene_nodes is not None
+    assert gltf.nodes is not None
+    root_index = scene_nodes[0]
+    gltf.nodes[root_index].scale = [100_000.0, 1.0, 1.0]
+    save_glb(gltf, pathological_path)
+
+    preflight = preflight_asset(pathological_path)
+
+    assert preflight.package.parse_success
+    assert preflight.geometry is not None
+    assert preflight.structural_eligibility is RepairEligibility.INVALID_OR_UNREADABLE
+    assert preflight.parse_error is not None
+    assert "too disproportionate to shepherd" in preflight.parse_error
+    assert "10,000x" in preflight.parse_error

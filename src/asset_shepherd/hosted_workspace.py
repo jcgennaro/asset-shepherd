@@ -58,6 +58,7 @@ from asset_shepherd.verification import verify_repair
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 MAX_EVENTS = 64
 MAX_HOSTED_WORKSPACES = 7
+UNREADABLE_GLB_MESSAGE = "This GLB is damaged or incomplete and could not be read."
 WORKSPACE_RETENTION = timedelta(days=7)
 _WORKSPACE_ID = re.compile(r"^[0-9a-f]{32}$")
 _COMMAND_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -475,9 +476,10 @@ class HostedWorkspaceStore:
                     updated_at=now,
                     retention_expires_at=now + WORKSPACE_RETENTION,
                     phase=(
-                        WorkspacePhase.TARGET_CONFIRMATION
-                        if preflight.package.parse_success
-                        else WorkspacePhase.ERROR
+                        WorkspacePhase.ERROR
+                        if preflight.structural_eligibility
+                        is RepairEligibility.INVALID_OR_UNREADABLE
+                        else WorkspacePhase.TARGET_CONFIRMATION
                     ),
                     original_filename=Path(original_filename).name,
                     asset_name=target_draft.asset_name,
@@ -485,9 +487,14 @@ class HostedWorkspaceStore:
                     preflight=preflight,
                     target_draft=target_draft,
                     error=(
-                        None
-                        if preflight.package.parse_success
-                        else f"Preflight could not read this GLB: {preflight.parse_error}"
+                        (
+                            preflight.parse_error
+                            if preflight.package.parse_success
+                            else UNREADABLE_GLB_MESSAGE
+                        )
+                        if preflight.structural_eligibility
+                        is RepairEligibility.INVALID_OR_UNREADABLE
+                        else None
                     ),
                     max_turns=self.max_agent_turns,
                 )

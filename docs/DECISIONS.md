@@ -4,6 +4,54 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D058 — Keep source context visible during Shepherd work and reject unusable uploads early
+
+**Date:** 2026-08-26
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted agent workflow
+
+**Context**
+
+The source viewer disappeared when a Shepherd request entered its working state, leaving only a
+tool-activity list. Its source-only HUD also used a redundant `Before` leader and did not expose the
+measured dimensions on the wireframe bounds. Separately, a parseable asset with an extreme or
+degenerate world-space bounding box could enter semantic intake even though its scale made useful
+inspection and framing impractical. Malformed GLBs exposed inconsistent upload errors, and the FBX
+boundary had not been exercised with a concrete fixture.
+
+**Decision**
+
+Keep the shared source-only viewer visible next to observable tool activity and apply a slow orbit
+only while Shepherd work is active; respect reduced-motion preferences. When no candidate exists,
+show one adaptive metric `X × Y × Z` label on the measured 12-edge bounds and remove the `Before`
+leader. Preserve the existing axes and banana controls.
+
+Treat three positive finite world-space extents and a largest-to-smallest extent ratio no greater
+than 10,000:1 as universal preflight invariants. Fail before target intake or agent work when either
+condition is false. Keep public upload errors concise: distinguish a non-GLB container from a
+damaged or incomplete GLB while retaining parser detail only in server logs.
+
+Maintain the submission's GLB-only boundary. Check in four tiny reproducible upload fixtures for
+gibberish, a truncated valid GLB, malformed JSON inside a GLB container, and an FBX-shaped file.
+Adding FBX is a later compatibility project, not an extension guessed from a filename: it requires a
+native conversion dependency, explicit axis/unit/pivot and payload contracts, exporter-spanning
+corpus coverage, security hardening, and revised provenance. A future spike may evaluate static FBX
+import to canonical GLB, but lossless FBX round-trip is not promised.
+
+**Evidence and consequences**
+
+Hosted-route tests prove pathological bounds and all four malformed/unsupported files remain at
+Upload, do not persist `source.glb`, and never enter the description or agent path. Inspector tests
+retain successful GLB parsing and geometry evidence while classifying extreme bounds as unusable.
+Browser acceptance confirms one adaptive dimension label, no source-only leader, the 12-edge box,
+and no idle auto-orbit. Static behavior coverage proves the viewer remains present and orbit is
+toggled only by the working state. The common gate passes with 151 tests, one opt-in skip, lock
+validation, Ruff, formatting, and zero Pyright findings.
+
 ### D057 — Separate the Gallery from the three-step Workflow and show the source from Describe onward
 
 **Date:** 2026-08-25

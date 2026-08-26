@@ -1,0 +1,6 @@
+; FBX 7.4.0 project file
+; deliberately incomplete upload-boundary fixture
+FBXHeaderExtension: {
+  FBXHeaderVersion: 1003
+  FBXVersion: 7400
+}

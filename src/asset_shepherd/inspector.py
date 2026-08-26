@@ -57,6 +57,7 @@ from asset_shepherd.models import (
 from asset_shepherd.profile_policy import finding_rule_provenance
 
 SUPPORTED_REQUIRED_EXTENSIONS: Final[frozenset[str]] = frozenset()
+MAX_WORKABLE_BOUNDS_RATIO: Final[float] = 10_000.0
 _IDENTITY: Final = np.eye(4, dtype=np.float64)
 
 
@@ -114,6 +115,26 @@ def _bounds_model(minimum: np.ndarray, maximum: np.ndarray) -> Bounds3D:
             dimensions_m[1] * 100.0,
             dimensions_m[2] * 100.0,
         ),
+    )
+
+
+def unworkable_bounds_reason(bounds: Bounds3D) -> str | None:
+    """Explain an objective world-bounds shape that is too pathological to shepherd."""
+    dimensions = bounds.dimensions_m
+    if any(not np.isfinite(value) or value <= 0.0 for value in dimensions):
+        return (
+            "This GLB does not have a usable three-dimensional bounding box. "
+            "Check for flat, empty, or invalid geometry before trying again."
+        )
+    smallest = min(dimensions)
+    largest = max(dimensions)
+    ratio = largest / smallest
+    if ratio <= MAX_WORKABLE_BOUNDS_RATIO:
+        return None
+    return (
+        "This GLB's bounding box is too disproportionate to shepherd: "
+        f"its largest dimension is {ratio:.3g}x its smallest "
+        f"(limit {MAX_WORKABLE_BOUNDS_RATIO:,.0f}x). Check the export scale or geometry."
     )
 
 
@@ -1455,6 +1476,7 @@ def preflight_asset(path: Path) -> PreflightResult:
         )
         diagnostics = _source_diagnostics(gltf, geometry)
         package = _package_facts(gltf, file_sha256=source_hash, byte_size=len(source_bytes))
+        bounds_error = unworkable_bounds_reason(bounds_model)
         unsupported_structure = bool(
             package.skin_count
             or package.animation_count
@@ -1462,11 +1484,12 @@ def preflight_asset(path: Path) -> PreflightResult:
             or (set(package.extensions_required) - SUPPORTED_REQUIRED_EXTENSIONS)
             or _blocking_geometry_diagnostics(diagnostics)
         )
-        eligibility = (
-            RepairEligibility.INSPECTION_ONLY_UNSUPPORTED_FEATURES
-            if unsupported_structure
-            else RepairEligibility.ELIGIBLE_STATIC_MESH
-        )
+        if bounds_error is not None:
+            eligibility = RepairEligibility.INVALID_OR_UNREADABLE
+        elif unsupported_structure:
+            eligibility = RepairEligibility.INSPECTION_ONLY_UNSUPPORTED_FEATURES
+        else:
+            eligibility = RepairEligibility.ELIGIBLE_STATIC_MESH
         return PreflightResult(
             preflight_id=preflight_id,
             source_filename=path.name,
@@ -1475,7 +1498,7 @@ def preflight_asset(path: Path) -> PreflightResult:
             transforms=_transform_facts(gltf),
             materials=_material_facts(gltf),
             structural_eligibility=eligibility,
-            parse_error=None,
+            parse_error=bounds_error,
             diagnostics=diagnostics,
         )
     except (GlbError, OSError, ValueError, IndexError, TypeError) as error:

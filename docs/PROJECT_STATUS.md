@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-25
-**Current commit:** D057 Gallery/Workflow hierarchy and source viewer (this file is included)
+**Last updated:** 2026-08-26
+**Current commit:** D058 working source context and upload preflight (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,18 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D058 working source and upload-preflight checkpoint: the source-only 3D viewer remains visible
+  beside observable tool activity throughout Shepherd work and orbits slowly unless the user prefers
+  reduced motion. With no candidate present it removes the redundant `Before` leader, retains the
+  measured 12-edge world-space wireframe bounds, and labels that box with adaptive metric X/Y/Z
+  dimensions. Objective preflight now rejects non-positive extents and world bounds whose largest
+  extent exceeds the smallest by more than 10,000:1 before intake or agent work. Four sub-kilobyte
+  fixtures exercise gibberish, truncation, malformed GLB JSON, and an FBX-shaped upload: every case
+  stays on Upload, creates no workspace source, and exposes no parser internals. FBX remains outside
+  the GLB-only submission scope. Browser acceptance confirms the source-only dimensions, 12-edge
+  bounds, absent leader, and idle orbit state. The common gate passes with 151 tests, one opt-in
+  skip, lock validation, Ruff, formatting, and zero Pyright findings.
 
 - D057 navigation and source-context checkpoint: Gallery and Workflow are now separate high-level
   rail choices. Gallery is not numbered; a selected asset exposes only **1 Upload, 2 Describe, 3
