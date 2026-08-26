@@ -415,6 +415,12 @@ function initializeModelComparison(comparison) {
   const fitButtons = [...comparison.querySelectorAll("[data-comparison-fit]")];
   const targetGraphics = new Map();
   const axisGraphics = new Map();
+  const boundingBoxEdges = [
+    [0, 1], [0, 2], [0, 4],
+    [1, 3], [1, 5], [2, 3],
+    [2, 6], [3, 7], [4, 5],
+    [4, 6], [5, 7], [6, 7],
+  ];
 
   function clamp(value, minimum, maximum) {
     return Math.min(maximum, Math.max(minimum, value));
@@ -475,8 +481,8 @@ function initializeModelComparison(comparison) {
     }
     const points = Array.from({ length: 8 }, (_, index) =>
       hotspotPoint(`hotspot-${target}-${index}`),
-    ).filter(Boolean);
-    if (points.length !== 8) {
+    );
+    if (points.some((point) => !point)) {
       graphics.layer.setAttribute("visibility", "hidden");
       return;
     }
@@ -487,36 +493,34 @@ function initializeModelComparison(comparison) {
     const rawRight = Math.max(...points.map((point) => point.x));
     const rawTop = Math.min(...points.map((point) => point.y));
     const rawBottom = Math.max(...points.map((point) => point.y));
-    const centerX = clamp((rawLeft + rawRight) / 2, 14, width - 14);
-    const centerY = clamp((rawTop + rawBottom) / 2, 14, height - 14);
-    const targetWidth = clamp(rawRight - rawLeft + 12, 18, width - 12);
-    const targetHeight = clamp(rawBottom - rawTop + 12, 18, height - 12);
-    const left = clamp(centerX - targetWidth / 2, 6, width - targetWidth - 6);
-    const top = clamp(centerY - targetHeight / 2, 6, height - targetHeight - 6);
-    const right = left + targetWidth;
-    const bottom = top + targetHeight;
-    const corner = Math.min(18, targetWidth / 3, targetHeight / 3);
     graphics.box.setAttribute(
       "d",
-      `M${left + corner} ${top}H${left}V${top + corner}` +
-        `M${right - corner} ${top}H${right}V${top + corner}` +
-        `M${left} ${bottom - corner}V${bottom}H${left + corner}` +
-        `M${right - corner} ${bottom}H${right}V${bottom - corner}`,
+      boundingBoxEdges
+        .map(([start, end]) =>
+          `M${points[start].x} ${points[start].y}L${points[end].x} ${points[end].y}`,
+        )
+        .join(""),
     );
 
     const other = target === "before" ? "after" : "before";
-    const tiny = config[target].longest / config[other].longest < 0.18;
-    const targetLabel = target === "after" ? afterLabel : "Before";
+    const tiny = Boolean(config[other]) && config[target].longest / config[other].longest < 0.18;
+    const targetLabel = target === "after"
+      ? afterLabel
+      : comparison.dataset.beforeLabel || "Before";
     graphics.label.textContent = tiny ? `${targetLabel.toUpperCase()} MODEL HERE` : targetLabel.toUpperCase();
-    const labelAbove = top > 34;
-    const labelY = clamp(labelAbove ? top - 14 : bottom + 22, 14, height - 8);
-    const labelX = target === "before" ? left : right;
+    const labelAbove = rawTop > 34;
+    const labelY = clamp(labelAbove ? rawTop - 14 : rawBottom + 22, 14, height - 8);
+    const labelX = clamp(target === "before" ? rawLeft : rawRight, 8, width - 8);
+    const closestPoint = points.reduce((closest, point) => {
+      const distance = Math.hypot(point.x - labelX, point.y - labelY);
+      return distance < closest.distance ? { point, distance } : closest;
+    }, { point: points[0], distance: Number.POSITIVE_INFINITY }).point;
     graphics.label.setAttribute("x", labelX);
     graphics.label.setAttribute("y", labelY);
     graphics.label.setAttribute("text-anchor", target === "before" ? "start" : "end");
     graphics.leader.setAttribute(
       "d",
-      `M${labelX} ${labelY + (labelAbove ? 4 : -10)}L${labelX} ${labelAbove ? top : bottom}`,
+      `M${labelX} ${labelY + (labelAbove ? 4 : -10)}L${closestPoint.x} ${closestPoint.y}`,
     );
   }
 

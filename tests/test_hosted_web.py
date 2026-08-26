@@ -49,15 +49,13 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
 
     entry = client.get("/workspace")
     assert entry.status_code == 200
-    assert "Asset Shepherd -- Assets" in entry.text
+    assert "Asset Shepherd -- Gallery" in entry.text
     assert "New asset" in entry.text
     assert "Model description" not in entry.text
     assert "Choose or drop your GLB" not in entry.text
-    assert ">Assets</strong>" in entry.text
-    assert ">Upload</strong>" in entry.text
-    assert ">Describe</strong>" in entry.text
-    assert ">Shepherd</strong>" in entry.text
-    assert entry.text.index(">Upload</strong>") < entry.text.index(">Describe</strong>")
+    assert ">Gallery</strong>" in entry.text
+    assert ">Workflow</strong>" in entry.text
+    assert 'aria-label="Workflow steps"' not in entry.text
     assert "Use the form-led reference workflow instead" not in entry.text
     assert "durable workspace" not in entry.text
     assert "only your description is sent" not in entry.text
@@ -91,6 +89,11 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert describe.text.count("<h1") == 1
     assert "<h2" not in describe.text
     assert "<h3" not in describe.text
+    assert 'class="model-comparison source-only"' in describe.text
+    assert describe.text.count("<model-viewer") == 1
+    assert f"{describe_path.rsplit('/describe', 1)[0]}/source.glb" in describe.text
+    assert describe.text.count('data-comparison-target="before"') == 1
+    assert 'data-comparison-target="after"' not in describe.text
 
     created = client.post(
         describe_path,
@@ -113,6 +116,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "data-confirmation-decision" in measured.text
     assert "&amp;amp;" not in measured.text
     assert "Job details" in measured.text
+    assert 'class="model-comparison source-only"' in measured.text
+    assert measured.text.count("<model-viewer") == 1
     assert "data-job-contract-dialog" in measured.text
     assert "Rules are derived only after target confirmation." in measured.text
     assert not (work_root / "hosted" / workspace_id / "output").exists()
@@ -206,7 +211,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Did we get it right?" not in accepted_page.text
     assert "data-result-accepted hidden" not in accepted_page.text
     assert "Ready to download." in accepted_page.text
-    assert ">Assets</a>" in accepted_page.text
+    assert ">Gallery</a>" in accepted_page.text
 
     archive_response = restarted.get(f"{workspace_path}/download")
     assert archive_response.status_code == 200
@@ -383,7 +388,7 @@ def test_workspace_gallery_names_and_resumes_isolated_asset_state(tmp_path: Path
     resumed_second = client.get(created_paths[1])
     assert "Approve" in resumed_first.text
     assert "Did I get it right?" in resumed_second.text
-    assert ">Assets</a>" in resumed_first.text
+    assert ">Gallery</a>" in resumed_first.text
 
 
 def test_gallery_redo_reuses_source_and_preserves_saved_run_until_submit(

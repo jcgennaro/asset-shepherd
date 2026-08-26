@@ -16,7 +16,7 @@
         <header class="workspace-header">
           <h1>Asset Shepherd -- {{ active_style }}</h1>
           <div class="workspace-header-actions">
-            {% if active_mode == 'conversation' and hosted_step != 'gallery' %}<a class="secondary-button compact-button" href="{{ url_for('hosted_home') }}">Assets</a>{% endif %}
+            {% if active_mode == 'conversation' and hosted_step != 'gallery' %}<a class="secondary-button compact-button" href="{{ url_for('hosted_home') }}">Gallery</a>{% endif %}
             {% block header_actions %}{% endblock %}
           </div>
         </header>

@@ -430,6 +430,61 @@ a {
   list-style: none;
 }
 
+.rail-primary {
+  display: grid;
+  gap: 8px;
+}
+
+.rail-primary-option {
+  display: grid;
+  min-height: 58px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 0 10px 10px 0;
+  color: #87948f;
+  text-decoration: none;
+}
+
+.rail-primary-option svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+a.rail-primary-option:hover,
+a.rail-primary-option:focus-visible,
+.rail-primary-option.active {
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+  border-left-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.rail-primary-option[aria-disabled="true"] {
+  color: #687570;
+}
+
+.rail-workflow .hosted-flow {
+  gap: 3px;
+  margin: 5px 0 0 20px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+
+.rail-workflow .hosted-flow li {
+  min-height: 44px;
+  padding-block: 7px;
+}
+
 .intent-rail li {
   display: grid;
   min-height: 54px;
@@ -2679,8 +2734,13 @@ model-viewer {
 .comparison-banana-leader {
   fill: none;
   stroke-linecap: square;
+  stroke-linejoin: round;
   stroke-width: 1.2;
   vector-effect: non-scaling-stroke;
+}
+
+.comparison-target-box {
+  opacity: 0.82;
 }
 
 .comparison-target-box.before,
@@ -2973,6 +3033,36 @@ model-viewer {
 
   .intent-rail ol {
     gap: 3px;
+  }
+
+  .rail-primary {
+    width: 100%;
+    gap: 4px;
+  }
+
+  .rail-primary-option {
+    width: 58px;
+    min-height: 54px;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    margin-inline: auto;
+    padding: 8px;
+    border-radius: 8px;
+  }
+
+  .rail-primary-option strong {
+    display: none;
+  }
+
+  .rail-primary-option svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .rail-workflow .hosted-flow {
+    margin: 2px 0 0;
+    padding: 0;
+    border-left: 0;
   }
 
   .intent-rail li {
@@ -3450,6 +3540,32 @@ model-viewer {
 
 .single-step-form .primary-button {
   justify-self: end;
+}
+
+.describe-step {
+  width: min(1360px, 100%);
+  grid-template-columns: minmax(360px, 0.82fr) minmax(440px, 1.18fr);
+  align-items: center;
+  align-content: center;
+  gap: clamp(28px, 4vw, 64px);
+}
+
+.describe-step-copy {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
+
+.model-comparison.source-only {
+  margin: 0;
+}
+
+.model-comparison.source-only .comparison-header {
+  justify-content: flex-end;
+}
+
+.model-comparison.source-only .comparison-viewer {
+  height: clamp(400px, 54vh, 620px);
 }
 
 .single-step .drop-zone {
@@ -4341,6 +4457,11 @@ textarea.asset-description-input:focus {
 }
 
 @media (max-width: 1050px) {
+  .describe-step {
+    width: min(860px, 100%);
+    grid-template-columns: 1fr;
+  }
+
   .hosted-columns {
     grid-template-columns: 1fr;
   }
@@ -4366,6 +4487,10 @@ textarea.asset-description-input:focus {
   .conversation-message strong,
   .hosted-context code {
     overflow-wrap: anywhere;
+  }
+
+  .model-comparison.source-only .comparison-viewer {
+    height: min(68vh, 520px);
   }
 
   .result-status {

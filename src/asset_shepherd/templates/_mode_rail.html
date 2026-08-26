@@ -1,16 +1,32 @@
-<aside class="mode-rail" aria-label="Asset Shepherd workflow">
-  <a class="rail-logo" href="/workspace" aria-label="Asset Shepherd assets">
+<aside class="mode-rail" aria-label="Asset Shepherd navigation">
+  <a class="rail-logo" href="/workspace" aria-label="Asset Shepherd gallery">
     <span>LOGO</span>
   </a>
 
-  {% if active_mode in ['conversation', 'help', 'capabilities'] %}
-  <nav class="mode-nav intent-rail" aria-label="Conversation-led workflow">
-    <ol class="hosted-flow" aria-label="Asset workflow steps">
-      <li class="{% if hosted_step == 'gallery' %}active{% endif %}"><a class="flow-step-link" href="{{ url_for('hosted_home') }}"><span>1</span><strong>Assets</strong></a></li>
-      <li class="{% if hosted_step == 'upload' %}active{% endif %}"><span>2</span><strong>Upload</strong></li>
-      <li class="{% if hosted_step == 'describe' %}active{% endif %}"><span>3</span><strong>Describe</strong></li>
-      <li class="{% if hosted_step == 'shepherd' %}active{% endif %}"><span>4</span><strong>Shepherd</strong></li>
-    </ol>
+  {% set hosted_workflow_active = active_mode == 'conversation' and hosted_step in ['upload', 'describe', 'shepherd'] %}
+  {% set legacy_workflow_active = active_mode not in ['conversation', 'help', 'capabilities', 'feedback'] %}
+  {% set workflow_active = hosted_workflow_active or legacy_workflow_active %}
+  <nav class="mode-nav intent-rail" aria-label="Asset Shepherd sections">
+    <div class="rail-primary">
+      <a class="rail-primary-option{% if hosted_step == 'gallery' %} active{% endif %}" href="{{ url_for('hosted_home') }}"{% if hosted_step == 'gallery' %} aria-current="page"{% endif %}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <strong>Gallery</strong>
+      </a>
+      <section class="rail-workflow{% if workflow_active %} active{% endif %}" aria-label="Workflow">
+        <div class="rail-primary-option{% if workflow_active %} active{% endif %}"{% if not workflow_active %} aria-disabled="true" title="Start or resume an asset from the gallery"{% endif %}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9m0 0-3-3m3 3-3 3M20 18h-9m0 0 3-3m-3 3 3 3M7 12h10"/></svg>
+          <strong>Workflow</strong>
+        </div>
+        {% if workflow_active %}
+          <ol class="hosted-flow" aria-label="Workflow steps">
+            <li class="{% if hosted_step == 'upload' or active_mode == 'intake' %}active{% endif %}"><span>1</span><strong>Upload</strong></li>
+            <li class="{% if hosted_step == 'describe' or active_mode in ['describe', 'confirm'] %}active{% endif %}"><span>2</span><strong>Describe</strong></li>
+            <li class="{% if hosted_step == 'shepherd' or active_mode in ['inspect', 'decide', 'download'] %}active{% endif %}"><span>3</span><strong>Shepherd</strong></li>
+          </ol>
+        {% endif %}
+      </section>
+    </div>
+
     <div class="rail-actions">
       <a class="mode-link utility-tile{% if active_mode == 'capabilities' %} active{% endif %}" href="/what-it-does" title="See what Asset Shepherd checks">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 4.5A3.5 3.5 0 0 0 5 9a3.5 3.5 0 0 0 .5 6.9A3.5 3.5 0 0 0 12 18V6a3 3 0 0 0-2.5-1.5ZM14.5 4.5A3.5 3.5 0 0 1 19 9a3.5 3.5 0 0 1-.5 6.9A3.5 3.5 0 0 1 12 18V6a3 3 0 0 1 2.5-1.5Z"/><path d="M8 9h4M12 13h4M8 16h4"/></svg>
@@ -22,28 +38,4 @@
       </a>
     </div>
   </nav>
-  {% else %}
-  <nav class="mode-nav intent-rail" aria-label="Intent-first workflow">
-    <ol>
-      <li><span>1</span><strong>Assets</strong></li>
-      <li class="{% if active_mode == 'intake' %}active{% endif %}"><span>2</span><strong>Upload</strong></li>
-      <li class="{% if active_mode in ['describe', 'confirm'] %}active{% endif %}"><span>3</span><strong>Describe</strong></li>
-      <li class="{% if active_mode in ['inspect', 'decide', 'download'] %}active{% endif %}"><span>4</span><strong>Shepherd</strong></li>
-    </ol>
-    <div class="rail-actions">
-      <a class="mode-link utility-tile" href="/workspace" title="Start a new asset">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        <span class="mode-label">New asset</span>
-      </a>
-      <a class="mode-link utility-tile" href="/what-it-does" title="See what Asset Shepherd checks">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 4.5A3.5 3.5 0 0 0 5 9a3.5 3.5 0 0 0 .5 6.9A3.5 3.5 0 0 0 12 18V6a3 3 0 0 0-2.5-1.5ZM14.5 4.5A3.5 3.5 0 0 1 19 9a3.5 3.5 0 0 1-.5 6.9A3.5 3.5 0 0 1 12 18V6a3 3 0 0 1 2.5-1.5Z"/><path d="M8 9h4M12 13h4M8 16h4"/></svg>
-        <span class="mode-label">What it does</span>
-      </a>
-      <a class="mode-link utility-tile help-tile" href="/how-it-works" title="See how Asset Shepherd works">
-        <span class="help-icon" aria-hidden="true">?</span>
-        <span class="mode-label">How it works</span>
-      </a>
-    </div>
-  </nav>
-  {% endif %}
 </aside>

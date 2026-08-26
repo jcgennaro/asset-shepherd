@@ -4,6 +4,49 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D057 — Separate the Gallery from the three-step Workflow and show the source from Describe onward
+
+**Date:** 2026-08-25
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted agent workflow
+
+**Context**
+
+The left rail numbered the asset gallery as if it were the first operation performed on one asset.
+That mixed workspace selection with the workflow itself and made Upload step 2 even though every new
+run begins by supplying a file. The uploaded model was also invisible during target description and
+agreement, while its measured bounds were represented by flat screen-space corner brackets only
+after a repair.
+
+**Decision**
+
+Make **Gallery** and **Workflow** the two high-level rail choices. Gallery is the only place to start
+or resume an asset. Workflow becomes available only for a selected asset and contains exactly three
+steps: **1 Upload, 2 Describe, 3 Shepherd**. Returning to Gallery preserves the current phase.
+
+From Describe onward, render the staged immutable GLB in the existing local shared viewer. Its
+metric axes and 20 cm banana remain optional. Project the eight measured world-space AABB corners
+through the active camera and connect the canonical 12 edges as a wireframe box. The box therefore
+rotates, pans, and zooms with the asset. A completed candidate uses the same component for its
+before/after scene; no new renderer, storage authority, or mutation is introduced.
+
+**Evidence and consequences**
+
+Hosted route coverage proves that Gallery has no numbered workflow, Upload activates step 1,
+Describe activates step 2 with one source-only viewer, and the durable workspace keeps the source
+viewer through target agreement and inspection. Browser acceptance at desktop and 375 px content
+width confirms no horizontal overflow, a readable two-column/stacked layout, optional axes and
+banana controls, and a 12-edge path that changes with camera rotation. Removing the stale source-map
+directive from the pinned minified viewer prevents its optional `.map` request without changing the
+vendored runtime or license. One additional real Tripo-to-Unreal asset was reported usable without
+game-developer complaints; this is encouraging field use, not a replacement for registered RW
+evaluation evidence. The common gate passes with 148 tests, one opt-in skip, lock validation, Ruff,
+formatting, and zero Pyright findings.
+
 ### D056 — Make the action report reflect verified outcomes
 
 **Date:** 2026-08-25

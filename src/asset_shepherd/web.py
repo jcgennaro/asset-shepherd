@@ -200,6 +200,18 @@ class ComparisonSceneView:
 
 
 @dataclass(frozen=True)
+class SourceSceneView:
+    """Geometry needed to frame one immutable uploaded asset."""
+
+    before: ComparisonBoundsView
+    combined: ComparisonBoundsView
+    banana_offset_m: tuple[float, float, float]
+    banana_anchor_m: tuple[float, float, float]
+    axes: tuple[MetricAxisView, ...]
+    client_data: dict[str, JsonValue]
+
+
+@dataclass(frozen=True)
 class InspectionCheckView:
     """One user-facing inspection lane with its result and phase-aware action."""
 
@@ -2286,6 +2298,56 @@ def _comparison_scene(source_path: Path, candidate_path: Path) -> ComparisonScen
     )
 
 
+def _source_scene(source_path: Path) -> SourceSceneView:
+    """Measure and frame one uploaded source asset without mutating it."""
+    source_bounds = world_bounds(load_glb(source_path))
+    before = _comparison_bounds(
+        cast(tuple[float, float, float], tuple(float(value) for value in source_bounds.minimum)),
+        cast(tuple[float, float, float], tuple(float(value) for value in source_bounds.maximum)),
+    )
+    fallback_axis_span = max(before.longest_m * 0.1, 1e-6)
+    axes = tuple(
+        _metric_axis(
+            axis,
+            index,
+            before.minimum_m,
+            before.dimensions_m[index],
+            fallback_axis_span,
+        )
+        for index, axis in enumerate(("x", "y", "z"))
+    )
+    banana_minimum_y = -0.015916550531983376
+    banana_maximum_z = 0.015987513586878777
+    banana_gap_m = max(before.longest_m * 0.08, 0.02)
+    banana_offset_m = (
+        before.center_m[0],
+        before.minimum_m[1] - banana_minimum_y,
+        before.minimum_m[2] - banana_gap_m - banana_maximum_z,
+    )
+    banana_anchor_m = (
+        banana_offset_m[0],
+        banana_offset_m[1] + 0.025,
+        banana_offset_m[2],
+    )
+    client_bounds = cast(
+        JsonValue,
+        {
+            "minimum": list(before.minimum_m),
+            "maximum": list(before.maximum_m),
+            "center": list(before.center_m),
+            "longest": before.longest_m,
+        },
+    )
+    return SourceSceneView(
+        before=before,
+        combined=before,
+        banana_offset_m=banana_offset_m,
+        banana_anchor_m=banana_anchor_m,
+        axes=axes,
+        client_data={"before": client_bounds, "both": client_bounds},
+    )
+
+
 def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, object]:
     """Build the template context solely from structured job state."""
     core = job.runtime.job
@@ -2336,6 +2398,7 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "stages": job.stages(),
         "inspection_checks": inspection_checks,
         "inspection_summary": _inspection_summary(job, cannot_repair),
+        "comparison_source_only": False,
         "inspection_needs_confirmation": bool(
             job.waiting_for_approval and not job.inspection_acknowledged
         ),
@@ -2521,7 +2584,7 @@ def create_app(
                 "can_add_asset": not gallery_full,
                 "workspace_limit": MAX_HOSTED_WORKSPACES,
                 "active_mode": "conversation",
-                "active_style": "Assets",
+                "active_style": "Gallery",
                 "hosted_step": "gallery",
             },
             status_code=status_code,
@@ -2546,6 +2609,13 @@ def create_app(
                 "refusal": refusal,
                 "description": description or (draft.initial_description if draft else ""),
                 "draft": draft,
+                "comparison_scene": _source_scene(draft.source_path) if draft else None,
+                "comparison_source_url": (
+                    request.url_for("hosted_draft_source_asset", draft_id=draft.draft_id)
+                    if draft
+                    else None
+                ),
+                "comparison_source_only": True,
                 "active_mode": "conversation",
                 "active_style": "Describe",
                 "hosted_step": "describe",
@@ -2608,6 +2678,7 @@ def create_app(
             approval_card = runtime_job.approval_card()
         comparison_scene = None
         comparison_candidate_ready = False
+        comparison_source_only = True
         if (
             runtime_job is not None
             and runtime_job.outcome is not None
@@ -2624,6 +2695,9 @@ def create_app(
                     comparison_candidate_path,
                 )
                 comparison_candidate_ready = workspace.ready_candidate
+                comparison_source_only = False
+        if comparison_scene is None and workspace.source_path.is_file():
+            comparison_scene = _source_scene(workspace.source_path)
         expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
         if target_draft is not None and target_draft.ready_for_confirmation:
@@ -2664,6 +2738,7 @@ def create_app(
                 ),
                 "comparison_scene": comparison_scene,
                 "comparison_candidate_ready": comparison_candidate_ready,
+                "comparison_source_only": comparison_source_only,
                 "result_presentation": (
                     _result_presentation(runtime_job) if runtime_job is not None else None
                 ),

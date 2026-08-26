@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-25
-**Current commit:** D056 phase-aware after-action report (this file is included)
+**Current commit:** D057 Gallery/Workflow hierarchy and source viewer (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,17 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D057 navigation and source-context checkpoint: Gallery and Workflow are now separate high-level
+  rail choices. Gallery is not numbered; a selected asset exposes only **1 Upload, 2 Describe, 3
+  Shepherd**. The staged immutable GLB appears from Describe onward in the existing local viewer,
+  with optional metric axes and banana reference. Its eight measured world-space AABB corners are
+  joined as 12 projected wireframe edges that track camera motion instead of a flat HUD bracket.
+  Desktop and 375 px browser checks show no horizontal overflow; the axes and banana toggles work,
+  and the wireframe path retains 12 segments after rotation. A separate real Tripo-to-Unreal asset
+  was reported usable without game-developer complaints; this remains informal field evidence. The
+  common gate passes with 148 tests, one opt-in skip, lock validation, Ruff, formatting, and zero
+  Pyright findings.
 
 - D056 phase-aware action report: the shared five-lane inspection table now labels its final column
   `Proposed action` before authorization and `Action taken` after execution. Executed repairs become

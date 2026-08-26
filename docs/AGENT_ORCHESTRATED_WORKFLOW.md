@@ -114,6 +114,13 @@ flowchart LR
 The loop returns to sensing after every mutation. Verification is a gate near the end of a candidate
 turn, not a substitute for agent reassessment.
 
+The product navigation has two levels. **Gallery** selects a saved workspace or starts a new one;
+it is not a numbered workflow step. A selected workspace exposes **1 Upload, 2 Describe, 3
+Shepherd**. From Describe onward, the immutable source remains visible with its measured wireframe
+world bounds and optional metric axes or banana reference. Target agreement, sensing, proposals,
+authorization, reassessment, verification, and download all remain iterative states inside
+Shepherd rather than becoming additional top-level pages.
+
 ### 1. Register the source
 
 The user uploads the GLB first. Container validation, hashing, structural eligibility, and objective

@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% from "_workflow_components.html" import asset_description %}
 {% block content %}
-  <section class="single-step" data-focus-area="asset description" aria-label="Describe the asset">
+  <section class="single-step describe-step" data-focus-area="asset description" aria-label="Describe the asset">
+    <div class="describe-step-copy">
     {% if refusal %}
       <p class="conversation-prompt" role="status">{{ error }}</p>
-      <a class="primary-button inline-button" href="{{ url_for('hosted_home') }}">Assets</a>
+      <a class="primary-button inline-button" href="{{ url_for('hosted_home') }}">Gallery</a>
     {% else %}
     <p class="conversation-prompt">Describe the model you’re working on.</p>
     {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
@@ -12,6 +13,10 @@
       {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true, show_examples=true) }}
       <button class="primary-button" type="submit" data-submit-button>Shepherd this asset <span aria-hidden="true">→</span></button>
     </form>
+    {% endif %}
+    </div>
+    {% if comparison_scene %}
+      {% include "_model_comparison.html" %}
     {% endif %}
   </section>
 {% endblock %}

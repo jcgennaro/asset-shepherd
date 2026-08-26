@@ -162,9 +162,11 @@ def test_web_starts_with_the_authoritative_asset_gallery(tmp_path: Path) -> None
     assert redirect.status_code == 303
     assert urlparse(redirect.headers["location"]).path == "/workspace"
     assert response.status_code == 200
-    assert "<title>Asset Shepherd -- Assets</title>" in response.text
+    assert "<title>Asset Shepherd -- Gallery</title>" in response.text
     assert "New asset" in response.text
-    assert response.text.index(">Upload</strong>") < response.text.index(">Describe</strong>")
+    assert ">Gallery</strong>" in response.text
+    assert ">Workflow</strong>" in response.text
+    assert 'aria-label="Workflow steps"' not in response.text
     assert ">Agree</strong>" not in response.text
     assert ">Inspect</strong>" not in response.text
     _assert_focus_area_budget(response.text)
@@ -259,13 +261,16 @@ def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
 
     entry = client.get("/workspace")
     assert entry.status_code == 200
-    assert ">Assets</strong>" in entry.text
-    assert ">Upload</strong>" in entry.text
-    assert ">Describe</strong>" in entry.text
-    assert ">Shepherd</strong>" in entry.text
-    assert entry.text.index(">Upload</strong>") < entry.text.index(">Describe</strong>")
+    assert ">Gallery</strong>" in entry.text
+    assert ">Workflow</strong>" in entry.text
+    assert 'aria-label="Workflow steps"' not in entry.text
     assert 'class="help-icon" aria-hidden="true">?</span>' in entry.text
     assert 'href="/how-it-works"' in entry.text
+
+    upload = client.get("/workspace/new/upload")
+    assert 'aria-label="Workflow steps"' in upload.text
+    assert upload.text.index(">Upload</strong>") < upload.text.index(">Describe</strong>")
+    assert upload.text.index(">Describe</strong>") < upload.text.index(">Shepherd</strong>")
 
     help_page = client.get("/how-it-works")
     assert help_page.status_code == 200
@@ -1109,7 +1114,7 @@ def test_web_packages_unsupported_asset_as_inspection_only(tmp_path: Path) -> No
 
 
 def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Path) -> None:
-    """The shared viewer has a normal-size local banana and camera-tracking HUD logic."""
+    """The viewer has local assets, metric helpers, and projected 3D bounds."""
     client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
 
     banana_response = client.get("/static/banana-scale.glb")
@@ -1122,6 +1127,10 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert (
         PROJECT_ROOT / "src" / "asset_shepherd" / "static" / "vendor" / "model-viewer.LICENSE"
     ).is_file()
+    vendor_source = (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "static" / "vendor" / "model-viewer.min.js"
+    ).read_text(encoding="utf-8")
+    assert "sourceMappingURL=model-viewer.min.js.map" not in vendor_source
     banana_path = PROJECT_ROOT / "src" / "asset_shepherd" / "static" / "banana-scale.glb"
     banana_bounds = world_bounds(load_glb(banana_path))
     assert 0.16 <= max(banana_bounds.dimensions) <= 0.21
@@ -1137,6 +1146,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "function animateBananaIn(bounds)" in script.text
     assert "function animateBananaOut()" in script.text
     assert "viewer.jumpCameraToGoal" not in script.text
+    assert "const boundingBoxEdges = [" in script.text
+    assert "[5, 7], [6, 7]" in script.text
+    assert "targetWidth" not in script.text
 
     comparison_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"

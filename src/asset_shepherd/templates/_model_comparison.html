@@ -1,14 +1,21 @@
-<figure class="model-comparison{% if not comparison_candidate_ready %} candidate-rejected{% endif %}" data-model-comparison data-after-label="{% if comparison_candidate_ready %}After{% else %}Candidate not ready{% endif %}">
-  <header class="comparison-header">
-    <h3>{% if comparison_candidate_ready %}Before and after{% else %}Before and rejected candidate{% endif %}</h3>
-    <div class="comparison-tools" aria-label="Comparison view controls">
+<figure class="model-comparison{% if comparison_source_only %} source-only{% elif not comparison_candidate_ready %} candidate-rejected{% endif %}" data-model-comparison data-before-label="Before" data-after-label="{% if comparison_candidate_ready %}After{% else %}Candidate not ready{% endif %}">
+  <header class="comparison-header{% if comparison_source_only %} source-only{% endif %}">
+    {% if not comparison_source_only %}<h3>{% if comparison_candidate_ready %}Before and after{% else %}Before and rejected candidate{% endif %}</h3>{% endif %}
+    <div class="comparison-tools" aria-label="{% if comparison_source_only %}Uploaded model{% else %}Comparison view{% endif %} controls">
       <div class="comparison-fit-tools" role="group" aria-label="Fit view">
-        <span class="comparison-tool-glyph" title="Fit to window" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
-        </span>
-        <button type="button" class="active" data-comparison-fit="both" aria-pressed="true" title="Fit both models to the window">Both</button>
-        <button type="button" data-comparison-fit="before" aria-pressed="false" title="Center and fit the before model">Before</button>
-        <button type="button" data-comparison-fit="after" aria-pressed="false" title="Center and fit the {% if comparison_candidate_ready %}after model{% else %}rejected candidate{% endif %}">{% if comparison_candidate_ready %}After{% else %}Candidate{% endif %}</button>
+        {% if comparison_source_only %}
+          <button type="button" class="comparison-icon-button active" data-comparison-fit="both" aria-pressed="true" title="Fit model to window">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
+            <span class="visually-hidden">Fit model to window</span>
+          </button>
+        {% else %}
+          <span class="comparison-tool-glyph" title="Fit to window" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
+          </span>
+          <button type="button" class="active" data-comparison-fit="both" aria-pressed="true" title="Fit both models to the window">Both</button>
+          <button type="button" data-comparison-fit="before" aria-pressed="false" title="Center and fit the before model">Before</button>
+          <button type="button" data-comparison-fit="after" aria-pressed="false" title="Center and fit the {% if comparison_candidate_ready %}after model{% else %}rejected candidate{% endif %}">{% if comparison_candidate_ready %}After{% else %}Candidate{% endif %}</button>
+        {% endif %}
       </div>
       <button type="button" class="comparison-icon-button" data-comparison-axes aria-pressed="false" title="Show metric X, Y, and Z axes with about five major ticks per axis">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6m0 12h13M5 18l8-8M3 8l2-2 2 2m9 8l2 2-2 2m-5-8 2-2v3"/></svg>
@@ -26,16 +33,18 @@
       class="comparison-viewer"
       data-comparison-viewer
       src="{{ comparison_source_url }}"
-      alt="Interactive before and after model comparison"
+      alt="{% if comparison_source_only %}Interactive uploaded model preview{% else %}Interactive before and after model comparison{% endif %}"
       loading="eager"
       camera-controls touch-action="pan-y" disable-tap
       interpolation-decay="240"
       shadow-intensity="1" environment-image="neutral" exposure="1" interaction-prompt="none">
-      <extra-model
-        data-after-model
-        src="{{ comparison_after_url }}"
-        offset="{{ comparison_scene.after_offset_m|join(' ') }}">
-      </extra-model>
+      {% if not comparison_source_only %}
+        <extra-model
+          data-after-model
+          src="{{ comparison_after_url }}"
+          offset="{{ comparison_scene.after_offset_m|join(' ') }}">
+        </extra-model>
+      {% endif %}
       <extra-model
         data-banana-model
         src="{{ url_for('static', path='/banana-scale.glb') }}?v={{ static_version }}"
@@ -45,9 +54,11 @@
       {% for corner in comparison_scene.before.corners_m %}
         <span class="comparison-anchor" slot="hotspot-before-{{ loop.index0 }}" data-position="{{ corner|join('m ') }}m" aria-hidden="true"></span>
       {% endfor %}
-      {% for corner in comparison_scene.after.corners_m %}
-        <span class="comparison-anchor" slot="hotspot-after-{{ loop.index0 }}" data-position="{{ corner|join('m ') }}m" aria-hidden="true"></span>
-      {% endfor %}
+      {% if not comparison_source_only %}
+        {% for corner in comparison_scene.after.corners_m %}
+          <span class="comparison-anchor" slot="hotspot-after-{{ loop.index0 }}" data-position="{{ corner|join('m ') }}m" aria-hidden="true"></span>
+        {% endfor %}
+      {% endif %}
       {% for axis in comparison_scene.axes %}
         {% for tick in axis.ticks %}
           <span
@@ -61,16 +72,16 @@
         {% endfor %}
       {% endfor %}
       <span class="comparison-anchor" slot="hotspot-banana" data-position="{{ comparison_scene.banana_anchor_m|join('m ') }}m" aria-hidden="true"></span>
-      <div class="viewer-fallback" slot="poster">Loading comparison…</div>
+      <div class="viewer-fallback" slot="poster">Loading preview…</div>
     </model-viewer>
 
     <svg class="comparison-hud" data-comparison-hud aria-hidden="true">
       <g data-comparison-target="before"></g>
-      <g data-comparison-target="after"></g>
+      {% if not comparison_source_only %}<g data-comparison-target="after"></g>{% endif %}
       <g data-comparison-axis-layer hidden></g>
       <g data-comparison-banana-layer hidden></g>
     </svg>
-    <p class="comparison-status" data-comparison-status role="status">Loading comparison…</p>
+    <p class="comparison-status" data-comparison-status role="status">Loading preview…</p>
   </div>
   <figcaption>Drag to rotate · right-drag to pan · scroll to zoom</figcaption>
   <script type="application/json" data-comparison-config>{{ comparison_scene.client_data|tojson }}</script>

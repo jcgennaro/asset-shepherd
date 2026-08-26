@@ -99,12 +99,15 @@
               <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
             {% endif %}
           </form>
-        {% elif job and job.result %}
-          {% if comparison_scene %}
-            {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
+        {% endif %}
+
+        {% if comparison_scene %}
+          {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
+          {% if not comparison_source_only %}
             {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}{% else %}{% set comparison_after_url = url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) %}{% endif %}
-            {% include "_model_comparison.html" %}
-          {% else %}
+          {% endif %}
+          {% include "_model_comparison.html" %}
+        {% elif job and job.result %}
             <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
               <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
                 <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
@@ -113,7 +116,9 @@
                 <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
               </article>{% endif %}
             </div>
-          {% endif %}
+        {% endif %}
+
+        {% if job and job.result %}
           <section class="result-review" aria-labelledby="{% if record.accepted %}hosted-result-accepted-title{% else %}hosted-result-review-title{% endif %}" data-result-review>
             {% if not record.accepted %}
               <div class="result-review-question" data-result-question>
