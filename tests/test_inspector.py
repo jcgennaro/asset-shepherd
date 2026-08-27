@@ -209,8 +209,10 @@ def test_attribute_count_mismatch_is_a_universal_blocker(tmp_path: Path) -> None
     assert inspection.repair_eligibility is RepairEligibility.INSPECTION_ONLY_UNSUPPORTED_FEATURES
 
 
-def test_degenerate_triangle_is_an_objective_report_only_diagnostic(tmp_path: Path) -> None:
-    """Source topology defects are measured but do not invent an unsupported repair."""
+def test_degenerate_triangle_is_an_objective_approval_required_diagnostic(
+    tmp_path: Path,
+) -> None:
+    """A cleanable zero-area triangle exposes evidence without mutating on inspection."""
     degenerate_path = tmp_path / "degenerate.glb"
     gltf = load_glb(CLEAN_PATH)
     primitive = gltf.meshes[0].primitives[0]
@@ -231,9 +233,12 @@ def test_degenerate_triangle_is_an_objective_report_only_diagnostic(tmp_path: Pa
         item for item in inspection.findings if item.code == "DEGENERATE_TRIANGLES_DETECTED"
     )
     assert finding.basis is CheckBasis.OBJECTIVE_SOURCE_DIAGNOSTIC
-    assert finding.action_class is ActionClass.REPORT_ONLY
+    assert finding.action_class is ActionClass.APPROVAL_REQUIRED
+    assert finding.candidate_repairs == ("clean-degenerate-geometry-v1",)
     assert finding.rule_provenance is None
     assert inspection.repair_eligibility is RepairEligibility.ELIGIBLE_STATIC_MESH
+    assert inspection.diagnostics is not None
+    assert inspection.diagnostics.primitives[0].degenerate_cleanup_safe
 
 
 def test_preflight_rejects_world_bounds_over_ten_thousand_to_one(tmp_path: Path) -> None:

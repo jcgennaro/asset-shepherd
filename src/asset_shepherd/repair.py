@@ -14,6 +14,7 @@ import numpy as np
 from asset_shepherd.glb import (
     GlbError,
     add_normalization_root,
+    clean_degenerate_geometry,
     load_glb,
     node_local_matrix,
     raw_glb_document,
@@ -25,6 +26,7 @@ from asset_shepherd.models import (
     Decisions,
     DecisionSource,
     DecisionValue,
+    DegenerateGeometryPayload,
     NormalizationPayload,
     RenamePayload,
     RepairKind,
@@ -264,6 +266,55 @@ def apply_repairs(
                         )
                 weld_identical_vertex_tuples(gltf, expected_merges)
             except GlbError as error:
+                raise RepairInvariantError(str(error)) from error
+        elif candidate.kind is RepairKind.CLEAN_DEGENERATE_GEOMETRY:
+            payload = candidate.payload
+            if not isinstance(payload, DegenerateGeometryPayload):
+                raise RepairInvariantError("Degenerate cleanup candidate has the wrong payload")
+            expected_removals = {
+                (primitive.mesh_index, primitive.primitive_index): (
+                    primitive.removed_degenerate_triangle_count,
+                    primitive.removed_unused_position_count,
+                )
+                for primitive in payload.primitives
+            }
+            try:
+                raw_document = raw_glb_document(source)
+                raw_meshes_value = raw_document.get("meshes")
+                if not isinstance(raw_meshes_value, list):
+                    raise GlbError("Geometry cleanup source has no raw mesh records")
+                raw_meshes = cast(list[object], raw_meshes_value)
+                for primitive_payload in payload.primitives:
+                    raw_mesh_value = raw_meshes[primitive_payload.mesh_index]
+                    if not isinstance(raw_mesh_value, dict):
+                        raise GlbError("Geometry cleanup source mesh record is invalid")
+                    raw_primitives_value = cast(dict[str, object], raw_mesh_value).get("primitives")
+                    if not isinstance(raw_primitives_value, list):
+                        raise GlbError("Geometry cleanup source has no raw primitive records")
+                    raw_primitives = cast(list[object], raw_primitives_value)
+                    raw_primitive_value = raw_primitives[primitive_payload.primitive_index]
+                    if not isinstance(raw_primitive_value, dict):
+                        raise GlbError("Geometry cleanup source primitive record is invalid")
+                    raw_primitive = cast(dict[str, object], raw_primitive_value)
+                    raw_attributes_value = raw_primitive.get("attributes")
+                    if not isinstance(raw_attributes_value, dict):
+                        raise GlbError("Geometry cleanup source attributes are invalid")
+                    parsed_primitive = gltf.meshes[primitive_payload.mesh_index].primitives[
+                        primitive_payload.primitive_index
+                    ]
+                    parsed_semantics = {
+                        semantic
+                        for semantic, accessor_index in vars(parsed_primitive.attributes).items()
+                        if isinstance(accessor_index, int)
+                    }
+                    raw_attributes = cast(dict[str, object], raw_attributes_value)
+                    if set(raw_attributes) != parsed_semantics:
+                        raise GlbError(
+                            "Geometry cleanup refuses vertex attributes that the GLB adapter "
+                            "cannot preserve"
+                        )
+                clean_degenerate_geometry(gltf, expected_removals)
+            except (GlbError, IndexError) as error:
                 raise RepairInvariantError(str(error)) from error
         else:
             raise RepairInvariantError(f"Unregistered repair kind: {candidate.kind}")

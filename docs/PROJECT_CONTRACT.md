@@ -495,7 +495,7 @@ The MVP should not automatically delete nodes, resources, materials, or textures
 
 ### 9.3 Consequential repair primitives in the MVP
 
-The current action capability is a reversible root transform that the agent may compose from an
+The first consequential action capability is a reversible root transform that the agent may compose from an
 explicitly chosen subset of:
 
 - Physical scale correction.
@@ -532,6 +532,22 @@ minimizes squared log-relative error across all three axes. It must preserve pro
 the residual on every axis. A single residual is not an exact acceptance requirement and cannot, by
 itself, justify rejecting an otherwise correctly executed and visually preserved candidate.
 
+The second consequential capability is one narrow degenerate-geometry cleanup. The agent may
+request it only when deterministic inspection proves an indexed `TRIANGLES` primitive uses dense,
+unextended, cardinality-matched attributes and contains either a repeated-index or scale-relative
+zero-area triangle, or complete vertex tuples that no surviving triangle references. The exact
+preview must list the affected mesh/primitive, before and after triangle and vertex counts, and the
+number of proven removals. It requires explicit approval and must run separately from physical
+normalization or vertex-tuple welding.
+
+Execution removes only the proven zero-area index triples, compacts only complete vertex tuples no
+surviving triangle references, remaps every aligned attribute together, and keeps the source binary
+as an immutable prefix of append-only repaired accessors. It must fail closed for strips, fans,
+non-indexed primitives, sparse or extended accessors, malformed cardinality, out-of-range indices,
+morph targets, compressed primitives, unknown attributes, or a cleanup that would remove every
+triangle. It never welds positions, crosses UV or normal seams, fills holes, recalculates normals,
+remeshes, deletes a semantic component, or changes materials or textures.
+
 ### 9.4 `REPORT_ONLY` findings
 
 The MVP reports but does not repair:
@@ -550,7 +566,7 @@ The MVP must refuse:
 - Skin or skeletal changes.
 - Animation changes.
 - Morph-target changes.
-- Topology repair or remeshing.
+- Topology repair or remeshing beyond the exact approved degenerate-geometry cleanup in 9.3.
 - UV generation or modification.
 - LOD generation.
 - Collision generation.

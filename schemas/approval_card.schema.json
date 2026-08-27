@@ -155,21 +155,38 @@
   "$id": "https://asset-shepherd.dev/schemas/v1/approval_card.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "JSON-serializable human decision card for one normalization operation.",
+  "description": "JSON-serializable human decision card for one consequential operation.",
   "properties": {
     "before_bounds": {
-      "$ref": "#/$defs/Bounds3D"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Bounds3D"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "before_target_extent_m": {
-      "minimum": 0.0,
-      "title": "Before Target Extent M",
-      "type": "number"
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Before Target Extent M"
     },
     "candidate_id": {
       "title": "Candidate Id",
       "type": "string"
     },
     "components": {
+      "default": [],
       "items": {
         "$ref": "#/$defs/NormalizationComponent"
       },
@@ -181,12 +198,28 @@
       "type": "string"
     },
     "expected_after_bounds": {
-      "$ref": "#/$defs/Bounds3D"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Bounds3D"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "expected_target_extent_m": {
-      "minimum": 0.0,
-      "title": "Expected Target Extent M",
-      "type": "number"
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Target Extent M"
     },
     "finding_ids": {
       "items": {
@@ -215,88 +248,96 @@
       "type": "string"
     },
     "proposed_matrix": {
-      "maxItems": 4,
-      "minItems": 4,
-      "prefixItems": [
+      "anyOf": [
         {
           "maxItems": 4,
           "minItems": 4,
           "prefixItems": [
             {
-              "type": "number"
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
             },
             {
-              "type": "number"
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
             },
             {
-              "type": "number"
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
             },
             {
-              "type": "number"
+              "maxItems": 4,
+              "minItems": 4,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
             }
           ],
           "type": "array"
         },
         {
-          "maxItems": 4,
-          "minItems": 4,
-          "prefixItems": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            }
-          ],
-          "type": "array"
-        },
-        {
-          "maxItems": 4,
-          "minItems": 4,
-          "prefixItems": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            }
-          ],
-          "type": "array"
-        },
-        {
-          "maxItems": 4,
-          "minItems": 4,
-          "prefixItems": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "type": "number"
-            }
-          ],
-          "type": "array"
+          "type": "null"
         }
       ],
-      "title": "Proposed Matrix",
-      "type": "array"
+      "default": null,
+      "title": "Proposed Matrix"
     },
     "schema_version": {
       "const": 1,
@@ -305,9 +346,16 @@
       "type": "integer"
     },
     "target_extent_label": {
-      "default": "Height",
-      "title": "Target Extent Label",
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Extent Label"
     },
     "title": {
       "title": "Title",
@@ -319,13 +367,7 @@
     "candidate_id",
     "finding_ids",
     "title",
-    "consequence_summary",
-    "before_bounds",
-    "before_target_extent_m",
-    "proposed_matrix",
-    "expected_after_bounds",
-    "expected_target_extent_m",
-    "components"
+    "consequence_summary"
   ],
   "title": "ApprovalCard",
   "type": "object"

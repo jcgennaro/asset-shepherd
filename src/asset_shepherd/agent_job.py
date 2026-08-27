@@ -28,6 +28,7 @@ from asset_shepherd.models import (
     Decisions,
     DecisionSource,
     DecisionValue,
+    DegenerateGeometryPayload,
     InspectionResult,
     JobResult,
     JobState,
@@ -363,7 +364,10 @@ class AgentJob:
         for candidate in self.selected_plan.candidates:
             if candidate.kind is RepairKind.NORMALIZATION_TRANSFORM:
                 active_lanes.add(ProposalLane.SIZE_AND_POSE)
-            elif candidate.kind is RepairKind.WELD_IDENTICAL_VERTICES:
+            elif candidate.kind in {
+                RepairKind.WELD_IDENTICAL_VERTICES,
+                RepairKind.CLEAN_DEGENERATE_GEOMETRY,
+            }:
                 active_lanes.add(ProposalLane.TOPOLOGY)
             elif candidate.kind in {RepairKind.RENAME_MESH, RepairKind.RENAME_NODE}:
                 active_lanes.add(ProposalLane.DISPLAY_NAMES)
@@ -961,6 +965,7 @@ class AgentJob:
         rename_invalid_display_names: bool,
         source_views_used: list[str],
         weld_identical_vertices: bool = False,
+        clean_degenerate_geometry: bool = False,
         pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE",
     ) -> RepairPlan:
         """Validate and register one model-authored disposition and exact action preview."""
@@ -1020,6 +1025,7 @@ class AgentJob:
             "pivot_target": pivot_target,
             "rename_invalid_display_names": rename_invalid_display_names,
             "weld_identical_vertices": weld_identical_vertices,
+            "clean_degenerate_geometry": clean_degenerate_geometry,
             "source_views_used": source_views_used,
         }
         digest = sha256(
@@ -1040,6 +1046,7 @@ class AgentJob:
             pivot_target=pivot_target,
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
+            clean_degenerate_geometry=clean_degenerate_geometry,
             source_views_used=tuple(source_views_used),
         )
         plan = plan_agent_repairs(
@@ -1138,7 +1145,7 @@ class AgentJob:
         return self.selection
 
     def approval_card(self) -> ApprovalCard | None:
-        """Build the single combined normalization card, if the selection needs approval."""
+        """Build the single consequential action card, if the selection needs approval."""
         if self.selected_plan is None:
             raise AgentWorkflowError("Candidates must be selected before approval")
         if not self.selected_plan.approval_action_ids:
@@ -1149,8 +1156,16 @@ class AgentJob:
         candidate = next(
             candidate for candidate in self.selected_plan.candidates if candidate.id == candidate_id
         )
+        if isinstance(candidate.payload, DegenerateGeometryPayload):
+            return ApprovalCard(
+                plan_id=self.selected_plan.plan_id,
+                candidate_id=candidate.id,
+                finding_ids=candidate.finding_ids,
+                title="Clean proven degenerate geometry",
+                consequence_summary=candidate.payload.consequence_summary,
+            )
         if not isinstance(candidate.payload, NormalizationPayload):
-            raise AgentWorkflowError("Approval-required candidate is not a normalization payload")
+            raise AgentWorkflowError("Approval-required candidate has an unsupported payload")
         labels = {
             "scale": "physical scale",
             "orientation": "upright orientation",
@@ -1357,6 +1372,7 @@ class AgentJob:
         visually_consequential_kinds = {
             RepairKind.NORMALIZATION_TRANSFORM,
             RepairKind.WELD_IDENTICAL_VERTICES,
+            RepairKind.CLEAN_DEGENERATE_GEOMETRY,
         }
         visually_consequential_action_ids = {
             candidate.id

@@ -116,6 +116,11 @@
           "title": "Assessment Id",
           "type": "string"
         },
+        "clean_degenerate_geometry": {
+          "default": false,
+          "title": "Clean Degenerate Geometry",
+          "type": "boolean"
+        },
         "confidence": {
           "maximum": 1.0,
           "minimum": 0.0,
@@ -653,7 +658,8 @@
         "RENAME_NODE",
         "RENAME_MESH",
         "NORMALIZATION_TRANSFORM",
-        "WELD_IDENTICAL_VERTICES"
+        "WELD_IDENTICAL_VERTICES",
+        "CLEAN_DEGENERATE_GEOMETRY"
       ],
       "title": "RepairKind",
       "type": "string"

@@ -93,6 +93,7 @@ class RepairKind(StrEnum):
     RENAME_MESH = "RENAME_MESH"
     NORMALIZATION_TRANSFORM = "NORMALIZATION_TRANSFORM"
     WELD_IDENTICAL_VERTICES = "WELD_IDENTICAL_VERTICES"
+    CLEAN_DEGENERATE_GEOMETRY = "CLEAN_DEGENERATE_GEOMETRY"
 
 
 class AgentDisposition(StrEnum):
@@ -355,6 +356,8 @@ class PrimitiveAttributeDiagnostics(ContractModel):
     non_finite_texcoord_0_count: NonNegativeInt
     out_of_range_index_count: NonNegativeInt
     degenerate_triangle_count: NonNegativeInt
+    degenerate_cleanup_safe: bool = False
+    degenerate_cleanup_block_reason: str | None = None
     topology_analyzed: bool = False
     valid_triangle_count: NonNegativeInt = 0
     boundary_edge_count: NonNegativeInt = 0
@@ -558,6 +561,51 @@ class WeldPayload(ContractModel):
         return self
 
 
+class DegenerateGeometryPrimitivePayload(ContractModel):
+    """Exact, independently measurable effect for one narrow geometry cleanup."""
+
+    mesh_index: NonNegativeInt
+    primitive_index: NonNegativeInt
+    before_triangle_count: PositiveInt
+    after_triangle_count: PositiveInt
+    removed_degenerate_triangle_count: NonNegativeInt
+    before_position_count: PositiveInt
+    after_position_count: PositiveInt
+    removed_unused_position_count: NonNegativeInt
+
+    @model_validator(mode="after")
+    def removal_counts_are_consistent(self) -> "DegenerateGeometryPrimitivePayload":
+        """Bind the preview to exact triangle and complete vertex-tuple removals."""
+        if (
+            self.before_triangle_count - self.removed_degenerate_triangle_count
+            != self.after_triangle_count
+        ):
+            raise ValueError("Degenerate triangle cleanup counts are inconsistent")
+        if (
+            self.before_position_count - self.removed_unused_position_count
+            != self.after_position_count
+        ):
+            raise ValueError("Unused vertex cleanup counts are inconsistent")
+        if not (self.removed_degenerate_triangle_count or self.removed_unused_position_count):
+            raise ValueError("A geometry cleanup must remove proven redundant data")
+        return self
+
+
+class DegenerateGeometryPayload(ContractModel):
+    """Typed request for zero-area triangle removal and exact unused-tuple compaction."""
+
+    payload_type: Literal["clean_degenerate_geometry"] = "clean_degenerate_geometry"
+    primitives: tuple[DegenerateGeometryPrimitivePayload, ...]
+    consequence_summary: str
+
+    @model_validator(mode="after")
+    def contains_primitives(self) -> "DegenerateGeometryPayload":
+        """Require at least one proven, non-empty cleanup target."""
+        if not self.primitives:
+            raise ValueError("A geometry cleanup payload requires at least one primitive")
+        return self
+
+
 class CandidateRepair(ContractModel):
     """A registered repair derived from one or more findings."""
 
@@ -567,7 +615,7 @@ class CandidateRepair(ContractModel):
     finding_ids: tuple[str, ...]
     description: str
     payload: Annotated[
-        RenamePayload | NormalizationPayload | WeldPayload,
+        RenamePayload | NormalizationPayload | WeldPayload | DegenerateGeometryPayload,
         Field(discriminator="payload_type"),
     ]
 
@@ -580,6 +628,9 @@ class CandidateRepair(ContractModel):
         elif self.kind is RepairKind.WELD_IDENTICAL_VERTICES:
             if not isinstance(self.payload, WeldPayload):
                 raise ValueError("Vertex weld repair requires a weld payload")
+        elif self.kind is RepairKind.CLEAN_DEGENERATE_GEOMETRY:
+            if not isinstance(self.payload, DegenerateGeometryPayload):
+                raise ValueError("Degenerate geometry repair requires a cleanup payload")
         elif not isinstance(self.payload, RenamePayload):
             raise ValueError("Rename repair requires a rename payload")
         return self
@@ -603,6 +654,7 @@ class AgentRepairAssessment(ContractModel):
     pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE"
     rename_invalid_display_names: bool = False
     weld_identical_vertices: bool = False
+    clean_degenerate_geometry: bool = False
     source_views_used: tuple[str, ...] = ()
 
     @model_validator(mode="after")
@@ -616,6 +668,7 @@ class AgentRepairAssessment(ContractModel):
                 self.pivot_target != "PRESERVE",
                 self.rename_invalid_display_names,
                 self.weld_identical_vertices,
+                self.clean_degenerate_geometry,
             )
         )
         if self.disposition is AgentDisposition.REPAIR and not has_action:
@@ -628,6 +681,21 @@ class AgentRepairAssessment(ContractModel):
             raise ValueError("Rotation degrees require a rotation axis")
         if self.pivot_target == "BOUNDS_CENTER" and self.ground_to_y_zero:
             raise ValueError("Bounds-center pivot and ground-to-zero are conflicting targets")
+        if self.weld_identical_vertices and self.clean_degenerate_geometry:
+            raise ValueError(
+                "Vertex-tuple welding and degenerate cleanup require separate repair turns"
+            )
+        if self.clean_degenerate_geometry and any(
+            (
+                self.scale_to_confirmed_height,
+                self.rotation_degrees != 0,
+                self.ground_to_y_zero,
+                self.pivot_target != "PRESERVE",
+            )
+        ):
+            raise ValueError(
+                "Degenerate geometry cleanup and physical normalization require separate turns"
+            )
         return self
 
 
@@ -680,7 +748,7 @@ class PlanSelection(ContractModel):
 
 
 class ApprovalCard(ContractModel):
-    """JSON-serializable human decision card for one normalization operation."""
+    """JSON-serializable human decision card for one consequential operation."""
 
     schema_version: Literal[1] = 1
     plan_id: str
@@ -688,13 +756,13 @@ class ApprovalCard(ContractModel):
     finding_ids: tuple[str, ...]
     title: str
     consequence_summary: str
-    before_bounds: Bounds3D
-    before_target_extent_m: Annotated[float, Field(ge=0.0)]
-    proposed_matrix: Matrix4
-    expected_after_bounds: Bounds3D
-    expected_target_extent_m: Annotated[float, Field(ge=0.0)]
-    target_extent_label: str = "Height"
-    components: tuple[NormalizationComponent, ...]
+    before_bounds: Bounds3D | None = None
+    before_target_extent_m: Annotated[float, Field(ge=0.0)] | None = None
+    proposed_matrix: Matrix4 | None = None
+    expected_after_bounds: Bounds3D | None = None
+    expected_target_extent_m: Annotated[float, Field(ge=0.0)] | None = None
+    target_extent_label: str | None = None
+    components: tuple[NormalizationComponent, ...] = ()
     options: tuple[Literal["APPROVE", "REJECT"], ...] = ("APPROVE", "REJECT")
 
 
@@ -996,7 +1064,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8] = 8
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9] = 9
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

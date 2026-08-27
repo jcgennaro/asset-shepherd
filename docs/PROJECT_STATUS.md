@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-27
-**Current commit:** Geometry-failure fixtures and visible asset origin (this file is included)
+**Current commit:** Approval-bound degenerate geometry cleanup (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,9 +51,23 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D061 degenerate-geometry cleanup checkpoint: objective inspection now distinguishes a safely
+  cleanable indexed triangle-list layout from an unsupported topology layout. A live agent may
+  request one separate consequential action that removes only proven zero-area triangle triples and
+  compacts only complete vertex tuples no surviving triangle references. The exact affected
+  primitive and before/after counts are approval-bound; execution retains the source binary as an
+  immutable prefix and remaps every aligned attribute together. Independent verification compares
+  all surviving expanded corners, confirms the exact triangle/vertex deltas, and requires zero
+  remaining degenerate or unused records. The checked-in failure fixture moves from 12 triangles / 24
+  positions to 11 / 23 when approved; rejection preserves the original bytes and both findings. The
+  single inspection table now exposes those defects and the exact action instead of hiding them
+  behind generic topology counts; completed summaries retain unresolved warnings. Browser
+  acceptance verifies the persisted warning case. The common gate passes with 165 tests, one
+  opt-in skip, lock validation, Ruff, formatting, and zero Pyright findings.
+
 - Geometry-failure and pivot-visibility checkpoint: two reproducible, parseable synthetic GLBs now
   exercise distinct post-upload failure behavior. `degenerate_triangle.glb` reports objective
-  degenerate/unused geometry without authorizing a topology rewrite and remains otherwise eligible;
+  degenerate/unused geometry and remains otherwise eligible;
   `malformed_attributes.glb` exposes a POSITION/NORMAL cardinality violation and blocks repair.
   Adjacent typed manifests freeze their hashes and expected findings, and regeneration is covered
   byte-for-byte. The shared source/comparison viewport now projects a minimal `ORIGIN` crosshair at

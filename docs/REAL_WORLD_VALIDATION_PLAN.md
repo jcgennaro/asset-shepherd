@@ -357,6 +357,7 @@ Mutation scripts must be independent of the production repair path wherever prac
 | Texture bloat | Inflate one texture to 8192 or create duplicated image references | Report budget; do not resize or artistically edit in MVP |
 | Negative scale | Mirror through a negative root scale | Detect; block or report unless preservation is proven; do not risk winding/normal corruption |
 | Unsupported content | Add skin, animation, morph target, or required unsupported extension | Inspect and block structural repair explicitly |
+| Degenerate geometry | Add one zero-area indexed triangle and one vertex tuple referenced only by it | Agent may request the bounded cleanup; exact approval removes only those records and independent reinspection proves surviving corner attributes are unchanged |
 
 ### 10.2 Combined variants
 

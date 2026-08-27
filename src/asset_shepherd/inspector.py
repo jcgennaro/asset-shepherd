@@ -22,6 +22,7 @@ from pygltflib import FLOAT, GLTF2, TRIANGLE_FAN, TRIANGLE_STRIP, TRIANGLES, Nod
 from asset_shepherd.glb import (
     GlbError,
     accessor_array,
+    degenerate_triangle_mask,
     geometry_counts,
     iter_world_matrices,
     load_glb,
@@ -491,6 +492,11 @@ def _primitive_diagnostics(
     position_index = _attribute_accessor_index(primitive.attributes, "POSITION")
     if position_index is None:
         raise GlbError("Mesh primitive has no POSITION accessor")
+    attribute_indices = {
+        semantic: accessor_index
+        for semantic, accessor_index in vars(primitive.attributes).items()
+        if isinstance(accessor_index, int)
+    }
     positions = accessor_array(gltf, position_index)
     position_count = len(positions)
     mismatches: list[str] = []
@@ -506,8 +512,8 @@ def _primitive_diagnostics(
         return values
 
     attribute_arrays: dict[str, np.ndarray] = {}
-    for semantic, accessor_index in vars(primitive.attributes).items():
-        if semantic == "POSITION" or not isinstance(accessor_index, int):
+    for semantic, accessor_index in attribute_indices.items():
+        if semantic == "POSITION":
             continue
         values = attribute_values(accessor_index, semantic)
         if values is not None:
@@ -546,41 +552,11 @@ def _primitive_diagnostics(
         )
     else:
         triangles = np.empty((0, 3), dtype=np.int64)
-    repeated_indices = (
-        (triangles[:, 0] == triangles[:, 1])
-        | (triangles[:, 1] == triangles[:, 2])
-        | (triangles[:, 0] == triangles[:, 2])
-    )
-    degenerate = repeated_indices.copy()
+    degenerate = degenerate_triangle_mask(positions, triangles)
     valid_triangles = ~np.any(
         (triangles < 0) | (triangles >= position_count),
         axis=1,
     )
-    valid_non_repeated = valid_triangles & ~repeated_indices
-    if np.any(valid_non_repeated):
-        triangle_positions = positions[triangles[valid_non_repeated], :3].astype(
-            np.float64,
-            copy=False,
-        )
-        finite_triangles = np.isfinite(triangle_positions).all(axis=(1, 2))
-        twice_area = np.full(len(triangle_positions), np.inf, dtype=np.float64)
-        finite_positions = triangle_positions[finite_triangles]
-        twice_area[finite_triangles] = np.linalg.norm(
-            np.cross(
-                finite_positions[:, 1] - finite_positions[:, 0],
-                finite_positions[:, 2] - finite_positions[:, 0],
-            ),
-            axis=1,
-        )
-        finite_source_positions = positions[np.isfinite(positions).all(axis=1), :3]
-        if len(finite_source_positions):
-            extent = np.ptp(finite_source_positions.astype(np.float64, copy=False), axis=0)
-            scale_squared = max(float(np.dot(extent, extent)), 1.0)
-        else:
-            scale_squared = 1.0
-        area_tolerance = np.finfo(np.float64).eps * scale_squared * 64.0
-        area_degenerate = twice_area <= area_tolerance
-        degenerate[np.flatnonzero(valid_non_repeated)] = area_degenerate
 
     topology_mask = valid_triangles & ~degenerate
     if np.any(topology_mask):
@@ -599,6 +575,36 @@ def _primitive_diagnostics(
         },
     )
     topology_analyzed = mode in {TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN}
+
+    cleanup_block_reason: str | None = None
+    cleanup_requested_data = bool(np.count_nonzero(degenerate) or topology.unused_position_count)
+    if cleanup_requested_data:
+        if mode != TRIANGLES or primitive.indices is None:
+            cleanup_block_reason = "cleanup requires an indexed TRIANGLES primitive"
+        elif len(indices) % 3:
+            cleanup_block_reason = "the index accessor contains an incomplete triangle"
+        elif primitive.targets or primitive.extensions:
+            cleanup_block_reason = "morph targets or compressed primitive data are present"
+        elif mismatches:
+            cleanup_block_reason = "vertex attribute counts do not match POSITION"
+        elif np.any(out_of_range):
+            cleanup_block_reason = "indices fall outside the POSITION accessor"
+        elif not np.any(topology_mask):
+            cleanup_block_reason = "cleanup would remove every usable triangle"
+        else:
+            accessor_indices = [*attribute_indices.values(), primitive.indices]
+            try:
+                for accessor_index in accessor_indices:
+                    accessor = gltf.accessors[accessor_index]
+                    if accessor.bufferView is None:
+                        raise GlbError("an accessor has no buffer view")
+                    view = gltf.bufferViews[accessor.bufferView]
+                    if accessor.sparse is not None or accessor.extensions or view.extensions:
+                        raise GlbError("sparse or extended accessors are present")
+                    if view.buffer != 0:
+                        raise GlbError("an accessor uses a non-primary buffer")
+            except (GlbError, IndexError) as error:
+                cleanup_block_reason = str(error)
 
     non_unit_normals = 0
     normal_accessor = gltf.accessors[normal_index] if normal_index is not None else None
@@ -634,6 +640,8 @@ def _primitive_diagnostics(
         non_finite_texcoord_0_count=0 if texcoords is None else _non_finite_count(texcoords),
         out_of_range_index_count=int(np.count_nonzero(out_of_range)),
         degenerate_triangle_count=int(np.count_nonzero(degenerate)),
+        degenerate_cleanup_safe=cleanup_requested_data and cleanup_block_reason is None,
+        degenerate_cleanup_block_reason=cleanup_block_reason,
         topology_analyzed=topology_analyzed,
         valid_triangle_count=topology.valid_triangle_count,
         boundary_edge_count=topology.boundary_edge_count,
@@ -1004,15 +1012,32 @@ def _inspection_findings(
     degenerate_primitives = tuple(
         primitive for primitive in diagnostics.primitives if primitive.degenerate_triangle_count
     )
+    cleanup_candidate_id = "clean-degenerate-geometry-v1"
+    safe_cleanup_primitives = tuple(
+        primitive
+        for primitive in diagnostics.primitives
+        if primitive.degenerate_cleanup_safe
+        and (primitive.degenerate_triangle_count or primitive.unused_position_count)
+    )
     if degenerate_primitives:
+        cleanup_available = any(
+            primitive.degenerate_triangle_count for primitive in safe_cleanup_primitives
+        )
         findings.append(
             _finding(
                 code="DEGENERATE_TRIANGLES_DETECTED",
                 domain="geometry",
                 title="Degenerate triangle indices detected",
-                description="Degenerate triangles are reported for review and are not changed.",
+                description=(
+                    "The agent may propose removal only for zero-area triangles whose complete "
+                    "surviving vertex tuples can be preserved exactly."
+                    if cleanup_available
+                    else "Degenerate triangles are reported for review and are not changed."
+                ),
                 severity=Severity.WARNING,
-                action_class=ActionClass.REPORT_ONLY,
+                action_class=(
+                    ActionClass.APPROVAL_REQUIRED if cleanup_available else ActionClass.REPORT_ONLY
+                ),
                 confidence=1.0,
                 affected=tuple(
                     f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
@@ -1029,6 +1054,7 @@ def _inspection_findings(
                     for item in degenerate_primitives
                 ),
                 profile_rule=None,
+                candidates=(cleanup_candidate_id,) if cleanup_available else (),
             )
         )
 
@@ -1119,14 +1145,24 @@ def _inspection_findings(
         primitive for primitive in diagnostics.primitives if primitive.unused_position_count
     )
     if unused_vertex_data:
+        cleanup_available = any(
+            primitive.unused_position_count for primitive in safe_cleanup_primitives
+        )
         findings.append(
             _finding(
                 code="UNUSED_VERTEX_DATA_DETECTED",
                 domain="performance",
                 title="Unreferenced vertex data may waste memory",
-                description="Unused positions are reported without rewriting vertex buffers.",
+                description=(
+                    "The agent may propose compacting complete vertex tuples that no surviving "
+                    "triangle references."
+                    if cleanup_available
+                    else "Unused positions are reported without rewriting vertex buffers."
+                ),
                 severity=Severity.INFO,
-                action_class=ActionClass.REPORT_ONLY,
+                action_class=(
+                    ActionClass.APPROVAL_REQUIRED if cleanup_available else ActionClass.REPORT_ONLY
+                ),
                 confidence=1.0,
                 affected=tuple(
                     f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
@@ -1143,6 +1179,7 @@ def _inspection_findings(
                     for item in unused_vertex_data
                 ),
                 profile_rule=None,
+                candidates=(cleanup_candidate_id,) if cleanup_available else (),
             )
         )
 

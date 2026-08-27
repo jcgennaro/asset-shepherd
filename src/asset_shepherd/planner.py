@@ -12,6 +12,8 @@ from asset_shepherd.models import (
     AgentRepairAssessment,
     Bounds3D,
     CandidateRepair,
+    DegenerateGeometryPayload,
+    DegenerateGeometryPrimitivePayload,
     InspectionResult,
     Matrix4,
     NormalizationComponent,
@@ -216,6 +218,60 @@ def _attribute_safe_weld_candidate(
     )
 
 
+def _degenerate_geometry_candidate(
+    inspection: InspectionResult,
+) -> CandidateRepair | None:
+    """Preview only cleanup targets proven safe by dense triangle-list inspection."""
+    if inspection.diagnostics is None:
+        return None
+    cleanable = tuple(
+        primitive
+        for primitive in inspection.diagnostics.primitives
+        if primitive.degenerate_cleanup_safe
+        and (primitive.degenerate_triangle_count or primitive.unused_position_count)
+    )
+    if not cleanable:
+        return None
+    finding_ids = tuple(
+        finding.id
+        for finding in inspection.findings
+        if finding.code in {"DEGENERATE_TRIANGLES_DETECTED", "UNUSED_VERTEX_DATA_DETECTED"}
+    )
+    removed_triangles = sum(item.degenerate_triangle_count for item in cleanable)
+    removed_positions = sum(item.unused_position_count for item in cleanable)
+    return CandidateRepair(
+        id="clean-degenerate-geometry-v1",
+        kind=RepairKind.CLEAN_DEGENERATE_GEOMETRY,
+        action_class=ActionClass.APPROVAL_REQUIRED,
+        finding_ids=finding_ids,
+        description=(
+            "Remove only proven zero-area triangle index triples and compact complete vertex "
+            "tuples that no surviving triangle references."
+        ),
+        payload=DegenerateGeometryPayload(
+            primitives=tuple(
+                DegenerateGeometryPrimitivePayload(
+                    mesh_index=item.mesh_index,
+                    primitive_index=item.primitive_index,
+                    before_triangle_count=item.index_count // 3,
+                    after_triangle_count=(item.index_count // 3) - item.degenerate_triangle_count,
+                    removed_degenerate_triangle_count=item.degenerate_triangle_count,
+                    before_position_count=item.position_count,
+                    after_position_count=item.position_count - item.unused_position_count,
+                    removed_unused_position_count=item.unused_position_count,
+                )
+                for item in cleanable
+            ),
+            consequence_summary=(
+                f"This removes {removed_triangles:,} zero-area triangle"
+                f"{'s' if removed_triangles != 1 else ''} and {removed_positions:,} "
+                f"unreferenced complete vertex tuple{'s' if removed_positions != 1 else ''}; "
+                "every surviving corner attribute, material, texture, and resource is preserved."
+            ),
+        ),
+    )
+
+
 def plan_agent_repairs(
     inspection: InspectionResult,
     profile: ProjectProfile,
@@ -245,6 +301,14 @@ def plan_agent_repairs(
                     "duplicate vertex tuples"
                 )
             candidates.append(weld_candidate)
+        if assessment.clean_degenerate_geometry:
+            cleanup_candidate = _degenerate_geometry_candidate(inspection)
+            if cleanup_candidate is None:
+                raise ValueError(
+                    "The agent requested degenerate geometry cleanup, but inspection found no "
+                    "safely removable zero-area triangles or unused complete vertex tuples"
+                )
+            candidates.append(cleanup_candidate)
 
         transform_requested = any(
             (

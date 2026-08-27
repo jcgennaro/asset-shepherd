@@ -7,7 +7,7 @@ from pathlib import Path
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
-    AGENT_SYSTEM_PROMPT_V8,
+    AGENT_SYSTEM_PROMPT_V9,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -48,31 +48,33 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V2
 
 
-def test_v8_prompt_makes_planning_agent_owned_and_user_revisable() -> None:
+def test_v9_prompt_makes_planning_agent_owned_and_user_revisable() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 8
-    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V8
-    assert "source +Y" in AGENT_SYSTEM_PROMPT_V8
-    assert "Do not request no-op" in AGENT_SYSTEM_PROMPT_V8
-    assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V8
-    assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V8
-    assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V8
-    assert "Treat mesh diagnostics as evidence" in AGENT_SYSTEM_PROMPT_V8
-    assert "expected glTF attribute seams" in AGENT_SYSTEM_PROMPT_V8
-    assert "Perform a yaw check" in AGENT_SYSTEM_PROMPT_V8
-    assert "source +Z" in AGENT_SYSTEM_PROMPT_V8
-    assert "+X needs -90 degrees" in AGENT_SYSTEM_PROMPT_V8
-    assert "No single axis is an exact requirement" in AGENT_SYSTEM_PROMPT_V8
-    assert "Grounding and pivot placement are separate" in AGENT_SYSTEM_PROMPT_V8
-    assert "FOOTPRINT_CENTER_BOTTOM" in AGENT_SYSTEM_PROMPT_V8
-    assert "PLAN_REVISION_REQUESTED" in AGENT_SYSTEM_PROMPT_V8
-    assert "argue past an explicit rejection" in AGENT_SYSTEM_PROMPT_V8
-    assert "After a physical or topology action executes" in AGENT_SYSTEM_PROMPT_V8
-    assert "display-name-only action skips rendering" in AGENT_SYSTEM_PROMPT_V8
+    assert AGENT_PROMPT_VERSION == 9
+    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V9
+    assert "source +Y" in AGENT_SYSTEM_PROMPT_V9
+    assert "Do not request no-op" in AGENT_SYSTEM_PROMPT_V9
+    assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V9
+    assert "record_candidate_reassessment" in AGENT_SYSTEM_PROMPT_V9
+    assert "Only the agent may originate" in AGENT_SYSTEM_PROMPT_V9
+    assert "Treat mesh diagnostics as evidence" in AGENT_SYSTEM_PROMPT_V9
+    assert "expected glTF attribute seams" in AGENT_SYSTEM_PROMPT_V9
+    assert "Perform a yaw check" in AGENT_SYSTEM_PROMPT_V9
+    assert "source +Z" in AGENT_SYSTEM_PROMPT_V9
+    assert "+X needs -90 degrees" in AGENT_SYSTEM_PROMPT_V9
+    assert "No single axis is an exact requirement" in AGENT_SYSTEM_PROMPT_V9
+    assert "Grounding and pivot placement are separate" in AGENT_SYSTEM_PROMPT_V9
+    assert "FOOTPRINT_CENTER_BOTTOM" in AGENT_SYSTEM_PROMPT_V9
+    assert "PLAN_REVISION_REQUESTED" in AGENT_SYSTEM_PROMPT_V9
+    assert "argue past an explicit rejection" in AGENT_SYSTEM_PROMPT_V9
+    assert "After a physical or topology action executes" in AGENT_SYSTEM_PROMPT_V9
+    assert "display-name-only action skips rendering" in AGENT_SYSTEM_PROMPT_V9
+    assert "clean_degenerate_geometry" in AGENT_SYSTEM_PROMPT_V9
+    assert "explicit approval" in AGENT_SYSTEM_PROMPT_V9
     assert "never reject a candidate for those residuals alone" in " ".join(
-        AGENT_SYSTEM_PROMPT_V8.split()
+        AGENT_SYSTEM_PROMPT_V9.split()
     )
-    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V8
+    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V9
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

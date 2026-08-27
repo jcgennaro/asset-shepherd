@@ -809,6 +809,23 @@
           "title": "Connected Component Count",
           "type": "integer"
         },
+        "degenerate_cleanup_block_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Degenerate Cleanup Block Reason"
+        },
+        "degenerate_cleanup_safe": {
+          "default": false,
+          "title": "Degenerate Cleanup Safe",
+          "type": "boolean"
+        },
         "degenerate_triangle_count": {
           "minimum": 0,
           "title": "Degenerate Triangle Count",

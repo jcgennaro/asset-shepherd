@@ -225,7 +225,8 @@ preview tools for supported primitives such as:
 - root rotation;
 - root translation for grounding or a bounded bounds-center/footprint-center-bottom pivot target;
 - node display-name change; and
-- mesh display-name change.
+- mesh display-name change; and
+- exact zero-area triangle removal with complete unused-vertex-tuple compaction.
 
 The agent chooses which primitives are needed and supplies their typed intent and parameters. The
 tool computes the exact matrix or edit, expected bounds, affected records, reversibility, and
@@ -234,6 +235,14 @@ preservation obligations. It returns a hashed proposed action without mutating t
 The UI never exposes raw transform controls to the user. The deterministic layer may reject unsafe,
 unsupported, malformed, or out-of-scope parameters, but it does not add a scale, rotation,
 translation, pivot placement, or rename that the agent did not request.
+
+The geometry cleanup is a separate consequential lane. The agent may request it only when the
+sensor marks the primitive `degenerate_cleanup_safe`; the user may accept, reject, or comment, and
+the exact action still requires the overall approval. The deterministic tool removes only proven
+zero-area triangle index triples and complete vertex tuples no surviving triangle references. It
+does not weld seams, close holes, recalculate normals, remesh, or remove semantic components. A
+physical normalization, lossless duplicate-tuple weld, or broader geometry concern requires a
+separate turn.
 
 ### 7. Obtain the required decision
 

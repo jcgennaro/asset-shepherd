@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[8]] = 8
+AGENT_PROMPT_VERSION: Final[Literal[9]] = 9
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -290,6 +290,34 @@ AGENT_SYSTEM_PROMPT_V8: Final[str] = (
         "after a\n"
         "   display-name-only action.",
     )
+)
+
+AGENT_SYSTEM_PROMPT_V9: Final[str] = AGENT_SYSTEM_PROMPT_V8.replace(
+    "  repair because it can damage those protected attributes. You may request\n"
+    "  weld_identical_vertices only when attribute_safe_merge_count is positive and compacting "
+    "redundant\n"
+    "  complete vertex tuples materially helps the intended endpoint. This tool never closes "
+    "holes,\n"
+    "  recalculates normals, remeshes, or changes a protected attribute.",
+    "  repair because it can damage those protected attributes. You may request\n"
+    "  weld_identical_vertices only when attribute_safe_merge_count is positive and compacting "
+    "redundant\n"
+    "  complete vertex tuples materially helps the intended endpoint. You may request\n"
+    "  clean_degenerate_geometry only when degenerate_cleanup_safe is true and the measured "
+    "zero-area\n"
+    "  triangles or unused complete vertex tuples should be removed. This consequential action "
+    "requires\n"
+    "  explicit approval. It removes only the proven zero-area index triples and vertices no "
+    "surviving\n"
+    "  triangle references; every surviving corner tuple stays exact. Neither tool closes holes,\n"
+    "  recalculates normals, remeshes, crosses attribute seams, or removes semantic components.",
+).replace(
+    "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, "
+    "naming, or vertex-tuple\n"
+    "compaction action.",
+    "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, naming, "
+    "vertex-tuple\n"
+    "compaction, or proven degenerate-geometry cleanup action.",
 )
 
 

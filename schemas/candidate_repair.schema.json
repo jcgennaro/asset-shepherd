@@ -129,6 +129,93 @@
       "title": "Bounds3D",
       "type": "object"
     },
+    "DegenerateGeometryPayload": {
+      "additionalProperties": false,
+      "description": "Typed request for zero-area triangle removal and exact unused-tuple compaction.",
+      "properties": {
+        "consequence_summary": {
+          "title": "Consequence Summary",
+          "type": "string"
+        },
+        "payload_type": {
+          "const": "clean_degenerate_geometry",
+          "default": "clean_degenerate_geometry",
+          "title": "Payload Type",
+          "type": "string"
+        },
+        "primitives": {
+          "items": {
+            "$ref": "#/$defs/DegenerateGeometryPrimitivePayload"
+          },
+          "title": "Primitives",
+          "type": "array"
+        }
+      },
+      "required": [
+        "primitives",
+        "consequence_summary"
+      ],
+      "title": "DegenerateGeometryPayload",
+      "type": "object"
+    },
+    "DegenerateGeometryPrimitivePayload": {
+      "additionalProperties": false,
+      "description": "Exact, independently measurable effect for one narrow geometry cleanup.",
+      "properties": {
+        "after_position_count": {
+          "exclusiveMinimum": 0,
+          "title": "After Position Count",
+          "type": "integer"
+        },
+        "after_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "After Triangle Count",
+          "type": "integer"
+        },
+        "before_position_count": {
+          "exclusiveMinimum": 0,
+          "title": "Before Position Count",
+          "type": "integer"
+        },
+        "before_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Before Triangle Count",
+          "type": "integer"
+        },
+        "mesh_index": {
+          "minimum": 0,
+          "title": "Mesh Index",
+          "type": "integer"
+        },
+        "primitive_index": {
+          "minimum": 0,
+          "title": "Primitive Index",
+          "type": "integer"
+        },
+        "removed_degenerate_triangle_count": {
+          "minimum": 0,
+          "title": "Removed Degenerate Triangle Count",
+          "type": "integer"
+        },
+        "removed_unused_position_count": {
+          "minimum": 0,
+          "title": "Removed Unused Position Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mesh_index",
+        "primitive_index",
+        "before_triangle_count",
+        "after_triangle_count",
+        "removed_degenerate_triangle_count",
+        "before_position_count",
+        "after_position_count",
+        "removed_unused_position_count"
+      ],
+      "title": "DegenerateGeometryPrimitivePayload",
+      "type": "object"
+    },
     "NormalizationComponent": {
       "additionalProperties": false,
       "description": "Evidence for one component of a combined normalization transform.",
@@ -554,7 +641,8 @@
         "RENAME_NODE",
         "RENAME_MESH",
         "NORMALIZATION_TRANSFORM",
-        "WELD_IDENTICAL_VERTICES"
+        "WELD_IDENTICAL_VERTICES",
+        "CLEAN_DEGENERATE_GEOMETRY"
       ],
       "title": "RepairKind",
       "type": "string"
@@ -673,6 +761,7 @@
     "payload": {
       "discriminator": {
         "mapping": {
+          "clean_degenerate_geometry": "#/$defs/DegenerateGeometryPayload",
           "normalization": "#/$defs/NormalizationPayload",
           "rename": "#/$defs/RenamePayload",
           "weld_identical_vertices": "#/$defs/WeldPayload"
@@ -688,6 +777,9 @@
         },
         {
           "$ref": "#/$defs/WeldPayload"
+        },
+        {
+          "$ref": "#/$defs/DegenerateGeometryPayload"
         }
       ],
       "title": "Payload"

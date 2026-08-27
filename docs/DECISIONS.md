@@ -4,6 +4,51 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D061 — Add an approval-bound degenerate-geometry cleanup
+
+**Date:** 2026-08-27
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 evaluation
+
+**Context**
+
+The checked-in `degenerate_triangle.glb` fixture contains one objectively zero-area triangle and
+one complete vertex tuple referenced only by that triangle. Inspection already found both defects,
+but the result UI concealed them and the registered tool set could only report them. The user asked
+whether Asset Shepherd could repair both and explicitly approved addressing the gap. The existing
+contract otherwise blocked topology mutation, so this requires a narrow amendment rather than an
+implicit expansion to general mesh repair.
+
+**Decision**
+
+Register `CLEAN_DEGENERATE_GEOMETRY` as an agent-selected, approval-required action. It is available
+only for indexed triangle-list primitives whose dense, unextended vertex attributes have matching
+cardinality and whose surviving geometry is nonempty. The preview freezes exact per-primitive
+triangle and position counts. Execution removes only repeated-index or scale-relative zero-area
+triangle triples, compacts only complete vertex tuples no surviving triangle references, remaps
+every aligned attribute together, and appends replacement accessors while retaining the original
+binary payload as an unchanged prefix.
+
+Keep this action separate from physical normalization and exact-tuple welding so one approval has
+one unambiguous consequential footprint. Continue to block strips, fans, non-indexed geometry,
+sparse or extended accessors, malformed indices or cardinality, morph targets, compressed or
+unknown attributes, all-triangle deletion, seam welding, hole filling, normal recalculation,
+remeshing, and semantic component deletion. A user decision cannot override those safety proofs.
+
+**Evidence and consequences**
+
+The synthetic fixture now previews removal of exactly one of 12 index triples and one of 24 vertex
+tuples. Approval produces 11 triangles and 23 positions in the affected primitive; fresh inspection
+reports zero degenerate triangles and zero unused positions. Expanded surviving corner attributes,
+materials, textures, node references, and original binary bytes are independently verified. A
+rejection writes no changed bytes and preserves both findings. The five-row result table now shows
+the two defects, the exact proposed action, and `Addressed` only after verification. General
+topology reconstruction remains outside the MVP.
+
 ### D060 — Make unsupported dispositions explicit; defer component deletion
 
 **Date:** 2026-08-27

@@ -307,6 +307,189 @@ def _append_packed_accessor(
     return accessor_index
 
 
+def degenerate_triangle_mask(
+    positions: npt.NDArray[np.generic],
+    triangles: npt.NDArray[np.int64],
+) -> npt.NDArray[np.bool_]:
+    """Identify repeated-index and scale-relative zero-area triangles deterministically."""
+    triangle_indices = np.asarray(triangles, dtype=np.int64).reshape((-1, 3))
+    repeated = (
+        (triangle_indices[:, 0] == triangle_indices[:, 1])
+        | (triangle_indices[:, 1] == triangle_indices[:, 2])
+        | (triangle_indices[:, 0] == triangle_indices[:, 2])
+    )
+    degenerate = repeated.copy()
+    valid = ~np.any(
+        (triangle_indices < 0) | (triangle_indices >= len(positions)),
+        axis=1,
+    )
+    candidates = valid & ~repeated
+    if not np.any(candidates):
+        return degenerate
+    triangle_positions = np.asarray(positions)[triangle_indices[candidates], :3].astype(
+        np.float64,
+        copy=False,
+    )
+    finite_triangles = np.isfinite(triangle_positions).all(axis=(1, 2))
+    twice_area = np.full(len(triangle_positions), np.inf, dtype=np.float64)
+    finite_positions = triangle_positions[finite_triangles]
+    twice_area[finite_triangles] = np.linalg.norm(
+        np.cross(
+            finite_positions[:, 1] - finite_positions[:, 0],
+            finite_positions[:, 2] - finite_positions[:, 0],
+        ),
+        axis=1,
+    )
+    source_positions = np.asarray(positions)[:, :3]
+    finite_source = source_positions[np.isfinite(source_positions).all(axis=1)].astype(
+        np.float64,
+        copy=False,
+    )
+    scale_squared = (
+        max(float(np.dot(np.ptp(finite_source, axis=0), np.ptp(finite_source, axis=0))), 1.0)
+        if len(finite_source)
+        else 1.0
+    )
+    area_tolerance = np.finfo(np.float64).eps * scale_squared * 64.0
+    degenerate[np.flatnonzero(candidates)] = twice_area <= area_tolerance
+    return degenerate
+
+
+def _refresh_accessor_bounds(accessor: Accessor, values: npt.NDArray[np.generic]) -> None:
+    """Recompute declared accessor bounds after exact row compaction."""
+    if not len(values):
+        accessor.min = None
+        accessor.max = None
+        return
+    numeric_values = cast(npt.NDArray[np.float64], np.asarray(values))
+    if accessor.min is not None:
+        accessor.min = np.min(numeric_values, axis=0).tolist()
+    if accessor.max is not None:
+        accessor.max = np.max(numeric_values, axis=0).tolist()
+
+
+def clean_degenerate_geometry(
+    gltf: GLTF2,
+    expected_removals: dict[tuple[int, int], tuple[int, int]],
+) -> dict[tuple[int, int], tuple[int, int]]:
+    """Remove proven zero-area triangles and compact only their unreferenced vertex tuples.
+
+    Every surviving corner keeps the same complete attribute tuple and order. Existing binary data
+    remains an immutable prefix; repaired accessors and indices are appended to the GLB.
+    """
+    original_blob = cast(bytes | bytearray | None, gltf.binary_blob())
+    if original_blob is None or not gltf.buffers:
+        raise GlbError("GLB has no primary binary buffer")
+    blob = bytearray(original_blob)
+    actual: dict[tuple[int, int], tuple[int, int]] = {}
+    for (mesh_index, primitive_index), expected in sorted(expected_removals.items()):
+        if not 0 <= mesh_index < len(gltf.meshes):
+            raise GlbError("Geometry cleanup references an invalid mesh")
+        mesh = gltf.meshes[mesh_index]
+        if not 0 <= primitive_index < len(mesh.primitives):
+            raise GlbError("Geometry cleanup references an invalid primitive")
+        primitive = mesh.primitives[primitive_index]
+        mode = primitive.mode if primitive.mode is not None else TRIANGLES
+        if mode != TRIANGLES or primitive.indices is None:
+            raise GlbError("Geometry cleanup requires an indexed TRIANGLES primitive")
+        if primitive.targets or primitive.extensions:
+            raise GlbError(
+                "Geometry cleanup does not support morph targets or compressed primitives"
+            )
+
+        attribute_indices = {
+            semantic: accessor_index
+            for semantic, accessor_index in vars(primitive.attributes).items()
+            if isinstance(accessor_index, int)
+        }
+        position_index = attribute_indices.get("POSITION")
+        if position_index is None:
+            raise GlbError("Geometry cleanup primitive has no POSITION accessor")
+        arrays = {
+            semantic: accessor_array(gltf, accessor_index)
+            for semantic, accessor_index in attribute_indices.items()
+        }
+        position_count = len(arrays["POSITION"])
+        if any(len(values) != position_count for values in arrays.values()):
+            raise GlbError("Geometry cleanup requires matching attribute cardinalities")
+        for accessor_index in (*attribute_indices.values(), primitive.indices):
+            accessor = gltf.accessors[accessor_index]
+            view = gltf.bufferViews[cast(int, accessor.bufferView)]
+            if accessor.sparse is not None or accessor.extensions or view.extensions:
+                raise GlbError("Geometry cleanup requires dense, unextended accessors")
+
+        old_indices = np.asarray(
+            accessor_array(gltf, primitive.indices),
+            dtype=np.int64,
+        ).reshape(-1)
+        if len(old_indices) % 3:
+            raise GlbError("Geometry cleanup requires complete triangle index triples")
+        triangles = old_indices.reshape((-1, 3))
+        invalid = (triangles < 0) | (triangles >= position_count)
+        if np.any(invalid):
+            raise GlbError("Geometry cleanup refuses out-of-range indices")
+        degenerate = degenerate_triangle_mask(arrays["POSITION"], triangles)
+        surviving = triangles[~degenerate]
+        if not len(surviving):
+            raise GlbError("Geometry cleanup refuses to remove every triangle")
+        used = np.unique(surviving.reshape(-1))
+        if not len(used):
+            raise GlbError("Geometry cleanup produced no referenced vertices")
+        removed_triangles = int(np.count_nonzero(degenerate))
+        removed_positions = position_count - len(used)
+        if (removed_triangles, removed_positions) != expected:
+            raise GlbError(
+                "Geometry cleanup evidence changed since planning: "
+                f"expected {expected}, measured {(removed_triangles, removed_positions)}"
+            )
+        if not (removed_triangles or removed_positions):
+            raise GlbError("Geometry cleanup selected a primitive with no removable data")
+
+        old_to_new = np.full(position_count, -1, dtype=np.int64)
+        old_to_new[used] = np.arange(len(used), dtype=np.int64)
+        for semantic, old_accessor_index in sorted(attribute_indices.items()):
+            compacted = arrays[semantic][used]
+            new_accessor_index = _append_packed_accessor(
+                gltf,
+                blob,
+                compacted,
+                gltf.accessors[old_accessor_index],
+                target=ARRAY_BUFFER,
+            )
+            _refresh_accessor_bounds(gltf.accessors[new_accessor_index], compacted)
+            setattr(primitive.attributes, semantic, new_accessor_index)
+
+        remapped = old_to_new[surviving].reshape(-1)
+        if len(used) <= 255:
+            packed_indices = remapped.astype(np.uint8, copy=False).reshape((-1, 1))
+            component_type = 5121
+        elif len(used) <= 65535:
+            packed_indices = remapped.astype(np.uint16, copy=False).reshape((-1, 1))
+            component_type = 5123
+        else:
+            packed_indices = remapped.astype(np.uint32, copy=False).reshape((-1, 1))
+            component_type = 5125
+        index_template = Accessor(
+            componentType=component_type,
+            count=len(packed_indices),
+            type="SCALAR",
+            max=[int(remapped.max())],
+            min=[int(remapped.min())],
+        )
+        primitive.indices = _append_packed_accessor(
+            gltf,
+            blob,
+            packed_indices,
+            index_template,
+            target=ELEMENT_ARRAY_BUFFER,
+        )
+        actual[(mesh_index, primitive_index)] = (removed_triangles, removed_positions)
+
+    gltf.set_binary_blob(bytes(blob))
+    gltf.buffers[0].byteLength = len(blob)
+    return actual
+
+
 def weld_identical_vertex_tuples(
     gltf: GLTF2,
     expected_merges: dict[tuple[int, int], int],

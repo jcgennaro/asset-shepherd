@@ -67,6 +67,7 @@ from asset_shepherd.models import (
     CheckStatus,
     DecisionRecord,
     DecisionValue,
+    DegenerateGeometryPayload,
     Finding,
     NormalizationPayload,
     ProfilePolicyProvenance,
@@ -1610,6 +1611,10 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     projected_components = sum(
         primitive.virtual_weld_connected_component_count for primitive in diagnostic_primitives
     )
+    degenerate_triangles = sum(
+        primitive.degenerate_triangle_count for primitive in diagnostic_primitives
+    )
+    unused_positions = sum(primitive.unused_position_count for primitive in diagnostic_primitives)
     protected_attributes = sorted(
         {
             attribute
@@ -1625,6 +1630,8 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     name_ids: list[str] = []
     weld_action = ""
     weld_ids: list[str] = []
+    cleanup_action = ""
+    cleanup_ids: list[str] = []
     if plan is not None:
         for candidate in plan.candidates:
             payload = candidate.payload
@@ -1660,6 +1667,27 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                     f"Automatic — compact {merge_count:,} byte-identical vertex tuple"
                     f"{'s' if merge_count != 1 else ''}."
                 )
+                continue
+            if isinstance(payload, DegenerateGeometryPayload):
+                cleanup_ids.append(candidate.id)
+                removed_triangles = sum(
+                    primitive.removed_degenerate_triangle_count for primitive in payload.primitives
+                )
+                removed_positions = sum(
+                    primitive.removed_unused_position_count for primitive in payload.primitives
+                )
+                changes: list[str] = []
+                if removed_triangles:
+                    changes.append(
+                        f"remove {removed_triangles:,} zero-area triangle"
+                        f"{'s' if removed_triangles != 1 else ''}"
+                    )
+                if removed_positions:
+                    changes.append(
+                        f"compact {removed_positions:,} unreferenced vertex tuple"
+                        f"{'s' if removed_positions != 1 else ''}"
+                    )
+                cleanup_action = f"Approval required — {' and '.join(changes)}."
                 continue
             before_name = payload.before_name or "(unnamed)"
             item = f"“{before_name}” → “{payload.after_name}”"
@@ -1721,11 +1749,31 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         "Needs approval" if normalization_action else ("Attention" if size_warning else "Pass")
     )
 
-    topology_warning = has_attention(_TOPOLOGY_CODES) or bool(weld_action)
+    topology_warning = has_attention(_TOPOLOGY_CODES) or bool(weld_action or cleanup_action)
     topology_status = "attention" if topology_warning else "pass"
-    topology_label = "Automatic" if weld_action else ("Report only" if topology_warning else "Pass")
-    if weld_action:
+    topology_label = (
+        "Needs approval"
+        if cleanup_action
+        else "Automatic"
+        if weld_action
+        else ("Report only" if topology_warning else "Pass")
+    )
+    if cleanup_action:
+        topology_action = cleanup_action
+    elif weld_action:
         topology_action = weld_action
+    elif degenerate_triangles or unused_positions:
+        unresolved: list[str] = []
+        if degenerate_triangles:
+            unresolved.append(
+                f"{degenerate_triangles:,} degenerate triangle"
+                f"{'s' if degenerate_triangles != 1 else ''}"
+            )
+        if unused_positions:
+            unresolved.append(
+                f"{unused_positions:,} unused vertex tuple{'s' if unused_positions != 1 else ''}"
+            )
+        topology_action = f"Report only — {' and '.join(unresolved)} not changed."
     elif protected_duplicates and topology_warning:
         seam_names = ", ".join(protected_attributes) or "vertex attribute"
         topology_action = (
@@ -1778,6 +1826,20 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 topology_status = "attention"
                 topology_label = "Needs review"
                 topology_action = f"Attempted — verification did not confirm {weld_detail}"
+        elif cleanup_ids and all(candidate_id in executed_ids for candidate_id in cleanup_ids):
+            cleanup_detail = cleanup_action.removeprefix("Approval required — ")
+            if check_passed("DEGENERATE_GEOMETRY_CLEANUP_CONFIRMED"):
+                topology_status = "repaired"
+                topology_label = "Addressed"
+                topology_action = f"Applied — {cleanup_detail}"
+            else:
+                topology_status = "attention"
+                topology_label = "Needs review"
+                topology_action = f"Attempted — verification did not confirm {cleanup_detail}"
+        elif cleanup_ids and any(candidate_id in rejected_ids for candidate_id in cleanup_ids):
+            topology_status = "attention"
+            topology_label = "Unresolved"
+            topology_action = "Not applied — rejected."
         elif topology_warning:
             topology_action = topology_action.replace("Report only —", "No change —", 1)
 
@@ -1797,9 +1859,25 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         elif name_warning:
             name_action = "No change — names remain unresolved."
 
+    topology_facts: list[str] = []
+    if degenerate_triangles:
+        topology_facts.append(
+            f"{degenerate_triangles:,} degenerate triangle"
+            f"{'s' if degenerate_triangles != 1 else ''}"
+        )
+    if unused_positions:
+        topology_facts.append(
+            f"{unused_positions:,} unused vertex tuple{'s' if unused_positions != 1 else ''}"
+        )
+    topology_facts.extend(
+        (
+            f"{projected_boundaries:,} boundary",
+            f"{projected_non_manifold:,} non-manifold",
+            f"{projected_winding:,} winding",
+        )
+    )
     topology_description = (
-        f"{projected_boundaries:,} boundary · {projected_non_manifold:,} non-manifold · "
-        f"{projected_winding:,} winding edges after position projection."
+        " · ".join(topology_facts) + " after position projection."
         if diagnostic_primitives
         else "No triangle topology diagnostics were available."
     )
@@ -1864,7 +1942,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             topology_label,
             topology_description,
             topology_action,
-            ProposalLane.TOPOLOGY if weld_action and not after_action else None,
+            ProposalLane.TOPOLOGY if (weld_action or cleanup_action) and not after_action else None,
             action_heading,
         ),
         InspectionCheckView(
@@ -2150,7 +2228,15 @@ def _completion_sentence(workspace: HostedWorkspace, job: AgentJob | None) -> st
     if job is None or job.result is None:
         return None
     if job.candidate_reassessment is not None:
-        return _one_sentence(job.candidate_reassessment.summary)
+        summary = _one_sentence(job.candidate_reassessment.summary)
+        warnings = job.last_verification.remaining_warnings if job.last_verification else ()
+        if warnings:
+            labels = [
+                warning.partition(":")[2].strip() or warning.partition(":")[0].strip()
+                for warning in warnings
+            ]
+            return f"{summary.rstrip('.!?')}; remaining: {'; '.join(labels)}."
+        return summary
     if job.agent_assessment is not None:
         summary = _one_sentence(job.agent_assessment.summary)
         if job.agent_assessment.disposition is AgentDisposition.RETURN_TO_CREATION_TOOL:

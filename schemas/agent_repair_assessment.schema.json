@@ -23,6 +23,11 @@
       "title": "Assessment Id",
       "type": "string"
     },
+    "clean_degenerate_geometry": {
+      "default": false,
+      "title": "Clean Degenerate Geometry",
+      "type": "boolean"
+    },
     "confidence": {
       "maximum": 1.0,
       "minimum": 0.0,

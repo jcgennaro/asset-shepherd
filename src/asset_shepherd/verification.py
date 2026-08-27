@@ -17,6 +17,7 @@ from pygltflib import GLTF2
 from asset_shepherd.glb import (
     GlbError,
     accessor_array,
+    degenerate_triangle_mask,
     load_glb,
     node_local_matrix,
     validate_loaded_glb,
@@ -33,6 +34,7 @@ from asset_shepherd.models import (
     CheckStatus,
     Decisions,
     DecisionValue,
+    DegenerateGeometryPayload,
     InspectionResult,
     NormalizationPayload,
     ProjectProfile,
@@ -130,6 +132,21 @@ def _executed_weld(plan: RepairPlan, outcome: RepairOutcome) -> WeldPayload | No
     )
 
 
+def _executed_degenerate_cleanup(
+    plan: RepairPlan, outcome: RepairOutcome
+) -> DegenerateGeometryPayload | None:
+    """Return the exact executed degenerate cleanup payload, if any."""
+    return next(
+        (
+            candidate.payload
+            for candidate in plan.candidates
+            if candidate.id in outcome.executed_action_ids
+            and isinstance(candidate.payload, DegenerateGeometryPayload)
+        ),
+        None,
+    )
+
+
 def _executed_normalization(
     plan: RepairPlan, outcome: RepairOutcome
 ) -> NormalizationPayload | None:
@@ -145,7 +162,11 @@ def _executed_normalization(
     )
 
 
-def _corner_attribute_hash(gltf: GLTF2) -> str:
+def _corner_attribute_hash(
+    gltf: GLTF2,
+    *,
+    omit_degenerate_for: frozenset[tuple[int, int]] = frozenset(),
+) -> str:
     """Hash rendered primitive inputs after expanding every vertex attribute by index."""
     records: list[object] = []
     for mesh_index, mesh in enumerate(gltf.meshes):
@@ -166,6 +187,12 @@ def _corner_attribute_hash(gltf: GLTF2) -> str:
                     accessor_array(gltf, primitive.indices),
                     dtype=np.int64,
                 ).reshape(-1)
+            if (mesh_index, primitive_index) in omit_degenerate_for:
+                if len(indices) % 3:
+                    raise GlbError("Cleanup verification found an incomplete triangle")
+                triangles = indices.reshape((-1, 3))
+                positions = accessor_array(gltf, position_index)
+                indices = triangles[~degenerate_triangle_mask(positions, triangles)].reshape(-1)
             attributes = {
                 semantic: sha256(
                     np.ascontiguousarray(accessor_array(gltf, accessor_index)[indices]).tobytes()
@@ -200,6 +227,8 @@ def _preservation_checks(
     output_document = cast(dict[str, object], json.loads(output_gltf.to_json()))
     checks: list[VerificationCheck] = []
     weld = _executed_weld(plan, outcome)
+    cleanup = _executed_degenerate_cleanup(plan, outcome)
+    append_only_geometry = weld is not None or cleanup is not None
     normalization = _executed_normalization(plan, outcome)
 
     section_checks = (
@@ -217,13 +246,13 @@ def _preservation_checks(
     for code, section in section_checks:
         source_section = _document_section(source_document, section)
         output_section = _document_section(output_document, section)
-        if weld is not None and section in {"accessors", "bufferViews"}:
+        if append_only_geometry and section in {"accessors", "bufferViews"}:
             source_records = cast(list[object], source_section)
             output_records = cast(list[object], output_section)
             preserved = source_records == output_records[: len(source_records)]
             source_hash = _canonical_hash(source_records)
             output_hash = _canonical_hash(output_records[: len(source_records)])
-        elif weld is not None and section == "buffers":
+        elif append_only_geometry and section == "buffers":
             source_records = cast(list[dict[str, object]], source_section)
             output_records = cast(list[dict[str, object]], output_section)
             preserved = len(source_records) == len(output_records) and all(
@@ -245,7 +274,7 @@ def _preservation_checks(
                 (
                     f"The original {section} records are preserved and authorized weld data is "
                     "append-only."
-                    if weld is not None and section in {"accessors", "bufferViews", "buffers"}
+                    if append_only_geometry and section in {"accessors", "bufferViews", "buffers"}
                     else f"The {section} records are semantically unchanged."
                 ),
                 expected=source_hash,
@@ -253,7 +282,7 @@ def _preservation_checks(
             )
         )
 
-    if weld is None:
+    if not append_only_geometry:
         source_mesh_hash = _canonical_hash(
             _without_display_names(_document_section(source_document, "meshes"))
         )
@@ -261,15 +290,27 @@ def _preservation_checks(
             _without_display_names(_document_section(output_document, "meshes"))
         )
     else:
-        source_mesh_hash = _corner_attribute_hash(source_gltf)
+        cleanup_targets: frozenset[tuple[int, int]] = (
+            frozenset(
+                (primitive.mesh_index, primitive.primitive_index)
+                for primitive in cleanup.primitives
+            )
+            if cleanup is not None
+            else frozenset[tuple[int, int]]()
+        )
+        source_mesh_hash = _corner_attribute_hash(
+            source_gltf,
+            omit_degenerate_for=cleanup_targets,
+        )
         output_mesh_hash = _corner_attribute_hash(output_gltf)
     checks.append(
         _check(
             "MESH_PRIMITIVES_PRESERVED",
             source_mesh_hash == output_mesh_hash,
             (
-                "Every expanded primitive corner retains identical attributes and draw metadata."
-                if weld is not None
+                "Every surviving expanded primitive corner retains identical attributes and draw "
+                "metadata."
+                if append_only_geometry
                 else (
                     "Mesh primitives, attributes, topology, material references, and extras are "
                     "unchanged."
@@ -319,7 +360,7 @@ def _preservation_checks(
     output_blob_hash = sha256(bytes(output_blob or b"")).hexdigest()
     binary_preserved = (
         source_blob_hash == output_blob_hash
-        if weld is None
+        if not append_only_geometry
         else bytes(output_blob or b"").startswith(bytes(source_blob or b""))
     )
     checks.append(
@@ -327,8 +368,9 @@ def _preservation_checks(
             "BINARY_PAYLOAD_PRESERVED",
             binary_preserved,
             (
-                "The source binary payload is an unchanged prefix of append-only weld data."
-                if weld is not None
+                "The source binary payload is an unchanged prefix of append-only authorized "
+                "geometry data."
+                if append_only_geometry
                 else (
                     "The complete embedded binary payload, including geometry and images, is "
                     "unchanged."
@@ -652,8 +694,24 @@ def verify_repair(
     )
     if original.geometry is not None and output.geometry is not None:
         weld = _executed_weld(plan, outcome)
-        expected_vertex_count = original.geometry.vertex_count - (
-            sum(primitive.merge_count for primitive in weld.primitives) if weld is not None else 0
+        cleanup = _executed_degenerate_cleanup(plan, outcome)
+        expected_vertex_count = (
+            original.geometry.vertex_count
+            - (
+                sum(primitive.merge_count for primitive in weld.primitives)
+                if weld is not None
+                else 0
+            )
+            - (
+                sum(primitive.removed_unused_position_count for primitive in cleanup.primitives)
+                if cleanup is not None
+                else 0
+            )
+        )
+        expected_triangle_count = original.geometry.triangle_count - (
+            sum(primitive.removed_degenerate_triangle_count for primitive in cleanup.primitives)
+            if cleanup is not None
+            else 0
         )
         count_pairs = (
             (
@@ -663,7 +721,7 @@ def verify_repair(
             ),
             (
                 "TRIANGLE_COUNT_PRESERVED",
-                original.geometry.triangle_count,
+                expected_triangle_count,
                 output.geometry.triangle_count,
             ),
             (
@@ -713,6 +771,50 @@ def verify_repair(
                     "Every selected primitive has no remaining byte-identical vertex tuples.",
                     expected=0,
                     actual=cast(JsonValue, remaining_safe_merges),
+                )
+            )
+        if cleanup is not None:
+            output_primitives = (
+                {
+                    (primitive.mesh_index, primitive.primitive_index): primitive
+                    for primitive in output.diagnostics.primitives
+                }
+                if output.diagnostics is not None
+                else {}
+            )
+            remaining = {
+                f"{primitive.mesh_index}:{primitive.primitive_index}": {
+                    "degenerate_triangles": (
+                        output_primitives[
+                            (primitive.mesh_index, primitive.primitive_index)
+                        ].degenerate_triangle_count
+                        if (primitive.mesh_index, primitive.primitive_index) in output_primitives
+                        else None
+                    ),
+                    "unused_positions": (
+                        output_primitives[
+                            (primitive.mesh_index, primitive.primitive_index)
+                        ].unused_position_count
+                        if (primitive.mesh_index, primitive.primitive_index) in output_primitives
+                        else None
+                    ),
+                }
+                for primitive in cleanup.primitives
+            }
+            checks.append(
+                _check(
+                    "DEGENERATE_GEOMETRY_CLEANUP_CONFIRMED",
+                    all(
+                        values["degenerate_triangles"] == 0 and values["unused_positions"] == 0
+                        for values in remaining.values()
+                    ),
+                    "Every selected primitive has no degenerate triangles or unreferenced vertex "
+                    "tuples remaining.",
+                    expected=cast(
+                        JsonValue,
+                        {"degenerate_triangles": 0, "unused_positions": 0},
+                    ),
+                    actual=cast(JsonValue, remaining),
                 )
             )
         naming_valid = output.naming is not None and not output.naming.proposed_replacements

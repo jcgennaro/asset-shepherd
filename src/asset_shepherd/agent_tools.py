@@ -217,6 +217,7 @@ class AssetShepherdTools:
         pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE",
         rename_invalid_display_names: bool = False,
         weld_identical_vertices: bool = False,
+        clean_degenerate_geometry: bool = False,
         source_views_used: list[str] | None = None,
     ) -> dict[str, Any]:
         """Register the agent's assessment and preview only its requested supported actions.
@@ -241,6 +242,10 @@ class AssetShepherdTools:
             weld_identical_vertices: Compact only complete byte-identical vertex tuples when the
                 inspection reports a positive attribute-safe merge count. Attribute seams are
                 never merged.
+            clean_degenerate_geometry: Remove only inspection-proven zero-area triangle index
+                triples and compact complete vertex tuples that no surviving triangle references.
+                Request this only when degenerate_cleanup_safe is true. This never welds seams,
+                fills holes, recalculates normals, or removes a connected component.
             source_views_used: Exact rendered filenames used for a physical conclusion.
 
         Returns an exact deterministic action preview, authorization classes, and bounds. It never
@@ -262,6 +267,7 @@ class AssetShepherdTools:
             pivot_target=pivot_target,
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
+            clean_degenerate_geometry=clean_degenerate_geometry,
             source_views_used=source_views_used or [],
         )
         return plan.model_dump(mode="json")
