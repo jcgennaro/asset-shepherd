@@ -8,7 +8,8 @@ import json
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Final
+from struct import pack
+from typing import Final, cast
 
 import numpy as np
 from pygltflib import (
@@ -296,6 +297,81 @@ def _write_model(path: Path, model: ProjectProfile | FixtureManifest) -> None:
     path.write_text(f"{payload}\n", encoding="utf-8", newline="\n")
 
 
+def _write_fixture_manifest(
+    glb_path: Path,
+    *,
+    fixture_id: str,
+    defect_codes: tuple[str, ...],
+    original_asset: bool,
+) -> Path:
+    loaded = load_glb(glb_path)
+    counts = geometry_counts(loaded)
+    manifest = FixtureManifest(
+        fixture_id=fixture_id,
+        glb_filename=glb_path.name,
+        sha256=sha256(glb_path.read_bytes()).hexdigest(),
+        expected_bounds_m=_bounds_model(glb_path),
+        expected_vertex_count=counts.vertices,
+        expected_triangle_count=counts.triangles,
+        expected_material_count=len(loaded.materials),
+        expected_defect_codes=defect_codes,
+        original_asset=original_asset,
+    )
+    manifest_path = glb_path.with_suffix(".expected.json")
+    _write_model(manifest_path, manifest)
+    return manifest_path
+
+
+def generate_geometry_failure_fixtures(clean_path: Path, output_dir: Path) -> tuple[Path, ...]:
+    """Create parseable GLBs that exercise objective geometry failure handling."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    generated: list[Path] = []
+
+    degenerate_path = output_dir / "degenerate_triangle.glb"
+    degenerate = load_glb(clean_path)
+    index_accessor_index = degenerate.meshes[0].primitives[0].indices
+    if index_accessor_index is None:
+        msg = "The clean fixture must have indexed geometry."
+        raise ValueError(msg)
+    index_accessor = degenerate.accessors[index_accessor_index]
+    if index_accessor.bufferView is None or index_accessor.componentType != UNSIGNED_SHORT:
+        msg = "The clean fixture must use an unsigned-short index buffer."
+        raise ValueError(msg)
+    index_view = degenerate.bufferViews[index_accessor.bufferView]
+    index_offset = (index_view.byteOffset or 0) + (index_accessor.byteOffset or 0)
+    blob = bytearray(degenerate.binary_blob() or b"")
+    blob[index_offset : index_offset + 12] = pack("<HHHHHH", 0, 0, 2, 1, 2, 3)
+    degenerate.set_binary_blob(bytes(blob))
+    save_glb(degenerate, degenerate_path)
+    degenerate_manifest = _write_fixture_manifest(
+        degenerate_path,
+        fixture_id="degenerate_triangle",
+        defect_codes=("DEGENERATE_TRIANGLES_DETECTED", "UNUSED_VERTEX_DATA_DETECTED"),
+        original_asset=False,
+    )
+    generated.extend((degenerate_path, degenerate_manifest))
+
+    malformed_path = output_dir / "malformed_attributes.glb"
+    malformed = load_glb(clean_path)
+    normal_accessor_index = cast(int | None, malformed.meshes[0].primitives[0].attributes.NORMAL)
+    if normal_accessor_index is None:
+        msg = "The clean fixture must have a normal attribute."
+        raise ValueError(msg)
+    malformed.accessors[normal_accessor_index].count -= 1
+    save_glb(malformed, malformed_path)
+    malformed_manifest = _write_fixture_manifest(
+        malformed_path,
+        fixture_id="malformed_attributes",
+        defect_codes=(
+            "ATTRIBUTE_SAFE_DUPLICATE_TUPLES_DETECTED",
+            "MALFORMED_GEOMETRY_ATTRIBUTES",
+        ),
+        original_asset=False,
+    )
+    generated.extend((malformed_path, malformed_manifest))
+    return tuple(generated)
+
+
 def generate_fixtures(output_dir: Path, profile_dir: Path) -> tuple[Path, ...]:
     """Regenerate all version-1 fixture artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -308,8 +384,6 @@ def generate_fixtures(output_dir: Path, profile_dir: Path) -> tuple[Path, ...]:
     for fixture_id, broken in (("clean_robot", False), ("broken_robot", True)):
         glb_path = output_dir / f"{fixture_id}.glb"
         save_glb(build_robot(broken=broken), glb_path)
-        loaded = load_glb(glb_path)
-        counts = geometry_counts(loaded)
         defect_codes = (
             (
                 "HEIGHT_OUT_OF_RANGE",
@@ -326,19 +400,12 @@ def generate_fixtures(output_dir: Path, profile_dir: Path) -> tuple[Path, ...]:
             if broken
             else ()
         )
-        manifest = FixtureManifest(
+        manifest_path = _write_fixture_manifest(
+            glb_path,
             fixture_id=fixture_id,
-            glb_filename=glb_path.name,
-            sha256=sha256(glb_path.read_bytes()).hexdigest(),
-            expected_bounds_m=_bounds_model(glb_path),
-            expected_vertex_count=counts.vertices,
-            expected_triangle_count=counts.triangles,
-            expected_material_count=len(loaded.materials),
-            expected_defect_codes=defect_codes,
+            defect_codes=defect_codes,
             original_asset=True,
         )
-        manifest_path = output_dir / f"{fixture_id}.expected.json"
-        _write_model(manifest_path, manifest)
         generated.extend((glb_path, manifest_path))
     return tuple(generated)
 

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-27
-**Current commit:** Idle-orbit HUD registration fix (this file is included)
+**Current commit:** Geometry-failure fixtures and visible asset origin (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,20 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- Geometry-failure and pivot-visibility checkpoint: two reproducible, parseable synthetic GLBs now
+  exercise distinct post-upload failure behavior. `degenerate_triangle.glb` reports objective
+  degenerate/unused geometry without authorizing a topology rewrite and remains otherwise eligible;
+  `malformed_attributes.glb` exposes a POSITION/NORMAL cardinality violation and blocks repair.
+  Adjacent typed manifests freeze their hashes and expected findings, and regeneration is covered
+  byte-for-byte. The shared source/comparison viewport now projects a minimal `ORIGIN` crosshair at
+  the GLB coordinate origin (and separate before/after origins after a repair), using the same live
+  hotspot/HUD update path as the rotating 3D bounds. This completes the visible part of D053: the
+  agent still selects Preserve, bounds-center, or footprint-center-bottom from intended use; the
+  user accepts, rejects, or comments on that Size and pose proposal; no automatic center default or
+  options menu was introduced. Browser inspection confirms the marker and 12-edge bounds render
+  together. The common gate passes with 162 tests, one opt-in skip, lock validation, Ruff,
+  formatting, and zero Pyright findings.
 
 - Idle-orbit HUD registration: while the source viewer auto-orbits during active Shepherd work, one
   animation-frame loop now reprojects the complete SVG HUD from the viewer's live hotspot positions.

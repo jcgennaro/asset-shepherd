@@ -11,9 +11,10 @@ import pytest
 import trimesh
 from jsonschema import Draft202012Validator
 
-from asset_shepherd.fixtures import generate_fixtures
+from asset_shepherd.fixtures import generate_fixtures, generate_geometry_failure_fixtures
 from asset_shepherd.glb import geometry_counts, load_glb, validate_loaded_glb, world_bounds
-from asset_shepherd.models import FixtureManifest, ProjectProfile
+from asset_shepherd.inspector import inspect_asset
+from asset_shepherd.models import FixtureManifest, ProjectProfile, RepairEligibility
 from asset_shepherd.schema_export import SCHEMA_MODELS, export_schemas
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -41,13 +42,65 @@ def test_fixture_artifacts_regenerate_byte_for_byte(tmp_path: Path) -> None:
         assert generated_path.read_bytes() == checked_in.read_bytes()
 
 
-@pytest.mark.parametrize("fixture_id", ["clean_robot", "broken_robot"])
-def test_fixture_json_validates_against_models_and_schemas(fixture_id: str) -> None:
+def test_geometry_failure_fixtures_regenerate_byte_for_byte(tmp_path: Path) -> None:
+    """Parseable geometry-failure examples remain deterministic and documented."""
+    generated = generate_geometry_failure_fixtures(
+        PROJECT_ROOT / "fixtures" / "clean_robot.glb",
+        tmp_path / "geometry_failures",
+    )
+    for generated_path in generated:
+        checked_in = PROJECT_ROOT / "fixtures" / "geometry_failures" / generated_path.name
+        assert generated_path.read_bytes() == checked_in.read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "expected_code", "expected_eligibility"),
+    [
+        (
+            "degenerate_triangle.glb",
+            "DEGENERATE_TRIANGLES_DETECTED",
+            RepairEligibility.ELIGIBLE_STATIC_MESH,
+        ),
+        (
+            "malformed_attributes.glb",
+            "MALFORMED_GEOMETRY_ATTRIBUTES",
+            RepairEligibility.INSPECTION_ONLY_UNSUPPORTED_FEATURES,
+        ),
+    ],
+)
+def test_geometry_failure_fixtures_exercise_distinct_outcomes(
+    fixture_name: str,
+    expected_code: str,
+    expected_eligibility: RepairEligibility,
+) -> None:
+    """One geometry defect is report-only while malformed attributes block repair."""
+    inspection = inspect_asset(
+        PROJECT_ROOT / "fixtures" / "geometry_failures" / fixture_name,
+        ProjectProfile.model_validate_json(
+            (PROJECT_ROOT / "profiles" / "unreal_indie_robot.json").read_text(encoding="utf-8")
+        ),
+    )
+    assert expected_code in {finding.code for finding in inspection.findings}
+    assert inspection.repair_eligibility is expected_eligibility
+
+
+@pytest.mark.parametrize(
+    ("fixture_dir", "fixture_id"),
+    [
+        ("fixtures", "clean_robot"),
+        ("fixtures", "broken_robot"),
+        ("fixtures/geometry_failures", "degenerate_triangle"),
+        ("fixtures/geometry_failures", "malformed_attributes"),
+    ],
+)
+def test_fixture_json_validates_against_models_and_schemas(
+    fixture_dir: str, fixture_id: str
+) -> None:
     """Generated profiles and manifests validate as models and public JSON Schema."""
     profile_json = (PROJECT_ROOT / "profiles" / "unreal_indie_robot.json").read_text(
         encoding="utf-8"
     )
-    manifest_json = (PROJECT_ROOT / "fixtures" / f"{fixture_id}.expected.json").read_text(
+    manifest_json = (PROJECT_ROOT / fixture_dir / f"{fixture_id}.expected.json").read_text(
         encoding="utf-8"
     )
     profile_data = json.loads(profile_json)

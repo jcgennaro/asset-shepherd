@@ -373,7 +373,10 @@ Typed schemas bind pivot targets to explicit normalization components and reject
 targets. Planner tests prove a footprint-center-bottom request becomes only the derived translation,
 without invented scale or rotation. A full repair test writes a new GLB, reloads it independently,
 and verifies the requested footprint anchor at the origin. The approval table keeps this action in
-the existing Size and pose lane, and the What it does page now names pivot placement. Existing
+the existing Size and pose lane, and the What it does page now names pivot placement. The shared 3D
+viewport projects the GLB origin as a minimal crosshair, with distinct before/after origin markers
+after mutation, so the placement anchor is visible rather than only present in structured evidence.
+Existing
 source hashing, hierarchy-aware bounds, seam-aware topology stop rules, exact-tuple compaction,
 payload preservation, and independent verification remain in force.
 

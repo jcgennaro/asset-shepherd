@@ -60,6 +60,10 @@
           <span class="comparison-anchor" slot="hotspot-after-{{ loop.index0 }}" data-position="{{ corner|join('m ') }}m" aria-hidden="true"></span>
         {% endfor %}
       {% endif %}
+      <span class="comparison-anchor" slot="hotspot-before-origin" data-position="0m 0m 0m" aria-hidden="true"></span>
+      {% if not comparison_source_only %}
+        <span class="comparison-anchor" slot="hotspot-after-origin" data-position="{{ comparison_scene.after_offset_m|join('m ') }}m" aria-hidden="true"></span>
+      {% endif %}
       {% for axis in comparison_scene.axes %}
         {% for tick in axis.ticks %}
           <span
@@ -79,6 +83,8 @@
     <svg class="comparison-hud" data-comparison-hud aria-hidden="true">
       <g data-comparison-target="before"></g>
       {% if not comparison_source_only %}<g data-comparison-target="after"></g>{% endif %}
+      <g data-comparison-origin="before"></g>
+      {% if not comparison_source_only %}<g data-comparison-origin="after"></g>{% endif %}
       <g data-comparison-axis-layer hidden></g>
       <g data-comparison-banana-layer hidden></g>
     </svg>

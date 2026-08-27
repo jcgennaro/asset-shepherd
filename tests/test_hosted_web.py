@@ -125,6 +125,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert f"{describe_path.rsplit('/describe', 1)[0]}/source.glb" in describe.text
     assert describe.text.count('data-comparison-target="before"') == 1
     assert 'data-comparison-target="after"' not in describe.text
+    assert describe.text.count('data-comparison-origin="before"') == 1
+    assert 'slot="hotspot-before-origin" data-position="0m 0m 0m"' in describe.text
     assert 'rotation-per-second="4deg"' in describe.text
 
     created = client.post(

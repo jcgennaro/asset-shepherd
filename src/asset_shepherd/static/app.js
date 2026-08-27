@@ -417,6 +417,7 @@ function initializeModelComparison(comparison) {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const fitButtons = [...comparison.querySelectorAll("[data-comparison-fit]")];
   const targetGraphics = new Map();
+  const originGraphics = new Map();
   const axisGraphics = new Map();
   const boundingBoxEdges = [
     [0, 1], [0, 2], [0, 4],
@@ -473,6 +474,17 @@ function initializeModelComparison(comparison) {
     const label = createSvgElement("text", `comparison-target-label ${target}`);
     layer.append(box, leader, label);
     targetGraphics.set(target, { layer, box, leader, label });
+  }
+
+  for (const target of ["before", "after"]) {
+    const layer = comparison.querySelector(`[data-comparison-origin="${target}"]`);
+    if (!layer) {
+      continue;
+    }
+    const marker = createSvgElement("path", `comparison-origin-marker ${target}`);
+    const label = createSvgElement("text", `comparison-origin-label ${target}`);
+    layer.append(marker, label);
+    originGraphics.set(target, { layer, marker, label });
   }
 
   const axisAnchors = [...viewer.querySelectorAll("[data-axis-anchor]")];
@@ -562,6 +574,32 @@ function initializeModelComparison(comparison) {
     );
   }
 
+  function drawOrigin(target) {
+    const graphics = originGraphics.get(target);
+    if (!graphics) {
+      return;
+    }
+    const point = hotspotPoint(`hotspot-${target}-origin`);
+    if (!point) {
+      graphics.layer.setAttribute("visibility", "hidden");
+      return;
+    }
+    graphics.layer.removeAttribute("visibility");
+    const radius = 7;
+    graphics.marker.setAttribute(
+      "d",
+      `M${point.x - radius} ${point.y}H${point.x + radius}` +
+        `M${point.x} ${point.y - radius}V${point.y + radius}` +
+        `M${point.x - 3} ${point.y - 3}L${point.x + 3} ${point.y + 3}` +
+        `M${point.x + 3} ${point.y - 3}L${point.x - 3} ${point.y + 3}`,
+    );
+    graphics.label.textContent = sourceOnly
+      ? "ORIGIN"
+      : `${target === "before" ? "BEFORE" : "AFTER"} ORIGIN`;
+    graphics.label.setAttribute("x", clamp(point.x + 12, 8, viewer.clientWidth - 104));
+    graphics.label.setAttribute("y", clamp(point.y - 10, 16, viewer.clientHeight - 8));
+  }
+
   function renderAxes() {
     if (!axesVisible) {
       return;
@@ -628,6 +666,8 @@ function initializeModelComparison(comparison) {
     hud.setAttribute("viewBox", `0 0 ${viewer.clientWidth} ${viewer.clientHeight}`);
     drawTarget("before");
     drawTarget("after");
+    drawOrigin("before");
+    drawOrigin("after");
     renderAxes();
     renderBanana();
   }

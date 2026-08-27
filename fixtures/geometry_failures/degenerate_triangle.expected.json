@@ -1,0 +1,46 @@
+{
+  "expected_bounds_m": {
+    "dimensions_cm": [
+      122.00000286102295,
+      181.99999332427979,
+      40.00000059604645
+    ],
+    "dimensions_m": [
+      1.2200000286102295,
+      1.8199999332427979,
+      0.4000000059604645
+    ],
+    "maximum_cm": [
+      61.000001430511475,
+      181.99999332427979,
+      21.99999988079071
+    ],
+    "maximum_m": [
+      0.6100000143051147,
+      1.8199999332427979,
+      0.2199999988079071
+    ],
+    "minimum_cm": [
+      -61.000001430511475,
+      0.0,
+      -18.000000715255737
+    ],
+    "minimum_m": [
+      -0.6100000143051147,
+      0.0,
+      -0.18000000715255737
+    ]
+  },
+  "expected_defect_codes": [
+    "DEGENERATE_TRIANGLES_DETECTED",
+    "UNUSED_VERTEX_DATA_DETECTED"
+  ],
+  "expected_material_count": 4,
+  "expected_triangle_count": 180,
+  "expected_vertex_count": 360,
+  "fixture_id": "degenerate_triangle",
+  "fixture_version": 1,
+  "glb_filename": "degenerate_triangle.glb",
+  "original_asset": false,
+  "sha256": "484d9f6fd14d1ea034384835d4cd9aa0e47685b9c6bdc31f0844ffb55e5bf9f6"
+}

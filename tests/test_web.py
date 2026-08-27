@@ -845,6 +845,8 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert 'data-comparison-fit="both"' in completed.text
     assert 'data-comparison-fit="before"' in completed.text
     assert 'data-comparison-fit="after"' in completed.text
+    assert completed.text.count('data-comparison-origin="before"') == 1
+    assert completed.text.count('data-comparison-origin="after"') == 1
     assert "Show metric X, Y, and Z axes" in completed.text
     assert "normal-size 20 cm banana" in completed.text
     assert "BEFORE MODEL HERE" not in completed.text

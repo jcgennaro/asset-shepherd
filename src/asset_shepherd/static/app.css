@@ -2731,7 +2731,8 @@ model-viewer {
 .comparison-target-box,
 .comparison-leader,
 .comparison-banana-box,
-.comparison-banana-leader {
+.comparison-banana-leader,
+.comparison-origin-marker {
   fill: none;
   stroke-linecap: square;
   stroke-linejoin: round;
@@ -2755,7 +2756,8 @@ model-viewer {
 
 .comparison-target-label,
 .comparison-axis-label,
-.comparison-banana-label {
+.comparison-banana-label,
+.comparison-origin-label {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 13px;
   font-weight: 700;
@@ -2779,6 +2781,15 @@ model-viewer {
 
 .comparison-target-label.after {
   fill: #9ce4ca;
+}
+
+.comparison-origin-marker {
+  stroke: #f2c66b;
+  opacity: 0.95;
+}
+
+.comparison-origin-label {
+  fill: #f7d68d;
 }
 
 .comparison-axis-line,
