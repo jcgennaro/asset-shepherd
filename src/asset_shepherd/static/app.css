@@ -3758,6 +3758,12 @@ model-viewer {
   line-height: 1.45;
 }
 
+.conversation-prompt.completion-prompt.blocked {
+  max-width: 940px;
+  padding-left: 14px;
+  border-left: 4px solid var(--danger);
+}
+
 .conversation-pane > header h2 {
   max-width: 760px;
   margin: 8px 0 0;

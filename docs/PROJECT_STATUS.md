@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-26
-**Current commit:** D059 gallery workflow status (this file is included)
+**Last updated:** 2026-08-27
+**Current commit:** D060 explicit unsupported-repair presentation (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,16 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D060 unsupported-repair presentation: the persisted three-form riding-crop case now presents the
+  agent's `RETURN_TO_CREATION_TOOL` disposition as a red blocked sentence and inspection lane. The
+  table exposes the objective/semantic mismatch—three disconnected forms versus one expected
+  piece—and states that no supported action can remove them. It no longer offers a continuation
+  control when no candidate GLB exists; diagnostics and Gallery remain available. Name findings no
+  longer render beside a contradictory “need no change” sentence. A focused regression and browser
+  acceptance exercise the actual saved workspace. Geometry deletion remains deferred as a future,
+  exact-component, explicit-approval repair domain under D060. The common gate passes with 157 tests,
+  one opt-in skip, lock validation, Ruff, formatting, and zero Pyright findings.
 
 - D059 gallery status checkpoint: every persisted asset card now shows one plain-language workflow
   state with a visible dot and text, rather than exposing the internal phase enum. Pending

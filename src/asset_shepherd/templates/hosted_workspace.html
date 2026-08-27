@@ -11,7 +11,7 @@
 
     <div class="hosted-columns">
       <main class="conversation-pane" aria-label="Asset conversation">
-          {% if record.phase.value != 'APPROVAL' %}<p class="conversation-prompt{% if job and job.result %} completion-prompt{% endif %}">
+          {% if record.phase.value != 'APPROVAL' %}<p class="conversation-prompt{% if job and job.result %} completion-prompt{% endif %}{% if cannot_repair %} blocked{% endif %}">
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d shepherd this for {{ endpoint_label }} within {{ target_bounds_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}Select target engine.
@@ -118,7 +118,14 @@
             </div>
         {% endif %}
 
-        {% if job and job.result %}
+        {% if job and job.result and cannot_repair %}
+          <section class="result-review blocked-result-actions" aria-label="Blocked result actions">
+            <div class="result-download-actions">
+              <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
+              <a class="secondary-button" href="{{ url_for('hosted_home') }}">Gallery</a>
+            </div>
+          </section>
+        {% elif job and job.result %}
           <section class="result-review" aria-labelledby="{% if record.accepted %}hosted-result-accepted-title{% else %}hosted-result-review-title{% endif %}" data-result-review>
             {% if not record.accepted %}
               <div class="result-review-question" data-result-question>
@@ -143,7 +150,7 @@
                       <button type="submit" class="secondary-button" data-submit-button>Try another pass</button>
                     </form>
                   </details>
-                {% elif job.agent_orchestrated %}
+                {% elif job.agent_orchestrated and turns_remaining <= 0 %}
                   <span class="limit-note">Turn limit reached</span>
                 {% endif %}
               </div>

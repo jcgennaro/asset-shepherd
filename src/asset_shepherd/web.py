@@ -58,6 +58,7 @@ from asset_shepherd.intent import (
     validate_asset_intent,
 )
 from asset_shepherd.models import (
+    AgentDisposition,
     AgentWorkflowResult,
     ApprovalCard,
     AssetEndpoint,
@@ -1606,6 +1607,9 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         primitive.virtual_weld_inconsistent_winding_edge_count
         for primitive in diagnostic_primitives
     )
+    projected_components = sum(
+        primitive.virtual_weld_connected_component_count for primitive in diagnostic_primitives
+    )
     protected_attributes = sorted(
         {
             attribute
@@ -1677,10 +1681,39 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         if core.asset_intent is not None and core.asset_intent.target_dimensions_cm is not None
         else "unspecified"
     )
-    structure_blocked = inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH
+    agent_requires_creation_tool = bool(
+        assessment and assessment.disposition is AgentDisposition.RETURN_TO_CREATION_TOOL
+    )
+    expected_piece_count = (
+        core.asset_intent.expected_piece_count if core.asset_intent is not None else None
+    )
+    assessment_evidence = " ".join(assessment.evidence).casefold() if assessment else ""
+    component_mismatch = bool(
+        agent_requires_creation_tool
+        and expected_piece_count is not None
+        and projected_components > 0
+        and projected_components != expected_piece_count
+        and any(
+            phrase in assessment_evidence
+            for phrase in ("connected component", "distinct", "extra visible", "separate")
+        )
+    )
+    structure_blocked = bool(
+        inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH
+        or agent_requires_creation_tool
+    )
     structure_status = "blocked" if structure_blocked else "pass"
-    structure_label = "Inspection only" if structure_blocked else "Pass"
-    structure_action = "No repair available for this GLB." if structure_blocked else "—"
+    structure_label = (
+        "Cannot repair"
+        if agent_requires_creation_tool
+        else ("Inspection only" if structure_blocked else "Pass")
+    )
+    if component_mismatch:
+        structure_action = "Cannot repair — no supported action can remove the extra forms."
+    elif agent_requires_creation_tool:
+        structure_action = "Cannot repair — return to the creation tool."
+    else:
+        structure_action = "No repair available for this GLB." if structure_blocked else "—"
 
     size_warning = size_pose_attention or has_attention(_SIZE_POSE_CODES)
     size_status = "attention" if size_warning else "pass"
@@ -1778,24 +1811,40 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         f"{inspection.package.image_count:,} image"
         f"{'s' if inspection.package.image_count != 1 else ''}."
     )
+    name_finding_count = sum(
+        finding.code in _NAME_CODES and finding.severity is not Severity.INFO
+        for finding in inspection.findings
+    )
     name_description = (
         f"{len(name_items)} display name{'s' if len(name_items) != 1 else ''} need cleanup."
         if name_items
-        else "Node and mesh display names need no change."
+        else (
+            f"{name_finding_count} display name"
+            f"{'s' if name_finding_count != 1 else ''} remain unresolved."
+            if name_finding_count
+            else "Node and mesh display names need no change."
+        )
+    )
+    structure_description = (
+        f"{projected_components} disconnected forms detected; target "
+        f"{expected_piece_count} semantic "
+        f"{'piece' if expected_piece_count == 1 else 'pieces'}."
+        if component_mismatch and expected_piece_count is not None
+        else (
+            f"{inspection.package.node_count:,} node"
+            f"{'s' if inspection.package.node_count != 1 else ''} · "
+            f"{inspection.package.mesh_count:,} mesh"
+            f"{'es' if inspection.package.mesh_count != 1 else ''} · "
+            f"{inspection.package.primitive_count:,} primitive"
+            f"{'s' if inspection.package.primitive_count != 1 else ''}."
+        )
     )
     return (
         InspectionCheckView(
             "GLB structure",
             structure_status,
             structure_label,
-            (
-                f"{inspection.package.node_count:,} node"
-                f"{'s' if inspection.package.node_count != 1 else ''} · "
-                f"{inspection.package.mesh_count:,} mesh"
-                f"{'es' if inspection.package.mesh_count != 1 else ''} · "
-                f"{inspection.package.primitive_count:,} primitive"
-                f"{'s' if inspection.package.primitive_count != 1 else ''}."
-            ),
+            structure_description,
             structure_action,
             None,
             action_heading,
@@ -2103,11 +2152,21 @@ def _completion_sentence(workspace: HostedWorkspace, job: AgentJob | None) -> st
     if job.candidate_reassessment is not None:
         return _one_sentence(job.candidate_reassessment.summary)
     if job.agent_assessment is not None:
-        return _one_sentence(job.agent_assessment.summary)
+        summary = _one_sentence(job.agent_assessment.summary)
+        if job.agent_assessment.disposition is AgentDisposition.RETURN_TO_CREATION_TOOL:
+            return f"I can't repair this asset — {summary[0].lower()}{summary[1:]}"
+        return summary
     if workspace.workflow_result is not None:
         return _one_sentence(workspace.workflow_result.user_message)
     presentation = _result_presentation(job)
     return _one_sentence(presentation.summary if presentation else "The workflow stopped.")
+
+
+def _has_next_turn_candidate(job: AgentJob | None) -> bool:
+    """Return whether a completed turn produced a candidate that can seed another turn."""
+    if job is None:
+        return False
+    return (job.output_dir / "repaired.glb").is_file() or job.candidate_path.is_file()
 
 
 def _workflow_steps(job: WebJob) -> tuple[WorkflowStepView, ...]:
@@ -2452,7 +2511,9 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "decision_records": decision_records,
         "turn_index": core.turn_index,
         "turns_remaining": core.turns_remaining,
-        "can_continue": core.agent_orchestrated and core.turns_remaining > 0,
+        "can_continue": (
+            core.agent_orchestrated and core.turns_remaining > 0 and _has_next_turn_candidate(core)
+        ),
         "prior_turns": core.prior_turns,
         "accepted": job.accepted,
         "is_blocked": bool(
@@ -2746,6 +2807,12 @@ def create_app(
                 expectation_profile,
                 expectation_sources,
             )
+        cannot_repair = bool(
+            runtime_job
+            and runtime_job.result
+            and runtime_job.agent_assessment is not None
+            and runtime_job.agent_assessment.disposition is AgentDisposition.RETURN_TO_CREATION_TOOL
+        )
         return templates.TemplateResponse(
             request=request,
             name="hosted_workspace.html",
@@ -2810,7 +2877,9 @@ def create_app(
                     runtime_job
                     and runtime_job.agent_orchestrated
                     and runtime_job.turns_remaining > 0
+                    and _has_next_turn_candidate(runtime_job)
                 ),
+                "cannot_repair": cannot_repair,
                 "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
                 "error": error,
                 "active_mode": "conversation",

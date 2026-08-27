@@ -4,6 +4,62 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D060 — Make unsupported dispositions explicit; defer component deletion
+
+**Date:** 2026-08-27
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted agent workflow
+
+**Context**
+
+A real riding-crop input contained three visually distinct forms inside one GLB node, mesh, and
+primitive. Objective position-projected topology measured three connected forms, and the workflow
+agent correctly selected `RETURN_TO_CREATION_TOOL` because the confirmed target expected one crop
+and no registered action could remove geometry. The result page nevertheless showed `GLB structure`
+as passing, concealed the three-form observation, and offered a continuation control that could not
+run without a candidate GLB.
+
+Deleting disconnected geometry could repair this example, but connected components are not semantic
+pieces. Layered shells, hard-surface details, paired objects, and deliberately separate components
+can all be valid. Removing triangles is an irreversible topology mutation and is outside the current
+registered repair boundary.
+
+**Options considered**
+
+- Keep the existing page and rely on the agent's summary alone.
+- Treat every extra connected component as disposable and remove it automatically.
+- Make the unsupported disposition and measured mismatch explicit now, and defer a bounded
+  component-selection repair domain.
+
+**Decision**
+
+Render `RETURN_TO_CREATION_TOOL` as one unmistakable blocked sentence and a red blocked inspection
+lane. When the agent's evidence ties a confirmed semantic-piece mismatch to the objective component
+probe, show the measured form count, expected piece count, and the absence of a supported removal
+action. Do not show a retry control when the completed turn produced no candidate to seed another
+turn; offer diagnostics and Gallery instead.
+
+Do not add geometry deletion to the pre-deployment repair allowlist. A future component-removal tool
+is desirable only as an explicitly approved, high-risk action: it must assign stable component IDs,
+show each candidate component highlighted, record exactly which components will be kept or removed,
+preserve the original as R0, and independently verify the remaining geometry, appearance, UVs,
+materials, textures, bounds, and payload. It must never infer that “small” or merely disconnected
+means disposable.
+
+**Evidence and consequences**
+
+The saved riding-crop workspace now renders “I can't repair this asset,” reports `3 disconnected
+forms detected; target 1 semantic piece`, marks the structure lane with a red blocked icon, and
+offers only diagnostics and Gallery. Its inconsistent display-name row also reports the two
+unresolved findings instead of claiming no cleanup is needed. A regression test binds these outputs
+to structured assessment and geometry facts, and browser acceptance verifies the actual persisted
+workspace. Component deletion remains a separately scoped capability rather than a silent expansion
+of the deterministic mutation engine.
+
 ### D059 — Show workflow status on every gallery project
 
 **Date:** 2026-08-26
