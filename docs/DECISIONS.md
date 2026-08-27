@@ -4,6 +4,56 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D062 — Add agent-selected exact component removal
+
+**Date:** 2026-08-27
+
+**Status:** ACCEPTED; supersedes D060's blanket deferral for the bounded supported layout
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 evaluation
+
+**Context**
+
+The riding-crop case proved that one primitive can contain several visible copies while node, mesh,
+and primitive counts still look normal. The user asked to attempt a repair capability, while
+explicitly recognizing the false-positive risk from layered shells, multipart props, and small gaps
+between pieces that should be interpreted together.
+
+**Decision**
+
+Enumerate exact bodies after projecting byte-identical positions and connecting faces that share any
+projected vertex. Stable IDs bind each body's mesh, primitive, ordinal, and canonical triangle
+membership. Separately compute bounded AABB near-contact groups from a numeric floor through 0.1%
+of the primitive diagonal. These groups are evidence only and can never weld, select, delete, or
+change the exact inventory.
+
+The workflow agent may propose exact component IDs only after using all four source views and the
+confirmed piece expectation. The UI shows every body in the existing topology row, highlights its
+world-space wireframe box on hover/focus, and lets the user keep, remove, or comment. Any changed
+selection archives the proposal and returns to the agent; exact approval is still required before
+mutation. Never infer remove-small, keep-largest, or delete-extras.
+
+Restrict execution to one-instance, unskinned, indexed static triangle primitives with dense,
+understood, unextended attributes, no morphs/compression, valid indices, and no pending degenerate
+cleanup. Filter approved triangles only, append a replacement index accessor, preserve the original
+binary prefix and all retained expanded corner attributes, and refuse removal of every body.
+Independent verification reproduces the exact count and triangle delta. Leftover unreferenced tuples
+remain explicit and require a separate cleanup turn.
+
+**Evidence and consequences**
+
+A synthetic three-body GLB inventories three stable bodies, removes two only after exact approval,
+re-inspects as one body/four triangles, and verifies all retained corner evidence. Unknown IDs and
+total deletion fail closed. A sub-0.1%-diagonal gap reduces only the largest-tolerance advisory
+group count; without an agent selection the plan contains no component mutation. Component-specific
+keep and alternate-remove feedback reopens planning without writing a candidate. A live browser run
+confirmed the agent/UI/approval/execution/reassessment path. Per-view orthographic evidence fitting
+also keeps thin projections visible without changing the shared source/candidate scale contract.
+Broader semantic labeling, isolation, skinned/morphed/compressed layouts, automatic selection, and
+vertex compaction remain outside this action.
+
 ### D061 — Add an approval-bound degenerate-geometry cleanup
 
 **Date:** 2026-08-27

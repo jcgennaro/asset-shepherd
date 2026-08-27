@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 
 import numpy as np
 import numpy.typing as npt
@@ -38,6 +39,40 @@ class DuplicatePositionMeasurements:
     attribute_safe_merge_count: int
     protected_duplicate_count: int
     protected_attribute_conflicts: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class NearContactProbe:
+    """One non-authoritative grouping result at a scale-relative separation tolerance."""
+
+    tolerance_m: float
+    group_count: int
+
+
+@dataclass(frozen=True)
+class ConnectedComponentMeasurement:
+    """One exact position-projected, edge-connected triangle component."""
+
+    component_id: str
+    ordinal: int
+    face_indices: tuple[int, ...]
+    triangle_count: int
+    referenced_position_count: int
+    minimum_m: tuple[float, float, float]
+    maximum_m: tuple[float, float, float]
+    centroid_m: tuple[float, float, float]
+    triangle_fraction: float
+    near_contact_group: int
+
+
+@dataclass(frozen=True)
+class ConnectedComponentInventory:
+    """Bounded exact components plus diagnostic near-contact grouping evidence."""
+
+    exact_component_count: int
+    components: tuple[ConnectedComponentMeasurement, ...]
+    near_contact_probes: tuple[NearContactProbe, ...]
+    truncated: bool
 
 
 def _row_keys(values: npt.NDArray[np.generic]) -> list[bytes]:
@@ -171,15 +206,15 @@ def attribute_safe_weld_mapping(
     return inverse, representatives
 
 
-def _connected_face_components(
+def _face_component_labels(
     inverse_edges: npt.NDArray[np.int64],
     edge_counts: npt.NDArray[np.int64],
     face_indices: npt.NDArray[np.int64],
     face_count: int,
-) -> int:
-    """Count edge-connected face components with a compact union-find pass."""
+) -> npt.NDArray[np.int64]:
+    """Assign deterministic edge-connected component labels with union-find."""
     if face_count == 0:
-        return 0
+        return np.empty(0, dtype=np.int64)
     parents = np.arange(face_count, dtype=np.int64)
 
     def find(value: int) -> int:
@@ -204,7 +239,182 @@ def _connected_face_components(
             for face in ordered_faces[start + 1 : end]:
                 union(first, int(face))
         start = end
-    return len({find(index) for index in range(face_count)})
+    roots = np.asarray([find(index) for index in range(face_count)], dtype=np.int64)
+    ordered_roots = sorted(
+        set(int(value) for value in roots), key=lambda root: int(np.flatnonzero(roots == root)[0])
+    )
+    root_to_label = {root: index for index, root in enumerate(ordered_roots)}
+    return np.asarray([root_to_label[int(root)] for root in roots], dtype=np.int64)
+
+
+def _connected_face_components(
+    inverse_edges: npt.NDArray[np.int64],
+    edge_counts: npt.NDArray[np.int64],
+    face_indices: npt.NDArray[np.int64],
+    face_count: int,
+) -> int:
+    """Count edge-connected face components with a compact union-find pass."""
+    labels = _face_component_labels(inverse_edges, edge_counts, face_indices, face_count)
+    return int(labels.max(initial=-1)) + 1
+
+
+def _vertex_connected_face_labels(
+    triangles: npt.NDArray[np.int64],
+) -> npt.NDArray[np.int64]:
+    """Assign body labels where faces sharing any projected position stay together."""
+    face_count = len(triangles)
+    if face_count == 0:
+        return np.empty(0, dtype=np.int64)
+    parents = np.arange(face_count, dtype=np.int64)
+
+    def find(value: int) -> int:
+        while int(parents[value]) != value:
+            parents[value] = parents[int(parents[value])]
+            value = int(parents[value])
+        return value
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parents[right_root] = left_root
+
+    first_face_by_position: dict[int, int] = {}
+    for face_index, triangle in enumerate(triangles):
+        for position_index in triangle:
+            key = int(position_index)
+            first_face = first_face_by_position.setdefault(key, face_index)
+            union(first_face, face_index)
+    roots = np.asarray([find(index) for index in range(face_count)], dtype=np.int64)
+    ordered_roots = sorted(
+        set(int(value) for value in roots),
+        key=lambda root: int(np.flatnonzero(roots == root)[0]),
+    )
+    root_to_label = {root: index for index, root in enumerate(ordered_roots)}
+    return np.asarray([root_to_label[int(root)] for root in roots], dtype=np.int64)
+
+
+def _near_contact_labels(
+    bounds: tuple[tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]], ...],
+    tolerance: float,
+) -> npt.NDArray[np.int64]:
+    """Group component AABBs separated by no more than a diagnostic tolerance."""
+    parents = np.arange(len(bounds), dtype=np.int64)
+
+    def find(value: int) -> int:
+        while int(parents[value]) != value:
+            parents[value] = parents[int(parents[value])]
+            value = int(parents[value])
+        return value
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parents[right_root] = left_root
+
+    for left_index, (left_minimum, left_maximum) in enumerate(bounds):
+        for right_index in range(left_index + 1, len(bounds)):
+            right_minimum, right_maximum = bounds[right_index]
+            separation = np.maximum(
+                np.maximum(left_minimum - right_maximum, right_minimum - left_maximum),
+                0.0,
+            )
+            if float(np.linalg.norm(separation)) <= tolerance:
+                union(left_index, right_index)
+    roots = [find(index) for index in range(len(bounds))]
+    ordered_roots = sorted(set(roots), key=roots.index)
+    root_to_label = {root: index for index, root in enumerate(ordered_roots)}
+    return np.asarray([root_to_label[root] for root in roots], dtype=np.int64)
+
+
+def enumerate_connected_components(
+    positions: npt.NDArray[np.generic],
+    triangles: npt.NDArray[np.int64],
+    *,
+    mesh_index: int,
+    primitive_index: int,
+    limit: int = 128,
+) -> ConnectedComponentInventory:
+    """Enumerate exact components and bounded, non-mutating near-contact hints.
+
+    Exact byte-identical positions are projected before edge connectivity is measured so ordinary
+    UV and hard-normal seams do not become false bodies. Near-contact probes group component AABBs
+    only for agent/human interpretation; their tolerance never changes geometry or authorizes a
+    deletion.
+    """
+    triangle_values = np.asarray(triangles, dtype=np.int64).reshape((-1, 3))
+    if not len(triangle_values):
+        return ConnectedComponentInventory(0, (), (), False)
+    position_values = np.asarray(positions)[:, :3].astype(np.float64, copy=False)
+    position_inverse, _ = _group_inverse(_row_keys(np.asarray(positions)[:, :3]))
+    projected = position_inverse[triangle_values]
+    labels = _vertex_connected_face_labels(projected)
+    component_count = int(labels.max(initial=-1)) + 1
+    truncated = component_count > limit
+    measured_count = min(component_count, limit)
+    face_groups = tuple(np.flatnonzero(labels == ordinal) for ordinal in range(measured_count))
+    component_bounds: list[tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]] = []
+    component_positions: list[npt.NDArray[np.float64]] = []
+    for faces in face_groups:
+        referenced = np.unique(triangle_values[faces].reshape(-1))
+        values = position_values[referenced]
+        component_positions.append(values)
+        component_bounds.append((values.min(axis=0), values.max(axis=0)))
+
+    finite = position_values[np.isfinite(position_values).all(axis=1)]
+    diagonal = float(np.linalg.norm(np.ptp(finite, axis=0))) if len(finite) else 0.0
+    absolute_scale = float(np.max(np.abs(finite), initial=0.0)) if len(finite) else 0.0
+    numeric_floor = max(absolute_scale, diagonal, 1.0) * np.finfo(np.float32).eps * 8.0
+    tolerance_candidates = tuple(
+        sorted(
+            {
+                max(numeric_floor, diagonal * multiplier)
+                for multiplier in (1e-7, 1e-6, 1e-5, 1e-4, 1e-3)
+            }
+        )
+    )
+    near_labels = np.arange(measured_count, dtype=np.int64)
+    probes: list[NearContactProbe] = []
+    if not truncated and measured_count:
+        for tolerance in tolerance_candidates:
+            near_labels = _near_contact_labels(tuple(component_bounds), float(tolerance))
+            probes.append(
+                NearContactProbe(
+                    tolerance_m=float(tolerance),
+                    group_count=int(near_labels.max(initial=-1)) + 1,
+                )
+            )
+
+    components: list[ConnectedComponentMeasurement] = []
+    for ordinal, (faces, values, (minimum, maximum)) in enumerate(
+        zip(face_groups, component_positions, component_bounds, strict=True)
+    ):
+        canonical_membership = np.ascontiguousarray(triangle_values[faces], dtype="<i8").tobytes()
+        digest = sha256(canonical_membership).hexdigest()[:8]
+        component_id = f"component-m{mesh_index:03d}-p{primitive_index:03d}-c{ordinal:03d}-{digest}"
+        referenced = np.unique(triangle_values[faces].reshape(-1))
+        centroid = values.mean(axis=0)
+        components.append(
+            ConnectedComponentMeasurement(
+                component_id=component_id,
+                ordinal=ordinal,
+                face_indices=tuple(int(value) for value in faces),
+                triangle_count=len(faces),
+                referenced_position_count=len(referenced),
+                minimum_m=(float(minimum[0]), float(minimum[1]), float(minimum[2])),
+                maximum_m=(float(maximum[0]), float(maximum[1]), float(maximum[2])),
+                centroid_m=(float(centroid[0]), float(centroid[1]), float(centroid[2])),
+                triangle_fraction=len(faces) / len(triangle_values),
+                near_contact_group=int(near_labels[ordinal]) if len(near_labels) else ordinal,
+            )
+        )
+    return ConnectedComponentInventory(
+        exact_component_count=component_count,
+        components=tuple(components),
+        near_contact_probes=tuple(probes),
+        truncated=truncated,
+    )
 
 
 def _fifo_vertex_cache_acmr(indices: npt.NDArray[np.int64], triangle_count: int) -> float:

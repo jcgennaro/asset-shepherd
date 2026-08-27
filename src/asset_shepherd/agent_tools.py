@@ -218,6 +218,7 @@ class AssetShepherdTools:
         rename_invalid_display_names: bool = False,
         weld_identical_vertices: bool = False,
         clean_degenerate_geometry: bool = False,
+        remove_component_ids: list[str] | None = None,
         source_views_used: list[str] | None = None,
     ) -> dict[str, Any]:
         """Register the agent's assessment and preview only its requested supported actions.
@@ -246,6 +247,11 @@ class AssetShepherdTools:
                 triples and compact complete vertex tuples that no surviving triangle references.
                 Request this only when degenerate_cleanup_safe is true. This never welds seams,
                 fills holes, recalculates normals, or removes a connected component.
+            remove_component_ids: Exact inspected component IDs the agent proposes removing after
+                comparing the confirmed semantic piece count, structured inventory, and all four
+                source views. Disconnected does not mean unwanted. Near-contact groups are hints
+                only. This consequential action requires explicit approval and may not remove all
+                components from a primitive.
             source_views_used: Exact rendered filenames used for a physical conclusion.
 
         Returns an exact deterministic action preview, authorization classes, and bounds. It never
@@ -268,6 +274,7 @@ class AssetShepherdTools:
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
             clean_degenerate_geometry=clean_degenerate_geometry,
+            remove_component_ids=remove_component_ids,
             source_views_used=source_views_used or [],
         )
         return plan.model_dump(mode="json")

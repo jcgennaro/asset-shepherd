@@ -29,9 +29,11 @@ from asset_shepherd.khronos import (
     find_khronos_validator,
     validate_with_khronos,
 )
+from asset_shepherd.mesh_diagnostics import enumerate_connected_components
 from asset_shepherd.models import (
     CheckBasis,
     CheckStatus,
+    ComponentRemovalPayload,
     Decisions,
     DecisionValue,
     DegenerateGeometryPayload,
@@ -147,6 +149,21 @@ def _executed_degenerate_cleanup(
     )
 
 
+def _executed_component_removal(
+    plan: RepairPlan, outcome: RepairOutcome
+) -> ComponentRemovalPayload | None:
+    """Return the exact executed disconnected-component selection, if any."""
+    return next(
+        (
+            candidate.payload
+            for candidate in plan.candidates
+            if candidate.id in outcome.executed_action_ids
+            and isinstance(candidate.payload, ComponentRemovalPayload)
+        ),
+        None,
+    )
+
+
 def _executed_normalization(
     plan: RepairPlan, outcome: RepairOutcome
 ) -> NormalizationPayload | None:
@@ -166,6 +183,7 @@ def _corner_attribute_hash(
     gltf: GLTF2,
     *,
     omit_degenerate_for: frozenset[tuple[int, int]] = frozenset(),
+    omit_component_ids: dict[tuple[int, int], frozenset[str]] | None = None,
 ) -> str:
     """Hash rendered primitive inputs after expanding every vertex attribute by index."""
     records: list[object] = []
@@ -181,7 +199,9 @@ def _corner_attribute_hash(
                 raise GlbError("Primitive has no POSITION accessor")
             position_count = len(accessor_array(gltf, position_index))
             if primitive.indices is None:
-                indices = np.arange(position_count, dtype=np.int64)
+                indices: np.ndarray[tuple[int], np.dtype[np.int64]] = np.arange(
+                    position_count, dtype=np.int64
+                )
             else:
                 indices = np.asarray(
                     accessor_array(gltf, primitive.indices),
@@ -190,9 +210,34 @@ def _corner_attribute_hash(
             if (mesh_index, primitive_index) in omit_degenerate_for:
                 if len(indices) % 3:
                     raise GlbError("Cleanup verification found an incomplete triangle")
-                triangles = indices.reshape((-1, 3))
-                positions = accessor_array(gltf, position_index)
+                triangles: np.ndarray[tuple[int, int], np.dtype[np.int64]] = indices.reshape(
+                    (-1, 3)
+                )
+                positions = np.asarray(accessor_array(gltf, position_index), dtype=np.float64)
                 indices = triangles[~degenerate_triangle_mask(positions, triangles)].reshape(-1)
+            component_ids = (omit_component_ids or {}).get((mesh_index, primitive_index))
+            if component_ids:
+                if len(indices) % 3:
+                    raise GlbError("Component-removal verification found an incomplete triangle")
+                triangles = indices.reshape((-1, 3))
+                positions = np.asarray(accessor_array(gltf, position_index), dtype=np.float64)
+                inventory = enumerate_connected_components(
+                    positions,
+                    triangles,
+                    mesh_index=mesh_index,
+                    primitive_index=primitive_index,
+                )
+                by_id = {component.component_id: component for component in inventory.components}
+                if not component_ids <= set(by_id):
+                    raise GlbError("Approved source component IDs are no longer reproducible")
+                removed_faces = {
+                    face
+                    for component_id in component_ids
+                    for face in by_id[component_id].face_indices
+                }
+                keep_mask = np.ones(len(triangles), dtype=bool)
+                keep_mask[list(removed_faces)] = False
+                indices = triangles[keep_mask].reshape(-1)
             attributes = {
                 semantic: sha256(
                     np.ascontiguousarray(accessor_array(gltf, accessor_index)[indices]).tobytes()
@@ -228,7 +273,8 @@ def _preservation_checks(
     checks: list[VerificationCheck] = []
     weld = _executed_weld(plan, outcome)
     cleanup = _executed_degenerate_cleanup(plan, outcome)
-    append_only_geometry = weld is not None or cleanup is not None
+    component_removal = _executed_component_removal(plan, outcome)
+    append_only_geometry = weld is not None or cleanup is not None or component_removal is not None
     normalization = _executed_normalization(plan, outcome)
 
     section_checks = (
@@ -298,9 +344,20 @@ def _preservation_checks(
             if cleanup is not None
             else frozenset[tuple[int, int]]()
         )
+        removed_component_ids = (
+            {
+                (primitive.mesh_index, primitive.primitive_index): frozenset(
+                    primitive.removed_component_ids
+                )
+                for primitive in component_removal.primitives
+            }
+            if component_removal is not None
+            else {}
+        )
         source_mesh_hash = _corner_attribute_hash(
             source_gltf,
             omit_degenerate_for=cleanup_targets,
+            omit_component_ids=removed_component_ids,
         )
         output_mesh_hash = _corner_attribute_hash(output_gltf)
     checks.append(
@@ -695,6 +752,7 @@ def verify_repair(
     if original.geometry is not None and output.geometry is not None:
         weld = _executed_weld(plan, outcome)
         cleanup = _executed_degenerate_cleanup(plan, outcome)
+        component_removal = _executed_component_removal(plan, outcome)
         expected_vertex_count = (
             original.geometry.vertex_count
             - (
@@ -708,10 +766,18 @@ def verify_repair(
                 else 0
             )
         )
-        expected_triangle_count = original.geometry.triangle_count - (
-            sum(primitive.removed_degenerate_triangle_count for primitive in cleanup.primitives)
-            if cleanup is not None
-            else 0
+        expected_triangle_count = (
+            original.geometry.triangle_count
+            - (
+                sum(primitive.removed_degenerate_triangle_count for primitive in cleanup.primitives)
+                if cleanup is not None
+                else 0
+            )
+            - (
+                sum(primitive.removed_triangle_count for primitive in component_removal.primitives)
+                if component_removal is not None
+                else 0
+            )
         )
         count_pairs = (
             (
@@ -815,6 +881,44 @@ def verify_repair(
                         {"degenerate_triangles": 0, "unused_positions": 0},
                     ),
                     actual=cast(JsonValue, remaining),
+                )
+            )
+        if component_removal is not None:
+            output_primitives = (
+                {
+                    (primitive.mesh_index, primitive.primitive_index): primitive
+                    for primitive in output.diagnostics.primitives
+                }
+                if output.diagnostics is not None
+                else {}
+            )
+            expected_components = {
+                f"{primitive.mesh_index}:{primitive.primitive_index}": len(
+                    primitive.retained_component_ids
+                )
+                for primitive in component_removal.primitives
+            }
+            actual_components = {
+                key: output_primitives[
+                    (primitive.mesh_index, primitive.primitive_index)
+                ].virtual_weld_connected_component_count
+                if (primitive.mesh_index, primitive.primitive_index) in output_primitives
+                else -1
+                for key, primitive in (
+                    (
+                        f"{item.mesh_index}:{item.primitive_index}",
+                        item,
+                    )
+                    for item in component_removal.primitives
+                )
+            }
+            checks.append(
+                _check(
+                    "DISCONNECTED_COMPONENT_REMOVAL_CONFIRMED",
+                    expected_components == actual_components,
+                    "Fresh inspection confirms only the approved component selection remains.",
+                    expected=cast(JsonValue, expected_components),
+                    actual=cast(JsonValue, actual_components),
                 )
             )
         naming_valid = output.naming is not None and not output.naming.proposed_replacements

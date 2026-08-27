@@ -94,6 +94,7 @@ class RepairKind(StrEnum):
     NORMALIZATION_TRANSFORM = "NORMALIZATION_TRANSFORM"
     WELD_IDENTICAL_VERTICES = "WELD_IDENTICAL_VERTICES"
     CLEAN_DEGENERATE_GEOMETRY = "CLEAN_DEGENERATE_GEOMETRY"
+    REMOVE_DISCONNECTED_COMPONENTS = "REMOVE_DISCONNECTED_COMPONENTS"
 
 
 class AgentDisposition(StrEnum):
@@ -336,6 +337,30 @@ class MaterialFact(ContractModel):
     emissive_factor: Vector3
 
 
+class NearContactProbeFact(ContractModel):
+    """One diagnostic grouping count at a non-mutating, scale-relative tolerance."""
+
+    tolerance_m: Annotated[float, Field(gt=0.0)]
+    group_count: NonNegativeInt
+
+
+class DisconnectedComponentFact(ContractModel):
+    """One exact position-projected triangle component within a primitive."""
+
+    component_id: Annotated[
+        str,
+        Field(pattern=r"^component-m[0-9]{3}-p[0-9]{3}-c[0-9]{3}-[0-9a-f]{8}$"),
+    ]
+    ordinal: NonNegativeInt
+    triangle_count: PositiveInt
+    referenced_position_count: PositiveInt
+    local_minimum_m: Vector3
+    local_maximum_m: Vector3
+    local_centroid_m: Vector3
+    triangle_fraction: Annotated[float, Field(gt=0.0, le=1.0)]
+    near_contact_group: NonNegativeInt
+
+
 class PrimitiveAttributeDiagnostics(ContractModel):
     """Objective attribute and topology diagnostics for one mesh primitive."""
 
@@ -364,6 +389,12 @@ class PrimitiveAttributeDiagnostics(ContractModel):
     non_manifold_edge_count: NonNegativeInt = 0
     inconsistent_winding_edge_count: NonNegativeInt = 0
     connected_component_count: NonNegativeInt = 0
+    disconnected_components: tuple[DisconnectedComponentFact, ...] = ()
+    component_inventory_truncated: bool = False
+    near_contact_probes: tuple[NearContactProbeFact, ...] = ()
+    mesh_reference_count: NonNegativeInt = 0
+    component_removal_safe: bool = False
+    component_removal_block_reason: str | None = None
     unused_position_count: NonNegativeInt = 0
     duplicate_position_count: NonNegativeInt = 0
     coincident_position_group_count: NonNegativeInt = 0
@@ -606,6 +637,45 @@ class DegenerateGeometryPayload(ContractModel):
         return self
 
 
+class ComponentRemovalPrimitivePayload(ContractModel):
+    """Exact component membership and triangle delta for one primitive selection."""
+
+    mesh_index: NonNegativeInt
+    primitive_index: NonNegativeInt
+    before_triangle_count: PositiveInt
+    after_triangle_count: PositiveInt
+    removed_triangle_count: PositiveInt
+    removed_component_ids: tuple[str, ...]
+    retained_component_ids: tuple[str, ...]
+
+    @model_validator(mode="after")
+    def selection_is_complete_and_nonempty(self) -> "ComponentRemovalPrimitivePayload":
+        """Require an exact partition that retains visible geometry."""
+        if self.before_triangle_count - self.removed_triangle_count != self.after_triangle_count:
+            raise ValueError("Component-removal triangle counts are inconsistent")
+        if not self.removed_component_ids or not self.retained_component_ids:
+            raise ValueError("Component removal must remove and retain at least one component")
+        all_ids = (*self.removed_component_ids, *self.retained_component_ids)
+        if len(all_ids) != len(set(all_ids)):
+            raise ValueError("Component-removal IDs must form a unique partition")
+        return self
+
+
+class ComponentRemovalPayload(ContractModel):
+    """Typed request to remove only explicitly approved disconnected components."""
+
+    payload_type: Literal["remove_disconnected_components"] = "remove_disconnected_components"
+    primitives: tuple[ComponentRemovalPrimitivePayload, ...]
+    consequence_summary: str
+
+    @model_validator(mode="after")
+    def contains_primitives(self) -> "ComponentRemovalPayload":
+        """Require at least one affected primitive."""
+        if not self.primitives:
+            raise ValueError("Component removal requires at least one primitive selection")
+        return self
+
+
 class CandidateRepair(ContractModel):
     """A registered repair derived from one or more findings."""
 
@@ -615,7 +685,11 @@ class CandidateRepair(ContractModel):
     finding_ids: tuple[str, ...]
     description: str
     payload: Annotated[
-        RenamePayload | NormalizationPayload | WeldPayload | DegenerateGeometryPayload,
+        RenamePayload
+        | NormalizationPayload
+        | WeldPayload
+        | DegenerateGeometryPayload
+        | ComponentRemovalPayload,
         Field(discriminator="payload_type"),
     ]
 
@@ -631,6 +705,9 @@ class CandidateRepair(ContractModel):
         elif self.kind is RepairKind.CLEAN_DEGENERATE_GEOMETRY:
             if not isinstance(self.payload, DegenerateGeometryPayload):
                 raise ValueError("Degenerate geometry repair requires a cleanup payload")
+        elif self.kind is RepairKind.REMOVE_DISCONNECTED_COMPONENTS:
+            if not isinstance(self.payload, ComponentRemovalPayload):
+                raise ValueError("Disconnected-component repair requires a removal payload")
         elif not isinstance(self.payload, RenamePayload):
             raise ValueError("Rename repair requires a rename payload")
         return self
@@ -655,6 +732,7 @@ class AgentRepairAssessment(ContractModel):
     rename_invalid_display_names: bool = False
     weld_identical_vertices: bool = False
     clean_degenerate_geometry: bool = False
+    remove_component_ids: tuple[str, ...] = ()
     source_views_used: tuple[str, ...] = ()
 
     @model_validator(mode="after")
@@ -669,6 +747,7 @@ class AgentRepairAssessment(ContractModel):
                 self.rename_invalid_display_names,
                 self.weld_identical_vertices,
                 self.clean_degenerate_geometry,
+                bool(self.remove_component_ids),
             )
         )
         if self.disposition is AgentDisposition.REPAIR and not has_action:
@@ -685,6 +764,15 @@ class AgentRepairAssessment(ContractModel):
             raise ValueError(
                 "Vertex-tuple welding and degenerate cleanup require separate repair turns"
             )
+        if len(self.remove_component_ids) != len(set(self.remove_component_ids)):
+            raise ValueError("Disconnected component IDs must be unique")
+        if self.remove_component_ids and (
+            self.weld_identical_vertices or self.clean_degenerate_geometry
+        ):
+            raise ValueError(
+                "Component removal, vertex-tuple welding, and degenerate cleanup require "
+                "separate repair turns"
+            )
         if self.clean_degenerate_geometry and any(
             (
                 self.scale_to_confirmed_height,
@@ -695,6 +783,17 @@ class AgentRepairAssessment(ContractModel):
         ):
             raise ValueError(
                 "Degenerate geometry cleanup and physical normalization require separate turns"
+            )
+        if self.remove_component_ids and any(
+            (
+                self.scale_to_confirmed_height,
+                self.rotation_degrees != 0,
+                self.ground_to_y_zero,
+                self.pivot_target != "PRESERVE",
+            )
+        ):
+            raise ValueError(
+                "Component removal and physical normalization require separate repair turns"
             )
         return self
 
@@ -786,6 +885,7 @@ class ProposalResponse(ContractModel):
     """Typed user feedback for one proposed repair lane."""
 
     lane: ProposalLane
+    component_id: str | None = None
     disposition: ProposalDisposition
     comment: Annotated[str | None, Field(min_length=1, max_length=1000)] = None
 
@@ -796,6 +896,8 @@ class ProposalResponse(ContractModel):
             raise ValueError("A commented proposal requires comment text")
         if self.disposition is not ProposalDisposition.COMMENT and self.comment is not None:
             raise ValueError("Only a commented proposal may include comment text")
+        if self.component_id is not None and self.lane is not ProposalLane.TOPOLOGY:
+            raise ValueError("Only topology feedback may identify a disconnected component")
         return self
 
 
@@ -810,9 +912,11 @@ class ApprovalResponse(ContractModel):
     @model_validator(mode="after")
     def approval_or_revision_is_unambiguous(self) -> "ApprovalResponse":
         """Separate exact approval from a non-mutating plan-revision request."""
-        lanes = [response.lane for response in self.proposal_responses]
-        if len(lanes) != len(set(lanes)):
-            raise ValueError("A proposal lane may be answered only once")
+        response_keys = [
+            (response.lane, response.component_id) for response in self.proposal_responses
+        ]
+        if len(response_keys) != len(set(response_keys)):
+            raise ValueError("A proposal item may be answered only once")
         requests_revision = any(
             response.disposition is not ProposalDisposition.ACCEPT
             for response in self.proposal_responses
@@ -1064,7 +1168,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9] = 9
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] = 10
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

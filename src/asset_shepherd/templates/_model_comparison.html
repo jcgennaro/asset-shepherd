@@ -76,6 +76,12 @@
             aria-hidden="true"></span>
         {% endfor %}
       {% endfor %}
+      {% for component in comparison_scene.component_boxes %}
+        {% set component_index = loop.index0 %}
+        {% for corner in component.corners_m %}
+          <span class="comparison-anchor" slot="hotspot-component-{{ component_index }}-{{ loop.index0 }}" data-position="{{ corner|join('m ') }}m" aria-hidden="true"></span>
+        {% endfor %}
+      {% endfor %}
       <span class="comparison-anchor" slot="hotspot-banana" data-position="{{ comparison_scene.banana_anchor_m|join('m ') }}m" aria-hidden="true"></span>
       <div class="viewer-fallback" slot="poster">Loading preview…</div>
     </model-viewer>
@@ -87,6 +93,7 @@
       {% if not comparison_source_only %}<g data-comparison-origin="after"></g>{% endif %}
       <g data-comparison-axis-layer hidden></g>
       <g data-comparison-banana-layer hidden></g>
+      <g data-comparison-component-layer></g>
     </svg>
     <p class="comparison-status" data-comparison-status role="status">Loading preview…</p>
   </div>

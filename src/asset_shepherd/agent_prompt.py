@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[9]] = 9
+AGENT_PROMPT_VERSION: Final[Literal[10]] = 10
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -318,6 +318,23 @@ AGENT_SYSTEM_PROMPT_V9: Final[str] = AGENT_SYSTEM_PROMPT_V8.replace(
     "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, naming, "
     "vertex-tuple\n"
     "compaction, or proven degenerate-geometry cleanup action.",
+)
+
+AGENT_SYSTEM_PROMPT_V10: Final[str] = AGENT_SYSTEM_PROMPT_V9.replace(
+    "  recalculates normals, remeshes, crosses attribute seams, or removes semantic components.",
+    "  recalculates normals, remeshes, or crosses attribute seams. A separate bounded component\n"
+    "  selection is available only when component_removal_safe is true. Exact components are\n"
+    "  geometric facts, not semantic errors: layered shells, eyes, buttons, greebles, pairs, and\n"
+    "  multipart mechanisms may be intentionally disconnected. Near-contact probe counts are\n"
+    "  non-mutating grouping hints and never deletion authority. Request component removal only\n"
+    "  after reviewing all four source views and the confirmed expected piece count. Pass every\n"
+    "  proposed inventory ID through remove_component_ids and retain at least one component,\n"
+    "  and state uncertainty; never use keep-largest or remove-small heuristics. The user\n"
+    "  may accept, reject, or comment on each proposed removal before execution.",
+).replace(
+    "compaction, or proven degenerate-geometry cleanup action.",
+    "compaction, proven degenerate-geometry cleanup, or exact disconnected-component selection\n"
+    "action.",
 )
 
 

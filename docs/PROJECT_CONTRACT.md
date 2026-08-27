@@ -548,6 +548,28 @@ morph targets, compressed primitives, unknown attributes, or a cleanup that woul
 triangle. It never welds positions, crosses UV or normal seams, fills holes, recalculates normals,
 remeshes, deletes a semantic component, or changes materials or textures.
 
+The third consequential capability is bounded disconnected-component selection. Inspection may
+enumerate exact position-projected, vertex-connected triangle bodies within one primitive and give
+each one a stable source-bound ID. Small-gap AABB probes may group nearby bodies at several
+scale-relative tolerances for interpretation, but those groups are diagnostic only: they never
+weld geometry, change exact IDs, select a body, or authorize deletion. Disconnected bodies are
+geometric facts rather than semantic errors.
+
+Only the workflow agent may propose exact component IDs after comparing the confirmed expected
+piece count with structured inventory and all four labeled source views. The user may keep, remove,
+or comment on each body; any change to the proposed selection starts a fresh planning turn, and one
+overall approval binds the exact keep/remove partition. There is no remove-small, keep-largest, or
+automatic extra-body rule, and at least one body must remain in every affected primitive.
+
+The first implementation is restricted to one-instance, unskinned, indexed `TRIANGLES` primitives
+with no morph targets, compression, sparse accessors, accessor extensions, malformed indices,
+cardinality mismatch, or pending degenerate cleanup. Execution filters only approved triangle
+indices and appends a replacement index accessor while preserving retained expanded corner
+attributes and the original binary prefix. Unreferenced vertex tuples left by this operation remain
+visible to the existing diagnostic and may be compacted only in a separate approved cleanup turn.
+Independent verification must reproduce the retained component count and exact authorized triangle
+delta. Ambiguous or unsupported layouts remain report-only or return to the creation tool.
+
 ### 9.4 `REPORT_ONLY` findings
 
 The MVP reports but does not repair:

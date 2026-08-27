@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-27
-**Current commit:** Approval-bound degenerate geometry cleanup (this file is included)
+**Current commit:** Agent-selected exact component removal (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,25 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D062 bounded component-selection checkpoint: static indexed triangle primitives now expose stable
+  exact position-projected bodies rather than guessing semantic pieces from node or primitive
+  counts. Scale-relative near-contact probes can group bodies separated by tiny gaps, but remain
+  read-only hints and never alter exact IDs or authorize a repair. The workflow agent must cite four
+  source views and select exact IDs; the single topology row shows all bodies, highlights their live
+  world-space wireframe bounds, and lets the user keep, remove, or comment on each selection. A
+  changed selection returns to the same agent without mutation. Approval filters only the selected
+  index triples in proven-safe, unskinned, one-instance layouts; it refuses unknown IDs, total
+  deletion, morphs, compression, sparse/extended accessors, malformed data, and pending degenerate
+  cleanup. Independent verification proves the exact triangle delta and retained component count.
+  Synthetic three-body removal and near-gap false-positive coverage pass. A live browser run with
+  three separated tetrahedra completed upload → description → agent sensing → exact component
+  proposal → per-body approval → removal → independent visual reassessment: the agent retained C1,
+  removed C2/C3 (eight triangles), and verified one remaining four-triangle body. Per-view
+  orthographic evidence fitting prevents long, thin layouts from becoming invisible in side views;
+  the regenerated right view spans 71.5% of the frame instead of a few pixels. The common gate
+  passes with 170 tests, one opt-in skip, lock validation, Ruff, formatting, and zero Pyright
+  findings. Broader corpus acceptance remains in the D062 follow-up gate.
 
 - D061 degenerate-geometry cleanup checkpoint: objective inspection now distinguishes a safely
   cleanable indexed triangle-list layout from an unsupported topology layout. A live agent may

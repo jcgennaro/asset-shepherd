@@ -30,17 +30,23 @@ from asset_shepherd.glb import (
     validate_loaded_glb,
     world_bounds,
 )
-from asset_shepherd.mesh_diagnostics import analyze_duplicate_positions, analyze_mesh_topology
+from asset_shepherd.mesh_diagnostics import (
+    analyze_duplicate_positions,
+    analyze_mesh_topology,
+    enumerate_connected_components,
+)
 from asset_shepherd.models import (
     ActionClass,
     Bounds3D,
     CheckBasis,
+    DisconnectedComponentFact,
     Finding,
     FindingEvidence,
     GeometryFacts,
     InspectionResult,
     MaterialFact,
     NamingFacts,
+    NearContactProbeFact,
     NodeHierarchyFact,
     NodeTransformFact,
     PackageFacts,
@@ -487,6 +493,9 @@ def _primitive_diagnostics(
     gltf: GLTF2,
     mesh_index: int,
     primitive_index: int,
+    *,
+    mesh_reference_count: int,
+    mesh_is_skinned: bool,
 ) -> PrimitiveAttributeDiagnostics:
     primitive = gltf.meshes[mesh_index].primitives[primitive_index]
     position_index = _attribute_accessor_index(primitive.attributes, "POSITION")
@@ -574,6 +583,12 @@ def _primitive_diagnostics(
             if len(values) == position_count
         },
     )
+    component_inventory = enumerate_connected_components(
+        positions,
+        triangles[topology_mask],
+        mesh_index=mesh_index,
+        primitive_index=primitive_index,
+    )
     topology_analyzed = mode in {TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN}
 
     cleanup_block_reason: str | None = None
@@ -605,6 +620,41 @@ def _primitive_diagnostics(
                         raise GlbError("an accessor uses a non-primary buffer")
             except (GlbError, IndexError) as error:
                 cleanup_block_reason = str(error)
+
+    component_block_reason: str | None = None
+    if component_inventory.exact_component_count > 1:
+        if mode != TRIANGLES or primitive.indices is None:
+            component_block_reason = "component removal requires an indexed TRIANGLES primitive"
+        elif len(indices) % 3:
+            component_block_reason = "the index accessor contains an incomplete triangle"
+        elif primitive.targets or primitive.extensions:
+            component_block_reason = "morph targets or compressed primitive data are present"
+        elif mesh_is_skinned:
+            component_block_reason = "the mesh is referenced by a skinned node"
+        elif mesh_reference_count != 1:
+            component_block_reason = "the mesh must have exactly one node instance"
+        elif component_inventory.truncated:
+            component_block_reason = "the component inventory exceeds the bounded selection limit"
+        elif mismatches:
+            component_block_reason = "vertex attribute counts do not match POSITION"
+        elif np.any(out_of_range):
+            component_block_reason = "indices fall outside the POSITION accessor"
+        elif np.count_nonzero(degenerate):
+            component_block_reason = "degenerate triangles require a separate cleanup turn"
+        else:
+            accessor_indices = [*attribute_indices.values(), primitive.indices]
+            try:
+                for accessor_index in accessor_indices:
+                    accessor = gltf.accessors[accessor_index]
+                    if accessor.bufferView is None:
+                        raise GlbError("an accessor has no buffer view")
+                    view = gltf.bufferViews[accessor.bufferView]
+                    if accessor.sparse is not None or accessor.extensions or view.extensions:
+                        raise GlbError("sparse or extended accessors are present")
+                    if view.buffer != 0:
+                        raise GlbError("an accessor uses a non-primary buffer")
+            except (GlbError, IndexError) as error:
+                component_block_reason = str(error)
 
     non_unit_normals = 0
     normal_accessor = gltf.accessors[normal_index] if normal_index is not None else None
@@ -648,6 +698,33 @@ def _primitive_diagnostics(
         non_manifold_edge_count=topology.non_manifold_edge_count,
         inconsistent_winding_edge_count=topology.inconsistent_winding_edge_count,
         connected_component_count=topology.connected_component_count,
+        disconnected_components=tuple(
+            DisconnectedComponentFact(
+                component_id=component.component_id,
+                ordinal=component.ordinal,
+                triangle_count=component.triangle_count,
+                referenced_position_count=component.referenced_position_count,
+                local_minimum_m=component.minimum_m,
+                local_maximum_m=component.maximum_m,
+                local_centroid_m=component.centroid_m,
+                triangle_fraction=component.triangle_fraction,
+                near_contact_group=component.near_contact_group,
+            )
+            for component in component_inventory.components
+        ),
+        component_inventory_truncated=component_inventory.truncated,
+        near_contact_probes=tuple(
+            NearContactProbeFact(
+                tolerance_m=probe.tolerance_m,
+                group_count=probe.group_count,
+            )
+            for probe in component_inventory.near_contact_probes
+        ),
+        mesh_reference_count=mesh_reference_count,
+        component_removal_safe=(
+            component_inventory.exact_component_count > 1 and component_block_reason is None
+        ),
+        component_removal_block_reason=component_block_reason,
         unused_position_count=topology.unused_position_count,
         duplicate_position_count=topology.duplicate_position_count,
         coincident_position_group_count=(duplicate_positions.coincident_position_group_count),
@@ -711,8 +788,21 @@ def _material_texture_indices(material: object) -> set[int]:
 
 
 def _source_diagnostics(gltf: GLTF2, geometry: GeometryFacts) -> SourceDiagnostics:
+    mesh_reference_counts = {
+        mesh_index: sum(node.mesh == mesh_index for node in gltf.nodes)
+        for mesh_index in range(len(gltf.meshes))
+    }
+    skinned_meshes = {
+        node.mesh for node in gltf.nodes if isinstance(node.mesh, int) and node.skin is not None
+    }
     primitives = tuple(
-        _primitive_diagnostics(gltf, mesh_index, primitive_index)
+        _primitive_diagnostics(
+            gltf,
+            mesh_index,
+            primitive_index,
+            mesh_reference_count=mesh_reference_counts[mesh_index],
+            mesh_is_skinned=mesh_index in skinned_meshes,
+        )
         for mesh_index, mesh in enumerate(gltf.meshes)
         for primitive_index, _ in enumerate(mesh.primitives)
     )
@@ -1099,6 +1189,60 @@ def _inspection_findings(
                     for item in topology_defects
                 ),
                 profile_rule=None,
+            )
+        )
+
+    disconnected_primitives = tuple(
+        primitive
+        for primitive in diagnostics.primitives
+        if len(primitive.disconnected_components) > 1
+    )
+    if disconnected_primitives:
+        removal_available = any(
+            primitive.component_removal_safe for primitive in disconnected_primitives
+        )
+        findings.append(
+            _finding(
+                code="DISCONNECTED_COMPONENTS_DETECTED",
+                domain="geometry",
+                title="Multiple disconnected forms detected",
+                description=(
+                    "The exact components are labeled for review; the agent may propose removing "
+                    "specific component IDs, but disconnected does not mean unwanted."
+                    if removal_available
+                    else "Disconnected forms are inventoried without changing geometry."
+                ),
+                severity=Severity.WARNING,
+                action_class=(
+                    ActionClass.APPROVAL_REQUIRED if removal_available else ActionClass.REPORT_ONLY
+                ),
+                confidence=1.0,
+                affected=tuple(
+                    f"mesh:{item.mesh_index}/primitive:{item.primitive_index}"
+                    for item in disconnected_primitives
+                ),
+                evidence=tuple(
+                    FindingEvidence(
+                        observation=(
+                            f"Mesh {item.mesh_index} primitive {item.primitive_index} contains "
+                            f"{len(item.disconnected_components)} exact "
+                            "position-projected components."
+                        ),
+                        observed_value={
+                            "exact_components": len(item.disconnected_components),
+                            "near_contact_probes": [
+                                probe.model_dump(mode="json") for probe in item.near_contact_probes
+                            ],
+                        },
+                        inference=(
+                            "Near-contact groups are interpretation hints only and never "
+                            "authorize deletion."
+                        ),
+                    )
+                    for item in disconnected_primitives
+                ),
+                profile_rule=None,
+                candidates=("remove-disconnected-components-v1",) if removal_available else (),
             )
         )
 

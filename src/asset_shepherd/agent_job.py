@@ -23,6 +23,7 @@ from asset_shepherd.models import (
     AssetIntentProvenance,
     CheckBasis,
     CheckStatus,
+    ComponentRemovalPayload,
     ConversationTurnRecord,
     DecisionRecord,
     Decisions,
@@ -95,7 +96,7 @@ def _write_json(path: Path, value: object) -> None:
 
 GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
     "schema_version": 1,
-    "render_contract_version": 3,
+    "render_contract_version": 4,
     "source_coordinate_system": "glTF right-handed",
     "source_up": "+Y",
     "source_forward": "+Z",
@@ -351,6 +352,9 @@ class AgentJob:
             raise AgentWorkflowError("Plan revision requires agent-orchestrated mode")
         if self.selected_plan is None or self.agent_assessment is None:
             raise AgentWorkflowError("A pending agent plan is required for revision")
+        inspection = self.inspection
+        if inspection is None:
+            raise AgentWorkflowError("Plan revision requires the source inspection")
         if self.pending_interrupt_id is None:
             raise AgentWorkflowError("Plan revision requires the exact pending interrupt")
         if self.outcome is not None:
@@ -367,6 +371,7 @@ class AgentJob:
             elif candidate.kind in {
                 RepairKind.WELD_IDENTICAL_VERTICES,
                 RepairKind.CLEAN_DEGENERATE_GEOMETRY,
+                RepairKind.REMOVE_DISCONNECTED_COMPONENTS,
             }:
                 active_lanes.add(ProposalLane.TOPOLOGY)
             elif candidate.kind in {RepairKind.RENAME_MESH, RepairKind.RENAME_NODE}:
@@ -375,6 +380,27 @@ class AgentJob:
         if unknown_lanes:
             raise AgentWorkflowError(
                 f"Plan feedback references inactive proposal lanes: {sorted(unknown_lanes)}"
+            )
+        active_removed_component_ids = {
+            component_id
+            for candidate in self.selected_plan.candidates
+            if isinstance(candidate.payload, ComponentRemovalPayload)
+            for primitive in candidate.payload.primitives
+            for component_id in primitive.removed_component_ids
+        }
+        active_component_ids = set(active_removed_component_ids)
+        if active_removed_component_ids and inspection.diagnostics is not None:
+            active_component_ids.update(
+                component.component_id
+                for primitive in inspection.diagnostics.primitives
+                for component in primitive.disconnected_components
+            )
+        unknown_component_ids = {
+            response.component_id for response in responses if response.component_id is not None
+        } - active_component_ids
+        if unknown_component_ids:
+            raise AgentWorkflowError(
+                f"Plan feedback references inactive components: {sorted(unknown_component_ids)}"
             )
 
         revision_root = self.output_dir.parent / "plan_revisions"
@@ -966,6 +992,7 @@ class AgentJob:
         source_views_used: list[str],
         weld_identical_vertices: bool = False,
         clean_degenerate_geometry: bool = False,
+        remove_component_ids: list[str] | None = None,
         pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE",
     ) -> RepairPlan:
         """Validate and register one model-authored disposition and exact action preview."""
@@ -983,11 +1010,17 @@ class AgentJob:
                 pivot_target != "PRESERVE",
             )
         )
+        requested_component_ids = remove_component_ids or []
+        visual_evidence_requested = physical_requested or bool(requested_component_ids)
         available_views: set[str] = (
-            {path.name for path in self.render_source_views()} if physical_requested else set()
+            {path.name for path in self.render_source_views()}
+            if visual_evidence_requested
+            else set()
         )
-        if physical_requested and not source_views_used:
-            raise AgentWorkflowError("Physical actions require cited standardized visual evidence")
+        if visual_evidence_requested and not source_views_used:
+            raise AgentWorkflowError(
+                "Physical and component-selection actions require cited visual evidence"
+            )
         unknown_views = set(source_views_used) - available_views
         if unknown_views:
             raise AgentWorkflowError(
@@ -1011,6 +1044,10 @@ class AgentJob:
             raise AgentWorkflowError(
                 "Yaw decisions require all four coordinate-labeled source views"
             )
+        if requested_component_ids and set(source_views_used) != available_views:
+            raise AgentWorkflowError(
+                "Disconnected-component selection requires all four source views"
+            )
         assessment_payload = {
             "initiating_tool_call_id": initiating_tool_call_id,
             "disposition": disposition,
@@ -1026,6 +1063,7 @@ class AgentJob:
             "rename_invalid_display_names": rename_invalid_display_names,
             "weld_identical_vertices": weld_identical_vertices,
             "clean_degenerate_geometry": clean_degenerate_geometry,
+            "remove_component_ids": requested_component_ids,
             "source_views_used": source_views_used,
         }
         digest = sha256(
@@ -1047,6 +1085,7 @@ class AgentJob:
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
             clean_degenerate_geometry=clean_degenerate_geometry,
+            remove_component_ids=tuple(requested_component_ids),
             source_views_used=tuple(source_views_used),
         )
         plan = plan_agent_repairs(
@@ -1162,6 +1201,22 @@ class AgentJob:
                 candidate_id=candidate.id,
                 finding_ids=candidate.finding_ids,
                 title="Clean proven degenerate geometry",
+                consequence_summary=candidate.payload.consequence_summary,
+            )
+        if isinstance(candidate.payload, ComponentRemovalPayload):
+            removed_ids = tuple(
+                component_id
+                for primitive in candidate.payload.primitives
+                for component_id in primitive.removed_component_ids
+            )
+            return ApprovalCard(
+                plan_id=self.selected_plan.plan_id,
+                candidate_id=candidate.id,
+                finding_ids=candidate.finding_ids,
+                title=(
+                    f"Remove {len(removed_ids)} labeled component"
+                    f"{'s' if len(removed_ids) != 1 else ''}"
+                ),
                 consequence_summary=candidate.payload.consequence_summary,
             )
         if not isinstance(candidate.payload, NormalizationPayload):
@@ -1373,6 +1428,7 @@ class AgentJob:
             RepairKind.NORMALIZATION_TRANSFORM,
             RepairKind.WELD_IDENTICAL_VERTICES,
             RepairKind.CLEAN_DEGENERATE_GEOMETRY,
+            RepairKind.REMOVE_DISCONNECTED_COMPONENTS,
         }
         visually_consequential_action_ids = {
             candidate.id

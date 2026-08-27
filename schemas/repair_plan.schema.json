@@ -159,6 +159,7 @@
             "mapping": {
               "clean_degenerate_geometry": "#/$defs/DegenerateGeometryPayload",
               "normalization": "#/$defs/NormalizationPayload",
+              "remove_disconnected_components": "#/$defs/ComponentRemovalPayload",
               "rename": "#/$defs/RenamePayload",
               "weld_identical_vertices": "#/$defs/WeldPayload"
             },
@@ -176,6 +177,9 @@
             },
             {
               "$ref": "#/$defs/DegenerateGeometryPayload"
+            },
+            {
+              "$ref": "#/$defs/ComponentRemovalPayload"
             }
           ],
           "title": "Payload"
@@ -190,6 +194,91 @@
         "payload"
       ],
       "title": "CandidateRepair",
+      "type": "object"
+    },
+    "ComponentRemovalPayload": {
+      "additionalProperties": false,
+      "description": "Typed request to remove only explicitly approved disconnected components.",
+      "properties": {
+        "consequence_summary": {
+          "title": "Consequence Summary",
+          "type": "string"
+        },
+        "payload_type": {
+          "const": "remove_disconnected_components",
+          "default": "remove_disconnected_components",
+          "title": "Payload Type",
+          "type": "string"
+        },
+        "primitives": {
+          "items": {
+            "$ref": "#/$defs/ComponentRemovalPrimitivePayload"
+          },
+          "title": "Primitives",
+          "type": "array"
+        }
+      },
+      "required": [
+        "primitives",
+        "consequence_summary"
+      ],
+      "title": "ComponentRemovalPayload",
+      "type": "object"
+    },
+    "ComponentRemovalPrimitivePayload": {
+      "additionalProperties": false,
+      "description": "Exact component membership and triangle delta for one primitive selection.",
+      "properties": {
+        "after_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "After Triangle Count",
+          "type": "integer"
+        },
+        "before_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Before Triangle Count",
+          "type": "integer"
+        },
+        "mesh_index": {
+          "minimum": 0,
+          "title": "Mesh Index",
+          "type": "integer"
+        },
+        "primitive_index": {
+          "minimum": 0,
+          "title": "Primitive Index",
+          "type": "integer"
+        },
+        "removed_component_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Removed Component Ids",
+          "type": "array"
+        },
+        "removed_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Removed Triangle Count",
+          "type": "integer"
+        },
+        "retained_component_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Retained Component Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "mesh_index",
+        "primitive_index",
+        "before_triangle_count",
+        "after_triangle_count",
+        "removed_triangle_count",
+        "removed_component_ids",
+        "retained_component_ids"
+      ],
+      "title": "ComponentRemovalPrimitivePayload",
       "type": "object"
     },
     "DegenerateGeometryPayload": {
@@ -705,7 +794,8 @@
         "RENAME_MESH",
         "NORMALIZATION_TRANSFORM",
         "WELD_IDENTICAL_VERTICES",
-        "CLEAN_DEGENERATE_GEOMETRY"
+        "CLEAN_DEGENERATE_GEOMETRY",
+        "REMOVE_DISCONNECTED_COMPONENTS"
       ],
       "title": "RepairKind",
       "type": "string"

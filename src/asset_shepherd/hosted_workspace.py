@@ -1210,6 +1210,7 @@ class HostedWorkspaceStore:
                     "responses": [
                         {
                             "lane": response.lane.value,
+                            "component_id": response.component_id,
                             "disposition": response.disposition.value,
                             "comment_sha256": (
                                 sha256(response.comment.encode("utf-8")).hexdigest()

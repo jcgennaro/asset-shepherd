@@ -153,8 +153,9 @@ sensing capabilities should include:
   the world-bounds center and footprint center-bottom;
 - geometry, normals, UV availability, and deterministic mesh diagnostics: boundary, non-manifold,
   and inconsistently wound edges; index-topology components; unused/coincident positions; a
-  position-only virtual-weld projection; attribute-safe complete-tuple mergeability; vertex reuse;
-  and estimated FIFO-16 cache locality;
+  position-only virtual-weld projection; exact position-projected body inventory; bounded
+  near-contact grouping hints; attribute-safe complete-tuple mergeability; vertex reuse; and
+  estimated FIFO-16 cache locality;
 - material, texture, alpha, and emissive metadata;
 - standardized coordinate-labeled front, right, back, and left renders plus other requested views;
 - before/after render and metric comparison; and
@@ -163,9 +164,10 @@ sensing capabilities should include:
 The agent may call additional sensors, ask the user a focused question, or stop when the evidence is
 already sufficient. A fixed seven-stage script must not decide this sequence for it.
 
-Edge-connected components are not semantic pieces, and coincident seam vertices can separate
-otherwise adjacent faces. The virtual weld deliberately ignores attribute seams to expose underlying
-position topology, but it never authorizes a mutation. A separate exact-tuple count proves which
+Disconnected components are not semantic pieces, and coincident seam vertices can separate
+otherwise adjacent faces. The component inventory projects exact positions and treats faces sharing
+any projected vertex as one body. Multi-threshold near-contact AABB groups help identify tiny export
+gaps but never alter exact component identity or authorize a mutation. A separate exact-tuple count proves which
 vertices can be compacted without crossing any protected attribute. The agent may request that
 lossless compaction; hole closing, remeshing, normal recalculation, and position-only welding remain
 unavailable. Non-manifold or inconsistently wound shared edges remain report-only. Performance
@@ -226,7 +228,8 @@ preview tools for supported primitives such as:
 - root translation for grounding or a bounded bounds-center/footprint-center-bottom pivot target;
 - node display-name change; and
 - mesh display-name change; and
-- exact zero-area triangle removal with complete unused-vertex-tuple compaction.
+- exact zero-area triangle removal with complete unused-vertex-tuple compaction; and
+- exact approved disconnected-component filtering for a proven-safe primitive.
 
 The agent chooses which primitives are needed and supplies their typed intent and parameters. The
 tool computes the exact matrix or edit, expected bounds, affected records, reversibility, and
@@ -243,6 +246,13 @@ zero-area triangle index triples and complete vertex tuples no surviving triangl
 does not weld seams, close holes, recalculate normals, remesh, or remove semantic components. A
 physical normalization, lossless duplicate-tuple weld, or broader geometry concern requires a
 separate turn.
+
+Disconnected-component filtering is also a separate consequential lane. It is available only when
+the sensor marks the primitive `component_removal_safe`. The agent must cite all four labeled source
+views, pass exact inventory IDs, and retain at least one body. Near-contact groups are interpretation
+hints only. The user may keep, remove, or comment on each body; a changed selection reopens planning
+without mutation. Execution filters only the approved index triples and does not compact vertices,
+weld gaps, merge shells, infer semantics, or apply keep-largest/remove-small heuristics.
 
 ### 7. Obtain the required decision
 

@@ -1,7 +1,7 @@
 # Future Component Labeling and Removal
 
-**Status:** Deferred; explicitly outside the MVP repair allowlist  
-**Decision:** [D060](DECISIONS.md#d060--make-unsupported-dispositions-explicit-defer-component-deletion)  
+**Status:** First bounded slice implemented; semantic labeling and broader layouts remain deferred
+**Decision:** [D062](DECISIONS.md#d062--add-agent-selected-exact-component-removal)
 **Purpose:** Preserve a concrete design for safely handling assets that contain unwanted disconnected
 geometry without turning “disconnected” into an automatic deletion rule.
 
@@ -16,9 +16,9 @@ That measurement is not enough to authorize deletion. A connected topological co
 semantic piece: layered shells, buttons, eyes, greebles, teeth, paired objects, and deliberately
 separate hard-surface details may all be valid disconnected geometry.
 
-## Proposed post-MVP capability
+## Implemented bounded capability
 
-Add a bounded **component selection** capability with two distinct tools:
+Asset Shepherd now has a bounded **component selection** capability with two distinct phases:
 
 1. A read-only labeling tool inventories and visualizes components.
 2. A separately authorized mutation tool removes only the exact labeled components approved by the
@@ -30,25 +30,25 @@ mutation; they never decide that a component is unwanted.
 
 ## Read-only component inventory
 
-For each triangle primitive, the sensor would project byte-identical positions to avoid mistaking UV
-or normal seams for separate forms, then enumerate edge-connected triangle sets. Every set receives
+For each supported triangle primitive, the sensor projects byte-identical positions to avoid
+mistaking UV or normal seams for separate forms, then enumerates vertex-connected triangle sets.
+Every set receives
 a stable source-bound identifier such as:
 
 ```text
 component-r0-m000-p000-c002-4e91ad7b
 ```
 
-The identifier must bind the source SHA-256, mesh and primitive indices, and canonical triangle
-membership. Each record should include:
+The current identifier binds mesh and primitive indices, deterministic ordinal, and canonical
+triangle membership; the containing inspection binds it to the source SHA-256. Each record includes:
 
 - triangle and referenced-vertex counts;
-- world-space bounds, centroid, and percentage of total visible geometry;
-- material index and complete vertex-attribute semantics;
+- local bounds, centroid, and percentage of its primitive, projected into world-space viewer boxes;
 - skin, morph-target, compression, and extension involvement;
-- neighboring or overlapping component relationships; and
-- front, side, and three-quarter highlighted evidence.
+- bounded scale-relative near-contact AABB group probes; and
+- front, right, back, and left source evidence required before an agent selection.
 
-The 3D viewer should let the user hover, isolate, and select a label while showing a wireframe box
+The 3D viewer lets the user hover or focus a label while showing a wireframe box
 around that exact component. The workflow agent receives the same labeled views plus the structured
 inventory. It may call a component a probable duplicate or unwanted form, but it must preserve the
 distinction between that semantic judgment and the topological measurement.
@@ -70,13 +70,13 @@ There is no automatic “remove small islands,” “keep the largest,” or “
 tool must refuse to remove every visible component or any component whose identity changed since
 approval.
 
-## Initial mutation boundary
+## Current mutation boundary
 
 The safest first implementation should support only unskinned, non-morphing, uncompressed triangle
 primitives with fully understood attributes and extensions. Within an affected primitive it may:
 
 1. filter only triangles belonging to the approved component IDs;
-2. compact indices and vertex rows while copying every retained attribute tuple exactly;
+2. append one replacement index accessor while leaving vertex compaction to a separate turn;
 3. preserve primitive material assignment and all unrelated nodes, meshes, buffers, images,
    textures, samplers, extras, and extensions; and
 4. write a new versioned candidate rather than modifying R0.
@@ -102,12 +102,12 @@ Independent verification must prove:
 A failed visual or invariant check rejects the candidate but does not make it unavailable for human
 inspection and download.
 
-## Post-MVP acceptance cases
+## Remaining acceptance and extension cases
 
 Before this capability joins the repair allowlist, it needs at least:
 
-- a three-duplicate fixture where removing two exact components succeeds;
-- a rejected-approval run proving no geometry changes;
+- a real three-duplicate fixture in browser acceptance, beyond the synthetic three-body test;
+- an end-to-end hosted rejected-approval run proving no geometry changes;
 - a rerun proving the same approved operation is idempotent;
 - a layered-shell prop proving disconnected render geometry is not proposed for deletion;
 - a legitimate pair or multipart assembly proving semantic piece counts are respected;
@@ -115,6 +115,5 @@ Before this capability joins the repair allowlist, it needs at least:
 - material, texture, attribute, and extension preservation checks; and
 - browser acceptance for component highlighting, selection, exact approval, and comparison evidence.
 
-Until those gates pass, Asset Shepherd should report unsupported component mismatches clearly and
-direct the user back to the creation tool.
-
+The current tool fails closed outside its narrow static layout. Semantic labels, isolation, multiple
+node instances, skins, morphs, compressed accessors, and automatic component repair remain deferred.

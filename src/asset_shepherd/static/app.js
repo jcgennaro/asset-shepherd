@@ -399,7 +399,8 @@ function initializeModelComparison(comparison) {
   const bananaModel = comparison.querySelector("[data-banana-model]");
   const axisLayer = comparison.querySelector("[data-comparison-axis-layer]");
   const bananaLayer = comparison.querySelector("[data-comparison-banana-layer]");
-  if (!viewer || !hud || !configElement || !axisLayer || !bananaLayer) {
+  const componentLayer = comparison.querySelector("[data-comparison-component-layer]");
+  if (!viewer || !hud || !configElement || !axisLayer || !bananaLayer || !componentLayer) {
     return;
   }
 
@@ -419,6 +420,8 @@ function initializeModelComparison(comparison) {
   const targetGraphics = new Map();
   const originGraphics = new Map();
   const axisGraphics = new Map();
+  const componentGraphics = [];
+  let activeComponentId = null;
   const boundingBoxEdges = [
     [0, 1], [0, 2], [0, 4],
     [1, 3], [1, 5], [2, 3],
@@ -510,6 +513,17 @@ function initializeModelComparison(comparison) {
   const bananaLabel = createSvgElement("text", "comparison-banana-label");
   bananaLabel.textContent = "20 cm banana";
   bananaLayer.append(bananaBox, bananaLeader, bananaLabel);
+
+  for (const component of config.components || []) {
+    const group = createSvgElement("g", "comparison-component-box");
+    group.setAttribute("visibility", "hidden");
+    const box = createSvgElement("path", "comparison-component-wireframe");
+    const label = createSvgElement("text", "comparison-component-label");
+    label.textContent = component.label;
+    group.append(box, label);
+    componentLayer.append(group);
+    componentGraphics.push({ ...component, group, box, label });
+  }
 
   function drawTarget(target) {
     const graphics = targetGraphics.get(target);
@@ -661,6 +675,35 @@ function initializeModelComparison(comparison) {
     bananaLeader.setAttribute("d", `M${point.x + 8} ${point.y - 6}L${labelX - 4} ${labelY + 3}`);
   }
 
+  function renderComponents() {
+    for (const graphics of componentGraphics) {
+      if (!activeComponentId || graphics.id !== activeComponentId) {
+        graphics.group.setAttribute("visibility", "hidden");
+        continue;
+      }
+      const points = Array.from({ length: 8 }, (_, index) =>
+        hotspotPoint(`hotspot-component-${graphics.index}-${index}`),
+      );
+      if (points.some((point) => !point)) {
+        graphics.group.setAttribute("visibility", "hidden");
+        continue;
+      }
+      graphics.group.removeAttribute("visibility");
+      graphics.box.setAttribute(
+        "d",
+        boundingBoxEdges
+          .map(([start, end]) =>
+            `M${points[start].x} ${points[start].y}L${points[end].x} ${points[end].y}`,
+          )
+          .join(""),
+      );
+      const left = Math.min(...points.map((point) => point.x));
+      const top = Math.min(...points.map((point) => point.y));
+      graphics.label.setAttribute("x", clamp(left, 8, viewer.clientWidth - 36));
+      graphics.label.setAttribute("y", clamp(top - 10, 16, viewer.clientHeight - 8));
+    }
+  }
+
   function renderHud() {
     renderFrame = 0;
     hud.setAttribute("viewBox", `0 0 ${viewer.clientWidth} ${viewer.clientHeight}`);
@@ -670,6 +713,7 @@ function initializeModelComparison(comparison) {
     drawOrigin("after");
     renderAxes();
     renderBanana();
+    renderComponents();
   }
 
   function scheduleHud() {
@@ -909,6 +953,28 @@ function initializeModelComparison(comparison) {
       frameBounds(config[activeFitMode]);
     }
   });
+
+  const componentControls = [
+    ...(workingScope?.querySelectorAll("[data-component-focus]") || []),
+  ];
+  for (const control of componentControls) {
+    const show = () => {
+      activeComponentId = control.dataset.componentFocus;
+      control.setAttribute("aria-pressed", "true");
+      scheduleHud();
+    };
+    const hide = () => {
+      if (activeComponentId === control.dataset.componentFocus) {
+        activeComponentId = null;
+      }
+      control.setAttribute("aria-pressed", "false");
+      scheduleHud();
+    };
+    control.addEventListener("pointerenter", show);
+    control.addEventListener("pointerleave", hide);
+    control.addEventListener("focus", show);
+    control.addEventListener("blur", hide);
+  }
 
   viewer.addEventListener("camera-change", scheduleHud);
   viewer.addEventListener("load", () => {

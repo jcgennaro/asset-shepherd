@@ -168,6 +168,14 @@
           "title": "Pivot Target",
           "type": "string"
         },
+        "remove_component_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Remove Component Ids",
+          "type": "array"
+        },
         "rename_invalid_display_names": {
           "default": false,
           "title": "Rename Invalid Display Names",
@@ -659,7 +667,8 @@
         "RENAME_MESH",
         "NORMALIZATION_TRANSFORM",
         "WELD_IDENTICAL_VERTICES",
-        "CLEAN_DEGENERATE_GEOMETRY"
+        "CLEAN_DEGENERATE_GEOMETRY",
+        "REMOVE_DISCONNECTED_COMPONENTS"
       ],
       "title": "RepairKind",
       "type": "string"

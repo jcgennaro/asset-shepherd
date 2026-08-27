@@ -29,7 +29,7 @@ from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
-    AGENT_SYSTEM_PROMPT_V9,
+    AGENT_SYSTEM_PROMPT_V10,
     build_agent_start_prompt,
 )
 from asset_shepherd.agent_tools import AssetShepherdTools
@@ -387,7 +387,9 @@ class AssetShepherdAgent:
         self.provider = provider
         self.model_id = model_id
         self.tools = AssetShepherdTools(job)
-        system_prompt = AGENT_SYSTEM_PROMPT_V9 if job.agent_orchestrated else AGENT_SYSTEM_PROMPT_V2
+        system_prompt = (
+            AGENT_SYSTEM_PROMPT_V10 if job.agent_orchestrated else AGENT_SYSTEM_PROMPT_V2
+        )
         tools = (
             self.tools.as_agent_orchestrated_list()
             if job.agent_orchestrated

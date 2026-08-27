@@ -141,6 +141,107 @@
       "title": "CheckBasis",
       "type": "string"
     },
+    "DisconnectedComponentFact": {
+      "additionalProperties": false,
+      "description": "One exact position-projected triangle component within a primitive.",
+      "properties": {
+        "component_id": {
+          "pattern": "^component-m[0-9]{3}-p[0-9]{3}-c[0-9]{3}-[0-9a-f]{8}$",
+          "title": "Component Id",
+          "type": "string"
+        },
+        "local_centroid_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Local Centroid M",
+          "type": "array"
+        },
+        "local_maximum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Local Maximum M",
+          "type": "array"
+        },
+        "local_minimum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Local Minimum M",
+          "type": "array"
+        },
+        "near_contact_group": {
+          "minimum": 0,
+          "title": "Near Contact Group",
+          "type": "integer"
+        },
+        "ordinal": {
+          "minimum": 0,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "referenced_position_count": {
+          "exclusiveMinimum": 0,
+          "title": "Referenced Position Count",
+          "type": "integer"
+        },
+        "triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Triangle Count",
+          "type": "integer"
+        },
+        "triangle_fraction": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Triangle Fraction",
+          "type": "number"
+        }
+      },
+      "required": [
+        "component_id",
+        "ordinal",
+        "triangle_count",
+        "referenced_position_count",
+        "local_minimum_m",
+        "local_maximum_m",
+        "local_centroid_m",
+        "triangle_fraction",
+        "near_contact_group"
+      ],
+      "title": "DisconnectedComponentFact",
+      "type": "object"
+    },
     "Finding": {
       "additionalProperties": false,
       "description": "One evidence-backed inspection finding.",
@@ -481,6 +582,28 @@
       "title": "NamingFacts",
       "type": "object"
     },
+    "NearContactProbeFact": {
+      "additionalProperties": false,
+      "description": "One diagnostic grouping count at a non-mutating, scale-relative tolerance.",
+      "properties": {
+        "group_count": {
+          "minimum": 0,
+          "title": "Group Count",
+          "type": "integer"
+        },
+        "tolerance_m": {
+          "exclusiveMinimum": 0.0,
+          "title": "Tolerance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "tolerance_m",
+        "group_count"
+      ],
+      "title": "NearContactProbeFact",
+      "type": "object"
+    },
     "NodeHierarchyFact": {
       "additionalProperties": false,
       "description": "One node's parent-child relationship.",
@@ -803,6 +926,28 @@
           "title": "Coincident Position Group Count",
           "type": "integer"
         },
+        "component_inventory_truncated": {
+          "default": false,
+          "title": "Component Inventory Truncated",
+          "type": "boolean"
+        },
+        "component_removal_block_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Component Removal Block Reason"
+        },
+        "component_removal_safe": {
+          "default": false,
+          "title": "Component Removal Safe",
+          "type": "boolean"
+        },
         "connected_component_count": {
           "default": 0,
           "minimum": 0,
@@ -830,6 +975,14 @@
           "minimum": 0,
           "title": "Degenerate Triangle Count",
           "type": "integer"
+        },
+        "disconnected_components": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DisconnectedComponentFact"
+          },
+          "title": "Disconnected Components",
+          "type": "array"
         },
         "duplicate_position_count": {
           "default": 0,
@@ -869,6 +1022,20 @@
           "minimum": 0,
           "title": "Mesh Index",
           "type": "integer"
+        },
+        "mesh_reference_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Mesh Reference Count",
+          "type": "integer"
+        },
+        "near_contact_probes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/NearContactProbeFact"
+          },
+          "title": "Near Contact Probes",
+          "type": "array"
         },
         "non_finite_normal_count": {
           "minimum": 0,

@@ -139,6 +139,8 @@ def test_blender_evidence_script_is_valid_python() -> None:
     assert '"right": Vector((-1.0, 0.0, 0.0))' in turntable
     assert '"back": Vector((0.0, 1.0, 0.0))' in turntable
     assert '"left": Vector((1.0, 0.0, 0.0))' in turntable
+    assert 'camera.data.type = "ORTHO"' in turntable
+    assert "camera.data.ortho_scale = max(projected_width, projected_height" in turntable
 
 
 def test_unreal_harness_is_syntax_checked_and_isolated() -> None:

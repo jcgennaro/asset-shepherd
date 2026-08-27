@@ -13,6 +13,34 @@
           </td>
           <td class="inspection-action">
             <span>{{ check.action }}</span>
+            {% if check.component_proposals %}
+              <div class="component-proposals" aria-label="Disconnected component selection">
+                {% for component in check.component_proposals %}
+                  <div class="component-proposal{% if component.proposed_removal %} remove{% else %} keep{% endif %}" data-component-proposal="{{ component.component_id }}">
+                    <button type="button" class="component-focus" data-component-focus="{{ component.component_id }}" title="Show {{ component.label }} — {{ component.detail }}">
+                      <strong>{{ component.label }}</strong><span>{{ component.detail }}</span>
+                    </button>
+                    {% if proposal_response_form_id %}
+                      <div class="inspection-proposal-response" data-proposal-response>
+                        <select name="response_component_{{ component.component_id }}" form="{{ proposal_response_form_id }}" aria-label="Disposition for {{ component.label }}" data-proposal-disposition>
+                          {% if component.proposed_removal %}
+                            <option value="accept" selected>Remove</option>
+                            <option value="reject">Keep</option>
+                          {% else %}
+                            <option value="accept" selected>Keep</option>
+                            <option value="request_remove">Remove</option>
+                          {% endif %}
+                          <option value="comment">Comment</option>
+                        </select>
+                        <textarea name="comment_component_{{ component.component_id }}" form="{{ proposal_response_form_id }}" maxlength="1000" aria-label="Comment on {{ component.label }}" placeholder="Tell the agent what to change" hidden data-proposal-comment></textarea>
+                      </div>
+                    {% else %}
+                      <span class="component-disposition">Keep</span>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
             {% if proposal_response_form_id and check.response_lane %}
               {% set response_name = check.response_lane.value|lower %}
               <div class="inspection-proposal-response" data-proposal-response>

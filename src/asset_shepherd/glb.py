@@ -490,6 +490,137 @@ def clean_degenerate_geometry(
     return actual
 
 
+def remove_disconnected_components(
+    gltf: GLTF2,
+    expected_selections: dict[tuple[int, int], tuple[tuple[str, ...], int]],
+) -> dict[tuple[int, int], int]:
+    """Remove only exact position-projected components frozen in an approved plan.
+
+    Vertex attributes are not rewritten. The replacement index accessor is append-only, and any
+    newly unreferenced complete vertex tuples remain visible to the next inspection turn.
+    """
+    from asset_shepherd.mesh_diagnostics import enumerate_connected_components
+
+    original_blob = cast(bytes | bytearray | None, gltf.binary_blob())
+    if original_blob is None or not gltf.buffers:
+        raise GlbError("GLB has no primary binary buffer")
+    blob = bytearray(original_blob)
+    actual: dict[tuple[int, int], int] = {}
+    for (mesh_index, primitive_index), (approved_ids, expected_removed) in sorted(
+        expected_selections.items()
+    ):
+        if not 0 <= mesh_index < len(gltf.meshes):
+            raise GlbError("Component removal references an invalid mesh")
+        mesh = gltf.meshes[mesh_index]
+        if not 0 <= primitive_index < len(mesh.primitives):
+            raise GlbError("Component removal references an invalid primitive")
+        primitive = mesh.primitives[primitive_index]
+        mode = primitive.mode if primitive.mode is not None else TRIANGLES
+        if mode != TRIANGLES or primitive.indices is None:
+            raise GlbError("Component removal requires an indexed TRIANGLES primitive")
+        if primitive.targets or primitive.extensions:
+            raise GlbError("Component removal does not support morph or compressed primitives")
+        if sum(node.mesh == mesh_index for node in gltf.nodes) != 1:
+            raise GlbError("Component removal requires exactly one mesh instance")
+        if any(node.mesh == mesh_index and node.skin is not None for node in gltf.nodes):
+            raise GlbError("Component removal refuses skinned mesh instances")
+
+        attribute_indices = {
+            semantic: accessor_index
+            for semantic, accessor_index in vars(primitive.attributes).items()
+            if isinstance(accessor_index, int)
+        }
+        position_index = attribute_indices.get("POSITION")
+        if position_index is None:
+            raise GlbError("Component removal primitive has no POSITION accessor")
+        arrays = {
+            semantic: accessor_array(gltf, accessor_index)
+            for semantic, accessor_index in attribute_indices.items()
+        }
+        position_count = len(arrays["POSITION"])
+        if any(len(values) != position_count for values in arrays.values()):
+            raise GlbError("Component removal requires matching attribute cardinalities")
+        for accessor_index in (*attribute_indices.values(), primitive.indices):
+            accessor = gltf.accessors[accessor_index]
+            if accessor.bufferView is None:
+                raise GlbError("Component removal requires dense accessors")
+            view = gltf.bufferViews[accessor.bufferView]
+            if (
+                accessor.sparse is not None
+                or accessor.extensions
+                or view.extensions
+                or view.buffer != 0
+            ):
+                raise GlbError("Component removal requires dense, unextended primary-buffer data")
+
+        old_indices = np.asarray(accessor_array(gltf, primitive.indices), dtype=np.int64).reshape(
+            -1
+        )
+        if len(old_indices) % 3:
+            raise GlbError("Component removal requires complete triangle index triples")
+        triangles = old_indices.reshape((-1, 3))
+        if np.any((triangles < 0) | (triangles >= position_count)):
+            raise GlbError("Component removal refuses out-of-range indices")
+        if np.any(degenerate_triangle_mask(arrays["POSITION"], triangles)):
+            raise GlbError("Component removal requires degenerate cleanup in a separate turn")
+        inventory = enumerate_connected_components(
+            arrays["POSITION"],
+            triangles,
+            mesh_index=mesh_index,
+            primitive_index=primitive_index,
+        )
+        if inventory.truncated:
+            raise GlbError("Component removal refuses a truncated component inventory")
+        by_id = {component.component_id: component for component in inventory.components}
+        requested = set(approved_ids)
+        unknown = requested - set(by_id)
+        if unknown:
+            raise GlbError(f"Component identity changed since approval: {sorted(unknown)}")
+        if requested == set(by_id):
+            raise GlbError("Component removal refuses to remove every component")
+        remove_faces = {
+            face for component_id in approved_ids for face in by_id[component_id].face_indices
+        }
+        if len(remove_faces) != expected_removed:
+            raise GlbError(
+                "Component-removal evidence changed since planning: "
+                f"expected {expected_removed}, measured {len(remove_faces)}"
+            )
+        keep_mask = np.ones(len(triangles), dtype=bool)
+        keep_mask[list(remove_faces)] = False
+        retained = triangles[keep_mask].reshape(-1)
+        if not len(retained):
+            raise GlbError("Component removal produced no retained triangles")
+        if position_count <= 255:
+            packed_indices = retained.astype(np.uint8, copy=False).reshape((-1, 1))
+            component_type = 5121
+        elif position_count <= 65535:
+            packed_indices = retained.astype(np.uint16, copy=False).reshape((-1, 1))
+            component_type = 5123
+        else:
+            packed_indices = retained.astype(np.uint32, copy=False).reshape((-1, 1))
+            component_type = 5125
+        index_template = Accessor(
+            componentType=component_type,
+            count=len(packed_indices),
+            type="SCALAR",
+            max=[int(retained.max())],
+            min=[int(retained.min())],
+        )
+        primitive.indices = _append_packed_accessor(
+            gltf,
+            blob,
+            packed_indices,
+            index_template,
+            target=ELEMENT_ARRAY_BUFFER,
+        )
+        actual[(mesh_index, primitive_index)] = len(remove_faces)
+
+    gltf.set_binary_blob(bytes(blob))
+    gltf.buffers[0].byteLength = len(blob)
+    return actual
+
+
 def weld_identical_vertex_tuples(
     gltf: GLTF2,
     expected_merges: dict[tuple[int, int], int],

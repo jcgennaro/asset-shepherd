@@ -75,6 +75,14 @@
       "title": "Pivot Target",
       "type": "string"
     },
+    "remove_component_ids": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Remove Component Ids",
+      "type": "array"
+    },
     "rename_invalid_display_names": {
       "default": false,
       "title": "Rename Invalid Display Names",

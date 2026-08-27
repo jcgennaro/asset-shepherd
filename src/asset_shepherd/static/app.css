@@ -2009,6 +2009,68 @@ details[open] summary::after {
   line-height: 1.4;
 }
 
+.component-proposals {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.component-proposal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.34fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.component-proposal.remove {
+  border-color: color-mix(in srgb, var(--attention) 58%, var(--line));
+}
+
+.component-focus {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  cursor: crosshair;
+  text-align: left;
+}
+
+.component-focus strong {
+  flex: 0 0 auto;
+  color: var(--attention);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.94rem;
+}
+
+.component-focus span {
+  min-width: 0;
+  color: var(--muted);
+}
+
+.component-focus:hover span,
+.component-focus:focus-visible span {
+  color: var(--text);
+}
+
+.component-focus:focus-visible {
+  outline: 2px solid var(--attention);
+  outline-offset: 4px;
+}
+
+.component-disposition {
+  color: var(--success);
+  font-weight: 800;
+  text-align: right;
+}
+
 .inspection-status {
   text-align: center;
 }
@@ -2726,6 +2788,27 @@ model-viewer {
   height: 100%;
   overflow: visible;
   pointer-events: none;
+}
+
+.comparison-component-wireframe {
+  fill: rgba(243, 199, 102, 0.035);
+  stroke: #f3c766;
+  stroke-linecap: square;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.comparison-component-label {
+  fill: #ffe39a;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  paint-order: stroke;
+  stroke: rgba(5, 13, 11, 0.94);
+  stroke-width: 4px;
+  text-transform: uppercase;
 }
 
 .comparison-target-box,
@@ -4662,6 +4745,14 @@ textarea.asset-description-input:focus {
   .inspection-check-icon:hover::after,
   .inspection-check-icon:focus-visible::after {
     transform: translate(0, -50%);
+  }
+
+  .component-proposal {
+    grid-template-columns: 1fr;
+  }
+
+  .component-disposition {
+    text-align: left;
   }
 
   .conversation-start-form,

@@ -39,8 +39,8 @@ def _clear_scene() -> None:
     bpy.ops.object.delete(use_global=False)
 
 
-def _mesh_bounds(objects: list[Any]) -> tuple[Vector, Vector]:
-    """Return world-space minimum and maximum corners for imported meshes."""
+def _mesh_bound_points(objects: list[Any]) -> list[Vector]:
+    """Return every imported mesh object's world-space bounding-box corner."""
     points = [
         obj.matrix_world @ Vector(corner)
         for obj in objects
@@ -49,6 +49,12 @@ def _mesh_bounds(objects: list[Any]) -> tuple[Vector, Vector]:
     ]
     if not points:
         raise ValueError("Imported GLB contains no mesh bounds to render")
+    return points
+
+
+def _mesh_bounds(objects: list[Any]) -> tuple[Vector, Vector]:
+    """Return world-space minimum and maximum corners for imported meshes."""
+    points = _mesh_bound_points(objects)
     minimum = Vector(tuple(min(point[axis] for point in points) for axis in range(3)))
     maximum = Vector(tuple(max(point[axis] for point in points) for axis in range(3)))
     return minimum, maximum
@@ -160,7 +166,10 @@ def main() -> None:
     bpy.ops.object.camera_add()
     camera = bpy.context.object
     camera.name = "EvidenceCamera"
-    camera.data.lens = 58.0
+    # Orthographic evidence removes perspective as a confounder and lets each source-axis
+    # projection use its own framing. A single longest-axis perspective distance makes the side
+    # of a long, thin asset occupy only a few pixels even though the asset is valid and present.
+    camera.data.type = "ORTHO"
     # Blender defaults to a 10 cm near plane. That clips tiny but valid candidates when the
     # proportional camera rig moves inside 10 cm, producing a misleading blank render.
     camera.data.clip_start = max(span * 0.001, 1e-7)
@@ -189,10 +198,12 @@ def main() -> None:
         mask_emission.outputs["Emission"], mask_output.inputs["Surface"]
     )
 
-    # Leave deterministic breathing room around wide comparison scenes. Evidence is rejected if
-    # the mask touches a frame edge, so a fixed conservative distance is preferable to clipping.
+    # Leave deterministic depth room around the import. The orthographic scale below is fitted
+    # independently to the visible projection; a source/candidate comparison is still one import
+    # and therefore receives one shared scale for each corresponding view.
     distance = span * 3.8
     camera_height = target.z + span * 0.18
+    bound_points = _mesh_bound_points(objects)
     for view_name, direction in VIEWS.items():
         camera.location = Vector(
             (
@@ -202,6 +213,16 @@ def main() -> None:
             )
         )
         _aim_at(camera, target)
+        bpy.context.view_layer.update()
+        camera_inverse = camera.matrix_world.inverted()
+        camera_points = [camera_inverse @ point for point in bound_points]
+        projected_width = max(point.x for point in camera_points) - min(
+            point.x for point in camera_points
+        )
+        projected_height = max(point.y for point in camera_points) - min(
+            point.y for point in camera_points
+        )
+        camera.data.ortho_scale = max(projected_width, projected_height, span * 1e-6) * 1.35
         scene.render.filepath = str(output_dir / f"{view_name}.png")
         bpy.ops.render.render(write_still=True)
         scene.view_layers[0].material_override = mask_material

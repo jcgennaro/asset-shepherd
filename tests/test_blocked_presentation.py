@@ -51,8 +51,24 @@ def test_unsupported_component_mismatch_is_an_explicit_blocker(tmp_path: Path) -
     )
     inspection = inspect_asset(SOURCE_PATH, job.profile, policy=job.profile_policy)
     assert inspection.diagnostics is not None
+    base_component = inspection.diagnostics.primitives[0].disconnected_components[0]
+    components = tuple(
+        base_component.model_copy(
+            update={
+                "component_id": f"component-m000-p000-c{index:03d}-{index + 1:08x}",
+                "ordinal": index,
+                "triangle_fraction": 1 / 3,
+            }
+        )
+        for index in range(3)
+    )
     primitive = inspection.diagnostics.primitives[0].model_copy(
-        update={"virtual_weld_connected_component_count": 3}
+        update={
+            "virtual_weld_connected_component_count": 3,
+            "disconnected_components": components,
+            "component_removal_safe": False,
+            "component_removal_block_reason": "unsupported test layout",
+        }
     )
     job.inspection = inspection.model_copy(
         update={

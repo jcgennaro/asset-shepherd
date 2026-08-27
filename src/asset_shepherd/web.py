@@ -19,6 +19,7 @@ from threading import RLock
 from typing import Annotated, BinaryIO, cast
 from uuid import uuid4
 
+import numpy as np
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -33,7 +34,7 @@ from asset_shepherd.agent_runtime import (
     build_scripted_agent,
     workflow_model_available,
 )
-from asset_shepherd.glb import load_glb, world_bounds
+from asset_shepherd.glb import iter_world_matrices, load_glb, world_bounds
 from asset_shepherd.hosted_workspace import (
     MAX_HOSTED_WORKSPACES,
     UNREADABLE_GLB_MESSAGE,
@@ -65,10 +66,12 @@ from asset_shepherd.models import (
     AssetIntentProvenance,
     AssetTargetUse,
     CheckStatus,
+    ComponentRemovalPayload,
     DecisionRecord,
     DecisionValue,
     DegenerateGeometryPayload,
     Finding,
+    InspectionResult,
     NormalizationPayload,
     ProfilePolicyProvenance,
     ProjectProfile,
@@ -192,6 +195,15 @@ class MetricAxisView:
 
 
 @dataclass(frozen=True)
+class ComponentBoundsView:
+    """One exact component's world-space oriented box in the source viewer."""
+
+    component_id: str
+    label: str
+    corners_m: tuple[tuple[float, float, float], ...]
+
+
+@dataclass(frozen=True)
 class ComparisonSceneView:
     """Geometry needed to stage before and after assets in one scene."""
 
@@ -203,6 +215,7 @@ class ComparisonSceneView:
     banana_anchor_m: tuple[float, float, float]
     axes: tuple[MetricAxisView, ...]
     client_data: dict[str, JsonValue]
+    component_boxes: tuple[ComponentBoundsView, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -215,6 +228,17 @@ class SourceSceneView:
     banana_anchor_m: tuple[float, float, float]
     axes: tuple[MetricAxisView, ...]
     client_data: dict[str, JsonValue]
+    component_boxes: tuple[ComponentBoundsView, ...] = ()
+
+
+@dataclass(frozen=True)
+class ComponentProposalView:
+    """One exact disconnected component exposed for visual review."""
+
+    component_id: str
+    label: str
+    detail: str
+    proposed_removal: bool
 
 
 @dataclass(frozen=True)
@@ -228,6 +252,7 @@ class InspectionCheckView:
     action: str
     response_lane: ProposalLane | None = None
     action_heading: str = "Proposed action"
+    component_proposals: tuple[ComponentProposalView, ...] = ()
 
     @property
     def detail(self) -> str:
@@ -1518,6 +1543,7 @@ _TOPOLOGY_CODES = {
     "MESH_TOPOLOGY_DEFECTS_DETECTED",
     "ATTRIBUTE_SAFE_DUPLICATE_TUPLES_DETECTED",
     "UNUSED_VERTEX_DATA_DETECTED",
+    "DISCONNECTED_COMPONENTS_DETECTED",
     "VERTEX_CACHE_LOCALITY_WARNING",
     "TRIANGLE_BUDGET_EXCEEDED",
 }
@@ -1608,8 +1634,14 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         primitive.virtual_weld_inconsistent_winding_edge_count
         for primitive in diagnostic_primitives
     )
-    projected_components = sum(
-        primitive.virtual_weld_connected_component_count for primitive in diagnostic_primitives
+    affected_component_counts = tuple(
+        len(primitive.disconnected_components)
+        for primitive in diagnostic_primitives
+        if len(primitive.disconnected_components) > 1
+    )
+    selectable_component_count = sum(affected_component_counts)
+    semantic_component_count = (
+        affected_component_counts[0] if len(affected_component_counts) == 1 else None
     )
     degenerate_triangles = sum(
         primitive.degenerate_triangle_count for primitive in diagnostic_primitives
@@ -1632,6 +1664,8 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     weld_ids: list[str] = []
     cleanup_action = ""
     cleanup_ids: list[str] = []
+    component_action = ""
+    component_ids: list[str] = []
     if plan is not None:
         for candidate in plan.candidates:
             payload = candidate.payload
@@ -1689,6 +1723,21 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                     )
                 cleanup_action = f"Approval required — {' and '.join(changes)}."
                 continue
+            if isinstance(payload, ComponentRemovalPayload):
+                component_ids.extend(
+                    component_id
+                    for primitive in payload.primitives
+                    for component_id in primitive.removed_component_ids
+                )
+                removed_triangles = sum(
+                    primitive.removed_triangle_count for primitive in payload.primitives
+                )
+                component_action = (
+                    f"Approval required — remove {len(component_ids)} labeled component"
+                    f"{'s' if len(component_ids) != 1 else ''} "
+                    f"({removed_triangles:,} triangles)."
+                )
+                continue
             before_name = payload.before_name or "(unnamed)"
             item = f"“{before_name}” → “{payload.after_name}”"
             if candidate.kind is RepairKind.RENAME_MESH:
@@ -1719,8 +1768,8 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     component_mismatch = bool(
         agent_requires_creation_tool
         and expected_piece_count is not None
-        and projected_components > 0
-        and projected_components != expected_piece_count
+        and semantic_component_count is not None
+        and semantic_component_count != expected_piece_count
         and any(
             phrase in assessment_evidence
             for phrase in ("connected component", "distinct", "extra visible", "separate")
@@ -1749,16 +1798,20 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         "Needs approval" if normalization_action else ("Attention" if size_warning else "Pass")
     )
 
-    topology_warning = has_attention(_TOPOLOGY_CODES) or bool(weld_action or cleanup_action)
+    topology_warning = has_attention(_TOPOLOGY_CODES) or bool(
+        weld_action or cleanup_action or component_action
+    )
     topology_status = "attention" if topology_warning else "pass"
     topology_label = (
         "Needs approval"
-        if cleanup_action
+        if cleanup_action or component_action
         else "Automatic"
         if weld_action
         else ("Report only" if topology_warning else "Pass")
     )
-    if cleanup_action:
+    if component_action:
+        topology_action = component_action
+    elif cleanup_action:
         topology_action = cleanup_action
     elif weld_action:
         topology_action = weld_action
@@ -1840,6 +1893,22 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             topology_status = "attention"
             topology_label = "Unresolved"
             topology_action = "Not applied — rejected."
+        elif "remove-disconnected-components-v1" in executed_ids and component_action:
+            component_detail = component_action.removeprefix("Approval required — ")
+            if check_passed("DISCONNECTED_COMPONENT_REMOVAL_CONFIRMED"):
+                topology_status = "repaired"
+                topology_label = "Addressed"
+                topology_action = f"Applied — {component_detail}"
+            else:
+                topology_status = "attention"
+                topology_label = "Needs review"
+                topology_action = (
+                    "Attempted — verification did not confirm the component selection."
+                )
+        elif "remove-disconnected-components-v1" in rejected_ids and component_action:
+            topology_status = "attention"
+            topology_label = "Unresolved"
+            topology_action = "Not applied — rejected."
         elif topology_warning:
             topology_action = topology_action.replace("Report only —", "No change —", 1)
 
@@ -1860,6 +1929,11 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             name_action = "No change — names remain unresolved."
 
     topology_facts: list[str] = []
+    if selectable_component_count:
+        topology_facts.append(
+            f"{selectable_component_count:,} disconnected form"
+            f"{'s' if selectable_component_count != 1 else ''}"
+        )
     if degenerate_triangles:
         topology_facts.append(
             f"{degenerate_triangles:,} degenerate triangle"
@@ -1904,7 +1978,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         )
     )
     structure_description = (
-        f"{projected_components} disconnected forms detected; target "
+        f"{semantic_component_count} disconnected forms detected; target "
         f"{expected_piece_count} semantic "
         f"{'piece' if expected_piece_count == 1 else 'pieces'}."
         if component_mismatch and expected_piece_count is not None
@@ -1916,6 +1990,20 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             f"{inspection.package.primitive_count:,} primitive"
             f"{'s' if inspection.package.primitive_count != 1 else ''}."
         )
+    )
+    proposed_component_ids = set(component_ids)
+    component_proposals = tuple(
+        ComponentProposalView(
+            component_id=component.component_id,
+            label=f"C{component.ordinal + 1}",
+            detail=(
+                f"{component.triangle_count:,} triangles · "
+                f"{component.triangle_fraction:.1%} of this primitive"
+            ),
+            proposed_removal=component.component_id in proposed_component_ids,
+        )
+        for primitive in diagnostic_primitives
+        for component in primitive.disconnected_components
     )
     return (
         InspectionCheckView(
@@ -1942,8 +2030,13 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             topology_label,
             topology_description,
             topology_action,
-            ProposalLane.TOPOLOGY if (weld_action or cleanup_action) and not after_action else None,
+            (
+                ProposalLane.TOPOLOGY
+                if (weld_action or cleanup_action) and not after_action
+                else None
+            ),
             action_heading,
+            component_proposals if component_action and not after_action else (),
         ),
         InspectionCheckView(
             "Materials and textures",
@@ -2466,9 +2559,13 @@ def _comparison_scene(source_path: Path, candidate_path: Path) -> ComparisonScen
     )
 
 
-def _source_scene(source_path: Path) -> SourceSceneView:
+def _source_scene(
+    source_path: Path,
+    inspection: InspectionResult | None = None,
+) -> SourceSceneView:
     """Measure and frame one uploaded source asset without mutating it."""
-    source_bounds = world_bounds(load_glb(source_path))
+    gltf = load_glb(source_path)
+    source_bounds = world_bounds(gltf)
     before = _comparison_bounds(
         cast(tuple[float, float, float], tuple(float(value) for value in source_bounds.minimum)),
         cast(tuple[float, float, float], tuple(float(value) for value in source_bounds.maximum)),
@@ -2506,13 +2603,70 @@ def _source_scene(source_path: Path) -> SourceSceneView:
             "longest": before.longest_m,
         },
     )
+    component_boxes: list[ComponentBoundsView] = []
+    diagnostics = inspection.diagnostics if inspection is not None else None
+    primitives = diagnostics.primitives if diagnostics is not None else ()
+    primitive_components = {
+        (primitive.mesh_index, primitive.primitive_index): primitive.disconnected_components
+        for primitive in primitives
+        if primitive.disconnected_components
+    }
+    if primitive_components:
+        for node_index, world in iter_world_matrices(gltf):
+            mesh_index = gltf.nodes[node_index].mesh
+            if mesh_index is None:
+                continue
+            for primitive_index, _ in enumerate(gltf.meshes[mesh_index].primitives):
+                for component in primitive_components.get((mesh_index, primitive_index), ()):
+                    local_corners = np.asarray(
+                        [
+                            (x_value, y_value, z_value)
+                            for x_value in (
+                                component.local_minimum_m[0],
+                                component.local_maximum_m[0],
+                            )
+                            for y_value in (
+                                component.local_minimum_m[1],
+                                component.local_maximum_m[1],
+                            )
+                            for z_value in (
+                                component.local_minimum_m[2],
+                                component.local_maximum_m[2],
+                            )
+                        ],
+                        dtype=np.float64,
+                    )
+                    homogeneous = np.column_stack(
+                        (local_corners, np.ones(len(local_corners), dtype=np.float64))
+                    )
+                    transformed = (world @ homogeneous.T).T[:, :3]
+                    component_boxes.append(
+                        ComponentBoundsView(
+                            component_id=component.component_id,
+                            label=f"C{component.ordinal + 1}",
+                            corners_m=tuple(
+                                (float(point[0]), float(point[1]), float(point[2]))
+                                for point in transformed
+                            ),
+                        )
+                    )
+    client_data: dict[str, JsonValue] = {"before": client_bounds, "both": client_bounds}
+    if component_boxes:
+        client_data["components"] = cast(
+            JsonValue,
+            [
+                {"id": item.component_id, "label": item.label, "index": index}
+                for index, item in enumerate(component_boxes)
+            ],
+        )
     return SourceSceneView(
         before=before,
         combined=before,
         banana_offset_m=banana_offset_m,
         banana_anchor_m=banana_anchor_m,
         axes=axes,
-        client_data={"before": client_bounds, "both": client_bounds},
+        client_data=client_data,
+        component_boxes=tuple(component_boxes),
     )
 
 
@@ -2870,7 +3024,8 @@ def create_app(
                 comparison_candidate_ready = workspace.ready_candidate
                 comparison_source_only = False
         if comparison_scene is None and workspace.source_path.is_file():
-            comparison_scene = _source_scene(workspace.source_path)
+            inspection = runtime_job.inspection if runtime_job is not None else None
+            comparison_scene = _source_scene(workspace.source_path, inspection)
         expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
         if target_draft is not None and target_draft.ready_for_confirmation:
@@ -3941,7 +4096,7 @@ def create_app(
             status_code=303,
         )
 
-    def decide_hosted_workspace(
+    async def decide_hosted_workspace(
         request: Request,
         workspace_id: str,
         interrupt_id: Annotated[str, Form()],
@@ -3991,6 +4146,33 @@ def create_app(
                 responses.append(
                     ProposalResponse(
                         lane=lane,
+                        disposition=disposition,
+                        comment=comment if disposition is ProposalDisposition.COMMENT else None,
+                    )
+                )
+            submitted_form = await request.form()
+            component_prefix = "response_component_"
+            for field_name, raw_value in submitted_form.multi_items():
+                if not field_name.startswith(component_prefix):
+                    continue
+                component_id = field_name.removeprefix(component_prefix)
+                raw_disposition = str(raw_value)
+                disposition = disposition_values.get(raw_disposition)
+                requested_remove = raw_disposition == "request_remove"
+                if requested_remove:
+                    disposition = ProposalDisposition.COMMENT
+                if disposition is None:
+                    raise HostedWorkspaceError("A component response is invalid.")
+                raw_comment = submitted_form.get(f"comment_component_{component_id}")
+                comment = str(raw_comment).strip() if raw_comment else None
+                if requested_remove:
+                    comment = "Remove this currently retained component in the revised plan."
+                elif disposition is ProposalDisposition.COMMENT and not comment:
+                    raise HostedWorkspaceError("Add a comment for the proposed component.")
+                responses.append(
+                    ProposalResponse(
+                        lane=ProposalLane.TOPOLOGY,
+                        component_id=component_id,
                         disposition=disposition,
                         comment=comment if disposition is ProposalDisposition.COMMENT else None,
                     )

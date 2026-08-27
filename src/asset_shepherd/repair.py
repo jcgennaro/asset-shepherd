@@ -18,10 +18,12 @@ from asset_shepherd.glb import (
     load_glb,
     node_local_matrix,
     raw_glb_document,
+    remove_disconnected_components,
     save_glb,
     weld_identical_vertex_tuples,
 )
 from asset_shepherd.models import (
+    ComponentRemovalPayload,
     DecisionRecord,
     Decisions,
     DecisionSource,
@@ -314,6 +316,56 @@ def apply_repairs(
                             "cannot preserve"
                         )
                 clean_degenerate_geometry(gltf, expected_removals)
+            except (GlbError, IndexError) as error:
+                raise RepairInvariantError(str(error)) from error
+        elif candidate.kind is RepairKind.REMOVE_DISCONNECTED_COMPONENTS:
+            payload = candidate.payload
+            if not isinstance(payload, ComponentRemovalPayload):
+                raise RepairInvariantError("Component removal candidate has the wrong payload")
+            expected_selections = {
+                (primitive.mesh_index, primitive.primitive_index): (
+                    primitive.removed_component_ids,
+                    primitive.removed_triangle_count,
+                )
+                for primitive in payload.primitives
+            }
+            try:
+                raw_document = raw_glb_document(source)
+                raw_meshes_value = raw_document.get("meshes")
+                if not isinstance(raw_meshes_value, list):
+                    raise GlbError("Component-removal source has no raw mesh records")
+                raw_meshes = cast(list[object], raw_meshes_value)
+                for primitive_payload in payload.primitives:
+                    raw_mesh_value = raw_meshes[primitive_payload.mesh_index]
+                    if not isinstance(raw_mesh_value, dict):
+                        raise GlbError("Component-removal source mesh record is invalid")
+                    raw_primitives_value = cast(dict[str, object], raw_mesh_value).get("primitives")
+                    if not isinstance(raw_primitives_value, list):
+                        raise GlbError("Component-removal source has no raw primitive records")
+                    raw_primitive_value = cast(list[object], raw_primitives_value)[
+                        primitive_payload.primitive_index
+                    ]
+                    if not isinstance(raw_primitive_value, dict):
+                        raise GlbError("Component-removal source primitive record is invalid")
+                    raw_attributes_value = cast(dict[str, object], raw_primitive_value).get(
+                        "attributes"
+                    )
+                    if not isinstance(raw_attributes_value, dict):
+                        raise GlbError("Component-removal source attributes are invalid")
+                    parsed_primitive = gltf.meshes[primitive_payload.mesh_index].primitives[
+                        primitive_payload.primitive_index
+                    ]
+                    parsed_semantics = {
+                        semantic
+                        for semantic, accessor_index in vars(parsed_primitive.attributes).items()
+                        if isinstance(accessor_index, int)
+                    }
+                    if set(cast(dict[str, object], raw_attributes_value)) != parsed_semantics:
+                        raise GlbError(
+                            "Component removal refuses vertex attributes that the GLB adapter "
+                            "cannot preserve"
+                        )
+                remove_disconnected_components(gltf, expected_selections)
             except (GlbError, IndexError) as error:
                 raise RepairInvariantError(str(error)) from error
         else:

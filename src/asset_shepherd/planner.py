@@ -12,6 +12,8 @@ from asset_shepherd.models import (
     AgentRepairAssessment,
     Bounds3D,
     CandidateRepair,
+    ComponentRemovalPayload,
+    ComponentRemovalPrimitivePayload,
     DegenerateGeometryPayload,
     DegenerateGeometryPrimitivePayload,
     InspectionResult,
@@ -272,6 +274,90 @@ def _degenerate_geometry_candidate(
     )
 
 
+def _component_removal_candidate(
+    inspection: InspectionResult,
+    requested_component_ids: tuple[str, ...],
+) -> CandidateRepair:
+    """Bind an agent-selected component subset to the exact inspected inventory."""
+    if inspection.diagnostics is None:
+        raise ValueError("Disconnected component removal requires source diagnostics")
+    requested = set(requested_component_ids)
+    available = {
+        component.component_id: (primitive, component)
+        for primitive in inspection.diagnostics.primitives
+        for component in primitive.disconnected_components
+    }
+    unknown = requested - set(available)
+    if unknown:
+        raise ValueError(f"Component removal references unknown IDs: {sorted(unknown)}")
+    grouped: dict[tuple[int, int], list[str]] = {}
+    for component_id in requested_component_ids:
+        primitive, _ = available[component_id]
+        grouped.setdefault((primitive.mesh_index, primitive.primitive_index), []).append(
+            component_id
+        )
+
+    primitive_payloads: list[ComponentRemovalPrimitivePayload] = []
+    for (mesh_index, primitive_index), removed_ids in sorted(grouped.items()):
+        primitive = next(
+            item
+            for item in inspection.diagnostics.primitives
+            if item.mesh_index == mesh_index and item.primitive_index == primitive_index
+        )
+        if not primitive.component_removal_safe:
+            raise ValueError(
+                "Component removal is not proven safe for "
+                f"mesh {mesh_index} primitive {primitive_index}: "
+                f"{primitive.component_removal_block_reason or 'unsupported layout'}"
+            )
+        all_ids = tuple(item.component_id for item in primitive.disconnected_components)
+        retained_ids = tuple(
+            component_id for component_id in all_ids if component_id not in requested
+        )
+        if not retained_ids:
+            raise ValueError("Component removal refuses to remove every component in a primitive")
+        removed_triangles = sum(
+            available[component_id][1].triangle_count for component_id in removed_ids
+        )
+        primitive_payloads.append(
+            ComponentRemovalPrimitivePayload(
+                mesh_index=mesh_index,
+                primitive_index=primitive_index,
+                before_triangle_count=primitive.valid_triangle_count,
+                after_triangle_count=primitive.valid_triangle_count - removed_triangles,
+                removed_triangle_count=removed_triangles,
+                removed_component_ids=tuple(removed_ids),
+                retained_component_ids=retained_ids,
+            )
+        )
+    removed_triangles = sum(item.removed_triangle_count for item in primitive_payloads)
+    finding_ids = tuple(
+        finding.id
+        for finding in inspection.findings
+        if finding.code == "DISCONNECTED_COMPONENTS_DETECTED"
+    )
+    return CandidateRepair(
+        id="remove-disconnected-components-v1",
+        kind=RepairKind.REMOVE_DISCONNECTED_COMPONENTS,
+        action_class=ActionClass.APPROVAL_REQUIRED,
+        finding_ids=finding_ids,
+        description=(
+            f"Remove {len(requested_component_ids)} exact labeled component"
+            f"{'s' if len(requested_component_ids) != 1 else ''} selected by the workflow agent."
+        ),
+        payload=ComponentRemovalPayload(
+            primitives=tuple(primitive_payloads),
+            consequence_summary=(
+                f"This removes {removed_triangles:,} triangle"
+                f"{'s' if removed_triangles != 1 else ''} from "
+                f"{len(requested_component_ids)} exact component"
+                f"{'s' if len(requested_component_ids) != 1 else ''}. Retained triangle "
+                "corners, attributes, materials, textures, and source binary data remain exact."
+            ),
+        ),
+    )
+
+
 def plan_agent_repairs(
     inspection: InspectionResult,
     profile: ProjectProfile,
@@ -309,6 +395,10 @@ def plan_agent_repairs(
                     "safely removable zero-area triangles or unused complete vertex tuples"
                 )
             candidates.append(cleanup_candidate)
+        if assessment.remove_component_ids:
+            candidates.append(
+                _component_removal_candidate(inspection, assessment.remove_component_ids)
+            )
 
         transform_requested = any(
             (
