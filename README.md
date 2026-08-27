@@ -56,7 +56,7 @@ Start Asset Shepherd later with one command:
 .\scripts\Start-AssetShepherd.ps1
 ```
 
-Open `http://127.0.0.1:8000`. The flow starts by asking the user to describe the model they are
+Open `http://127.0.0.1:8010`. The flow starts by asking the user to describe the model they are
 already working on.
 The interim OpenAI intake provider uses `gpt-5.6-luna` with `xhigh` reasoning to propose a supported
 use and plausible semantic scale from ordinary language. Only the description is sent; the GLB
@@ -67,7 +67,7 @@ The Windows launch scripts keep the encrypted development key under the current 
 data, outside the repository. The launcher exposes it only to the running server process and removes
 it when that command ends.
 
-The versioned D019 reference is at `http://127.0.0.1:8000/workspace`. It starts with a short asset
+The versioned D019 reference is at `http://127.0.0.1:8010/workspace`. It starts with a short asset
 description plus the untouched GLB, performs profile-free objective preflight, uses the same
 semantic proposal, and asks only for fields that remain genuinely ambiguous. A
 persistent Job Contract shows measured source facts, the derived

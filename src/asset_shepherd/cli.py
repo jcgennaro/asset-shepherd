@@ -79,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the local upload-to-download web product",
     )
     web_parser.add_argument("--host", default="127.0.0.1")
-    web_parser.add_argument("--port", type=int, default=8000)
+    web_parser.add_argument("--port", type=int, default=8010)
     web_parser.add_argument("--work-dir", type=Path, default=Path("build/web/jobs"))
     web_parser.add_argument(
         "--offline-intake",

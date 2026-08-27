@@ -4,7 +4,7 @@
 param(
     [string]$BindAddress = '127.0.0.1',
     [ValidateRange(1, 65535)]
-    [int]$Port = 8000,
+    [int]$Port = 8010,
     [string]$WorkDirectory = 'build/web/jobs',
     [string]$SecretPath = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'AssetShepherd\openai-api-key.dpapi')
 )
