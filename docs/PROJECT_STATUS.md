@@ -58,8 +58,10 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   control when no candidate GLB exists; diagnostics and Gallery remain available. Name findings no
   longer render beside a contradictory “need no change” sentence. A focused regression and browser
   acceptance exercise the actual saved workspace. Geometry deletion remains deferred as a future,
-  exact-component, explicit-approval repair domain under D060. The common gate passes with 157 tests,
-  one opt-in skip, lock validation, Ruff, formatting, and zero Pyright findings.
+  exact-component, explicit-approval repair domain under D060; its proposed sensor, component IDs,
+  UI, mutation boundary, verification, and post-MVP acceptance cases are captured in
+  `docs/FUTURE_COMPONENT_HANDLING.md`. The common gate passes with 157 tests, one opt-in skip, lock
+  validation, Ruff, formatting, and zero Pyright findings.
 
 - D059 gallery status checkpoint: every persisted asset card now shows one plain-language workflow
   state with a visible dot and text, rather than exposing the internal phase enum. Pending

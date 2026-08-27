@@ -48,7 +48,8 @@ is desirable only as an explicitly approved, high-risk action: it must assign st
 show each candidate component highlighted, record exactly which components will be kept or removed,
 preserve the original as R0, and independently verify the remaining geometry, appearance, UVs,
 materials, textures, bounds, and payload. It must never infer that “small” or merely disconnected
-means disposable.
+means disposable. The deferred design and acceptance gates are recorded in
+[`FUTURE_COMPONENT_HANDLING.md`](FUTURE_COMPONENT_HANDLING.md).
 
 **Evidence and consequences**
 

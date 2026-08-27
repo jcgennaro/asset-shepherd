@@ -16,6 +16,7 @@ verification agent for game developers.
 - [Decision log](docs/DECISIONS.md)
 - [Web design and flow](docs/WEB_DESIGN_AND_FLOW.md)
 - [Checks and authority](docs/CHECKS_AND_AUTHORITY.md)
+- [Future component labeling and removal](docs/FUTURE_COMPONENT_HANDLING.md) — deferred, not MVP
 
 The agent-orchestrated workflow defines the product authority boundary: deterministic tools provide
 measurements, rendered evidence, bounded actions, enforcement, and proof; the workflow agent decides
