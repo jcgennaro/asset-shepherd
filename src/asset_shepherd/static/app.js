@@ -411,6 +411,7 @@ function initializeModelComparison(comparison) {
   let axesVisible = false;
   let bananaVisible = false;
   let renderFrame = 0;
+  let orbitHudFrame = 0;
   let bananaFinalOffset = null;
   let bananaAnimationFrame = 0;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -637,6 +638,33 @@ function initializeModelComparison(comparison) {
     }
   }
 
+  function stopOrbitHudAnimation() {
+    if (orbitHudFrame) {
+      window.cancelAnimationFrame(orbitHudFrame);
+      orbitHudFrame = 0;
+    }
+  }
+
+  function renderOrbitHud() {
+    orbitHudFrame = 0;
+    if (!viewer.hasAttribute("auto-rotate") || document.hidden || !viewer.isConnected) {
+      return;
+    }
+    renderHud();
+    orbitHudFrame = window.requestAnimationFrame(renderOrbitHud);
+  }
+
+  function syncOrbitHudAnimation() {
+    if (viewer.hasAttribute("auto-rotate") && !document.hidden) {
+      if (!orbitHudFrame) {
+        orbitHudFrame = window.requestAnimationFrame(renderOrbitHud);
+      }
+      return;
+    }
+    stopOrbitHudAnimation();
+    scheduleHud();
+  }
+
   function niceMeterStep(span) {
     const rawStep = Math.max(span, 1e-9) / 4;
     const magnitude = 10 ** Math.floor(Math.log10(rawStep));
@@ -859,11 +887,13 @@ function initializeModelComparison(comparison) {
     const syncWorkingOrbit = () => {
       const shouldOrbit = workingScope.classList.contains("is-working") && !reduceMotion;
       viewer.toggleAttribute("auto-rotate", shouldOrbit);
+      syncOrbitHudAnimation();
     };
     new MutationObserver(syncWorkingOrbit).observe(workingScope, {
       attributes: true,
       attributeFilter: ["class"],
     });
+    document.addEventListener("visibilitychange", syncOrbitHudAnimation);
     syncWorkingOrbit();
   }
 }

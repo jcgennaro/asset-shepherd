@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-27
-**Current commit:** D060 explicit unsupported-repair presentation (this file is included)
+**Current commit:** Idle-orbit HUD registration fix (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -50,6 +50,14 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- Idle-orbit HUD registration: while the source viewer auto-orbits during active Shepherd work, one
+  animation-frame loop now reprojects the complete SVG HUD from the viewer's live hotspot positions.
+  The measured 3D bounds, dimension label, optional metric axes, banana target box, and banana leader
+  therefore remain registered with their 3D targets instead of waiting for a user-generated
+  `camera-change` event. The loop runs only while `auto-rotate` is active, stops for hidden or
+  disconnected views, respects reduced-motion behavior, and retains event-driven rendering when
+  idle. Targeted viewer coverage, Ruff, formatting, and Pyright pass.
 
 - D060 unsupported-repair presentation: the persisted three-form riding-crop case now presents the
   agent's `RETURN_TO_CREATION_TOOL` disposition as a red blocked sentence and inspection lane. The

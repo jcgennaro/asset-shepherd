@@ -1161,6 +1161,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     script = client.get("/static/app.js")
     assert script.status_code == 200
     assert 'viewer.addEventListener("camera-change", scheduleHud)' in script.text
+    assert "function renderOrbitHud()" in script.text
+    assert "window.requestAnimationFrame(renderOrbitHud)" in script.text
+    assert 'document.addEventListener("visibilitychange", syncOrbitHudAnimation)' in script.text
     assert "viewer.queryHotspot(name)" in script.text
     assert "viewer.updateHotspot({" in script.text
     assert "function niceMeterStep(span)" in script.text
