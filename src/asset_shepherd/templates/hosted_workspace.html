@@ -126,19 +126,17 @@
 
         {% if job and job.result and cannot_repair %}
           <section class="result-review blocked-result-actions" aria-label="Blocked result actions">
-            <div class="blocked-result-controls">
+            <div class="blocked-result-controls{% if can_continue %} has-refinement{% endif %}"{% if can_continue %} data-blocked-refinement{% endif %}>
               {% if can_continue %}
-                <details class="blocked-refinement">
-                  <summary class="primary-button">Refine current iteration</summary>
-                  <form class="blocked-refinement-form" action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
-                    <input type="hidden" name="command_id" value="{{ command_id }}">
-                    <input type="hidden" name="decision" value="continue">
-                    <input type="hidden" name="continue_from" value="input">
-                    <label for="hosted-blocked-feedback">What should Asset Shepherd reconsider?</label>
-                    <textarea id="hosted-blocked-feedback" name="feedback" maxlength="1000" placeholder="Identify the labeled components to keep or remove, or explain what the previous pass missed." required></textarea>
-                    <button type="submit" class="primary-button" data-submit-button>Start refinement</button>
-                  </form>
-                </details>
+                <button type="button" class="primary-button blocked-refinement-trigger" aria-expanded="false" aria-controls="hosted-blocked-refinement-form" data-blocked-refinement-trigger>Refine…</button>
+                <form id="hosted-blocked-refinement-form" class="blocked-refinement-form" action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" hidden>
+                  <input type="hidden" name="command_id" value="{{ command_id }}">
+                  <input type="hidden" name="decision" value="continue">
+                  <input type="hidden" name="continue_from" value="input">
+                  <label class="visually-hidden" for="hosted-blocked-feedback">What should Asset Shepherd reconsider?</label>
+                  <textarea id="hosted-blocked-feedback" name="feedback" maxlength="1000" placeholder="Tell Asset Shepherd what to reconsider—for example, which labeled components to keep or remove." required></textarea>
+                  <button type="submit" class="primary-button" data-submit-button>Start refining</button>
+                </form>
               {% endif %}
               <div class="blocked-result-links">
                 <a class="secondary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>

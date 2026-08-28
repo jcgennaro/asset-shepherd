@@ -333,6 +333,25 @@ for (const form of document.querySelectorAll("[data-result-accept]")) {
   });
 }
 
+for (const refinement of document.querySelectorAll("[data-blocked-refinement]")) {
+  const trigger = refinement.querySelector("[data-blocked-refinement-trigger]");
+  const form = refinement.querySelector(".blocked-refinement-form");
+  const feedback = form?.querySelector("textarea");
+  if (
+    !(trigger instanceof HTMLButtonElement) ||
+    !(form instanceof HTMLFormElement) ||
+    !(feedback instanceof HTMLTextAreaElement)
+  ) {
+    continue;
+  }
+  trigger.addEventListener("click", () => {
+    trigger.hidden = true;
+    trigger.setAttribute("aria-expanded", "true");
+    form.hidden = false;
+    feedback.focus();
+  });
+}
+
 const jobContractDialog = document.querySelector("[data-job-contract-dialog]");
 const jobContractOpen = document.querySelector("[data-job-contract-open]");
 const jobContractClose = document.querySelector("[data-job-contract-close]");

@@ -4779,34 +4779,29 @@ textarea.asset-description-input:focus {
 }
 
 .blocked-result-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  width: 100%;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
   gap: 12px;
 }
 
-.blocked-refinement[open] {
-  flex: 0 0 100%;
+.blocked-refinement-trigger {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 156px;
 }
 
-.blocked-refinement-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  gap: 10px 14px;
-  width: min(760px, 100%);
-  margin-top: 14px;
-}
-
-.blocked-refinement-form label {
-  grid-column: 1 / -1;
-  font-weight: 700;
+.blocked-refinement-form:not([hidden]) {
+  display: contents;
 }
 
 .blocked-refinement-form textarea {
-  box-sizing: border-box;
+  grid-column: 1 / -1;
+  grid-row: 1;
   width: 100%;
-  min-height: 112px;
-  padding: 14px;
+  min-height: 148px;
+  padding: 16px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   color: var(--text);
@@ -4823,14 +4818,28 @@ textarea.asset-description-input:focus {
 }
 
 .blocked-refinement-form .primary-button {
-  align-self: end;
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 156px;
 }
 
 .blocked-result-links {
   display: flex;
   flex-wrap: wrap;
+  grid-column: 1;
+  grid-row: 1;
   align-items: center;
+  justify-self: start;
   gap: 12px;
+}
+
+.blocked-result-controls.has-refinement > .blocked-result-links {
+  grid-column: 2;
+}
+
+.blocked-refinement-form:not([hidden]) + .blocked-result-links {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .hosted-inspection {
@@ -5071,25 +5080,41 @@ textarea.asset-description-input:focus {
   }
 
   .blocked-result-controls {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .blocked-refinement,
-  .blocked-refinement > summary,
-  .blocked-refinement-form,
+  .blocked-refinement-trigger,
   .blocked-refinement-form .primary-button,
   .blocked-result-links .secondary-button {
     width: 100%;
   }
 
-  .blocked-refinement-form {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .blocked-refinement-form label,
+  .blocked-refinement-trigger,
   .blocked-refinement-form textarea,
   .blocked-refinement-form .primary-button {
     grid-column: 1;
+  }
+
+  .blocked-refinement-trigger,
+  .blocked-refinement-form textarea {
+    grid-row: 1;
+  }
+
+  .blocked-refinement-form .primary-button {
+    grid-row: 2;
+  }
+
+  .blocked-result-controls.has-refinement > .blocked-result-links,
+  .blocked-refinement-form:not([hidden]) + .blocked-result-links {
+    grid-column: 1;
+  }
+
+  .blocked-result-controls.has-refinement > .blocked-result-links {
+    grid-row: 2;
+  }
+
+  .blocked-refinement-form:not([hidden]) + .blocked-result-links {
+    grid-row: 3;
   }
 
   .universal-expectations dl div {

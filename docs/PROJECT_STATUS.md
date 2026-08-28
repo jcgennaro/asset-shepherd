@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-28
-**Current commit:** Aligned blocked-refinement controls (this file is included)
+**Current commit:** Progressive blocked-refinement editor (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -52,13 +52,14 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
-- D068 presentation follow-up: the recoverable blocked-result form no longer places its label,
-  textarea, submit button, diagnostics download, and Gallery action into one unstyled flex row. The
-  expanded refinement control now owns a full-width two-column form with a properly sized textarea
-  and aligned submit action; diagnostics and Gallery remain grouped as secondary controls and stack
-  cleanly at the mobile breakpoint. Live browser inspection of the persisted riding-crop workspace
-  confirms the collapsed and expanded states are aligned. The common gate passes with 177 tests,
-  one opt-in skip, lock validation, Ruff, formatting, and zero Pyright findings.
+- D068 refinement interaction correction: the generic disclosure widget has been removed. The
+  blocked result initially presents one standard, center-aligned **Refine…** button. Activating it
+  removes that button, focuses one full-width 148 px multiline editor, and places **Start refining**
+  in the original action position beside the secondary diagnostics and Gallery controls. The field
+  retains an accessible label without adding another visible title. Live browser inspection of the
+  persisted riding-crop workspace confirms the pre-click and post-click DOM states and the expanded
+  visual layout. The common gate passes with 177 tests, one opt-in skip, lock validation, Ruff,
+  formatting, and zero Pyright findings.
 
 - D068 safe component-selection recovery: a persisted riding-crop pass measured three exact,
   safely removable components but the agent treated uncertainty about the intended survivor as an
