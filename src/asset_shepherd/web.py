@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
-from typing import Annotated, BinaryIO, cast
+from typing import Annotated, BinaryIO, Literal, cast
 from uuid import uuid4
 
 import numpy as np
@@ -287,8 +287,17 @@ class GalleryStatusView:
     tone: str
 
 
-def gallery_status(phase: WorkspacePhase) -> GalleryStatusView:
+def gallery_status(phase: WorkspacePhase, turn_index: int = 0) -> GalleryStatusView:
     """Translate an internal durable phase into concise workflow language."""
+    if turn_index > 0:
+        label, tone = {
+            WorkspacePhase.TARGET_CONFIRMATION: ("Describe", "pending"),
+            WorkspacePhase.APPROVAL: ("Review", "attention"),
+            WorkspacePhase.COMPLETE: ("Ready", "success"),
+            WorkspacePhase.BLOCKED: ("Blocked", "danger"),
+            WorkspacePhase.ERROR: ("Failed", "danger"),
+        }[phase]
+        return GalleryStatusView(f"Step 4.{turn_index} · {label}", tone)
     return {
         WorkspacePhase.TARGET_CONFIRMATION: GalleryStatusView("Step 2 · Describe", "pending"),
         WorkspacePhase.APPROVAL: GalleryStatusView("Step 3 · Review", "attention"),
@@ -2903,7 +2912,11 @@ def create_app(
                 "description": description,
                 "workspace_records": records,
                 "workspace_statuses": {
-                    record.workspace_id: gallery_status(record.phase) for record in records
+                    record.workspace_id: gallery_status(
+                        record.phase,
+                        hosted_store.turn_index(record.workspace_id),
+                    )
+                    for record in records
                 },
                 "new_drafts": new_drafts,
                 "redo_drafts": redo_drafts,
@@ -3023,9 +3036,17 @@ def create_app(
                 )
                 comparison_candidate_ready = workspace.ready_candidate
                 comparison_source_only = False
-        if comparison_scene is None and workspace.source_path.is_file():
+        current_source_path = (
+            runtime_job.source if runtime_job is not None else workspace.source_path
+        )
+        if comparison_scene is None and current_source_path.is_file():
             inspection = runtime_job.inspection if runtime_job is not None else None
-            comparison_scene = _source_scene(workspace.source_path, inspection)
+            comparison_scene = _source_scene(current_source_path, inspection)
+        refine_iteration = runtime_job.turn_index if runtime_job is not None else 0
+        comparison_before_label = f"Iteration {refine_iteration}" if refine_iteration else "Before"
+        comparison_after_label = (
+            f"Iteration {refine_iteration + 1}" if refine_iteration else "After"
+        )
         expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
         if target_draft is not None and target_draft.ready_for_confirmation:
@@ -3073,6 +3094,8 @@ def create_app(
                 "comparison_scene": comparison_scene,
                 "comparison_candidate_ready": comparison_candidate_ready,
                 "comparison_source_only": comparison_source_only,
+                "comparison_before_label": comparison_before_label,
+                "comparison_after_label": comparison_after_label,
                 "result_presentation": (
                     _result_presentation(runtime_job) if runtime_job is not None else None
                 ),
@@ -3118,14 +3141,23 @@ def create_app(
                     runtime_job
                     and runtime_job.agent_orchestrated
                     and runtime_job.turns_remaining > 0
-                    and _has_next_turn_candidate(runtime_job)
+                ),
+                "has_candidate": bool(runtime_job and _has_next_turn_candidate(runtime_job)),
+                "can_retry_iteration": bool(
+                    runtime_job
+                    and runtime_job.agent_orchestrated
+                    and runtime_job.pending_interrupt_id is None
+                    and runtime_job.result is None
+                    and runtime_job.outcome is not None
+                    and runtime_job.outcome.executed_action_ids
                 ),
                 "cannot_repair": cannot_repair,
                 "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
                 "error": error,
                 "active_mode": "conversation",
                 "active_style": workspace.record.asset_name,
-                "hosted_step": "shepherd",
+                "hosted_step": "refine" if refine_iteration else "shepherd",
+                "refine_iteration": refine_iteration,
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -4209,6 +4241,7 @@ def create_app(
         decision: Annotated[str, Form()],
         command_id: Annotated[str, Form()],
         feedback: Annotated[str, Form()] = "",
+        continue_from: Annotated[str, Form()] = "candidate",
     ) -> Response:
         """Accept a hosted result or continue the durable agent loop."""
         try:
@@ -4220,6 +4253,7 @@ def create_app(
                 accepted=decision == "accept",
                 feedback=feedback,
                 command_id=command_id,
+                continuation_source=cast(Literal["INPUT", "CANDIDATE"], continue_from.upper()),
             )
         except HostedWorkspaceError as error:
             try:
@@ -4229,6 +4263,26 @@ def create_app(
             return render_hosted_workspace(request, workspace, str(error), status_code=400)
         if decision == "accept" and request.headers.get("x-asset-shepherd-transition") == "accept":
             return Response(status_code=204, headers={"Cache-Control": "no-store"})
+        return RedirectResponse(
+            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            status_code=303,
+        )
+
+    def retry_hosted_iteration(
+        request: Request,
+        workspace_id: str,
+        command_id: Annotated[str, Form()],
+    ) -> Response:
+        """Resume only the unfinished evidence and packaging portion of one iteration."""
+        try:
+            workspace = require_hosted_workspace(workspace_id)
+            hosted_store.retry_incomplete_turn(workspace, command_id=command_id)
+        except HostedWorkspaceError as error:
+            try:
+                workspace = require_hosted_workspace(workspace_id)
+            except HostedWorkspaceError:
+                return render_hosted_home(request, str(error), status_code=404)
+            return render_hosted_workspace(request, workspace, str(error), status_code=409)
         return RedirectResponse(
             request.url_for("hosted_workspace_page", workspace_id=workspace_id),
             status_code=303,
@@ -4521,6 +4575,12 @@ def create_app(
         review_hosted_result,
         methods=["POST"],
         name="review_hosted_result",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/retry",
+        retry_hosted_iteration,
+        methods=["POST"],
+        name="retry_hosted_iteration",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/source.glb",

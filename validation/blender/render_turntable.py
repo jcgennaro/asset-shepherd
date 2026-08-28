@@ -123,6 +123,11 @@ def main() -> None:
             candidate_objects,
             Vector((reference_maximum.x - candidate_minimum.x + gap, 0.0, 0.0)),
         )
+        # Object transforms do not update ``matrix_world`` immediately in background Blender.
+        # Refresh the dependency graph before deriving the combined bounds; otherwise the
+        # camera frames the two imports at their old overlapping locations while rendering the
+        # candidate at its translated location, clipping the right-hand comparison asset.
+        bpy.context.view_layer.update()
         objects = reference_objects + candidate_objects
     minimum, maximum = _mesh_bounds(objects)
     center = (minimum + maximum) / 2.0

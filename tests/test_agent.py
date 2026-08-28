@@ -128,6 +128,7 @@ def test_strands_approve_interrupt_resume_verifies_and_packages(tmp_path: Path) 
     output = tmp_path / "approve"
     job = _job(output)
     runtime = build_scripted_agent(job)
+    assert runtime.agent.agent_id == "asset-shepherd-source"
 
     interrupted = runtime.start()
     assert interrupted.stop_reason == "interrupt"

@@ -11,7 +11,7 @@ from enum import StrEnum
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
-from typing import BinaryIO, Self, cast
+from typing import BinaryIO, Literal, Self, cast
 from uuid import uuid4
 
 from pydantic import Field, JsonValue, model_validator
@@ -285,12 +285,40 @@ class HostedWorkspaceStore:
             return self._all_records()[:MAX_HOSTED_WORKSPACES]
 
     def source_path(self, workspace_id: str) -> Path | None:
-        """Resolve a gallery source preview without reconstructing its agent runtime."""
+        """Resolve the selected immutable iteration without reconstructing its runtime."""
         try:
-            path = self._record_path(workspace_id).parent / "source.glb"
+            root = self._record_path(workspace_id).parent.resolve(strict=True)
         except HostedWorkspaceError:
             return None
+        path = root / "source.glb"
+        state_path = root / "runtime_state.json"
+        if state_path.is_file():
+            try:
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+                working_source = state.get("working_source")
+                if working_source:
+                    candidate = Path(str(working_source)).resolve(strict=True)
+                    turn_root = (root / "turns").resolve(strict=False)
+                    if candidate != path.resolve(strict=True):
+                        candidate.relative_to(turn_root)
+                    if candidate.suffix.lower() != ".glb":
+                        return None
+                    path = candidate
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                return None
         return path if path.is_file() else None
+
+    def turn_index(self, workspace_id: str) -> int:
+        """Return the durable Refine iteration number without loading a model runtime."""
+        try:
+            state_path = self._record_path(workspace_id).parent / "runtime_state.json"
+            if not state_path.is_file():
+                return 0
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            value = int(state.get("turn_index", 0))
+            return value if value >= 0 else 0
+        except (HostedWorkspaceError, OSError, ValueError, TypeError, json.JSONDecodeError):
+            return 0
 
     def _replacement_root(self, workspace_id: str) -> Path:
         """Resolve an explicitly selected replacement inside the hosted root."""
@@ -1027,7 +1055,11 @@ class HostedWorkspaceStore:
             update={
                 "phase": phase,
                 "pending_interrupt_id": job.pending_interrupt_id,
-                "error": workspace.record.error,
+                "error": (
+                    None
+                    if job.pending_interrupt_id is not None or job.result is not None
+                    else workspace.record.error
+                ),
             }
         )
 
@@ -1273,13 +1305,16 @@ class HostedWorkspaceStore:
         accepted: bool,
         feedback: str,
         command_id: str,
+        continuation_source: Literal["INPUT", "CANDIDATE"] = "CANDIDATE",
     ) -> HostedWorkspace:
         """Durably accept the result or begin a fresh agent-led turn."""
         if _COMMAND_ID.fullmatch(command_id) is None:
             raise HostedWorkspaceError("The result-review command identifier is invalid.")
         with self._lock:
             previous = workspace.record.processed_commands.get(command_id)
-            expected = "RESULT_ACCEPTED" if accepted else "RESULT_CONTINUED"
+            if continuation_source not in {"INPUT", "CANDIDATE"}:
+                raise HostedWorkspaceError("Choose which iteration to refine.")
+            expected = "RESULT_ACCEPTED" if accepted else f"RESULT_CONTINUED:{continuation_source}"
             if previous is not None:
                 if previous == expected:
                     return workspace
@@ -1306,7 +1341,10 @@ class HostedWorkspaceStore:
                 return workspace
             self._reset_activity(workspace, "Reviewing your feedback")
             try:
-                workspace.latest_result = workspace.runtime.continue_after_feedback(feedback)
+                workspace.latest_result = workspace.runtime.continue_after_feedback(
+                    feedback,
+                    continuation_source=continuation_source,
+                )
                 workspace.workflow_result = None
                 if workspace.latest_result.stop_reason != "interrupt":
                     workspace.workflow_result = workspace.runtime.complete(workspace.latest_result)
@@ -1324,7 +1362,71 @@ class HostedWorkspaceStore:
                 workspace.record,
                 "RESULT_FEEDBACK_RECORDED",
                 evidence_refs=(sha256(feedback.strip().encode("utf-8")).hexdigest(),),
-                payload={"turn_index": workspace.runtime.job.turn_index},
+                payload={
+                    "turn_index": workspace.runtime.job.turn_index,
+                    "continued_from": continuation_source,
+                },
+            )
+            self._sync_runtime(workspace)
+            self._record_runtime_events(workspace)
+            self._persist(workspace)
+            return workspace
+
+    def retry_incomplete_turn(
+        self,
+        workspace: HostedWorkspace,
+        *,
+        command_id: str,
+    ) -> HostedWorkspace:
+        """Finish a persisted candidate after a transient post-action interruption."""
+        if _COMMAND_ID.fullmatch(command_id) is None:
+            raise HostedWorkspaceError("The retry command identifier is invalid.")
+        with self._lock:
+            previous = workspace.record.processed_commands.get(command_id)
+            if previous is not None:
+                if previous in {"TURN_RETRY", "TURN_RETRY:COMPLETE"}:
+                    return workspace
+                raise HostedWorkspaceError("This command identifier was used for another action.")
+            if workspace.runtime is None:
+                raise HostedWorkspaceError("The workflow runtime is unavailable.")
+            job = workspace.runtime.job
+            if job.pending_interrupt_id is not None or job.result is not None:
+                raise HostedWorkspaceError("This iteration does not need recovery.")
+            if job.outcome is None or not job.outcome.executed_action_ids:
+                raise HostedWorkspaceError("There is no executed candidate to finish.")
+            processed = {**workspace.record.processed_commands, command_id: "TURN_RETRY"}
+            workspace.record = workspace.record.model_copy(
+                update={"processed_commands": processed, "error": None}
+            )
+            workspace.record = self._append_event(
+                workspace.record,
+                "INCOMPLETE_TURN_RETRIED",
+                payload={"turn_index": job.turn_index},
+            )
+            self._persist(workspace)
+            self._reset_activity(workspace, "Finishing this iteration")
+            try:
+                workspace.latest_result = workspace.runtime.continue_incomplete_turn()
+                workspace.workflow_result = None
+                if workspace.latest_result.stop_reason != "interrupt":
+                    workspace.workflow_result = workspace.runtime.complete(workspace.latest_result)
+            except Exception as error:
+                workspace.record = workspace.record.model_copy(
+                    update={"phase": WorkspacePhase.ERROR, "error": str(error)}
+                )
+                self._finish_activity(workspace, "ERROR")
+                self._persist(workspace)
+                return workspace
+            self._finish_activity(
+                workspace,
+                "WAITING" if workspace.latest_result.stop_reason == "interrupt" else "COMPLETE",
+            )
+            processed = {
+                **workspace.record.processed_commands,
+                command_id: "TURN_RETRY:COMPLETE",
+            }
+            workspace.record = workspace.record.model_copy(
+                update={"processed_commands": processed, "error": None}
             )
             self._sync_runtime(workspace)
             self._record_runtime_events(workspace)

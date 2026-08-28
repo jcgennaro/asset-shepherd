@@ -1,6 +1,9 @@
-<figure class="model-comparison{% if comparison_source_only %} source-only{% elif not comparison_candidate_ready %} candidate-rejected{% endif %}" data-model-comparison data-before-label="Before" data-after-label="{% if comparison_candidate_ready %}After{% else %}Candidate not ready{% endif %}">
+{% set before_label = comparison_before_label|default('Before') %}
+{% set ready_after_label = comparison_after_label|default('After') %}
+{% set after_label = ready_after_label if comparison_candidate_ready else 'Candidate not ready' %}
+<figure class="model-comparison{% if comparison_source_only %} source-only{% elif not comparison_candidate_ready %} candidate-rejected{% endif %}" data-model-comparison data-before-label="{{ before_label }}" data-after-label="{{ after_label }}">
   <header class="comparison-header{% if comparison_source_only %} source-only{% endif %}">
-    {% if not comparison_source_only %}<h3>{% if comparison_candidate_ready %}Before and after{% else %}Before and rejected candidate{% endif %}</h3>{% endif %}
+    {% if not comparison_source_only %}<h3>{% if comparison_candidate_ready %}{{ before_label }} and {{ ready_after_label }}{% else %}{{ before_label }} and rejected candidate{% endif %}</h3>{% endif %}
     <div class="comparison-tools" aria-label="{% if comparison_source_only %}Uploaded model{% else %}Comparison view{% endif %} controls">
       <div class="comparison-fit-tools" role="group" aria-label="Fit view">
         {% if comparison_source_only %}
@@ -13,8 +16,8 @@
             <svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
           </span>
           <button type="button" class="active" data-comparison-fit="both" aria-pressed="true" title="Fit both models to the window">Both</button>
-          <button type="button" data-comparison-fit="before" aria-pressed="false" title="Center and fit the before model">Before</button>
-          <button type="button" data-comparison-fit="after" aria-pressed="false" title="Center and fit the {% if comparison_candidate_ready %}after model{% else %}rejected candidate{% endif %}">{% if comparison_candidate_ready %}After{% else %}Candidate{% endif %}</button>
+          <button type="button" data-comparison-fit="before" aria-pressed="false" title="Center and fit {{ before_label }}">{{ before_label }}</button>
+          <button type="button" data-comparison-fit="after" aria-pressed="false" title="Center and fit {% if comparison_candidate_ready %}{{ ready_after_label }}{% else %}the rejected candidate{% endif %}">{% if comparison_candidate_ready %}{{ ready_after_label }}{% else %}Candidate{% endif %}</button>
         {% endif %}
       </div>
       <button type="button" class="comparison-icon-button" data-comparison-axes aria-pressed="false" title="Show metric X, Y, and Z axes with about five major ticks per axis">

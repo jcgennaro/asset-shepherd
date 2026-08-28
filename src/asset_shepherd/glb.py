@@ -234,7 +234,7 @@ def iter_world_matrices(gltf: GLTF2) -> Iterator[tuple[int, FloatArray]]:
 
 
 def world_bounds(gltf: GLTF2) -> Bounds:
-    """Compute active-scene bounds by transforming every POSITION accessor."""
+    """Compute active-scene bounds from positions referenced by surviving primitives."""
     minimum = np.full(3, np.inf, dtype=np.float64)
     maximum = np.full(3, -np.inf, dtype=np.float64)
     found_positions = False
@@ -249,6 +249,21 @@ def world_bounds(gltf: GLTF2) -> Bounds:
             if not isinstance(position_index, int):
                 raise GlbError("Mesh primitive has no POSITION accessor")
             positions = accessor_array(gltf, position_index).astype(np.float64)
+            indices_index = cast(object, primitive.indices)
+            if indices_index is not None:
+                if not isinstance(indices_index, int):
+                    raise GlbError("Mesh primitive has an invalid index accessor")
+                indices = cast(
+                    npt.NDArray[np.int64],
+                    np.asarray(accessor_array(gltf, indices_index), dtype=np.int64).reshape(-1),
+                )
+                if len(indices) == 0:
+                    continue
+                if np.any(indices < 0) or np.any(indices >= len(positions)):
+                    raise GlbError("Mesh primitive contains an out-of-range vertex index")
+                positions = positions[indices]
+            if len(positions) == 0:
+                continue
             homogeneous = np.column_stack((positions, np.ones(len(positions), dtype=np.float64)))
             transformed = (world @ homogeneous.T).T[:, :3]
             minimum = np.minimum(minimum, transformed.min(axis=0))

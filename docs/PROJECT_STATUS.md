@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-27
-**Current commit:** Agent-selected exact component removal (this file is included)
+**Current commit:** Explicit survivor selection and looping Refine step (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -43,13 +43,33 @@ and requested scale, rotation, grounding, pivot, and naming components; determin
 none. An
 executed action cannot verify until the agent compares recorded source and candidate renders.
 
-D038 makes that action cycle repeatable rather than adding a special second pass. User feedback
-archives the completed turn, promotes its candidate to the next immutable input, and invokes the
-same stateful agent with fresh sensing and authorization. Remaining D036 work is representative
+D038 and D063 make that action cycle repeatable rather than adding a special second pass. After
+Shepherd, the user chooses the current input or candidate as Iteration 1; Refine archives each pass,
+shows 4.1/4.2/4.3 in the rail, and invokes the same workspace-scoped agent with fresh sensing and
+authorization. Remaining D036 work is representative
 ambiguous-orientation and changed-goal live evaluation. Deterministic code remains the measurement,
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D063 Refine-loop checkpoint: the first Shepherd result now offers an explicit survivor choice
+  between its input and candidate. The selected immutable GLB becomes Iteration 1; subsequent
+  passes appear as 4.1, 4.2, and later Refine sub-items and record selection plus source hash in the
+  append-only turn chain. The hosted source route and viewer use that selected iteration rather
+  than the original upload. Indexed world bounds now ignore deleted-but-unreferenced tuples while
+  retaining them as a separate cleanup finding. Trimesh verification independently measures only
+  face-referenced geometry, so exact component removal verifies without conflating retained binary
+  payload with renderable bounds. Prompt v11 makes post-deletion bounds and origin evidence stale,
+  requires candidate-relative reassessment, and reserves any pivot correction for a fresh approved
+  Refine proposal. A stable per-workspace agent ID restores interrupts across candidate filename
+  changes, and an interrupted post-action pass exposes a non-mutating Finish-this-iteration recovery
+  action. Browser acceptance on the persisted riding crop shows one component, a 35.4 × 27.1 ×
+  97.5 cm box, the still-independent origin, and Step 4.1 Iteration 1. The interrupted approved
+  cleanup then finished without repeating mutation, independently verified, packaged, and rendered
+  an Iteration 1/Iteration 2 comparison containing only the surviving crop. Blender comparison
+  framing now refreshes translated world matrices before camera fitting, eliminating the clipped
+  evidence that had blocked recovery. The common gate passes with 173 tests, one opt-in skip, lock
+  validation, Ruff, formatting, and zero Pyright findings.
 
 - D062 component-review presentation follow-up: the source viewport now keeps every detected
   component's live wireframe bounds and C-label visible by default, so the C1/C2/C3 choices map

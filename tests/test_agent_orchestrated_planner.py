@@ -772,6 +772,40 @@ def test_conversation_loop_is_not_hard_coded_to_a_second_turn(tmp_path: Path) ->
     assert restored.accepted is True
 
 
+def test_refinement_can_rework_the_current_iteration_instead_of_promoting_candidate(
+    tmp_path: Path,
+) -> None:
+    """The explicit survivor choice is durable even when the user selects the turn input."""
+    output = tmp_path / "output"
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+        max_turns=3,
+    )
+    _complete_accept_turn(job, "input-choice")
+
+    record = job.begin_next_turn(
+        "Reconsider the current iteration with a different pivot.",
+        continuation_source="INPUT",
+    )
+
+    assert record.continuation_source == "INPUT"
+    assert record.next_source_sha256 == record.source_sha256
+    assert job.source == CLEAN_PATH.resolve()
+    restored = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    assert restored.source == CLEAN_PATH.resolve()
+    assert restored.prior_turns == (record,)
+
+
 def test_display_name_only_action_packages_without_visual_reassessment(tmp_path: Path) -> None:
     """Index-preserving names use exact inventory checks instead of a fake visual gate."""
     output = tmp_path / "output"

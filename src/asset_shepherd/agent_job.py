@@ -96,7 +96,7 @@ def _write_json(path: Path, value: object) -> None:
 
 GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
     "schema_version": 1,
-    "render_contract_version": 4,
+    "render_contract_version": 5,
     "source_coordinate_system": "glTF right-handed",
     "source_up": "+Y",
     "source_forward": "+Z",
@@ -264,12 +264,14 @@ class AgentJob:
         if working_source is not None:
             restored_source = Path(str(working_source)).resolve(strict=True)
             turn_root = (self.output_dir.parent / "turns").resolve(strict=False)
-            try:
-                restored_source.relative_to(turn_root)
-            except ValueError as error:
-                raise AgentWorkflowError(
-                    "Persisted working source is outside turn history"
-                ) from error
+            original_source = self.original_source.resolve(strict=True)
+            if restored_source != original_source:
+                try:
+                    restored_source.relative_to(turn_root)
+                except ValueError as error:
+                    raise AgentWorkflowError(
+                        "Persisted working source is outside the immutable iteration history"
+                    ) from error
             if restored_source.suffix.lower() != ".glb":
                 raise AgentWorkflowError("Persisted working source is not a GLB")
             self.source = restored_source
@@ -438,8 +440,13 @@ class AgentJob:
         """Return how many additional user-requested repair turns remain."""
         return max(0, self.max_turns - self.turn_index - 1)
 
-    def begin_next_turn(self, feedback: str) -> ConversationTurnRecord:
-        """Archive the completed turn and make its candidate the next immutable input."""
+    def begin_next_turn(
+        self,
+        feedback: str,
+        *,
+        continuation_source: Literal["INPUT", "CANDIDATE"] = "CANDIDATE",
+    ) -> ConversationTurnRecord:
+        """Archive one completed turn and promote the selected immutable iteration."""
         feedback = feedback.strip()
         if not self.agent_orchestrated:
             raise AgentWorkflowError("Multi-turn repair requires agent-orchestrated mode")
@@ -459,11 +466,14 @@ class AgentJob:
             or self.selected_plan is None
         ):
             raise AgentWorkflowError("The current turn must finish before another can begin")
+        if continuation_source not in {"INPUT", "CANDIDATE"}:
+            raise AgentWorkflowError("Choose the current iteration or its candidate")
+        current_source = self.source.resolve(strict=True)
         repaired = self.output_dir / "repaired.glb"
         failed_candidate = self.output_dir / "candidate.glb"
-        next_source = repaired if repaired.is_file() else failed_candidate
-        if not next_source.is_file():
-            raise AgentWorkflowError("The completed turn has no candidate for another pass")
+        candidate_source = repaired if repaired.is_file() else failed_candidate
+        if continuation_source == "CANDIDATE" and not candidate_source.is_file():
+            raise AgentWorkflowError("The completed turn has no candidate to refine")
         result_zip = self.output_dir / "result.zip"
         if not result_zip.is_file() or self.provenance.output_sha256 is None:
             raise AgentWorkflowError("The completed turn is missing its evidence package")
@@ -483,6 +493,12 @@ class AgentJob:
             verification_state=self.last_verification.state,
             result_zip_sha256=sha256(result_zip.read_bytes()).hexdigest(),
             continuation_feedback=feedback,
+            continuation_source=continuation_source,
+            next_source_sha256=(
+                self.provenance.output_sha256
+                if continuation_source == "CANDIDATE"
+                else self.inspection.package.file_sha256
+            ),
         )
         turn_root = self.output_dir.parent / "turns" / f"turn-{self.turn_index:03d}"
         if turn_root.exists():
@@ -497,10 +513,14 @@ class AgentJob:
         evidence_root = self.output_dir.parent / "agent_evidence"
         if evidence_root.is_dir():
             shutil.move(str(evidence_root), str(turn_root / "agent_evidence"))
-        archived_source = archive_output / next_source.name
+        next_source = (
+            archive_output / candidate_source.name
+            if continuation_source == "CANDIDATE"
+            else current_source
+        )
         self.prior_turns = (*self.prior_turns, record)
         self.turn_index += 1
-        self.source = archived_source.resolve(strict=True)
+        self.source = next_source.resolve(strict=True)
         self.started_at = None
         self.inspection = None
         self.full_plan = None

@@ -1,5 +1,6 @@
 """D019 acceptance tests for objective preflight and durable hosted job state."""
 
+import json
 from io import BytesIO
 from pathlib import Path
 
@@ -55,6 +56,22 @@ def test_preflight_measures_source_without_policy_findings_or_plan(tmp_path: Pat
     assert not workspace.output_dir.exists()
     assert not (workspace.root / "profile.json").exists()
     assert not (workspace.root / "intent.json").exists()
+
+
+def test_source_route_resolves_the_selected_immutable_iteration(tmp_path: Path) -> None:
+    """A Refine viewport never falls back to the workspace's original upload."""
+    store = HostedWorkspaceStore(tmp_path / "hosted", _family())
+    workspace = _create(store)
+    selected = workspace.root / "turns" / "turn-000" / "output" / "repaired.glb"
+    selected.parent.mkdir(parents=True)
+    selected.write_bytes(CLEAN_PATH.read_bytes())
+    (workspace.root / "runtime_state.json").write_text(
+        json.dumps({"working_source": str(selected), "turn_index": 1}),
+        encoding="utf-8",
+    )
+
+    assert store.source_path(workspace.record.workspace_id) == selected.resolve()
+    assert store.turn_index(workspace.record.workspace_id) == 1
 
 
 def test_gallery_limit_requires_an_explicit_replacement(tmp_path: Path) -> None:

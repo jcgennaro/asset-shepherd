@@ -109,6 +109,10 @@ flowchart LR
     H -->|reject| J
     X --> A
     V --> K[Package result or diagnostics]
+    K --> Q{User accepts?}
+    Q -->|yes| Z[Download]
+    Q -->|refine| T[Choose current input or candidate]
+    T --> A
 ```
 
 The loop returns to sensing after every mutation. Verification is a gate near the end of a candidate
@@ -116,11 +120,20 @@ turn, not a substitute for agent reassessment.
 
 The product navigation has two levels. **Gallery** selects a saved workspace or starts a new one;
 it is not a numbered workflow step. A selected workspace exposes **1 Upload, 2 Describe, 3
-Shepherd**. From Describe onward, the immutable source remains visible with its measured wireframe
-world bounds and optional metric axes or banana reference. During Shepherd tool work, that source
-context remains visible and orbits slowly unless reduced motion is requested. Target agreement,
-sensing, proposals, authorization, reassessment, verification, and download all remain iterative
-states inside Shepherd rather than becoming additional top-level pages.
+Shepherd, 4 Refine**. Shepherd creates the first candidate. Before entering Refine, the user chooses
+whether the current input or candidate survives as Iteration 1. Refine is a visible loop whose
+sub-items are numbered 4.1, 4.2, and so on; each pass may again promote either side. From Describe
+onward, the selected immutable iteration remains visible with its measured wireframe world bounds
+and optional metric axes or banana reference. During tool work, that context remains visible and
+orbits slowly unless reduced motion is requested. Download remains an outcome rather than a fifth
+step.
+
+World bounds are calculated from positions actually referenced by surviving primitive indices, not
+from every tuple stored in a POSITION accessor. Therefore exact component deletion immediately
+changes the candidate bounds and viewer framing even when the approved index-only edit deliberately
+leaves unreferenced tuples for a separate cleanup decision. The file origin is shown independently.
+Removing components never silently recenters it; the agent may propose a later pivot change only
+after fresh sensing in Refine and that proposal requires its own approval.
 
 ### 1. Register the source
 

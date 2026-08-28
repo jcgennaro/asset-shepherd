@@ -485,6 +485,32 @@ a.rail-primary-option:focus-visible,
   padding-block: 7px;
 }
 
+.rail-workflow .hosted-flow .refine-step {
+  grid-template-rows: auto auto;
+}
+
+.rail-workflow .refine-iterations {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0 15px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+
+.rail-workflow .refine-iterations li {
+  min-height: 36px;
+  padding: 5px 8px;
+}
+
+.rail-workflow .refine-iterations li span {
+  width: auto;
+  min-width: 38px;
+  border: 0;
+  border-radius: 0;
+  font-size: 0.82rem;
+}
+
 .intent-rail li {
   display: grid;
   min-height: 54px;

@@ -785,10 +785,19 @@ The hosted final experience should provide:
 7. Before and after 3D preview, verification summary, and downloadable result ZIP.
 8. Durable refresh, application-restart, and agent-runtime-restart resume behavior.
 
-The authoritative public flow is **Assets → Upload → Describe → Shepherd**. Upload performs only
-container validation and objective preflight. Description then supplies the minimum target context.
-Target agreement, inspection, action review, repair, verification, feedback, and repeat turns all
-remain inside Shepherd; they are not separate navigation modes.
+The authoritative public flow is **Gallery → Upload → Describe → Shepherd → Refine**. Gallery is
+workspace selection, not a numbered step. Upload performs only container validation and objective
+preflight. Description then supplies the minimum target context. Shepherd produces the first
+assessed candidate. The user selects either that candidate or its input as Iteration 1; Refine then
+loops as 4.1, 4.2, and so on, with a fresh assessment and approval boundary every time. Download is
+an outcome, not another workflow step.
+
+Every Refine screen and source route must use the selected immutable iteration, never silently fall
+back to the original upload. Bounds, component inventory, and origin relationships must be measured
+from geometry referenced by that iteration's surviving primitives. Unreferenced tuples may remain
+as a separately reviewable cleanup finding, but cannot inflate framing or bounds. A component
+deletion does not authorize pivot movement: it invalidates earlier bounds/pivot evidence and any
+later pivot change requires a fresh agent proposal and explicit approval.
 
 Every default screen has one global workspace title. It may add at most one agent-authored
 informative sentence for the current decision. Do not stack eyebrow labels, step counts, section

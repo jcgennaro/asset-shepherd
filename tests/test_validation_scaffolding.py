@@ -135,6 +135,7 @@ def test_blender_evidence_script_is_valid_python() -> None:
         script = blender_root / filename
         compile(script.read_text(encoding="utf-8"), str(script), "exec")
     turntable = (blender_root / "render_turntable.py").read_text(encoding="utf-8")
+    assert "bpy.context.view_layer.update()" in turntable
     assert '"front": Vector((0.0, -1.0, 0.0))' in turntable
     assert '"right": Vector((-1.0, 0.0, 0.0))' in turntable
     assert '"back": Vector((0.0, 1.0, 0.0))' in turntable

@@ -99,6 +99,11 @@
               <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button>Approve <span aria-hidden="true">→</span></button>
             {% endif %}
           </form>
+        {% elif can_retry_iteration %}
+          <form action="{{ url_for('retry_hosted_iteration', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
+            <input type="hidden" name="command_id" value="{{ command_id }}">
+            <button type="submit" class="primary-button" data-submit-button>Finish this iteration <span aria-hidden="true">→</span></button>
+          </form>
         {% endif %}
 
         {% if comparison_scene %}
@@ -145,9 +150,14 @@
                     <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
                       <input type="hidden" name="command_id" value="{{ command_id }}">
                       <input type="hidden" name="decision" value="continue">
+                      <label for="hosted-refine-source">Continue with</label>
+                      <select id="hosted-refine-source" name="continue_from">
+                        {% if has_candidate %}<option value="candidate">Candidate</option>{% endif %}
+                        <option value="input">Current iteration</option>
+                      </select>
                       <label for="hosted-repair-feedback">What still needs attention?</label>
                       <textarea id="hosted-repair-feedback" name="feedback" maxlength="1000" required></textarea>
-                      <button type="submit" class="secondary-button" data-submit-button>Try another pass</button>
+                      <button type="submit" class="secondary-button" data-submit-button>Start refinement</button>
                     </form>
                   </details>
                 {% elif job.agent_orchestrated and turns_remaining <= 0 %}

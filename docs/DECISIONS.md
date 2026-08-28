@@ -4,6 +4,60 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D063 — Promote an explicit survivor into a looping Refine step
+
+**Date:** 2026-08-27
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition
+
+**Context**
+
+The riding-crop component-removal case exposed three coupled failures. A later feedback turn
+correctly inspected the prior candidate internally, but the browser source route still served the
+original three-component upload. World bounds included deleted-but-unreferenced POSITION tuples,
+so the candidate box and origin comparison remained stale. After an application restart, the
+Strands agent ID changed from `source` to the candidate filename stem and could no longer resume the
+saved interrupt. The product also hid repeated turns inside Shepherd, leaving no explicit decision
+about which iteration should continue.
+
+**Decision**
+
+Keep **3 Shepherd** as the first complete assessment/candidate turn. At its result, let the user
+choose either the current input or candidate as the surviving immutable **Iteration 1**. Add **4
+Refine** to the rail and render loop passes as 4.1, 4.2, 4.3, and so on. Each pass archives its full
+evidence, records which side survived and its hash, re-inspects that GLB, and requires a fresh
+proposal and approval for any consequential change. A failed candidate remains selectable for
+human override; a missing candidate still permits reworking the input.
+
+Serve the selected iteration everywhere a source model is requested. Compute usable world bounds
+from indexed positions actually referenced by surviving primitives. Keep deliberately unreferenced
+tuples visible as a separate cleanup finding, but exclude them from framing and origin comparisons.
+After component deletion, candidate reassessment must use the surviving bounds. If the origin is
+now unsuitable, the agent reports it as focused follow-up; a selected candidate is freshly sensed
+in Refine and any pivot move is separately proposed and approved.
+
+Use one stable agent ID inside each workspace-scoped session so filename changes cannot break
+interrupt restoration. If mutation completed but a transient provider/evidence failure interrupted
+the remainder of the turn, expose **Finish this iteration**; it resumes only rendering,
+reassessment, verification, and packaging and cannot repeat the mutation.
+
+**Evidence and consequences**
+
+The persisted riding-crop workspace now resolves its source route to turn 0's repaired GLB, renders
+one surviving component, and measures referenced bounds of approximately 35.4 × 27.1 × 97.5 cm
+instead of the original three-body 97.1 × 74.4 × 97.5 cm box. Its origin remains separately visible
+outside the surviving bounds, correctly presenting the next agent decision. The rail shows Refine
+and 4.1 Iteration 1. Unit coverage proves referenced-only component bounds, explicit input
+continuation and restart restoration, selected-source routing, Step 4 gallery status, prompt
+version 11, and a stable agent ID. Existing component removal remains index-only; this decision
+does not authorize automatic pivot movement or arbitrary geometry deletion. The persisted approved
+cleanup also recovered through visual reassessment, independent verification, and packaging after
+comparison framing was corrected to refresh translated Blender world matrices before camera fit.
+
 ### D062 — Add agent-selected exact component removal
 
 **Date:** 2026-08-27

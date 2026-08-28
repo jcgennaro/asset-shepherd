@@ -8,7 +8,7 @@ from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
     AGENT_SYSTEM_PROMPT_V9,
-    AGENT_SYSTEM_PROMPT_V10,
+    AGENT_SYSTEM_PROMPT_V11,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -51,8 +51,8 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
 
 def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 10
-    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V10
+    assert AGENT_PROMPT_VERSION == 11
+    assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V11
     assert "source +Y" in AGENT_SYSTEM_PROMPT_V9
     assert "Do not request no-op" in AGENT_SYSTEM_PROMPT_V9
     assert "render_candidate_views_for_job" in AGENT_SYSTEM_PROMPT_V9
@@ -76,11 +76,13 @@ def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
         AGENT_SYSTEM_PROMPT_V9.split()
     )
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V9
-    assert "remove_component_ids" in AGENT_SYSTEM_PROMPT_V10
-    assert "never deletion authority" in AGENT_SYSTEM_PROMPT_V10
-    assert "keep-largest or remove-small heuristics" in AGENT_SYSTEM_PROMPT_V10
-    assert "accept, reject, or comment on each proposed removal" in AGENT_SYSTEM_PROMPT_V10
-    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V10
+    assert "remove_component_ids" in AGENT_SYSTEM_PROMPT_V11
+    assert "never deletion authority" in AGENT_SYSTEM_PROMPT_V11
+    assert "keep-largest or remove-small heuristics" in AGENT_SYSTEM_PROMPT_V11
+    assert "accept, reject, or comment on each proposed removal" in AGENT_SYSTEM_PROMPT_V11
+    assert "pre-removal bound and pivot comparison as stale" in AGENT_SYSTEM_PROMPT_V11
+    assert "user choose either the current input" in AGENT_SYSTEM_PROMPT_V11
+    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V11
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

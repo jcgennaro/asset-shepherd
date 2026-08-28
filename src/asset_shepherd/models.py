@@ -836,6 +836,8 @@ class ConversationTurnRecord(ContractModel):
     verification_state: VerificationState
     result_zip_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
     continuation_feedback: Annotated[str, Field(min_length=1, max_length=1000)]
+    continuation_source: Literal["INPUT", "CANDIDATE"] = "CANDIDATE"
+    next_source_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
 
 
 class PlanSelection(ContractModel):
@@ -1168,7 +1170,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] = 10
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] = 11
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

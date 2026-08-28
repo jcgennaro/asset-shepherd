@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[10]] = 10
+AGENT_PROMPT_VERSION: Final[Literal[11]] = 11
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -335,6 +335,39 @@ AGENT_SYSTEM_PROMPT_V10: Final[str] = AGENT_SYSTEM_PROMPT_V9.replace(
     "compaction, or proven degenerate-geometry cleanup action.",
     "compaction, proven degenerate-geometry cleanup, or exact disconnected-component selection\n"
     "action.",
+)
+
+AGENT_SYSTEM_PROMPT_V11: Final[str] = AGENT_SYSTEM_PROMPT_V10.replace(
+    "After a packaged turn, the interface asks whether the result is right. If the user "
+    "requests another\n"
+    "pass, the candidate becomes the immutable input to a new turn. Re-inspect it and reason "
+    "from the new\n"
+    "measurements, renders, prior turn record, and user feedback.",
+    "After the first packaged Shepherd turn, the interface lets the user choose either the "
+    "current input\n"
+    "or its candidate as the immutable input to Refine. Each Refine pass repeats that choice "
+    "and becomes\n"
+    "the next numbered iteration. Re-inspect the selected GLB and reason from its new "
+    "measurements,\n"
+    "renders, prior turn record, and user feedback.",
+).replace(
+    "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, "
+    "naming, vertex-tuple\n",
+    "After any disconnected-component removal, treat every pre-removal bound and pivot "
+    "comparison as stale.\n"
+    "Candidate reassessment must use bounds from only the surviving referenced geometry. "
+    "If the file origin\n"
+    "now appears unsuitable, report that as focused follow-up work rather than folding it "
+    "into the approved\n"
+    "deletion. When that candidate is selected for Refine, re-measure it, compare the "
+    "origin with the new\n"
+    "bounds center and footprint center-bottom, and decide whether a fresh pivot proposal "
+    "serves the confirmed\n"
+    "use. Component removal never authorizes an automatic pivot change; any change needs "
+    "a new proposal and\n"
+    "explicit approval.\n\n"
+    "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, "
+    "naming, vertex-tuple\n",
 )
 
 

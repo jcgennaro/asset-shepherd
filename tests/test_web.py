@@ -95,6 +95,13 @@ def test_gallery_status_uses_workflow_language_and_accessible_tone(
     assert status.tone == tone
 
 
+def test_gallery_status_locates_refinement_iterations() -> None:
+    """A saved refinement reports its exact Step 4 iteration in the gallery."""
+    status = gallery_status(WorkspacePhase.APPROVAL, 2)
+    assert status.label == "Step 4.2 · Review"
+    assert status.tone == "attention"
+
+
 def _draft_intent(
     client: TestClient,
     *,
@@ -294,19 +301,20 @@ def test_how_it_works_stays_in_the_flow_rail_and_explains_the_product(
     assert 'aria-label="Workflow steps"' in upload.text
     assert upload.text.index(">Upload</strong>") < upload.text.index(">Describe</strong>")
     assert upload.text.index(">Describe</strong>") < upload.text.index(">Shepherd</strong>")
+    assert upload.text.index(">Shepherd</strong>") < upload.text.index(">Refine</strong>")
 
     help_page = client.get("/how-it-works")
     assert help_page.status_code == 200
     assert "<title>Asset Shepherd -- How it works</title>" in help_page.text
     assert (
-        "Upload the GLB, describe the intended result, and review each change with the agent."
-        in help_page.text
+        "Upload the GLB, describe the intended result, and keep the best iteration "
+        "as you work with the agent." in help_page.text
     )
     assert "Upload and describe" in help_page.text
     assert "Review what we found" in help_page.text
+    assert "Refine if needed" in help_page.text
     assert "Download the result" in help_page.text
-    assert len(re.findall(r"<span>0[1-3]</span>", help_page.text)) == 3
-    assert "<span>04</span>" not in help_page.text
+    assert len(re.findall(r"<span>0[1-4]</span>", help_page.text)) == 4
     assert "Current scope" not in help_page.text
     assert "Version 1" not in help_page.text
     assert "What can Asset Shepherd repair?" not in help_page.text

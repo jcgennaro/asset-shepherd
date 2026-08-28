@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 import trimesh
 from pydantic import JsonValue
 from pygltflib import GLTF2
@@ -68,6 +69,32 @@ def _check(
         expected=expected,
         actual=actual,
     )
+
+
+def _trimesh_referenced_bounds(scene: trimesh.Scene) -> np.ndarray | None:
+    """Measure only face-referenced vertices through Trimesh's independent scene loader."""
+    minimum = np.full(3, np.inf, dtype=np.float64)
+    maximum = np.full(3, -np.inf, dtype=np.float64)
+    found = False
+    for node_name in cast(list[str], scene.graph.nodes_geometry):
+        raw_transform, geometry_name = cast(tuple[object, str], scene.graph[node_name])
+        geometry = cast(trimesh.Trimesh, scene.geometry[geometry_name])
+        vertices = np.asarray(cast(npt.ArrayLike, geometry.vertices), dtype=np.float64)
+        faces = np.asarray(cast(npt.ArrayLike, geometry.faces), dtype=np.int64)
+        if not len(vertices) or not faces.size:
+            continue
+        referenced = np.unique(faces.reshape(-1))
+        if np.any(referenced < 0) or np.any(referenced >= len(vertices)):
+            return None
+        homogeneous = np.column_stack(
+            (vertices[referenced], np.ones(len(referenced), dtype=np.float64))
+        )
+        transform = np.asarray(cast(npt.ArrayLike, raw_transform), dtype=np.float64)
+        transformed = (transform @ homogeneous.T).T[:, :3]
+        minimum = np.minimum(minimum, transformed.min(axis=0))
+        maximum = np.maximum(maximum, transformed.max(axis=0))
+        found = True
+    return np.asarray([minimum, maximum]) if found else None
 
 
 def _status_check(
@@ -939,7 +966,7 @@ def verify_repair(
         )
         try:
             independent = trimesh.load_scene(candidate, process=False)
-            independent_bounds = independent.bounds
+            independent_bounds = _trimesh_referenced_bounds(independent)
             independent_matches = independent_bounds is not None and np.allclose(
                 independent_bounds,
                 deterministic_bounds,

@@ -70,16 +70,16 @@ and animation remain external work. This does not add those repair domains.
 Former `/stories/{role}` bookmarks redirect to `/`. Audience modes are no longer a primary product
 choice. Internally retained presentation labels do not affect policy or deterministic behavior.
 
-The hosted left pane is a compact four-step orientation rail: **Assets → Upload → Describe →
-Shepherd**. Assets selects a new slot or resumes one. Describe and Upload each contain exactly one
-task. Target agreement and inspection are not separate navigation modes: Shepherd owns both, plus
-the checklist, exact actions, approval, repair, verification, user feedback, and every subsequent
-repair turn. The historical form-led routes remain available only as an offline acceptance harness;
-the public root redirects to the hosted gallery.
+The hosted left pane separates **Gallery** from the numbered workflow: **1 Upload → 2 Describe → 3
+Shepherd → 4 Refine**. Gallery selects a new slot or resumes one. Describe and Upload each contain
+exactly one task. Shepherd produces the first candidate. The user then selects which side survives
+as Iteration 1; Refine shows 4.1, 4.2, and later loop passes as nested rail items. The historical
+form-led routes remain available only as an offline acceptance harness; the public root redirects
+to the hosted gallery.
 
 The persistent question-mark action opens a task-oriented **How it works** page. It presents only
-three steps: **Upload and describe**, **Review what we found**, and **Download the result**, plus one
-start action. Release numbers, roadmap framing, internal tool or provenance terminology, and a
+four steps: **Upload and describe**, **Review what we found**, **Refine if needed**, and **Download
+the result**, plus one start action. Release numbers, roadmap framing, internal tool or provenance terminology, and a
 generic repair-scope inventory do not appear there. A limitation belongs in the active workflow
 only when the particular asset or intended result makes it relevant.
 

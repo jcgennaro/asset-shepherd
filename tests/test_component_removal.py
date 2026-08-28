@@ -28,7 +28,7 @@ from pygltflib import (
 
 from asset_shepherd.agent_job import AgentJob
 from asset_shepherd.fixtures import fixture_profile
-from asset_shepherd.glb import save_glb
+from asset_shepherd.glb import load_glb, save_glb, world_bounds
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     AgentDisposition,
@@ -198,10 +198,13 @@ def test_exact_components_can_be_approved_removed_and_verified(tmp_path: Path) -
         provenance,
     )
     repaired = inspect_asset(candidate, profile)
+    repaired_bounds = world_bounds(load_glb(candidate))
 
     assert repaired.geometry is not None
     assert repaired.geometry.triangle_count == 4
     assert repaired.geometry.vertex_count == 12
+    assert repaired_bounds.minimum.tolist() == [0.0, 0.0, 0.0]
+    assert repaired_bounds.maximum.tolist() == [1.0, 1.0, 1.0]
     assert repaired.diagnostics is not None
     repaired_primitive = repaired.diagnostics.primitives[0]
     assert repaired_primitive.virtual_weld_connected_component_count == 1
@@ -212,7 +215,11 @@ def test_exact_components_can_be_approved_removed_and_verified(tmp_path: Path) -
         if check.code == "DISCONNECTED_COMPONENT_REMOVAL_CONFIRMED"
     )
     assert confirmation.status == "PASS"
-    assert all(check.status != "FAIL" for check in verification.checks)
+    assert all(check.status != "FAIL" for check in verification.checks), [
+        (check.code, check.expected, check.actual)
+        for check in verification.checks
+        if check.status == "FAIL"
+    ]
 
 
 def test_component_specific_feedback_reopens_planning_without_mutation(tmp_path: Path) -> None:
