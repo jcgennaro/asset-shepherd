@@ -229,6 +229,7 @@ class SourceSceneView:
     axes: tuple[MetricAxisView, ...]
     client_data: dict[str, JsonValue]
     component_boxes: tuple[ComponentBoundsView, ...] = ()
+    proposed_origin_m: tuple[float, float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -2575,6 +2576,8 @@ def _comparison_scene(source_path: Path, candidate_path: Path) -> ComparisonScen
 def _source_scene(
     source_path: Path,
     inspection: InspectionResult | None = None,
+    *,
+    proposed_origin_m: tuple[float, float, float] | None = None,
 ) -> SourceSceneView:
     """Measure and frame one uploaded source asset without mutating it."""
     gltf = load_glb(source_path)
@@ -2664,6 +2667,8 @@ def _source_scene(
                         )
                     )
     client_data: dict[str, JsonValue] = {"before": client_bounds, "both": client_bounds}
+    if proposed_origin_m is not None:
+        client_data["proposedOrigin"] = cast(JsonValue, list(proposed_origin_m))
     if component_boxes:
         client_data["components"] = cast(
             JsonValue,
@@ -2680,7 +2685,44 @@ def _source_scene(
         axes=axes,
         client_data=client_data,
         component_boxes=tuple(component_boxes),
+        proposed_origin_m=proposed_origin_m,
     )
+
+
+def _proposed_pivot_marker(job: AgentJob | None) -> tuple[float, float, float] | None:
+    """Locate the exact point on the current asset that an approved pivot would adopt."""
+    if job is None or job.pending_interrupt_id is None or job.selected_plan is None:
+        return None
+    for candidate in job.selected_plan.candidates:
+        payload = candidate.payload
+        if not isinstance(payload, NormalizationPayload):
+            continue
+        if not any(component.component == "pivot" for component in payload.components):
+            continue
+        bounds = payload.before_bounds
+        center = tuple(
+            (minimum + maximum) / 2.0
+            for minimum, maximum in zip(bounds.minimum_m, bounds.maximum_m, strict=True)
+        )
+        if payload.pivot_target == "BOUNDS_CENTER":
+            return cast(tuple[float, float, float], center)
+        if payload.pivot_target == "FOOTPRINT_CENTER_BOTTOM":
+            return (center[0], bounds.minimum_m[1], center[2])
+        if payload.pivot_target == "MEASURED_ANCHOR":
+            return payload.pivot_anchor_position_m
+    return None
+
+
+def _approval_assessment_sentence(job: AgentJob | None) -> str | None:
+    """Keep pre-approval agent language explicitly prospective."""
+    if job is None or job.agent_assessment is None:
+        return None
+    sentence = _one_sentence(job.agent_assessment.summary)
+    if job.agent_assessment.disposition is not AgentDisposition.REPAIR:
+        return sentence
+    if sentence.casefold().startswith(("i propose", "i recommend")):
+        return sentence
+    return f"I propose this change: {sentence[0].lower()}{sentence[1:]}"
 
 
 def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, object]:
@@ -3045,7 +3087,11 @@ def create_app(
         )
         if comparison_scene is None and current_source_path.is_file():
             inspection = runtime_job.inspection if runtime_job is not None else None
-            comparison_scene = _source_scene(current_source_path, inspection)
+            comparison_scene = _source_scene(
+                current_source_path,
+                inspection,
+                proposed_origin_m=_proposed_pivot_marker(runtime_job),
+            )
         refine_iteration = runtime_job.turn_index if runtime_job is not None else 0
         comparison_before_label = f"Iteration {refine_iteration}" if refine_iteration else "Before"
         comparison_after_label = (
@@ -3104,11 +3150,7 @@ def create_app(
                     _result_presentation(runtime_job) if runtime_job is not None else None
                 ),
                 "completion_sentence": _completion_sentence(workspace, runtime_job),
-                "agent_assessment_sentence": (
-                    _one_sentence(runtime_job.agent_assessment.summary)
-                    if runtime_job is not None and runtime_job.agent_assessment is not None
-                    else None
-                ),
+                "agent_assessment_sentence": _approval_assessment_sentence(runtime_job),
                 "decision_summary": (
                     _decision_summary(runtime_job) if runtime_job is not None else "pending"
                 ),

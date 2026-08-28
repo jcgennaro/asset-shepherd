@@ -480,7 +480,7 @@ function initializeModelComparison(comparison) {
     targetGraphics.set(target, { layer, box, leader, label });
   }
 
-  for (const target of ["before", "after"]) {
+  for (const target of ["before", "after", "proposed"]) {
     const layer = comparison.querySelector(`[data-comparison-origin="${target}"]`);
     if (!layer) {
       continue;
@@ -615,9 +615,11 @@ function initializeModelComparison(comparison) {
         `M${point.x - 3} ${point.y - 3}L${point.x + 3} ${point.y + 3}` +
         `M${point.x + 3} ${point.y - 3}L${point.x - 3} ${point.y + 3}`,
     );
-    graphics.label.textContent = sourceOnly
-      ? "ORIGIN"
-      : `${target === "before" ? "BEFORE" : "AFTER"} ORIGIN`;
+    graphics.label.textContent = target === "proposed"
+      ? "PROPOSED ORIGIN"
+      : sourceOnly
+        ? (config.proposedOrigin ? "CURRENT ORIGIN" : "ORIGIN")
+        : `${target === "before" ? "BEFORE" : "AFTER"} ORIGIN`;
     graphics.label.setAttribute("x", clamp(point.x + 12, 8, viewer.clientWidth - 104));
     graphics.label.setAttribute("y", clamp(point.y - 10, 16, viewer.clientHeight - 8));
   }
@@ -716,6 +718,7 @@ function initializeModelComparison(comparison) {
     drawTarget("after");
     drawOrigin("before");
     drawOrigin("after");
+    drawOrigin("proposed");
     renderAxes();
     renderBanana();
     renderComponents();

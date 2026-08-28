@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-28
-**Current commit:** Planning-validation and bounded-retry recovery (this file is included)
+**Current commit:** Pending-origin preview and prospective approval copy (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,15 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D067 pending-origin preview: approval pages no longer imply that an unexecuted pivot repair has
+  already happened. The current iteration retains a labeled **Current origin** marker, while the
+  typed normalization payload supplies a distinct **Proposed origin** marker at its exact
+  source-space target. The Asset Shepherd sentence is explicitly prospective until approval. On
+  the live Equestrian Riding Crop workspace, browser inspection confirms the proposed marker at
+  `(-0.0332031623, 0.6083984673, 0.0) m`, visually centered in the surviving component's bounds,
+  with the authored origin still shown below it. The common gate passes with 176 tests, one opt-in
+  skip, lock validation, Ruff, formatting, and zero Pyright findings.
 
 - D066 incomplete-planning recovery: the live Responses trace for the failed Equestrian Riding
   Crop run showed a valid return-to-creation conclusion trapped by an empty optional pivot ID and

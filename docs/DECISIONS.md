@@ -4,6 +4,41 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D067 — Preview a proposed origin separately from the current origin
+
+**Date:** 2026-08-28
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+An origin-only Refine proposal used imperative agent prose such as “Move the asset origin” while
+the approval viewport correctly continued to render the unmodified current iteration. Its lone
+`ORIGIN` marker therefore appeared outside the surviving component's bounds and made a correct
+pending transform look like a falsely completed repair.
+
+**Decision**
+
+Before approval, keep rendering the current immutable iteration but label its authored coordinate
+origin **Current origin**. When the typed pending normalization contains a pivot action, derive its
+exact target from the registered payload and render a second, visually distinct **Proposed origin**
+marker on the current geometry. Phrase repair assessments prospectively as “I propose this
+change…” until authorization and execution occur. Do not execute or simulate the model mutation in
+the approval viewport.
+
+**Evidence and consequences**
+
+The recovered Equestrian Riding Crop plan requests `BOUNDS_CENTER`; its deterministic payload
+places the preview marker at the measured bounds center
+`(-0.0332031623, 0.6083984673, 0.0) m` while retaining the authored origin at `(0, 0, 0)`. Browser
+inspection on port 8011 confirms both labels remain attached during orbit and the proposed marker
+appears at the wireframe-box center. The proposed translation remains subject to the existing
+explicit approval, fresh write, reload, verification, and before/after comparison path.
+
 ### D066 — Normalize optional tool arguments and recover incomplete planning
 
 **Date:** 2026-08-28

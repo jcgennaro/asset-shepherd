@@ -2945,6 +2945,15 @@ model-viewer {
   fill: #f7d68d;
 }
 
+.comparison-origin-marker.proposed {
+  stroke: #83d5b9;
+  stroke-width: 1.8;
+}
+
+.comparison-origin-label.proposed {
+  fill: #9ce4ca;
+}
+
 .comparison-axis-line,
 .comparison-axis-mark {
   stroke-width: 1;

@@ -168,8 +168,15 @@ def test_exact_components_can_be_approved_removed_and_verified(tmp_path: Path) -
     assert topology.response_lane is None
     assert len(topology.component_proposals) == 3
     assert sum(item.proposed_removal for item in topology.component_proposals) == 2
-    source_scene = _source_scene(source, original)
+    proposed_origin = (0.25, 0.5, 0.75)
+    source_scene = _source_scene(
+        source,
+        original,
+        proposed_origin_m=proposed_origin,
+    )
     assert len(source_scene.component_boxes) == 3
+    assert source_scene.proposed_origin_m == proposed_origin
+    assert source_scene.client_data["proposedOrigin"] == [0.25, 0.5, 0.75]
 
     decided_at = datetime(2026, 8, 27, tzinfo=UTC)
     decisions = create_decisions(
