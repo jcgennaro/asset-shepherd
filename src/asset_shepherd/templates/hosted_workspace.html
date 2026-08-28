@@ -127,6 +127,19 @@
         {% if job and job.result and cannot_repair %}
           <section class="result-review blocked-result-actions" aria-label="Blocked result actions">
             <div class="result-download-actions">
+              {% if can_continue %}
+                <details>
+                  <summary class="primary-button">Refine current iteration</summary>
+                  <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
+                    <input type="hidden" name="command_id" value="{{ command_id }}">
+                    <input type="hidden" name="decision" value="continue">
+                    <input type="hidden" name="continue_from" value="input">
+                    <label for="hosted-blocked-feedback">What should Asset Shepherd reconsider?</label>
+                    <textarea id="hosted-blocked-feedback" name="feedback" maxlength="1000" placeholder="Identify the labeled components to keep or remove, or explain what the previous pass missed." required></textarea>
+                    <button type="submit" class="primary-button" data-submit-button>Start refinement</button>
+                  </form>
+                </details>
+              {% endif %}
               <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
               <a class="secondary-button" href="{{ url_for('hosted_home') }}">Gallery</a>
             </div>

@@ -249,8 +249,9 @@ class AssetShepherdTools:
             disposition: The evidence-backed next step. Only REPAIR may request mutation.
             summary: Concise user-facing conclusion grounded in the target and observations.
             evidence: Specific measured facts and visual observations supporting the conclusion.
-            confidence: Confidence from 0 through 1; ambiguity should lower confidence or stop
-                repair.
+            confidence: Confidence from 0 through 1. Semantic uncertainty should lower confidence
+                and remain explicit in a labeled component proposal; stop only when no plausible
+                survivor can be identified or deterministic removal safety is unavailable.
             semantic_height_axis: Source GLB axis representing real-world height, when scaling.
             scale_to_confirmed_height: Uniformly scale that semantic axis to the confirmed target.
             rotation_axis: Source world axis for a requested quarter-turn rotation, otherwise null.
@@ -274,8 +275,10 @@ class AssetShepherdTools:
             remove_component_ids: Exact inspected component IDs the agent proposes removing after
                 comparing the confirmed semantic piece count, structured inventory, and all four
                 source views. Disconnected does not mean unwanted. Near-contact groups are hints
-                only. This consequential action requires explicit approval and may not remove all
-                components from a primitive.
+                only. When one plausible survivor set visually matches the described asset, expose
+                the uncertain selection for per-component user review rather than treating the
+                semantic choice itself as unsupported. This consequential action requires explicit
+                approval and may not remove all components from a primitive.
             source_views_used: Exact rendered filenames used for a physical conclusion.
 
         Returns an exact deterministic action preview, authorization classes, and bounds. It never

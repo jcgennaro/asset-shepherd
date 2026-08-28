@@ -4,6 +4,46 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D068 — Route safe component ambiguity into labeled review
+
+**Date:** 2026-08-28
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / hosted conversation UX
+
+**Context**
+
+A live riding-crop pass correctly measured three disconnected, safely removable components but
+returned the asset to its creation tool because it was uncertain which form represented the intended
+crop. The completion page then falsely said that no supported action could remove the extra forms,
+even though exact-ID component removal and per-component Keep/Remove review were already available.
+The whole-source bounds also failed the approximate target proportions before the stray forms had
+been removed.
+
+**Decision**
+
+When deterministic inspection marks component removal safe and the target expects fewer semantic
+pieces, the agent should use all four source views to propose a plausible exact survivor/removal set.
+It must disclose uncertainty and lower confidence instead of inventing certainty; the labeled
+per-component review remains the user's authority to accept or revise the selection. Semantic
+uncertainty alone is not an unsupported-capability failure when this review can resolve it. If the
+views are genuinely indeterminate or removal is unsafe, the agent still stops without selecting.
+
+Component selection precedes physical normalization when extra forms distort the whole-asset bounds.
+The surviving candidate is remeasured in a later Refine turn. A target-box residual from the
+unfiltered source must not suppress a useful component-removal proposal.
+
+**Evidence and consequences**
+
+Prompt v13 encodes the sequencing and authority boundary. The persisted three-form workspace now
+states that the pass stopped before choosing labeled forms and offers **Refine current iteration**
+over its saved input instead of claiming removal is impossible. Its amber inspection row
+distinguishes a recoverable stopped pass from a red, actually ineligible GLB layout. No component is
+deleted until the model registers exact stable IDs and the user approves or revises those choices.
+
 ### D067 — Preview a proposed origin separately from the current origin
 
 **Date:** 2026-08-28

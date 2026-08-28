@@ -1573,6 +1573,30 @@ _NAME_CODES = {
 }
 
 
+def _supported_component_recovery(core: AgentJob) -> bool:
+    """Return whether a blocked pass can safely revisit an exact component selection."""
+    assessment = core.agent_assessment
+    intent = core.asset_intent
+    diagnostics = core.inspection.diagnostics if core.inspection is not None else None
+    if (
+        assessment is None
+        or assessment.disposition is not AgentDisposition.RETURN_TO_CREATION_TOOL
+        or intent is None
+        or diagnostics is None
+    ):
+        return False
+    affected = tuple(
+        primitive
+        for primitive in diagnostics.primitives
+        if len(primitive.disconnected_components) > 1
+    )
+    return bool(
+        len(affected) == 1
+        and affected[0].component_removal_safe
+        and len(affected[0].disconnected_components) != intent.expected_piece_count
+    )
+
+
 def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     """Build one non-repeating table of findings and phase-aware actions."""
     inspection = core.inspection
@@ -1653,6 +1677,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     semantic_component_count = (
         affected_component_counts[0] if len(affected_component_counts) == 1 else None
     )
+    component_removal_available = _supported_component_recovery(core)
     degenerate_triangles = sum(
         primitive.degenerate_triangle_count for primitive in diagnostic_primitives
     )
@@ -1793,14 +1818,25 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         inspection.repair_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH
         or agent_requires_creation_tool
     )
-    structure_status = "blocked" if structure_blocked else "pass"
+    structure_status = (
+        "attention"
+        if component_mismatch and component_removal_available
+        else ("blocked" if structure_blocked else "pass")
+    )
     structure_label = (
-        "Cannot repair"
+        "Agent stopped"
+        if component_mismatch and component_removal_available
+        else "Cannot repair"
         if agent_requires_creation_tool
         else ("Inspection only" if structure_blocked else "Pass")
     )
-    if component_mismatch:
-        structure_action = "Cannot repair — no supported action can remove the extra forms."
+    if component_mismatch and component_removal_available:
+        structure_action = (
+            "No labeled components were selected in this pass — refine the current iteration "
+            "to review a removal proposal."
+        )
+    elif component_mismatch:
+        structure_action = "Cannot repair — this GLB layout is not eligible for component removal."
     elif agent_requires_creation_tool:
         structure_action = "Cannot repair — return to the creation tool."
     else:
@@ -2347,6 +2383,11 @@ def _completion_sentence(workspace: HostedWorkspace, job: AgentJob | None) -> st
     if job.agent_assessment is not None:
         summary = _one_sentence(job.agent_assessment.summary)
         if job.agent_assessment.disposition is AgentDisposition.RETURN_TO_CREATION_TOOL:
+            if _supported_component_recovery(job):
+                return (
+                    "I stopped this pass before choosing which labeled forms to keep. Refine the "
+                    "current iteration to review a component-removal proposal."
+                )
             return f"I can't repair this asset — {summary[0].lower()}{summary[1:]}"
         return summary
     if workspace.workflow_result is not None:

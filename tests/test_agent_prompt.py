@@ -10,6 +10,7 @@ from asset_shepherd.agent_prompt import (
     AGENT_SYSTEM_PROMPT_V9,
     AGENT_SYSTEM_PROMPT_V11,
     AGENT_SYSTEM_PROMPT_V12,
+    AGENT_SYSTEM_PROMPT_V13,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -52,7 +53,7 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
 
 def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 12
+    assert AGENT_PROMPT_VERSION == 13
     assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V12
     assert "source +Y" in AGENT_SYSTEM_PROMPT_V9
     assert "Do not request no-op" in AGENT_SYSTEM_PROMPT_V9
@@ -88,6 +89,11 @@ def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
     assert "pivot_target=MEASURED_ANCHOR" in AGENT_SYSTEM_PROMPT_V12
     assert "never supply arbitrary XYZ" in AGENT_SYSTEM_PROMPT_V12
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V12
+    assert "per-component Keep/Remove review" in AGENT_SYSTEM_PROMPT_V13
+    assert "Do not return to the creation tool merely because" in AGENT_SYSTEM_PROMPT_V13
+    assert "propose the component selection first" in AGENT_SYSTEM_PROMPT_V13
+    assert "target-box mismatch alone" in AGENT_SYSTEM_PROMPT_V13
+    assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V13
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

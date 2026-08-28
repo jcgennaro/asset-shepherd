@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-28
-**Current commit:** Pending-origin preview and prospective approval copy (this file is included)
+**Current commit:** Safe component-selection recovery and prompt v13 (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,18 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D068 safe component-selection recovery: a persisted riding-crop pass measured three exact,
+  safely removable components but the agent treated uncertainty about the intended survivor as an
+  unsupported repair. Prompt v13 now directs the agent to use all four views, propose plausible
+  exact component IDs with reduced confidence, and defer the consequential choice to the existing
+  per-component review. Component selection precedes normalization so stray-body bounds do not
+  defeat the useful first repair. The saved workspace now says the pass stopped before choosing
+  labeled forms, distinguishes this from a truly unsupported GLB layout, and exposes **Refine
+  current iteration** over the preserved input. Browser inspection on port 8011 confirms the
+  corrected Asset Shepherd message, inspection action, and recovery control. No mutation was
+  automatically submitted. The common gate passes with 177 tests, one opt-in skip, lock
+  validation, Ruff, formatting, and zero Pyright findings.
 
 - D067 pending-origin preview: approval pages no longer imply that an unexecuted pivot repair has
   already happened. The current iteration retains a labeled **Current origin** marker, while the
