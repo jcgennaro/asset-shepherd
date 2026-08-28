@@ -97,6 +97,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Choose or drop your GLB" in upload.text
     assert "Model description" not in upload.text
     assert "Upload the GLB you want me to shepherd." in upload.text
+    assert "What about FBX?" in upload.text
+    assert "FBX support is in development" in upload.text
     assert upload.text.count("<h1") == 1
     assert "<h2" not in upload.text
     assert "<h3" not in upload.text

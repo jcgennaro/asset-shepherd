@@ -2791,16 +2791,16 @@ model-viewer {
 }
 
 .comparison-component-wireframe {
-  fill: rgba(243, 199, 102, 0.035);
-  stroke: #f3c766;
+  fill: rgba(131, 214, 202, 0.025);
+  stroke: #83d6ca;
   stroke-linecap: square;
   stroke-linejoin: round;
-  stroke-width: 1.6;
+  stroke-width: 1.35;
   vector-effect: non-scaling-stroke;
 }
 
 .comparison-component-label {
-  fill: #ffe39a;
+  fill: #a9efe2;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 15px;
   font-weight: 850;
@@ -2809,6 +2809,16 @@ model-viewer {
   stroke: rgba(5, 13, 11, 0.94);
   stroke-width: 4px;
   text-transform: uppercase;
+}
+
+.comparison-component-box.active .comparison-component-wireframe {
+  fill: rgba(243, 199, 102, 0.06);
+  stroke: #f3c766;
+  stroke-width: 2.4;
+}
+
+.comparison-component-box.active .comparison-component-label {
+  fill: #ffe39a;
 }
 
 .comparison-target-box,
@@ -3671,6 +3681,30 @@ model-viewer {
 
 .single-step .drop-zone {
   min-height: 280px;
+}
+
+.upload-format-note {
+  width: fit-content;
+  max-width: 680px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.upload-format-note summary {
+  color: var(--accent-cool);
+  cursor: pointer;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.upload-format-note[open] summary {
+  color: var(--text);
+}
+
+.upload-format-note p {
+  margin: 10px 0 0;
 }
 
 .asset-gallery-card small {

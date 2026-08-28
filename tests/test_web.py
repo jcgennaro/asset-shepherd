@@ -1179,6 +1179,8 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "viewer.jumpCameraToGoal" not in script.text
     assert "const boundingBoxEdges = [" in script.text
     assert "[5, 7], [6, 7]" in script.text
+    assert 'graphics.group.classList.toggle("active"' in script.text
+    assert "!activeComponentId || graphics.id !== activeComponentId" not in script.text
     assert "targetWidth" not in script.text
 
     comparison_template = (

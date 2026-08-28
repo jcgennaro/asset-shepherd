@@ -51,6 +51,16 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D062 component-review presentation follow-up: the source viewport now keeps every detected
+  component's live wireframe bounds and C-label visible by default, so the C1/C2/C3 choices map
+  directly to the model without hover. Hovering or focusing one choice strengthens only its box in
+  gold while the remaining cyan boxes stay visible. Chrome acceptance on the persisted three-part
+  riding-crop workspace confirms all three projected boxes render and C2 receives the focused
+  treatment without console errors. Upload now also includes one collapsed `What about FBX?` note
+  that keeps GLB primary while answering the predictable format question without another heading.
+  The common gate passes with 170 tests, one opt-in skip, lock validation, Ruff, formatting, and
+  zero Pyright findings.
+
 - D062 bounded component-selection checkpoint: static indexed triangle primitives now expose stable
   exact position-projected bodies rather than guessing semantic pieces from node or primitive
   counts. Scale-relative near-contact probes can group bodies separated by tiny gaps, but remain

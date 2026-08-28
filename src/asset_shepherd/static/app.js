@@ -516,7 +516,6 @@ function initializeModelComparison(comparison) {
 
   for (const component of config.components || []) {
     const group = createSvgElement("g", "comparison-component-box");
-    group.setAttribute("visibility", "hidden");
     const box = createSvgElement("path", "comparison-component-wireframe");
     const label = createSvgElement("text", "comparison-component-label");
     label.textContent = component.label;
@@ -677,10 +676,6 @@ function initializeModelComparison(comparison) {
 
   function renderComponents() {
     for (const graphics of componentGraphics) {
-      if (!activeComponentId || graphics.id !== activeComponentId) {
-        graphics.group.setAttribute("visibility", "hidden");
-        continue;
-      }
       const points = Array.from({ length: 8 }, (_, index) =>
         hotspotPoint(`hotspot-component-${graphics.index}-${index}`),
       );
@@ -689,6 +684,7 @@ function initializeModelComparison(comparison) {
         continue;
       }
       graphics.group.removeAttribute("visibility");
+      graphics.group.classList.toggle("active", graphics.id === activeComponentId);
       graphics.box.setAttribute(
         "d",
         boundingBoxEdges
