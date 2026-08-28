@@ -2015,19 +2015,53 @@ details[open] summary::after {
   margin-top: 12px;
 }
 
+.component-color-0 {
+  --component-color: #83d6ca;
+  --component-label-color: #b3f1e8;
+}
+
+.component-color-1 {
+  --component-color: #f3c766;
+  --component-label-color: #ffe39a;
+}
+
+.component-color-2 {
+  --component-color: #e89bdd;
+  --component-label-color: #ffc4f5;
+}
+
+.component-color-3 {
+  --component-color: #8fb8ff;
+  --component-label-color: #bdd4ff;
+}
+
+.component-color-4 {
+  --component-color: #acd477;
+  --component-label-color: #d0efa8;
+}
+
+.component-color-5 {
+  --component-color: #f29b70;
+  --component-label-color: #ffc4a7;
+}
+
 .component-proposal {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(110px, 0.34fr);
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--component-color, var(--line)) 58%, var(--line));
   border-radius: 9px;
-  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  background: color-mix(in srgb, var(--component-color, var(--surface)) 4%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--component-color, var(--line-strong));
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.component-proposal.remove {
-  border-color: color-mix(in srgb, var(--attention) 58%, var(--line));
+.component-proposal.active {
+  border-color: var(--component-color, var(--line-strong));
+  background: color-mix(in srgb, var(--component-color, var(--surface)) 11%, var(--surface));
+  box-shadow: inset 4px 0 0 var(--component-color, var(--line-strong));
 }
 
 .component-focus {
@@ -2045,7 +2079,7 @@ details[open] summary::after {
 
 .component-focus strong {
   flex: 0 0 auto;
-  color: var(--attention);
+  color: var(--component-label-color, var(--attention));
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.94rem;
 }
@@ -2061,7 +2095,7 @@ details[open] summary::after {
 }
 
 .component-focus:focus-visible {
-  outline: 2px solid var(--attention);
+  outline: 2px solid var(--component-color, var(--attention));
   outline-offset: 4px;
 }
 
@@ -2791,8 +2825,8 @@ model-viewer {
 }
 
 .comparison-component-wireframe {
-  fill: rgba(131, 214, 202, 0.025);
-  stroke: #83d6ca;
+  fill: color-mix(in srgb, var(--component-color, #83d6ca) 3%, transparent);
+  stroke: var(--component-color, #83d6ca);
   stroke-linecap: square;
   stroke-linejoin: round;
   stroke-width: 1.35;
@@ -2800,7 +2834,7 @@ model-viewer {
 }
 
 .comparison-component-label {
-  fill: #a9efe2;
+  fill: var(--component-label-color, #a9efe2);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 15px;
   font-weight: 850;
@@ -2812,13 +2846,13 @@ model-viewer {
 }
 
 .comparison-component-box.active .comparison-component-wireframe {
-  fill: rgba(243, 199, 102, 0.06);
-  stroke: #f3c766;
+  fill: color-mix(in srgb, var(--component-color, #83d6ca) 9%, transparent);
+  stroke: var(--component-color, #83d6ca);
   stroke-width: 2.4;
 }
 
 .comparison-component-box.active .comparison-component-label {
-  fill: #ffe39a;
+  fill: var(--component-label-color, #a9efe2);
 }
 
 .comparison-target-box,

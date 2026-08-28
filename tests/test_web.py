@@ -1179,7 +1179,11 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "viewer.jumpCameraToGoal" not in script.text
     assert "const boundingBoxEdges = [" in script.text
     assert "[5, 7], [6, 7]" in script.text
+    assert "const componentColorCount = 6" in script.text
+    assert "`comparison-component-box component-color-${colorIndex}`" in script.text
     assert 'graphics.group.classList.toggle("active"' in script.text
+    assert 'proposal?.classList.add("active")' in script.text
+    assert 'proposal?.classList.remove("active")' in script.text
     assert "!activeComponentId || graphics.id !== activeComponentId" not in script.text
     assert "targetWidth" not in script.text
 
@@ -1189,9 +1193,17 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'interpolation-decay="240"' in comparison_template
     assert 'auto-rotate-delay="0" rotation-per-second="4deg"' in comparison_template
 
+    checklist_template = (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"
+    ).read_text(encoding="utf-8")
+    assert "component-color-{{ loop.index0 % 6 }}" in checklist_template
+
     stylesheet = client.get("/static/app.css")
     assert stylesheet.status_code == 200
     assert ":not([data-workflow-activity]):not([data-model-comparison])" in stylesheet.text
+    assert ".component-color-0" in stylesheet.text
+    assert ".component-color-5" in stylesheet.text
+    assert ".component-proposal.active" in stylesheet.text
 
 
 def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:

@@ -421,6 +421,7 @@ function initializeModelComparison(comparison) {
   const originGraphics = new Map();
   const axisGraphics = new Map();
   const componentGraphics = [];
+  const componentColorCount = 6;
   let activeComponentId = null;
   const boundingBoxEdges = [
     [0, 1], [0, 2], [0, 4],
@@ -515,7 +516,15 @@ function initializeModelComparison(comparison) {
   bananaLayer.append(bananaBox, bananaLeader, bananaLabel);
 
   for (const component of config.components || []) {
-    const group = createSvgElement("g", "comparison-component-box");
+    const fallbackIndex = componentGraphics.length;
+    const sourceIndex = Number.isInteger(component.index) ? component.index : fallbackIndex;
+    const colorIndex =
+      ((sourceIndex % componentColorCount) + componentColorCount) % componentColorCount;
+    const group = createSvgElement(
+      "g",
+      `comparison-component-box component-color-${colorIndex}`,
+    );
+    group.dataset.componentId = component.id;
     const box = createSvgElement("path", "comparison-component-wireframe");
     const label = createSvgElement("text", "comparison-component-label");
     label.textContent = component.label;
@@ -954,9 +963,11 @@ function initializeModelComparison(comparison) {
     ...(workingScope?.querySelectorAll("[data-component-focus]") || []),
   ];
   for (const control of componentControls) {
+    const proposal = control.closest("[data-component-proposal]");
     const show = () => {
       activeComponentId = control.dataset.componentFocus;
       control.setAttribute("aria-pressed", "true");
+      proposal?.classList.add("active");
       scheduleHud();
     };
     const hide = () => {
@@ -964,6 +975,7 @@ function initializeModelComparison(comparison) {
         activeComponentId = null;
       }
       control.setAttribute("aria-pressed", "false");
+      proposal?.classList.remove("active");
       scheduleHud();
     };
     control.addEventListener("pointerenter", show);

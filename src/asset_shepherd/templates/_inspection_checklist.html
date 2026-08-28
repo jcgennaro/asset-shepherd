@@ -16,8 +16,8 @@
             {% if check.component_proposals %}
               <div class="component-proposals" aria-label="Disconnected component selection">
                 {% for component in check.component_proposals %}
-                  <div class="component-proposal{% if component.proposed_removal %} remove{% else %} keep{% endif %}" data-component-proposal="{{ component.component_id }}">
-                    <button type="button" class="component-focus" data-component-focus="{{ component.component_id }}" title="Show {{ component.label }} — {{ component.detail }}">
+                  <div class="component-proposal component-color-{{ loop.index0 % 6 }}{% if component.proposed_removal %} remove{% else %} keep{% endif %}" data-component-proposal="{{ component.component_id }}">
+                    <button type="button" class="component-focus" data-component-focus="{{ component.component_id }}" title="Highlight {{ component.label }} in the 3D view — {{ component.detail }}">
                       <strong>{{ component.label }}</strong><span>{{ component.detail }}</span>
                     </button>
                     {% if proposal_response_form_id %}
