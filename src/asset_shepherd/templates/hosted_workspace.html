@@ -103,7 +103,7 @@
         {% elif can_retry_iteration %}
           <form action="{{ url_for('retry_hosted_iteration', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
-            <button type="submit" class="primary-button" data-submit-button>Finish this iteration <span aria-hidden="true">→</span></button>
+            <button type="submit" class="primary-button" data-submit-button>{% if retry_is_planning %}Retry Shepherd{% else %}Finish this iteration{% endif %} <span aria-hidden="true">→</span></button>
           </form>
         {% endif %}
 

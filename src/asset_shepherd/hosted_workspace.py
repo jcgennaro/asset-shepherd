@@ -1378,7 +1378,7 @@ class HostedWorkspaceStore:
         *,
         command_id: str,
     ) -> HostedWorkspace:
-        """Finish a persisted candidate after a transient post-action interruption."""
+        """Recover a bounded planning or post-action interruption from persisted state."""
         if _COMMAND_ID.fullmatch(command_id) is None:
             raise HostedWorkspaceError("The retry command identifier is invalid.")
         with self._lock:
@@ -1392,8 +1392,10 @@ class HostedWorkspaceStore:
             job = workspace.runtime.job
             if job.pending_interrupt_id is not None or job.result is not None:
                 raise HostedWorkspaceError("This iteration does not need recovery.")
-            if job.outcome is None or not job.outcome.executed_action_ids:
-                raise HostedWorkspaceError("There is no executed candidate to finish.")
+            planning_recovery = job.agent_assessment is None and job.inspection is not None
+            candidate_recovery = bool(job.outcome and job.outcome.executed_action_ids)
+            if not planning_recovery and not candidate_recovery:
+                raise HostedWorkspaceError("This interrupted iteration cannot be retried safely.")
             processed = {**workspace.record.processed_commands, command_id: "TURN_RETRY"}
             workspace.record = workspace.record.model_copy(
                 update={"processed_commands": processed, "error": None}
@@ -1404,9 +1406,16 @@ class HostedWorkspaceStore:
                 payload={"turn_index": job.turn_index},
             )
             self._persist(workspace)
-            self._reset_activity(workspace, "Finishing this iteration")
+            self._reset_activity(
+                workspace,
+                "Retrying the assessment" if planning_recovery else "Finishing this iteration",
+            )
             try:
-                workspace.latest_result = workspace.runtime.continue_incomplete_turn()
+                workspace.latest_result = (
+                    workspace.runtime.retry_incomplete_planning()
+                    if planning_recovery
+                    else workspace.runtime.continue_incomplete_turn()
+                )
                 workspace.workflow_result = None
                 if workspace.latest_result.stop_reason != "interrupt":
                     workspace.workflow_result = workspace.runtime.complete(workspace.latest_result)

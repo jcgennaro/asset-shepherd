@@ -642,6 +642,48 @@ class AssetShepherdAgent:
             self._capture_interrupt(result)
         return result
 
+    def retry_incomplete_planning(self) -> AgentResult:
+        """Restart a pre-approval planning pass after an invalid-call turn limit."""
+        if not self.job.agent_orchestrated:
+            raise AgentWorkflowError("Planning recovery requires agent-orchestrated mode")
+        if self.job.pending_interrupt_id is not None:
+            raise AgentWorkflowError("Answer the pending approval before retrying planning")
+        if self.job.result is not None or self.job.agent_assessment is not None:
+            raise AgentWorkflowError("This iteration no longer needs planning recovery")
+        if self.job.inspection is None:
+            raise AgentWorkflowError("There is no persisted inspection to recover")
+
+        recovery_agent = Agent(
+            model=self._model,
+            tools=self._agent_tools,
+            system_prompt=(
+                f"{self._system_prompt}\n\nPlanning recovery invocation\n\n"
+                "A previous invocation inspected this asset but exhausted its bounded turn "
+                "budget while correcting invalid tool arguments. The deterministic inspection "
+                "and any rendered evidence remain available. Re-read them through the tools, "
+                "register exactly one valid assessment, and continue the normal workflow. "
+                "For an unused optional string argument, pass null rather than an empty string."
+            ),
+            callback_handler=self._callback_handler,
+            load_tools_from_directory=False,
+            agent_id=f"asset-shepherd-planning-recovery-{self.job.turn_index}",
+            name="Asset Shepherd Planning Recovery",
+            description="Recover one interrupted pre-approval asset assessment.",
+        )
+        prompt = (
+            "Retry this saved Shepherd iteration from its persisted deterministic inspection. "
+            "Do not invent a prior action or approval."
+        )
+        started = perf_counter()
+        try:
+            result = recovery_agent(prompt, limits={"turns": 12})
+        finally:
+            self._invocation_duration_seconds += perf_counter() - started
+        self._latest_result = result
+        if result.stop_reason == "interrupt":
+            self._capture_interrupt(result)
+        return result
+
     def complete(self, result: AgentResult | None = None) -> AgentWorkflowResult:
         """Validate deterministic completion and persist structured metrics and explanation."""
         current = result or self._latest_result
@@ -650,6 +692,11 @@ class AssetShepherdAgent:
         if current.stop_reason == "interrupt":
             raise AgentWorkflowError("The agent cannot complete while approval is pending")
         if self.job.result is None or self.job.last_verification is None:
+            if self.job.agent_assessment is None and self.job.inspection is not None:
+                raise AgentWorkflowError(
+                    "The agent could not register a valid assessment before its tool-call "
+                    "limit. The asset and target are saved; retry Shepherd."
+                )
             raise AgentWorkflowError(
                 "The agent ended before deterministic verification and packaging"
             )

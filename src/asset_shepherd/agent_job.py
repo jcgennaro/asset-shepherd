@@ -1046,6 +1046,11 @@ class AgentJob:
             raise AgentWorkflowError("Inspection must run before agent planning")
         if self.selected_plan is not None or self.agent_assessment is not None:
             raise AgentWorkflowError("This source turn already has a registered assessment")
+        # Function-calling models commonly encode an unused optional string as ``""``.
+        # Treat that representation as omitted at the deterministic boundary; only a
+        # non-empty registered ID carries pivot authority.
+        if pivot_anchor_id is not None:
+            pivot_anchor_id = pivot_anchor_id.strip() or None
         physical_requested = any(
             (
                 scale_to_confirmed_height,
@@ -1056,10 +1061,11 @@ class AgentJob:
         )
         requested_component_ids = remove_component_ids or []
         visual_evidence_requested = physical_requested or bool(requested_component_ids)
+        # Report-only and return-to-creation conclusions may still rely on rendered
+        # evidence. Validate any cited views even when no mutation is requested.
+        views_need_validation = visual_evidence_requested or bool(source_views_used)
         available_views: set[str] = (
-            {path.name for path in self.render_source_views()}
-            if visual_evidence_requested
-            else set()
+            {path.name for path in self.render_source_views()} if views_need_validation else set()
         )
         if visual_evidence_requested and not source_views_used:
             raise AgentWorkflowError(

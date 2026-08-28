@@ -4,6 +4,49 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D066 — Normalize optional tool arguments and recover incomplete planning
+
+**Date:** 2026-08-28
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** M9 agent-led sensing and disposition / hosted conversation UX
+
+**Context**
+
+A live riding-crop run rendered and interpreted the source correctly, then exhausted its bounded
+12-call turn while trying to register a report-only assessment. The Responses tool trace showed two
+deterministic interface traps rather than an absent conclusion: the model represented an unused
+optional pivot ID as an empty string, and a report-only assessment cited four rendered views that
+the validator considered available only when a mutation was requested. The terminal UI discarded
+those useful errors and reported only that verification and packaging had not occurred.
+
+**Decision**
+
+Normalize a blank optional pivot-anchor string to absence at the deterministic tool boundary; a
+non-empty registered ID remains the only measured-anchor authority. Validate cited source views for
+every disposition, including report-only and return-to-creation conclusions, while still requiring
+all views for physical, yaw, component-selection, and measured-anchor actions.
+
+When an invocation ends after inspection but before registering an assessment, preserve the source,
+target, inspection, and cached renders and expose one **Retry Shepherd** action. That action starts a
+fresh bounded planning invocation over the same deterministic job and cannot invent prior approval
+or mutation. Keep the existing post-action **Finish this iteration** recovery separate. If planning
+still cannot register, state that its tool-call limit was reached and that the saved iteration can
+be retried instead of mislabeling the failure as a packaging problem.
+
+**Evidence and consequences**
+
+Regression coverage accepts a rendered return-to-creation assessment with `pivot_anchor_id=""`,
+persists the normalized null, and produces a blocked diagnostics package. The original failed
+Equestrian Riding Crop workspace was recovered by replaying the model's already-recorded valid
+proposal after the boundary fix; it now has a BLOCKED result, no error, and an explicit Asset
+Shepherd explanation about the three separated forms and unsupported proportional correction.
+Browser inspection on port 8011 confirms the generic **Stopped** alert is gone. This recovery adds
+no mutation authority and does not increase the per-asset Refine limit.
+
 ### D065 — Present workflow-agent prose as one consistent speaker
 
 **Date:** 2026-08-28

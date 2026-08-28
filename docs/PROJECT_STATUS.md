@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-28
-**Current commit:** Tool-driven pivot anchors and agent-message identity (this file is included)
+**Current commit:** Planning-validation and bounded-retry recovery (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,19 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D066 incomplete-planning recovery: the live Responses trace for the failed Equestrian Riding
+  Crop run showed a valid return-to-creation conclusion trapped by an empty optional pivot ID and
+  report-only screenshot citations, then repeated until the 12-call bound. The deterministic
+  boundary now treats a blank optional ID as absent and validates any cited source views regardless
+  of disposition. A pre-approval failure preserves the measured job and offers **Retry Shepherd**
+  through a fresh bounded invocation; post-action recovery remains **Finish this iteration**. The
+  original workspace was recovered from the model's recorded proposal without another mutation or
+  user re-entry and now packages a BLOCKED diagnostic result with no error. Browser inspection on
+  port 8011 shows the Asset Shepherd explanation, check table, diagnostics download, and Gallery
+  action instead of the generic Stopped alert. Targeted agent, hosted-state, and web coverage passes
+  with 72 tests and one opt-in skip. The full common gate passes with 176 tests, one opt-in skip,
+  lock validation, Ruff, formatting, and zero Pyright findings.
 
 - D064/D065 pivot and speaker checkpoint: a new read-only sensing tool returns source-hash-bound
   origin candidates for authored origin, bounds centers/corners, surface centroid, long-axis end

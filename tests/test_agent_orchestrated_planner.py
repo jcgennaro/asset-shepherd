@@ -435,6 +435,52 @@ def test_agent_cannot_invent_a_measured_pivot_anchor_id(tmp_path: Path) -> None:
         )
 
 
+def test_report_only_plan_accepts_cited_views_and_empty_optional_pivot_id(
+    tmp_path: Path,
+) -> None:
+    """Model encodings for omitted pivot IDs cannot trap a grounded report-only plan."""
+    output = tmp_path / "report-only"
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+
+    plan = job.register_agent_plan(
+        initiating_tool_call_id="report-only-plan-tool-call",
+        disposition="RETURN_TO_CREATION_TOOL",
+        summary="The visible source needs unsupported upstream modeling work.",
+        evidence=["All four source views show the unsupported geometry problem."],
+        confidence=0.9,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        pivot_target="PRESERVE",
+        pivot_anchor_id="",
+        rename_invalid_display_names=False,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+
+    assert job.agent_assessment is not None
+    assert job.agent_assessment.pivot_anchor_id is None
+    assert job.agent_assessment.source_views_used == (
+        "front.png",
+        "right.png",
+        "back.png",
+        "left.png",
+    )
+    assert plan.blocked
+    verification, result = job.verify_and_package()
+    assert result is not None
+    assert verification.state.value == "BLOCKED"
+
+
 def test_bounds_center_pivot_cannot_be_combined_with_grounding() -> None:
     """Conflicting target anchors fail before a plan or matrix can be registered."""
     with pytest.raises(ValueError, match="conflicting targets"):

@@ -3157,8 +3157,21 @@ def create_app(
                     and runtime_job.agent_orchestrated
                     and runtime_job.pending_interrupt_id is None
                     and runtime_job.result is None
-                    and runtime_job.outcome is not None
-                    and runtime_job.outcome.executed_action_ids
+                    and (
+                        (
+                            runtime_job.outcome is not None
+                            and runtime_job.outcome.executed_action_ids
+                        )
+                        or (
+                            runtime_job.agent_assessment is None
+                            and runtime_job.inspection is not None
+                        )
+                    )
+                ),
+                "retry_is_planning": bool(
+                    runtime_job
+                    and runtime_job.agent_assessment is None
+                    and runtime_job.inspection is not None
                 ),
                 "cannot_repair": cannot_repair,
                 "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
