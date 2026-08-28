@@ -126,11 +126,11 @@
 
         {% if job and job.result and cannot_repair %}
           <section class="result-review blocked-result-actions" aria-label="Blocked result actions">
-            <div class="result-download-actions">
+            <div class="blocked-result-controls">
               {% if can_continue %}
-                <details>
+                <details class="blocked-refinement">
                   <summary class="primary-button">Refine current iteration</summary>
-                  <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
+                  <form class="blocked-refinement-form" action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
                     <input type="hidden" name="command_id" value="{{ command_id }}">
                     <input type="hidden" name="decision" value="continue">
                     <input type="hidden" name="continue_from" value="input">
@@ -140,8 +140,10 @@
                   </form>
                 </details>
               {% endif %}
-              <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
-              <a class="secondary-button" href="{{ url_for('hosted_home') }}">Gallery</a>
+              <div class="blocked-result-links">
+                <a class="secondary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
+                <a class="secondary-button" href="{{ url_for('hosted_home') }}">Gallery</a>
+              </div>
             </div>
           </section>
         {% elif job and job.result %}
