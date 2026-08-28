@@ -348,6 +348,93 @@ def test_agent_can_recenter_pivot_to_footprint_without_inventing_scale_or_rotati
     assert payload.expected_after_bounds.maximum_m == pytest.approx((2.0, 4.0, 3.0))
 
 
+def test_agent_can_select_only_a_registered_geometry_pivot_anchor(tmp_path: Path) -> None:
+    """Semantic pivot placement resolves an opaque measured ID, never model-supplied XYZ."""
+    output = tmp_path / "output"
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    inventory = job.inspect_pivot_anchors()
+    anchor = next(
+        candidate for candidate in inventory.candidates if candidate.kind == "LONG_AXIS_END_REGION"
+    )
+
+    plan = job.register_agent_plan(
+        initiating_tool_call_id="measured-pivot-tool-call",
+        disposition="REPAIR",
+        summary="Use the visually identified end-region landmark as the placement origin.",
+        evidence=["All four coordinate views place the requested feature in this end region."],
+        confidence=0.92,
+        semantic_height_axis=None,
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        pivot_target="MEASURED_ANCHOR",
+        pivot_anchor_id=anchor.anchor_id,
+        rename_invalid_display_names=False,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+    payload = next(
+        candidate.payload
+        for candidate in plan.candidates
+        if isinstance(candidate.payload, NormalizationPayload)
+    )
+
+    assert payload.pivot_target == "MEASURED_ANCHOR"
+    assert payload.pivot_anchor_id == anchor.anchor_id
+    assert payload.pivot_anchor_position_m == anchor.position_m
+    transformed_anchor = np.asarray(payload.proposed_matrix) @ np.asarray([*anchor.position_m, 1.0])
+    assert transformed_anchor[:3] == pytest.approx((0.0, 0.0, 0.0), abs=1e-10)
+    assert (output / "pivot_anchors.json").is_file()
+    job.execute(approved=True, interrupt_id="measured-pivot-approval-v1")
+    _record_successful_candidate_reassessment(job, "measured-pivot")
+    verification, result = job.verify_and_package()
+    assert result is not None
+    pivot_check = next(
+        check for check in verification.checks if check.code == "APPROVED_PIVOT_AT_TARGET"
+    )
+    assert pivot_check.status.value == "PASS"
+
+
+def test_agent_cannot_invent_a_measured_pivot_anchor_id(tmp_path: Path) -> None:
+    """An unregistered semantic point fails before an assessment or plan is persisted."""
+    output = tmp_path / "output"
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+
+    with pytest.raises(AgentWorkflowError, match="not registered for this exact source"):
+        job.register_agent_plan(
+            initiating_tool_call_id="invented-pivot-tool-call",
+            disposition="REPAIR",
+            summary="Move an invented semantic point to the asset origin.",
+            evidence=["The requested point is not in the measured inventory."],
+            confidence=0.4,
+            semantic_height_axis=None,
+            scale_to_confirmed_height=False,
+            rotation_axis=None,
+            rotation_degrees=0,
+            ground_to_y_zero=False,
+            pivot_target="MEASURED_ANCHOR",
+            pivot_anchor_id="pivot-anchor-0000000000000000-v1",
+            rename_invalid_display_names=False,
+            source_views_used=["front.png", "right.png", "back.png", "left.png"],
+        )
+
+
 def test_bounds_center_pivot_cannot_be_combined_with_grounding() -> None:
     """Conflicting target anchors fail before a plan or matrix can be registered."""
     with pytest.raises(ValueError, match="conflicting targets"):

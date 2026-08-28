@@ -1695,6 +1695,10 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                     assessment is not None and assessment.pivot_target == "FOOTPRINT_CENTER_BOTTOM"
                 ):
                     requested.append("center pivot on the footprint")
+                elif assessment is not None and assessment.pivot_target == "MEASURED_ANCHOR":
+                    requested.append(
+                        f"move the {assessment.pivot_anchor_label or 'measured anchor'} to origin"
+                    )
                 if not requested:
                     requested = [component.component for component in payload.components]
                 normalization_action = (
@@ -3100,6 +3104,11 @@ def create_app(
                     _result_presentation(runtime_job) if runtime_job is not None else None
                 ),
                 "completion_sentence": _completion_sentence(workspace, runtime_job),
+                "agent_assessment_sentence": (
+                    _one_sentence(runtime_job.agent_assessment.summary)
+                    if runtime_job is not None and runtime_job.agent_assessment is not None
+                    else None
+                ),
                 "decision_summary": (
                     _decision_summary(runtime_job) if runtime_job is not None else "pending"
                 ),

@@ -567,12 +567,65 @@
           "title": "Payload Type",
           "type": "string"
         },
+        "pivot_anchor_id": {
+          "anyOf": [
+            {
+              "pattern": "^pivot-anchor-[0-9a-f]{16}-v1$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pivot Anchor Id"
+        },
+        "pivot_anchor_label": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 3,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pivot Anchor Label"
+        },
+        "pivot_anchor_position_m": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pivot Anchor Position M"
+        },
         "pivot_target": {
           "default": "PRESERVE",
           "enum": [
             "PRESERVE",
             "BOUNDS_CENTER",
-            "FOOTPRINT_CENTER_BOTTOM"
+            "FOOTPRINT_CENTER_BOTTOM",
+            "MEASURED_ANCHOR"
           ],
           "title": "Pivot Target",
           "type": "string"

@@ -97,6 +97,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Choose or drop your GLB" in upload.text
     assert "Model description" not in upload.text
     assert "Upload the GLB you want me to shepherd." in upload.text
+    assert 'class="conversation-prompt agent-message"' in upload.text
     assert "What about FBX?" in upload.text
     assert "FBX support is in development" in upload.text
     assert upload.text.count("<h1") == 1
@@ -115,6 +116,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert 'aria-label="Model description"' in describe.text
     assert "Choose or drop your GLB" not in describe.text
     assert "Describe the model you\u2019re working on." in describe.text
+    assert 'class="conversation-prompt agent-message"' in describe.text
     assert "Show description examples" in describe.text
     assert "data-description-examples-dialog" in describe.text
     assert '<details class="description-help">' not in describe.text
@@ -214,7 +216,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     )
     assert approved.status_code == 303
     completed = restarted.get(workspace_path)
-    assert 'class="conversation-prompt completion-prompt"' in completed.text
+    assert 'class="conversation-prompt agent-message completion-prompt"' in completed.text
+    assert completed.text.count("Asset Shepherd says:") == 1
     assert 'class="result-status' not in completed.text
     assert "Action taken" in completed.text
     assert "Proposed action" not in completed.text

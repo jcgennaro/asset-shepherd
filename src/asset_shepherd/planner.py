@@ -500,7 +500,7 @@ def plan_agent_repairs(
                 if assessment.pivot_target == "BOUNDS_CENTER":
                     anchor = (minimum + maximum) / 2.0
                     target_label = "world-bounds center"
-                else:
+                elif assessment.pivot_target == "FOOTPRINT_CENTER_BOTTOM":
                     anchor = np.asarray(
                         [
                             (minimum[0] + maximum[0]) / 2.0,
@@ -510,6 +510,18 @@ def plan_agent_repairs(
                         dtype=np.float64,
                     )
                     target_label = "footprint center-bottom"
+                else:
+                    if (
+                        assessment.pivot_anchor_position_m is None
+                        or assessment.pivot_anchor_id is None
+                        or assessment.pivot_anchor_label is None
+                    ):
+                        raise ValueError("Measured pivot target has no registered anchor evidence")
+                    source_anchor = np.asarray(
+                        [*assessment.pivot_anchor_position_m, 1.0], dtype=np.float64
+                    )
+                    anchor = (matrix @ source_anchor)[:3]
+                    target_label = assessment.pivot_anchor_label
                 if np.linalg.norm(anchor) <= 1e-9:
                     raise ValueError(f"The requested {target_label} pivot is already at the origin")
                 translation = np.eye(4, dtype=np.float64)
@@ -578,6 +590,9 @@ def plan_agent_repairs(
                         expected_after_bounds=_bounds_from_points(transformed),
                         components=tuple(components),
                         pivot_target=assessment.pivot_target,
+                        pivot_anchor_id=assessment.pivot_anchor_id,
+                        pivot_anchor_position_m=assessment.pivot_anchor_position_m,
+                        pivot_anchor_label=assessment.pivot_anchor_label,
                         application_mode=application_mode,
                         existing_root_index=existing_root_index,
                         existing_root_before_matrix=existing_root_before_matrix,

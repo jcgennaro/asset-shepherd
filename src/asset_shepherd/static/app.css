@@ -3941,6 +3941,55 @@ model-viewer {
   line-height: 1.2;
 }
 
+.conversation-prompt.agent-message {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  width: fit-content;
+  max-width: min(900px, 100%);
+  padding: clamp(16px, 2vw, 22px) clamp(18px, 2.5vw, 26px);
+  border: 1px solid color-mix(in srgb, var(--success) 52%, var(--line));
+  border-radius: 18px 18px 18px 5px;
+  background: color-mix(in srgb, var(--surface-raised) 91%, var(--success) 9%);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 12%);
+}
+
+.conversation-prompt.agent-message::after {
+  position: absolute;
+  bottom: -7px;
+  left: 15px;
+  width: 13px;
+  height: 13px;
+  border-right: 1px solid color-mix(in srgb, var(--success) 52%, var(--line));
+  border-bottom: 1px solid color-mix(in srgb, var(--success) 52%, var(--line));
+  background: color-mix(in srgb, var(--surface-raised) 91%, var(--success) 9%);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.agent-message-speaker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--success);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+}
+
+.agent-message-speaker::before {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--success) 58%, transparent);
+  border-radius: 50%;
+  content: "✦";
+  font-family: sans-serif;
+  font-size: 0.78rem;
+}
+
 .conversation-prompt.completion-prompt {
   font-size: clamp(1.1rem, 1.7vw, 1.4rem);
   line-height: 1.45;
@@ -3950,6 +3999,11 @@ model-viewer {
   max-width: 940px;
   padding-left: 14px;
   border-left: 4px solid var(--danger);
+}
+
+.conversation-prompt.agent-message.completion-prompt.blocked {
+  border-color: color-mix(in srgb, var(--danger) 65%, var(--line));
+  border-left-width: 1px;
 }
 
 .conversation-pane > header h2 {

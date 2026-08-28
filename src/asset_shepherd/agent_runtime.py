@@ -30,7 +30,7 @@ from asset_shepherd.agent_job import AgentJob, AgentWorkflowError
 from asset_shepherd.agent_prompt import (
     AGENT_PROMPT_VERSION,
     AGENT_SYSTEM_PROMPT_V2,
-    AGENT_SYSTEM_PROMPT_V11,
+    AGENT_SYSTEM_PROMPT_V12,
     build_agent_start_prompt,
 )
 from asset_shepherd.agent_tools import AssetShepherdTools
@@ -54,6 +54,7 @@ ActivitySink = Callable[[str], None]
 _TOOL_ACTIVITY_LABELS: dict[str, str] = {
     "inspect_asset_for_job": "Measuring the GLB",
     "render_source_views_for_job": "Rendering source evidence",
+    "inspect_pivot_anchors_for_job": "Measuring origin choices",
     "propose_agent_repair_plan": "Forming the repair plan",
     "list_repair_candidates": "Reviewing available repairs",
     "select_repair_candidates": "Recording the selected repairs",
@@ -392,7 +393,7 @@ class AssetShepherdAgent:
         self.model_id = model_id
         self.tools = AssetShepherdTools(job)
         system_prompt = (
-            AGENT_SYSTEM_PROMPT_V11 if job.agent_orchestrated else AGENT_SYSTEM_PROMPT_V2
+            AGENT_SYSTEM_PROMPT_V12 if job.agent_orchestrated else AGENT_SYSTEM_PROMPT_V2
         )
         tools = (
             self.tools.as_agent_orchestrated_list()

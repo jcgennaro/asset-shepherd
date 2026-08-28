@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
   <section class="single-step" data-focus-area="GLB upload" aria-label="Upload the GLB">
-    <p class="conversation-prompt">Upload the GLB you want me to shepherd.</p>
+    <p class="conversation-prompt agent-message" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>Upload the GLB you want me to shepherd.</p>
     {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
     <form action="{{ url_for('upload_hosted_asset') }}" method="post" enctype="multipart/form-data" class="single-step-form" data-busy-form>
       {% if replace_workspace_id %}<input type="hidden" name="replace_workspace_id" value="{{ replace_workspace_id }}">{% endif %}

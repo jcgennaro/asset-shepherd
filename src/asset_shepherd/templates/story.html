@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
   <section class="intake-workspace" data-focus-area="new inspection">
-    <p class="conversation-prompt">Add the GLB and I’ll shepherd it toward the target we agreed.</p>
+    <p class="conversation-prompt agent-message" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>Add the GLB and I’ll shepherd it toward the target we agreed.</p>
     {% include "_intake_form.html" %}
   </section>
 {% endblock %}

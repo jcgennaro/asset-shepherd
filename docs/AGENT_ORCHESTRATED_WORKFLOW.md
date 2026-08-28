@@ -201,9 +201,12 @@ failure merely because one fitted dimension is not numerically equal to the targ
 Grounding and pivot placement are measured and reasoned about separately. A model may touch the
 ground plane while its asset origin remains on a rear edge. For a plainly grounded static prop, the
 agent may request the footprint center-bottom as the placement anchor; a freely rotating pickup may
-use the bounds center. Doors, wheels, hanging objects, rigs, and ambiguous mechanisms may depend on
-an authored functional pivot, so the agent preserves it or asks rather than guessing. The action
-tool accepts only these bounded targets and never an arbitrary translation.
+use the bounds center. When the user requests a semantic feature such as a handle center, the agent
+first calls the pivot sensor. That tool returns source-hash-bound IDs for exact bounds centers and
+corners, the surface-area centroid, long-axis end-region centers, and a uniform-volume centroid only
+for proven closed consistently wound topology. After reviewing all four coordinate-labeled views,
+the agent may select one returned ID whose region clearly matches the requested feature. If none
+does, it preserves the authored origin or asks. The model never supplies arbitrary translation XYZ.
 
 ### 4. Form an assessment
 
@@ -238,7 +241,7 @@ preview tools for supported primitives such as:
 
 - uniform root scale;
 - root rotation;
-- root translation for grounding or a bounded bounds-center/footprint-center-bottom pivot target;
+- root translation for grounding or a bounded preset/registered measured pivot target;
 - node display-name change; and
 - mesh display-name change; and
 - exact zero-area triangle removal with complete unused-vertex-tuple compaction; and

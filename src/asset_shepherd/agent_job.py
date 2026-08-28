@@ -35,6 +35,7 @@ from asset_shepherd.models import (
     JobState,
     Matrix4,
     NormalizationPayload,
+    PivotAnchorInventory,
     PlanSelection,
     ProfilePolicyProvenance,
     ProjectProfile,
@@ -48,6 +49,7 @@ from asset_shepherd.models import (
     VerificationResult,
     VerificationState,
 )
+from asset_shepherd.pivot import inspect_pivot_anchors as measure_pivot_anchors
 from asset_shepherd.planner import plan_agent_repairs, plan_repairs
 from asset_shepherd.profile_policy import (
     build_profile_policy_provenance,
@@ -185,6 +187,11 @@ class AgentJob:
     def runtime_state_path(self) -> Path:
         """Return private resumable state kept outside the contracted artifact directory."""
         return self.output_dir.parent / "runtime_state.json"
+
+    @property
+    def pivot_anchor_inventory_path(self) -> Path:
+        """Return the source-bound geometry landmark inventory for this turn."""
+        return self.output_dir / "pivot_anchors.json"
 
     @property
     def agent_assessment_path(self) -> Path:
@@ -658,6 +665,20 @@ class AgentJob:
             ),
         }
 
+    def inspect_pivot_anchors(self) -> PivotAnchorInventory:
+        """Measure a bounded set of selectable origin candidates for the current source."""
+        inspection = self.inspect()
+        try:
+            inventory = measure_pivot_anchors(self.source, inspection)
+        except (OSError, ValueError, IndexError, TypeError) as error:
+            raise AgentWorkflowError(f"Pivot anchor sensing failed: {error}") from error
+        self._require_output_path(self.pivot_anchor_inventory_path)
+        _write_json(
+            self.pivot_anchor_inventory_path,
+            inventory.model_dump(mode="json"),
+        )
+        return inventory
+
     def _trusted_existing_normalization_root(self) -> tuple[int, Matrix4] | None:
         """Return a prior Asset Shepherd root only when the immediate lineage proves it."""
         if self.turn_index <= 0 or not self.prior_turns:
@@ -1013,7 +1034,10 @@ class AgentJob:
         weld_identical_vertices: bool = False,
         clean_degenerate_geometry: bool = False,
         remove_component_ids: list[str] | None = None,
-        pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE",
+        pivot_target: Literal[
+            "PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM", "MEASURED_ANCHOR"
+        ] = "PRESERVE",
+        pivot_anchor_id: str | None = None,
     ) -> RepairPlan:
         """Validate and register one model-authored disposition and exact action preview."""
         if not self.agent_orchestrated:
@@ -1068,6 +1092,35 @@ class AgentJob:
             raise AgentWorkflowError(
                 "Disconnected-component selection requires all four source views"
             )
+        pivot_anchor_position_m: tuple[float, float, float] | None = None
+        pivot_anchor_label: str | None = None
+        if pivot_target == "MEASURED_ANCHOR":
+            if pivot_anchor_id is None:
+                raise AgentWorkflowError(
+                    "A measured pivot target requires an ID from inspect_pivot_anchors_for_job"
+                )
+            if set(source_views_used) != available_views:
+                raise AgentWorkflowError(
+                    "Semantic measured-anchor selection requires all four source views"
+                )
+            inventory = self.inspect_pivot_anchors()
+            candidates = {candidate.anchor_id: candidate for candidate in inventory.candidates}
+            try:
+                anchor = candidates[pivot_anchor_id]
+            except KeyError as error:
+                raise AgentWorkflowError(
+                    "The requested pivot anchor is not registered for this exact source"
+                ) from error
+            if anchor.kind == "AUTHORED_ORIGIN":
+                raise AgentWorkflowError(
+                    "Use pivot_target=PRESERVE for the authored origin; it is not a mutation"
+                )
+            pivot_anchor_position_m = anchor.position_m
+            pivot_anchor_label = anchor.label
+        elif pivot_anchor_id is not None:
+            raise AgentWorkflowError(
+                "Only pivot_target=MEASURED_ANCHOR may reference a pivot anchor ID"
+            )
         assessment_payload = {
             "initiating_tool_call_id": initiating_tool_call_id,
             "disposition": disposition,
@@ -1080,6 +1133,9 @@ class AgentJob:
             "rotation_degrees": rotation_degrees,
             "ground_to_y_zero": ground_to_y_zero,
             "pivot_target": pivot_target,
+            "pivot_anchor_id": pivot_anchor_id,
+            "pivot_anchor_position_m": pivot_anchor_position_m,
+            "pivot_anchor_label": pivot_anchor_label,
             "rename_invalid_display_names": rename_invalid_display_names,
             "weld_identical_vertices": weld_identical_vertices,
             "clean_degenerate_geometry": clean_degenerate_geometry,
@@ -1102,6 +1158,9 @@ class AgentJob:
             rotation_degrees=rotation_degrees,
             ground_to_y_zero=ground_to_y_zero,
             pivot_target=pivot_target,
+            pivot_anchor_id=pivot_anchor_id,
+            pivot_anchor_position_m=pivot_anchor_position_m,
+            pivot_anchor_label=pivot_anchor_label,
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
             clean_degenerate_geometry=clean_degenerate_geometry,

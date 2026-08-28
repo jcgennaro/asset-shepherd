@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-27
-**Current commit:** Explicit survivor selection and looping Refine step (this file is included)
+**Last updated:** 2026-08-28
+**Current commit:** Tool-driven pivot anchors and agent-message identity (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,20 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D064/D065 pivot and speaker checkpoint: a new read-only sensing tool returns source-hash-bound
+  origin candidates for authored origin, bounds centers/corners, surface centroid, long-axis end
+  regions, and a uniform-volume centroid only for topology proven closed and consistently wound.
+  The live agent can select only one registered ID after citing all four coordinate views; the
+  deterministic planner resolves coordinates, previews the exact root translation, requires
+  approval, and independently verifies the measured point at origin. The surviving riding-crop
+  candidate produces distinct Z-min and Z-max end-region centers, addressing the prior
+  handle-center capability gap without arbitrary XYZ. Prompt v12, schemas, and regression tests
+  cover the boundary. Agent-authored workflow prose now uses one consistent Asset Shepherd speech
+  bubble on Upload, Describe, target confirmation, approval, completion, and refusal screens.
+  Browser inspection confirms the speaker treatment, border, background, and bubble tail. The
+  common gate passes with 175 tests, one opt-in skip, lock validation, Ruff, formatting, and zero
+  Pyright findings.
 
 - D063 Refine-loop checkpoint: the first Shepherd result now offers an explicit survivor choice
   between its input and candidate. The selected immutable GLB becomes Iteration 1; subsequent

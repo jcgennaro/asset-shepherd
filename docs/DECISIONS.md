@@ -4,6 +4,77 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D065 — Present workflow-agent prose as one consistent speaker
+
+**Date:** 2026-08-28
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+Agent-authored summaries appeared as ordinary page text, so a correct clarification such as the
+unsupported handle-center response looked like an anonymous system verdict. The same ambiguity
+could recur at Upload, Describe, approval, completion, and refusal states.
+
+**Decision**
+
+Render the one agent-authored sentence as a compact Asset Shepherd speech bubble with a visible
+speaker label and accessible “Asset Shepherd says” prefix at every workflow step. Keep operational
+errors in alert styling and retain the one-title/one-message rule; the speaker label is identity
+metadata, not a second page subtitle.
+
+**Evidence and consequences**
+
+The shared `agent-message` treatment is used by Upload, Describe, target confirmation, approval,
+completion, refusal, and the legacy intake route. Approval now shows the model's concise assessment
+above the single check table instead of hiding who formed the proposal. Route tests assert the
+shared component on the principal workflow states.
+
+### D064 — Let the agent choose only source-bound measured pivot anchors
+
+**Date:** 2026-08-28
+
+**Status:** ACCEPTED; extends D053 without exposing arbitrary translation
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 agent-led sensing and disposition / M10 evaluation
+
+**Context**
+
+After retaining the correct riding-crop component, the user asked for the origin at the center of
+the handle. The agent understood the request but correctly stopped: D053 exposed only preserve,
+bounds-center, and footprint-center-bottom, none of which represented the semantic handle center.
+Stronger prompting could not create a missing typed action safely.
+
+**Decision**
+
+Add a deterministic pivot-sensing tool that inventories stable, source-hash-bound geometry
+landmarks: authored origin, bounds center, footprint center-bottom, eight bounds corners,
+triangle-area centroid, and the area-weighted centers of the outer quarters of the longest bounds
+axis. Add a uniform-volume centroid only when virtual-weld evidence proves every analyzed primitive
+closed, manifold, and consistently wound; label it as a uniform-density geometric assumption.
+
+The agent may request `MEASURED_ANCHOR` only by an opaque ID returned for the exact current source,
+after consulting all four coordinate-labeled views. The server resolves the ID to coordinates and
+label, persists the inventory, previews the exact translation, requires approval, and verifies that
+the selected point reaches the origin. Unknown IDs, model-supplied XYZ, authored-origin no-ops, and
+measured-anchor-plus-grounding conflicts fail closed.
+
+**Evidence and consequences**
+
+The actual surviving riding crop yields separate Z-min and Z-max end-region surface centers in
+addition to its coarse centers and corners, giving the agent measured choices it can associate with
+the visible handle. Unit coverage proves registered selection, rejection of invented IDs, exact
+matrix placement, written inventory, execution, and independent pivot verification. Prompt version
+12 and the live tool-activity feed expose the new sensing step without disclosing chain of thought.
+This remains an approximation: if none of the finite landmarks matches a hinge, socket, or other
+functional point, the agent must ask or defer to the creation tool.
+
 ### D063 — Promote an explicit survivor into a looping Refine step
 
 **Date:** 2026-08-27

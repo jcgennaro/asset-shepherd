@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[11]] = 11
+AGENT_PROMPT_VERSION: Final[Literal[12]] = 12
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -368,6 +368,26 @@ AGENT_SYSTEM_PROMPT_V11: Final[str] = AGENT_SYSTEM_PROMPT_V10.replace(
     "explicit approval.\n\n"
     "Only the agent may originate a target-dependent scale, rotation, grounding, pivot, "
     "naming, vertex-tuple\n",
+)
+
+AGENT_SYSTEM_PROMPT_V12: Final[str] = AGENT_SYSTEM_PROMPT_V11.replace(
+    "  mechanisms may require a different authored pivot. In those cases preserve it or ask "
+    "rather\n"
+    "  than guessing. Only request BOUNDS_CENTER or FOOTPRINT_CENTER_BOTTOM when the intended\n"
+    "  placement and evidence support it. Never supply an arbitrary translation.",
+    "  mechanisms may require a more specific pivot. In those cases render all four source views,\n"
+    "  call inspect_pivot_anchors_for_job, and compare the requested semantic feature with the\n"
+    "  registered geometry landmarks. You may choose MEASURED_ANCHOR only by its returned ID and\n"
+    "  only when the views clearly associate that candidate region with the requested feature.\n"
+    "  Bounds corners are snap landmarks, surface centroids are not physical mass, and a volume\n"
+    "  centroid appears only for topology proven closed and consistently wound. If no candidate\n"
+    "  represents the requested feature, preserve the origin or ask; never supply arbitrary XYZ.",
+).replace(
+    "3. Call propose_agent_repair_plan exactly once per repair proposal.",
+    "2a. For a semantic origin request not represented by the two simple center presets, call\n"
+    "    inspect_pivot_anchors_for_job after rendering. Cite all four views and pass exactly one\n"
+    "    registered pivot_anchor_id with pivot_target=MEASURED_ANCHOR, or stop if none fits.\n"
+    "3. Call propose_agent_repair_plan exactly once per repair proposal.",
 )
 
 

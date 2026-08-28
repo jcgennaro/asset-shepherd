@@ -5,14 +5,15 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 2.0
+**Document version:** 2.1
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
 D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
 sensing and disposition, D042 upload-first two-text UX, D047 seam-aware duplicate-position
 handling, D048 attribute-seam presentation, D049 subtitle-free task screens and tolerant provider
-normalization, D050 proportional target-box fitting and weld disclosure, and D053 bounded
-agent-selected pivot placement, through 2026-08-25
+normalization, D050 proportional target-box fitting and weld disclosure, D053 bounded
+agent-selected pivot placement, D064 source-bound measured pivot anchors, and D065 agent-message
+identity, through 2026-08-28
 
 ---
 
@@ -502,7 +503,8 @@ explicitly chosen subset of:
 - A specific root rotation selected by the agent from target and sensor evidence.
 - A specific root translation selected by the agent, including grounding when appropriate.
 - A bounded pivot-placement translation selected by the agent: preserve the authored origin, place
-  the world-bounds center at the origin, or place the footprint center-bottom at the origin.
+  the world-bounds center or footprint center-bottom at the origin, or select one exact
+  source-bound geometry landmark previously returned by the pivot-sensing tool.
 
 The deterministic preview of the agent-requested transform must include:
 
@@ -517,9 +519,12 @@ The implementation should prefer a reversible, standards-compliant root normaliz
 
 Grounding and pivot placement are distinct target conditions. A grounded model may still have a
 rear-edge or otherwise inconvenient pivot. The agent may choose a bounded pivot target only when
-the confirmed use and measured evidence justify it. Hinged, hanging, rigged, articulated, or
-ambiguous assets retain their authored pivot or require clarification; neither the model nor the
-user supplies an arbitrary translation through this interface.
+the confirmed use and measured evidence justify it. The sensor may enumerate exact bounds centers,
+bounds corners, triangle-area centroid, long-axis end-region centers, and a uniform-density volume
+centroid only when closed consistently wound topology proves that calculation valid. The agent
+selects an opaque candidate ID after comparing coordinate-labeled views; it never supplies XYZ.
+Hinged, hanging, rigged, articulated, or ambiguous assets retain their authored pivot or require
+clarification when no measured candidate clearly represents the requested feature.
 
 The agent should group compatible scale, rotation, pivot placement, and translation into one
 coherent approval card

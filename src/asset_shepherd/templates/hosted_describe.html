@@ -4,10 +4,10 @@
   <section class="single-step describe-step" data-focus-area="asset description" aria-label="Describe the asset">
     <div class="describe-step-copy">
     {% if refusal %}
-      <p class="conversation-prompt" role="status">{{ error }}</p>
+      <p class="conversation-prompt agent-message" data-agent-message role="status"><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>{{ error }}</p>
       <a class="primary-button inline-button" href="{{ url_for('hosted_home') }}">Gallery</a>
     {% else %}
-    <p class="conversation-prompt">Describe the model you’re working on.</p>
+    <p class="conversation-prompt agent-message" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>Describe the model you’re working on.</p>
     {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
     <form action="{{ url_for('save_hosted_description', draft_id=draft.draft_id) }}" method="post" class="single-step-form" data-busy-form>
       {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true, show_examples=true) }}

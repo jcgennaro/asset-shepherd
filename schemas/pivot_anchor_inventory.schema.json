@@ -1,0 +1,257 @@
+{
+  "$defs": {
+    "Bounds3D": {
+      "additionalProperties": false,
+      "description": "World-space bounds represented in meters and centimeters.",
+      "properties": {
+        "dimensions_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions Cm",
+          "type": "array"
+        },
+        "dimensions_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions M",
+          "type": "array"
+        },
+        "maximum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum Cm",
+          "type": "array"
+        },
+        "maximum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Maximum M",
+          "type": "array"
+        },
+        "minimum_cm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum Cm",
+          "type": "array"
+        },
+        "minimum_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Minimum M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "minimum_m",
+        "maximum_m",
+        "dimensions_m",
+        "minimum_cm",
+        "maximum_cm",
+        "dimensions_cm"
+      ],
+      "title": "Bounds3D",
+      "type": "object"
+    },
+    "PivotAnchorCandidate": {
+      "additionalProperties": false,
+      "description": "One deterministic geometry-derived point the agent may select as the origin.",
+      "properties": {
+        "anchor_id": {
+          "pattern": "^pivot-anchor-[0-9a-f]{16}-v1$",
+          "title": "Anchor Id",
+          "type": "string"
+        },
+        "bounds_relative_position": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bounds Relative Position",
+          "type": "array"
+        },
+        "evidence": {
+          "maxLength": 500,
+          "minLength": 12,
+          "title": "Evidence",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "AUTHORED_ORIGIN",
+            "BOUNDS_CENTER",
+            "FOOTPRINT_CENTER_BOTTOM",
+            "BOUNDS_CORNER",
+            "SURFACE_AREA_CENTROID",
+            "VOLUME_CENTROID",
+            "LONG_AXIS_END_REGION"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 120,
+          "minLength": 3,
+          "title": "Label",
+          "type": "string"
+        },
+        "position_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Position M",
+          "type": "array"
+        },
+        "region_bounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Bounds3D"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "anchor_id",
+        "kind",
+        "label",
+        "position_m",
+        "bounds_relative_position",
+        "evidence"
+      ],
+      "title": "PivotAnchorCandidate",
+      "type": "object"
+    }
+  },
+  "$id": "https://asset-shepherd.dev/schemas/v1/pivot_anchor_inventory.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Measured origin choices bound to one exact source GLB.",
+  "properties": {
+    "bounds": {
+      "$ref": "#/$defs/Bounds3D"
+    },
+    "candidates": {
+      "items": {
+        "$ref": "#/$defs/PivotAnchorCandidate"
+      },
+      "title": "Candidates",
+      "type": "array"
+    },
+    "notes": {
+      "default": [],
+      "items": {
+        "maxLength": 300,
+        "minLength": 8,
+        "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_sha256",
+    "bounds",
+    "candidates"
+  ],
+  "title": "PivotAnchorInventory",
+  "type": "object"
+}

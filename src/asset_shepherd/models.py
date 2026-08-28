@@ -222,6 +222,53 @@ class Bounds3D(ContractModel):
     dimensions_cm: Vector3
 
 
+class PivotAnchorCandidate(ContractModel):
+    """One deterministic geometry-derived point the agent may select as the origin."""
+
+    anchor_id: Annotated[str, Field(pattern=r"^pivot-anchor-[0-9a-f]{16}-v1$")]
+    kind: Literal[
+        "AUTHORED_ORIGIN",
+        "BOUNDS_CENTER",
+        "FOOTPRINT_CENTER_BOTTOM",
+        "BOUNDS_CORNER",
+        "SURFACE_AREA_CENTROID",
+        "VOLUME_CENTROID",
+        "LONG_AXIS_END_REGION",
+    ]
+    label: Annotated[str, Field(min_length=3, max_length=120)]
+    position_m: Vector3
+    bounds_relative_position: Vector3
+    region_bounds: Bounds3D | None = None
+    evidence: Annotated[str, Field(min_length=12, max_length=500)]
+
+    @model_validator(mode="after")
+    def coordinates_are_finite(self) -> "PivotAnchorCandidate":
+        """Reject invented or malformed anchor coordinates at the public boundary."""
+        if not all(math.isfinite(value) for value in self.position_m):
+            raise ValueError("Pivot anchor coordinates must be finite")
+        if not all(math.isfinite(value) for value in self.bounds_relative_position):
+            raise ValueError("Pivot anchor bounds-relative coordinates must be finite")
+        return self
+
+
+class PivotAnchorInventory(ContractModel):
+    """Measured origin choices bound to one exact source GLB."""
+
+    schema_version: Literal[1] = 1
+    source_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    bounds: Bounds3D
+    candidates: tuple[PivotAnchorCandidate, ...]
+    notes: tuple[Annotated[str, Field(min_length=8, max_length=300)], ...] = ()
+
+    @model_validator(mode="after")
+    def candidate_ids_are_unique(self) -> "PivotAnchorInventory":
+        """Keep agent-selectable IDs unambiguous."""
+        identifiers = [candidate.anchor_id for candidate in self.candidates]
+        if not identifiers or len(identifiers) != len(set(identifiers)):
+            raise ValueError("Pivot anchor inventory requires unique candidates")
+        return self
+
+
 class PackageFacts(ContractModel):
     """Container and glTF structure facts."""
 
@@ -525,7 +572,12 @@ class NormalizationPayload(ContractModel):
     proposed_matrix: Matrix4
     expected_after_bounds: Bounds3D
     components: tuple[NormalizationComponent, ...]
-    pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE"
+    pivot_target: Literal[
+        "PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM", "MEASURED_ANCHOR"
+    ] = "PRESERVE"
+    pivot_anchor_id: Annotated[str, Field(pattern=r"^pivot-anchor-[0-9a-f]{16}-v1$")] | None = None
+    pivot_anchor_position_m: Vector3 | None = None
+    pivot_anchor_label: Annotated[str, Field(min_length=3, max_length=120)] | None = None
     application_mode: Literal["ADD_ROOT", "COMPOSE_EXISTING_ROOT"] = "ADD_ROOT"
     existing_root_index: NonNegativeInt | None = None
     existing_root_before_matrix: Matrix4 | None = None
@@ -539,8 +591,20 @@ class NormalizationPayload(ContractModel):
         has_pivot = "pivot" in component_names
         if has_pivot != (self.pivot_target != "PRESERVE"):
             raise ValueError("Pivot target and normalization components are inconsistent")
-        if self.pivot_target == "BOUNDS_CENTER" and "grounding" in component_names:
-            raise ValueError("Bounds-center pivot and grounding are conflicting targets")
+        anchor_values = (
+            self.pivot_anchor_id,
+            self.pivot_anchor_position_m,
+            self.pivot_anchor_label,
+        )
+        if self.pivot_target == "MEASURED_ANCHOR":
+            if any(value is None for value in anchor_values):
+                raise ValueError("A measured pivot target requires its exact registered anchor")
+        elif any(value is not None for value in anchor_values):
+            raise ValueError("Only a measured pivot target may carry anchor evidence")
+        if self.pivot_target in {"BOUNDS_CENTER", "MEASURED_ANCHOR"} and (
+            "grounding" in component_names
+        ):
+            raise ValueError("This pivot target and grounding are conflicting targets")
         compose_values = (
             self.existing_root_index,
             self.existing_root_before_matrix,
@@ -728,7 +792,12 @@ class AgentRepairAssessment(ContractModel):
     rotation_axis: Literal["X", "Y", "Z"] | None = None
     rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0
     ground_to_y_zero: bool = False
-    pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE"
+    pivot_target: Literal[
+        "PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM", "MEASURED_ANCHOR"
+    ] = "PRESERVE"
+    pivot_anchor_id: Annotated[str, Field(pattern=r"^pivot-anchor-[0-9a-f]{16}-v1$")] | None = None
+    pivot_anchor_position_m: Vector3 | None = None
+    pivot_anchor_label: Annotated[str, Field(min_length=3, max_length=120)] | None = None
     rename_invalid_display_names: bool = False
     weld_identical_vertices: bool = False
     clean_degenerate_geometry: bool = False
@@ -758,8 +827,18 @@ class AgentRepairAssessment(ContractModel):
             raise ValueError("Scaling requires the semantic height axis observed by the agent")
         if self.rotation_degrees != 0 and self.rotation_axis is None:
             raise ValueError("Rotation degrees require a rotation axis")
-        if self.pivot_target == "BOUNDS_CENTER" and self.ground_to_y_zero:
-            raise ValueError("Bounds-center pivot and ground-to-zero are conflicting targets")
+        if self.pivot_target in {"BOUNDS_CENTER", "MEASURED_ANCHOR"} and self.ground_to_y_zero:
+            raise ValueError("This pivot target and ground-to-zero are conflicting targets")
+        anchor_values = (
+            self.pivot_anchor_id,
+            self.pivot_anchor_position_m,
+            self.pivot_anchor_label,
+        )
+        if self.pivot_target == "MEASURED_ANCHOR":
+            if any(value is None for value in anchor_values):
+                raise ValueError("A measured pivot target requires its exact registered anchor")
+        elif any(value is not None for value in anchor_values):
+            raise ValueError("Only a measured pivot target may carry anchor evidence")
         if self.weld_identical_vertices and self.clean_degenerate_geometry:
             raise ValueError(
                 "Vertex-tuple welding and degenerate cleanup require separate repair turns"
@@ -1170,7 +1249,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] = 11
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] = 12
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

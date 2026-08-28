@@ -91,6 +91,24 @@ class AssetShepherdTools:
             "content": content,
         }
 
+    @tool(name="inspect_pivot_anchors_for_job")
+    def inspect_pivot_anchors_for_job(self) -> dict[str, Any]:
+        """Measure bounded origin candidates for a semantic pivot request.
+
+        Call after inspecting and rendering all four source views when the user wants a pivot that
+        is more specific than bounds-center or footprint-center-bottom. The result includes stable
+        IDs, exact coordinates, bounds-relative positions, and evidence for authored origin,
+        bounds centers and corners, surface-area center, long-axis end-region centers, and a
+        uniform-volume centroid only when closed topology proves that calculation valid.
+
+        The candidates are geometry landmarks, not semantic conclusions. Match one to the user's
+        requested feature using the coordinate-labeled views. If no candidate clearly represents
+        it, ask for clarification or preserve the origin. This tool never mutates the GLB and the
+        repair tool accepts only an ID registered for this exact source, never arbitrary XYZ.
+
+        """
+        return self.job.inspect_pivot_anchors().model_dump(mode="json")
+
     @tool(name="render_candidate_views_for_job")
     def render_candidate_views_for_job(self) -> dict[str, Any]:
         """Render the executed candidate for a model-visible before/after comparison.
@@ -214,7 +232,10 @@ class AssetShepherdTools:
         rotation_axis: Literal["X", "Y", "Z"] | None = None,
         rotation_degrees: Literal[-180, -90, 0, 90, 180] = 0,
         ground_to_y_zero: bool = False,
-        pivot_target: Literal["PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM"] = "PRESERVE",
+        pivot_target: Literal[
+            "PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM", "MEASURED_ANCHOR"
+        ] = "PRESERVE",
+        pivot_anchor_id: str | None = None,
         rename_invalid_display_names: bool = False,
         weld_identical_vertices: bool = False,
         clean_degenerate_geometry: bool = False,
@@ -236,9 +257,12 @@ class AssetShepherdTools:
             rotation_degrees: One bounded right-handed quarter turn; use 0 unless views show a
                 defect.
             ground_to_y_zero: Move the post-scale/post-rotation minimum Y exactly to zero.
-            pivot_target: Preserve the asset origin, move the world-bounds center to it, or move
-                the footprint center-bottom to it. Choose from intended placement; never guess an
-                arbitrary translation. Grounding and pivot placement are separate conclusions.
+            pivot_target: Preserve the asset origin, use either simple measured center, or select
+                a registered MEASURED_ANCHOR. Choose from intended placement and evidence; never
+                guess arbitrary translation coordinates. Grounding and pivot placement are
+                separate conclusions.
+            pivot_anchor_id: Exact ID returned by inspect_pivot_anchors_for_job when and only when
+                pivot_target is MEASURED_ANCHOR. The deterministic core resolves its coordinates.
             rename_invalid_display_names: Apply measured index-preserving policy name replacements.
             weld_identical_vertices: Compact only complete byte-identical vertex tuples when the
                 inspection reports a positive attribute-safe merge count. Attribute seams are
@@ -271,6 +295,7 @@ class AssetShepherdTools:
             rotation_degrees=rotation_degrees,
             ground_to_y_zero=ground_to_y_zero,
             pivot_target=pivot_target,
+            pivot_anchor_id=pivot_anchor_id,
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
             clean_degenerate_geometry=clean_degenerate_geometry,
@@ -396,6 +421,7 @@ class AssetShepherdTools:
         return [
             self.inspect_asset_for_job,
             self.render_source_views_for_job,
+            self.inspect_pivot_anchors_for_job,
             self.propose_agent_repair_plan,
             self.execute_selected_repairs,
             self.render_candidate_views_for_job,

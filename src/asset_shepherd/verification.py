@@ -1085,6 +1085,22 @@ def verify_repair(
                         (output_bounds.minimum_m[2] + output_bounds.maximum_m[2]) / 2.0,
                     ]
                     pivot_label = "footprint center-bottom"
+                elif normalization_payload.pivot_target == "MEASURED_ANCHOR":
+                    if (
+                        normalization_payload.pivot_anchor_position_m is None
+                        or normalization_payload.pivot_anchor_label is None
+                    ):
+                        raise ValueError("Measured pivot payload has no registered anchor evidence")
+                    source_anchor = np.asarray(
+                        [*normalization_payload.pivot_anchor_position_m, 1.0],
+                        dtype=np.float64,
+                    )
+                    transformed_anchor = (
+                        np.asarray(normalization_payload.proposed_matrix, dtype=np.float64)
+                        @ source_anchor
+                    )[:3]
+                    actual_anchor = transformed_anchor.tolist()
+                    pivot_label = normalization_payload.pivot_anchor_label
                 else:
                     raise ValueError("Pivot component has no bounded pivot target")
                 checks.append(
