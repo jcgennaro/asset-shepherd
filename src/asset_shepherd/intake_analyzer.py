@@ -12,6 +12,13 @@ from typing import Annotated, Literal, Protocol, cast
 import httpx
 from pydantic import Field, model_validator
 
+from asset_shepherd.bedrock_responses import (
+    BedrockTokenProvider,
+    bedrock_responses_base_url,
+    provide_bedrock_token,
+    validate_bedrock_region,
+    validate_bedrock_responses_model_id,
+)
 from asset_shepherd.conversation_policy import (
     ASSET_CONTENT_BOUNDARY,
     CONTENT_REFUSAL_MESSAGE,
@@ -30,6 +37,7 @@ from asset_shepherd.target_intake import (
 OPENAI_INTAKE_MODEL = "gpt-5.6-luna"
 OPENAI_REASONING_EFFORT = "xhigh"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+BEDROCK_INTAKE_TOOL = "submit_target_intake"
 INTAKE_REFUSAL_MESSAGE = CONTENT_REFUSAL_MESSAGE
 LOGGER = logging.getLogger(__name__)
 
@@ -364,6 +372,10 @@ class OpenAITargetIntakeAnalyzer:
         self.model_id = configuration.model_id
         self._client = client
 
+    def _authorization_token(self) -> str:
+        """Return the credential for this request without exposing it to public errors."""
+        return self.configuration.api_key
+
     @staticmethod
     def _output_text(payload: object) -> str:
         """Extract output-text blocks from one Responses API JSON document."""
@@ -418,11 +430,11 @@ class OpenAITargetIntakeAnalyzer:
     def analyze(self, description: str) -> TargetIntakeContract:
         """Call OpenAI once, validate structured output, and confidence-gate the proposal."""
         normalized = normalize_intent_description(description)
-        headers = {
-            "Authorization": f"Bearer {self.configuration.api_key}",
-            "Content-Type": "application/json",
-        }
         try:
+            headers = {
+                "Authorization": f"Bearer {self._authorization_token()}",
+                "Content-Type": "application/json",
+            }
             if self._client is None:
                 with httpx.Client(timeout=90.0) as client:
                     response = client.post(
@@ -442,12 +454,18 @@ class OpenAITargetIntakeAnalyzer:
             )
         except httpx.HTTPStatusError as error:
             LOGGER.warning(
-                "OpenAI intake request failed with HTTP %s: %s",
+                "%s intake request failed with HTTP %s: %s",
+                self.provider,
                 error.response.status_code,
                 error.response.text[:1000],
             )
             if error.response.status_code == 429:
                 public_message = "The intake model is busy. Try again in a moment."
+            elif self.provider == "bedrock" and error.response.status_code == 403:
+                public_message = (
+                    "Amazon Bedrock access is not ready. Check account verification and "
+                    "runtime permissions."
+                )
             else:
                 public_message = "I couldn't analyze that description right now. Try again."
             raise TargetIntakeAnalysisError(public_message) from error
@@ -456,7 +474,7 @@ class OpenAITargetIntakeAnalyzer:
         except (json.JSONDecodeError, ValueError) as error:
             if isinstance(error, TargetIntakeAnalysisError):
                 raise
-            LOGGER.warning("OpenAI intake response failed validation: %s", error)
+            LOGGER.warning("%s intake response failed validation: %s", self.provider, error)
             raise TargetIntakeAnalysisError(
                 "The intake model did not return a valid target proposal."
             ) from error
@@ -468,6 +486,138 @@ class OpenAITargetIntakeAnalyzer:
         )
 
 
+@dataclass(frozen=True)
+class BedrockTargetIntakeConfiguration:
+    """Explicit Bedrock Responses settings with a request-scoped credential provider."""
+
+    model_id: str
+    region: str
+    reasoning_effort: Literal["low", "medium", "high", "xhigh"] = OPENAI_REASONING_EFFORT
+    token_provider: BedrockTokenProvider = field(
+        default=provide_bedrock_token,
+        repr=False,
+        compare=False,
+    )
+    responses_url: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Validate identifiers and pin credentials to the regional AWS runtime host."""
+        object.__setattr__(self, "model_id", validate_bedrock_responses_model_id(self.model_id))
+        object.__setattr__(self, "region", validate_bedrock_region(self.region))
+        object.__setattr__(
+            self,
+            "responses_url",
+            f"{bedrock_responses_base_url(self.region)}/responses",
+        )
+
+
+def load_bedrock_target_intake_configuration(
+    values: Mapping[str, str] = environ,
+) -> BedrockTargetIntakeConfiguration:
+    """Load one explicit Bedrock inference profile and its regional Responses endpoint."""
+    model_id = values.get("ASSET_SHEPHERD_INTAKE_MODEL") or values.get("ASSET_SHEPHERD_MODEL_ID")
+    if not model_id:
+        raise TargetIntakeAnalysisError(
+            "Bedrock intake is not configured. Set ASSET_SHEPHERD_MODEL_ID."
+        )
+    region = values.get("ASSET_SHEPHERD_AWS_REGION") or values.get("AWS_REGION")
+    if not region:
+        raise TargetIntakeAnalysisError(
+            "Bedrock intake is not configured. Set ASSET_SHEPHERD_AWS_REGION or AWS_REGION."
+        )
+    effort = values.get("ASSET_SHEPHERD_INTAKE_REASONING", OPENAI_REASONING_EFFORT)
+    if effort not in {"low", "medium", "high", "xhigh"}:
+        raise TargetIntakeAnalysisError("Unsupported intake reasoning effort.")
+    try:
+        validated_model_id = validate_bedrock_responses_model_id(model_id)
+        validated_region = validate_bedrock_region(region)
+    except ValueError as error:
+        raise TargetIntakeAnalysisError(str(error)) from error
+    return BedrockTargetIntakeConfiguration(
+        model_id=validated_model_id,
+        region=validated_region,
+        reasoning_effort=cast(Literal["low", "medium", "high", "xhigh"], effort),
+    )
+
+
+class BedrockTargetIntakeAnalyzer(OpenAITargetIntakeAnalyzer):
+    """Bedrock Responses intake using one constrained client-side function call."""
+
+    provider = "bedrock"
+
+    def __init__(
+        self,
+        configuration: BedrockTargetIntakeConfiguration,
+        *,
+        client: httpx.Client | None = None,
+    ) -> None:
+        """Bind the Bedrock inference profile and an optional test HTTP client."""
+        self.configuration = configuration  # pyright: ignore[reportIncompatibleVariableOverride]
+        self.model_id = configuration.model_id
+        self._client = client
+
+    def _authorization_token(self) -> str:
+        """Mint or reuse a short-term IAM-derived Bedrock bearer token for one request."""
+        try:
+            token = self.configuration.token_provider(self.configuration.region)
+        except Exception as error:
+            raise TargetIntakeAnalysisError(
+                "Amazon Bedrock authentication failed for intake."
+            ) from error
+        if not token:
+            raise TargetIntakeAnalysisError("Amazon Bedrock returned an empty intake credential.")
+        return token
+
+    @staticmethod
+    def _output_text(payload: object) -> str:
+        """Extract exactly one forced target-intake function submission."""
+        if not isinstance(payload, dict):
+            raise TargetIntakeAnalysisError("The intake model returned an invalid response.")
+        output = cast(dict[str, object], payload).get("output")
+        if not isinstance(output, list):
+            raise TargetIntakeAnalysisError("The intake model returned no target submission.")
+        calls: list[dict[str, object]] = []
+        for raw_item in cast(list[object], output):
+            if not isinstance(raw_item, dict):
+                continue
+            item = cast(dict[str, object], raw_item)
+            if item.get("type") == "function_call":
+                calls.append(item)
+        if len(calls) != 1 or calls[0].get("name") != BEDROCK_INTAKE_TOOL:
+            raise TargetIntakeAnalysisError(
+                "The intake model did not return one valid target submission."
+            )
+        arguments = calls[0].get("arguments")
+        if not isinstance(arguments, str):
+            raise TargetIntakeAnalysisError(
+                "The intake model returned an invalid target submission."
+            )
+        return arguments
+
+    def _request_payload(self, description: str) -> dict[str, object]:
+        """Require the Bedrock-hosted model to submit the validated intake tool schema."""
+        return {
+            "model": self.model_id,
+            "instructions": TARGET_INTAKE_SYSTEM_PROMPT,
+            "input": normalize_intent_description(description),
+            "reasoning": {"effort": self.configuration.reasoning_effort},
+            "text": {"verbosity": "low"},
+            "tools": [
+                {
+                    "type": "function",
+                    "name": BEDROCK_INTAKE_TOOL,
+                    "description": "Submit the proposed asset target for server validation.",
+                    "parameters": TargetIntakeInference.model_json_schema(),
+                    "strict": True,
+                }
+            ],
+            "tool_choice": {"type": "function", "name": BEDROCK_INTAKE_TOOL},
+            "parallel_tool_calls": False,
+            "max_output_tokens": 4096,
+            "store": False,
+        }
+
+
 def build_target_intake_analyzer(
     values: Mapping[str, str] = environ,
 ) -> TargetIntakeAnalyzer:
@@ -475,6 +625,8 @@ def build_target_intake_analyzer(
     provider = values.get("ASSET_SHEPHERD_INTAKE_PROVIDER", "openai")
     if provider == "openai":
         return OpenAITargetIntakeAnalyzer(load_openai_target_intake_configuration(values))
+    if provider == "bedrock":
+        return BedrockTargetIntakeAnalyzer(load_bedrock_target_intake_configuration(values))
     if provider == "deterministic":
         return DeterministicTargetIntakeAnalyzer()
     raise TargetIntakeAnalysisError(f"Unsupported intake provider: {provider}")

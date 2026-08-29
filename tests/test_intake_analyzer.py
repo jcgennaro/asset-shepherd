@@ -1,13 +1,17 @@
 """Acceptance for provider-neutral semantic target intake."""
 
 import json
+import os
 
 import httpx
 import pytest
 
 from asset_shepherd.intake_analyzer import (
+    BEDROCK_INTAKE_TOOL,
     INTAKE_REFUSAL_MESSAGE,
     OPENAI_INTAKE_MODEL,
+    BedrockTargetIntakeAnalyzer,
+    BedrockTargetIntakeConfiguration,
     OpenAITargetIntakeAnalyzer,
     OpenAITargetIntakeConfiguration,
     TargetDimensionsInference,
@@ -16,6 +20,7 @@ from asset_shepherd.intake_analyzer import (
     TargetIntakeInference,
     build_target_intake_analyzer,
     contract_from_inference,
+    load_bedrock_target_intake_configuration,
 )
 from asset_shepherd.models import AssetEndpoint, AssetTargetUse
 from asset_shepherd.target_intake import TargetEvidenceSource
@@ -27,6 +32,19 @@ def _response(inference: dict[str, object]) -> dict[str, object]:
             {
                 "type": "message",
                 "content": [{"type": "output_text", "text": json.dumps(inference)}],
+            }
+        ]
+    }
+
+
+def _tool_response(inference: dict[str, object]) -> dict[str, object]:
+    return {
+        "output": [
+            {
+                "type": "function_call",
+                "name": BEDROCK_INTAKE_TOOL,
+                "call_id": "call-1",
+                "arguments": json.dumps(inference),
             }
         ]
     }
@@ -286,3 +304,192 @@ def test_provider_builder_requires_explicit_openai_configuration() -> None:
 
     offline = build_target_intake_analyzer({"ASSET_SHEPHERD_INTAKE_PROVIDER": "deterministic"})
     assert offline.provider == "deterministic"
+
+
+def test_bedrock_intake_forces_one_validated_function_submission() -> None:
+    """Bedrock intake retains Luna/xhigh semantics through a constrained client-side tool."""
+    captured: dict[str, object] = {}
+    credential_calls: list[str] = []
+
+    def token_provider(region: str) -> str:
+        credential_calls.append(region)
+        return "short-term-test-token"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        assert request.url == (
+            "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1/responses"
+        )
+        assert request.headers["authorization"] == "Bearer short-term-test-token"
+        return httpx.Response(
+            200,
+            json=_tool_response(
+                {
+                    "engagement_decision": "PROCEED",
+                    "asset_name": "Computer Chip",
+                    "target_use": "STATIC_GAME_ASSET",
+                    "target_use_confidence": 0.98,
+                    "target_use_evidence": "The chip is a handheld static game prop.",
+                    "endpoint": "UNREAL",
+                    "endpoint_detail": None,
+                    "endpoint_confidence": 0.99,
+                    "endpoint_evidence": "The description explicitly names Unreal.",
+                    "target_dimensions_cm": {
+                        "x_cm": 7.0,
+                        "y_cm": 1.2,
+                        "z_cm": 6.23,
+                    },
+                    "target_dimensions_confidence": 0.99,
+                    "target_dimensions_evidence": "The description supplies approximate bounds.",
+                    "expected_piece_count": 1,
+                    "expected_piece_count_evidence": "The description identifies one chip.",
+                }
+            ),
+        )
+
+    configuration = BedrockTargetIntakeConfiguration(
+        model_id="us.openai.gpt-5.6-luna",
+        region="us-east-1",
+        token_provider=token_provider,
+    )
+    analyzer = BedrockTargetIntakeAnalyzer(
+        configuration,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    contract = analyzer.analyze("One computer chip for Unreal, approximately 7 x 1.2 x 6.23 cm.")
+
+    assert credential_calls == ["us-east-1"]
+    assert contract.analyzer_provider == "bedrock"
+    assert contract.analyzer_model == "us.openai.gpt-5.6-luna"
+    assert contract.target_dimensions_cm == (7.0, 1.2, 6.23)
+    assert captured["model"] == "us.openai.gpt-5.6-luna"
+    assert captured["reasoning"] == {"effort": "xhigh"}
+    assert captured["parallel_tool_calls"] is False
+    assert captured["store"] is False
+    assert captured["tool_choice"] == {"type": "function", "name": BEDROCK_INTAKE_TOOL}
+    text = captured["text"]
+    assert isinstance(text, dict)
+    assert "format" not in text
+    tools = captured["tools"]
+    assert isinstance(tools, list)
+    assert tools[0]["name"] == BEDROCK_INTAKE_TOOL
+    assert tools[0]["strict"] is True
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        [],
+        [{"type": "function_call", "name": "wrong_tool", "arguments": "{}"}],
+        [
+            {"type": "function_call", "name": BEDROCK_INTAKE_TOOL, "arguments": "{}"},
+            {"type": "function_call", "name": BEDROCK_INTAKE_TOOL, "arguments": "{}"},
+        ],
+    ],
+)
+def test_bedrock_intake_rejects_absent_wrong_or_repeated_submissions(
+    output: list[dict[str, object]],
+) -> None:
+    """The constrained intake boundary fails closed if its one-call invariant is violated."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"output": output})
+
+    analyzer = BedrockTargetIntakeAnalyzer(
+        BedrockTargetIntakeConfiguration(
+            model_id="us.openai.gpt-5.6-luna",
+            region="us-east-1",
+            token_provider=lambda _region: "test-token",
+        ),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(TargetIntakeAnalysisError, match="target submission"):
+        analyzer.analyze("One computer chip for Unreal, approximately 7 x 1.2 x 6.23 cm.")
+
+
+def test_bedrock_configuration_is_explicit_and_uses_runtime_endpoint() -> None:
+    """Provider selection requires a regional inference profile and never an OpenAI key."""
+    values = {
+        "ASSET_SHEPHERD_INTAKE_PROVIDER": "bedrock",
+        "ASSET_SHEPHERD_MODEL_ID": "us.openai.gpt-5.6-luna",
+        "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+        "ASSET_SHEPHERD_INTAKE_REASONING": "xhigh",
+    }
+    configuration = load_bedrock_target_intake_configuration(values)
+    analyzer = build_target_intake_analyzer(values)
+
+    assert configuration.responses_url == (
+        "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1/responses"
+    )
+    assert analyzer.provider == "bedrock"
+    assert "OPENAI_API_KEY" not in values
+
+    with pytest.raises(TargetIntakeAnalysisError, match="inference profile"):
+        load_bedrock_target_intake_configuration(
+            {
+                "ASSET_SHEPHERD_MODEL_ID": "openai.gpt-5.6-luna",
+                "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+            }
+        )
+
+
+def test_bedrock_authentication_failure_never_exposes_provider_detail() -> None:
+    """IAM token failures stop before HTTP and expose only bounded intake copy."""
+
+    def fail_token(_region: str) -> str:
+        raise RuntimeError("sensitive credential-chain detail")
+
+    analyzer = BedrockTargetIntakeAnalyzer(
+        BedrockTargetIntakeConfiguration(
+            model_id="us.openai.gpt-5.6-luna",
+            region="us-east-1",
+            token_provider=fail_token,
+        )
+    )
+
+    with pytest.raises(TargetIntakeAnalysisError) as caught:
+        analyzer.analyze("One computer chip for Unreal, approximately 7 x 1.2 x 6.23 cm.")
+    assert str(caught.value) == "Amazon Bedrock authentication failed for intake."
+    assert "sensitive" not in str(caught.value)
+
+
+def test_bedrock_access_denial_has_actionable_bounded_copy() -> None:
+    """An AWS verification/IAM hold is distinguishable without echoing its response body."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, json={"error": {"message": "private provider detail"}})
+
+    analyzer = BedrockTargetIntakeAnalyzer(
+        BedrockTargetIntakeConfiguration(
+            model_id="us.openai.gpt-5.6-luna",
+            region="us-east-1",
+            token_provider=lambda _region: "test-token",
+        ),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(TargetIntakeAnalysisError) as caught:
+        analyzer.analyze("One computer chip for Unreal, approximately 7 x 1.2 x 6.23 cm.")
+    assert str(caught.value) == (
+        "Amazon Bedrock access is not ready. Check account verification and runtime permissions."
+    )
+    assert "private provider detail" not in str(caught.value)
+
+
+@pytest.mark.live
+def test_opt_in_live_bedrock_target_intake() -> None:
+    """Exercise the constrained intake submission through configured Bedrock when opted in."""
+    if os.environ.get("ASSET_SHEPHERD_RUN_LIVE") != "1":
+        pytest.skip("set ASSET_SHEPHERD_RUN_LIVE=1 with Bedrock configuration to opt in")
+    analyzer = build_target_intake_analyzer()
+
+    contract = analyzer.analyze(
+        "One computer chip for an Unreal game, approximately 7 x 1.2 x 6.23 cm."
+    )
+
+    assert contract.analyzer_provider == "bedrock"
+    assert contract.ready_for_confirmation
+    assert contract.endpoint is AssetEndpoint.UNREAL
+    assert contract.expected_piece_count == 1

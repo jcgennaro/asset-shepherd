@@ -37,6 +37,17 @@ def test_launcher_injects_and_removes_the_key_around_only_the_web_process() -> N
     assert "LocalApplicationData" in script
 
 
+def test_launcher_bedrock_mode_never_requires_or_exposes_an_openai_key() -> None:
+    """An explicit Bedrock launch uses AWS configuration and removes inherited OpenAI secrets."""
+    script = START_SCRIPT.read_text(encoding="utf-8")
+
+    assert "$modelProvider -eq 'bedrock'" in script
+    assert "Bedrock mode requires ASSET_SHEPHERD_MODEL_ID" in script
+    assert "Bedrock mode requires ASSET_SHEPHERD_AWS_REGION or AWS_REGION" in script
+    assert "$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'" in script
+    assert "Remove-Item Env:OPENAI_API_KEY" in script
+
+
 def test_khronos_installer_is_pinned_hashed_and_powershell_51_compatible() -> None:
     """The optional native validator installer fails closed on supply-chain drift."""
     script = KHRONOS_SCRIPT.read_text(encoding="utf-8")

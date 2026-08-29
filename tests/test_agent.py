@@ -15,8 +15,10 @@ from strands.types.content import Messages
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
 from asset_shepherd.agent_runtime import (
+    CompleteResponseBedrockModel,
     CompleteResponseOpenAIModel,
     WorkflowActivityCallback,
+    build_environment_model,
     build_live_agent,
     build_scripted_agent,
     load_model_configuration,
@@ -381,6 +383,97 @@ def test_openai_model_reads_complete_response_before_closing_client(
     assert model_state == {"response_id": "response-123"}
     assert events[0] == {"messageStart": {"role": "assistant"}}
     assert {"contentBlockDelta": {"delta": {"text": "Finished."}}} in events
+
+
+def test_bedrock_workflow_uses_runtime_responses_and_request_scoped_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The Strands bridge preserves Responses tool semantics without retaining AWS credentials."""
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.request: dict[str, object] = {}
+
+        async def create(self, **request: object) -> SimpleNamespace:
+            self.request = request
+            return SimpleNamespace(
+                id="bedrock-response-123",
+                status="completed",
+                output=(
+                    SimpleNamespace(
+                        type="function_call",
+                        name="inspect_asset_for_job",
+                        arguments="{}",
+                        call_id="call-1",
+                    ),
+                ),
+                usage=SimpleNamespace(input_tokens=12, output_tokens=4, total_tokens=16),
+            )
+
+    class FakeAsyncOpenAI:
+        instance: "FakeAsyncOpenAI | None" = None
+
+        def __init__(self, **client_args: object) -> None:
+            self.client_args = client_args
+            self.responses = FakeResponses()
+            FakeAsyncOpenAI.instance = self
+
+        async def __aenter__(self) -> "FakeAsyncOpenAI":
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+    token_calls: list[str] = []
+
+    def token_provider(region: str) -> str:
+        token_calls.append(region)
+        return "request-scoped-test-token"
+
+    monkeypatch.setattr("asset_shepherd.agent_runtime.openai.AsyncOpenAI", FakeAsyncOpenAI)
+    model = CompleteResponseBedrockModel(
+        model_id="us.openai.gpt-5.6-luna",
+        region="us-east-1",
+        token_provider=token_provider,
+        stateful=True,
+        params={"reasoning": {"effort": "xhigh"}, "parallel_tool_calls": False},
+    )
+    messages: Messages = [{"role": "user", "content": [{"text": "Inspect this asset."}]}]
+    model_state: dict[str, object] = {}
+
+    async def collect() -> list[object]:
+        return [event async for event in model.stream(messages, model_state=model_state)]
+
+    events = run(collect())
+    client = FakeAsyncOpenAI.instance
+    assert client is not None
+    assert token_calls == ["us-east-1"]
+    assert client.client_args == {
+        "api_key": "request-scoped-test-token",
+        "base_url": "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1",
+    }
+    assert client.responses.request["model"] == "us.openai.gpt-5.6-luna"
+    assert client.responses.request["store"] is True
+    assert client.responses.request["parallel_tool_calls"] is False
+    assert model_state == {"response_id": "bedrock-response-123"}
+    assert any("toolUse" in json.dumps(event) for event in events)
+    assert "request-scoped-test-token" not in repr(model.get_config())
+
+
+def test_environment_model_builds_bedrock_responses_not_converse() -> None:
+    """The production Bedrock selection resolves to the parity Responses adapter."""
+    model, configuration = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock",
+            "ASSET_SHEPHERD_MODEL_ID": "us.openai.gpt-5.6-luna",
+            "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+            "ASSET_SHEPHERD_WORKFLOW_REASONING": "xhigh",
+        }
+    )
+
+    assert isinstance(model, CompleteResponseBedrockModel)
+    assert configuration.provider == "bedrock"
+    assert configuration.model_id == "us.openai.gpt-5.6-luna"
 
 
 def test_persistent_session_requires_both_identity_and_storage(tmp_path: Path) -> None:

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-29
-**Current commit:** Contest compliance plan and Bedrock parity choice (this file is included)
+**Current commit:** Bedrock Responses intake/workflow adapters (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing |  | Repeated feedback/action/approval turns, per-asset session state, resumable seven-slot workspace, and one-task-per-step hosted UX are implemented locally; remaining D036 live evaluations precede Bedrock/deployment |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters |  | Bedrock intake/workflow transports and short-term authentication are implemented; behavioral parity awaits AWS account verification |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -52,6 +52,19 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D073 Bedrock Responses implementation: semantic intake now forces one exact
+  `submit_target_intake` tool submission through Bedrock-hosted Luna/xhigh and preserves the existing
+  Pydantic/confidence boundary. The Strands workflow now uses the same regional Responses endpoint,
+  complete-response bridge, sequential tools, stateful IDs, and request-scoped IAM-derived bearer
+  token instead of Converse. Bedrock launcher mode requires explicit model/region settings, removes
+  inherited `OPENAI_API_KEY`, and does not fall back to OpenAI. Unit acceptance covers malformed and
+  repeated intake calls, runtime URL/model provenance, token safety, workflow tool events, and
+  launcher separation. The common gate passes with 187 tests, two opt-in live skips, lock
+  validation, Ruff, formatting, and zero Pyright findings. The verified least-privilege role minted
+  a short-term token. The first
+  bounded request reached the selected `us-east-1` endpoint, but AWS rejected inference with the
+  documented new-account verification HTTP 403; no behavioral parity is claimed yet.
+
 - D072 official-rules compliance audit: the 2026-08-29 Devpost rules snapshot confirms that the
   Bedrock-hosted OpenAI Luna choice is eligible because the contest requires genuine Strands
   orchestration, not a particular foundation-model vendor or Bedrock API. The implementation is a
@@ -73,7 +86,8 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   sequential custom tool calls, and the unchanged typed server boundary. Bedrock does not advertise
   native structured output for this model, so semantic intake will use a constrained typed tool and
   retain the existing Pydantic/confidence failures. The budget alert and separate least-privilege
-  `asset-shepherd` role/profile are confirmed; no paid model call has run.
+  `asset-shepherd` role/profile are confirmed. The first bounded inference request reached Bedrock
+  but was rejected before execution by AWS's new-account verification hold.
 
 - D070 deployment procedure: `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` separates the M9 move into a local
   Bedrock provider gate, cloud-portability gate, and remote-product gate. It preserves
@@ -787,16 +801,17 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 The remaining D036 local acceptance work is unblocked. RW2 requires untouched Debug Beetle and
 Cloudforge Workbench exports. The least-privilege `asset-shepherd` AWS runtime profile, selected
-`us-east-1`/`us.openai.gpt-5.6-luna`/`xhigh` path, and budget alert are confirmed. No paid model call
-has run yet. The submission also remains blocked on the public-repository, free judge-access,
+`us-east-1`/`us.openai.gpt-5.6-luna`/`xhigh` path, budget alert, and short-term-token path are
+confirmed. AWS account verification currently returns HTTP 403 before Bedrock inference, blocking
+the live Step 2 parity gate. The submission also remains blocked on the public-repository, free judge-access,
 architecture, video, disclosure, release-scan, and entrant-attestation gates in
 `docs/CONTEST_COMPLIANCE_PLAN.md`. A human-cleaned reference and manual-time record remain required
 for the full RW4 comparison gate.
 
 ## Next action
 
-Implement the D071 Bedrock Responses adapters and run the bounded smoke test using the verified
-least-privilege runtime profile. Before the full Step 2 Bedrock gate, close the remaining D036
+Retry the two opt-in D073 Bedrock smoke tests after AWS account verification clears, then run the
+Step 2 browser parity matrix. Before closing the full Step 2 Bedrock gate, close the remaining D036
 changed-goal and ambiguous-orientation behavior cases and
 exercise a consequential continuation turn whose fresh assessment requests a new action and
 approval. Preserve the current mutation scope, exact authorization, durability, and invariant

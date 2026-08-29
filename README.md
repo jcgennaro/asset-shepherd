@@ -45,15 +45,26 @@ distributable real-world demo input. Generated GLBs and ZIPs remain reproducible
 uv sync
 ```
 
-Save the OpenAI key once. This is one command; the prompt hides the pasted value:
+For the Bedrock production-parity path, authenticate the `asset-shepherd` AWS profile and set the
+explicit environment shown in `.env.example`. The launcher derives a short-term Bedrock bearer
+token from that AWS session; it does not require or send an OpenAI API key:
+
+```powershell
+$env:AWS_PROFILE = 'asset-shepherd'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock'
+$env:ASSET_SHEPHERD_MODEL_ID = 'us.openai.gpt-5.6-luna'
+$env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'xhigh'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'xhigh'
+.\scripts\Start-AssetShepherd.ps1
+```
+
+The optional direct-OpenAI development adapter remains available. Save its key once, then start
+without setting `ASSET_SHEPHERD_MODEL_PROVIDER=bedrock`:
 
 ```powershell
 .\scripts\Save-OpenAIKey.ps1
-```
-
-Start Asset Shepherd later with one command:
-
-```powershell
 .\scripts\Start-AssetShepherd.ps1
 ```
 
@@ -64,19 +75,20 @@ approximate dimensions. Shepherd lets the Strands agent choose sensing tools, as
 propose typed repairs. The user reviews consequential changes; the selected input or candidate can
 then enter as many numbered Refine iterations as needed before download.
 
-The interim local live provider uses OpenAI `gpt-5.6-luna` with `xhigh` reasoning through the
-Responses API for semantic intake and workflow decisions. The GLB stays local; the provider receives
+The production-parity provider uses OpenAI `gpt-5.6-luna` with `xhigh` reasoning through Amazon
+Bedrock's OpenAI-compatible Responses API for semantic intake and workflow decisions. The GLB stays
+local; the provider receives
 the description, structured measurements, and standardized rendered evidence needed for the turn.
 Each workspace owns its own durable Strands session and frozen job state, so refresh and restart
 resume the same asset without sharing conversation state or repeating mutation. Use
 `uv run asset-shepherd web --offline-intake` for the explicit-text intake fallback. Deterministic
 providers remain available for zero-network tests.
 
-The Windows launch scripts keep the encrypted development key under the current user's local app
-data, outside the repository. The launcher exposes it only to the running server process and removes
-it when that command ends. D071 moves production to the same Luna/xhigh behavior through Amazon
-Bedrock Responses; the direct OpenAI API remains an interim local provider until that parity gate
-passes.
+The Windows launch scripts keep an optional direct-OpenAI development key under the current user's
+local app data, outside the repository. In OpenAI mode, the launcher exposes it only to the running
+server process and removes it when that command ends. In Bedrock mode, the launcher removes any
+inherited OpenAI key and uses only the short-term IAM-derived Bedrock credential. The direct OpenAI
+API remains a development adapter, not a production fallback.
 
 The agent decides which checks and bounded actions are appropriate. Deterministic tools remain
 authoritative for measurements, exact action consequences, authorization, source immutability,
@@ -119,9 +131,9 @@ contains the prompt version, user-facing summary, provider/model identity, token
 success/error/duration metrics, interrupt count, correction count, and final verification state.
 This proves tool plumbing, not model judgment or agent-orchestrated repair choice.
 
-Live Bedrock use for the Strands repair workflow remains opt-in and has no hard-coded model ID. Copy
-`.env.example` into your environment, set `ASSET_SHEPHERD_MODEL_ID` and region to values available
-in your account, and use the standard `AWS_PROFILE`. The live integration test runs only when
+Live Bedrock use for the Strands repair workflow remains opt-in and all model/region values stay
+explicit. Copy `.env.example` into your environment, confirm its inference profile is available in
+your account, and use the standard `AWS_PROFILE`. The live integration test runs only when
 `ASSET_SHEPHERD_RUN_LIVE=1`; ordinary tests never look up credentials or make network requests.
 
 The staged provider, persistence, rendering, AgentCore, web-hosting, observability, and acceptance

@@ -4,6 +4,50 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D073 — Use one fail-closed Bedrock Responses transport for intake and Strands
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED; live behavior gate awaiting AWS account verification
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+D071 selected Bedrock-hosted GPT-5.6 Luna/xhigh for parity with the successful local workflow, but
+the code still routed workflow calls through Strands `BedrockModel`/Converse and had no Bedrock
+semantic-intake adapter. The AWS Responses endpoint accepts the same client-side custom tools used
+by the local workflow, while AWS-login credentials can produce temporary bearer tokens without a
+long-term Bedrock key.
+
+**Decision**
+
+Use the OpenAI-compatible `bedrock-runtime` Responses endpoint for both model boundaries. The
+Strands model adapter keeps complete non-streaming Responses, sequential tool calls, stateful
+response IDs, and the existing typed tool surface. It obtains an IAM-derived short-term bearer
+token per request and never stores that token in model configuration. Bedrock intake forces exactly
+one `submit_target_intake` function call carrying the unchanged `TargetIntakeInference` JSON Schema;
+absent, wrong, repeated, malformed, or Pydantic-invalid submissions fail closed.
+
+Bedrock startup requires an explicit geographic/global OpenAI inference profile and region, removes
+any inherited `OPENAI_API_KEY`, and defaults intake to Bedrock when no separate intake provider was
+chosen. The optional direct-OpenAI adapter remains available only for local development and is not
+a production fallback. AWS CLI login profiles require Botocore's CRT extra, so it is an explicit
+runtime dependency.
+
+**Evidence and consequences**
+
+Unit acceptance proves the regional runtime URL, model provenance, Luna/xhigh request controls,
+single typed intake submission, sequential workflow tools, stateful response IDs, request-scoped
+credentials, safe errors, and Bedrock-aware launcher path. The least-privilege runtime role resolves
+and successfully mints a short-term token. The first bounded request reached
+`bedrock-runtime.us-east-1.amazonaws.com` but AWS returned HTTP 403 because the new account is still
+being verified. Therefore implementation is complete, but Step 2 behavioral parity—including image
+evidence, interrupt/resume, usage, and representative workflows—must not be claimed until AWS lifts
+that external restriction and the opt-in live tests pass.
+
 ### D072 — Treat official contest compliance as six release gates
 
 **Date:** 2026-08-29

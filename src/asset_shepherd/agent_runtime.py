@@ -17,7 +17,7 @@ import openai
 from pydantic import BaseModel
 from strands import Agent
 from strands.agent import AgentResult
-from strands.models import BedrockModel, Model
+from strands.models import Model
 from strands.models.openai_responses import OpenAIResponsesModel
 from strands.session import SessionManager, SnapshotSessionManager
 from strands.storage import LocalFileStorage
@@ -34,6 +34,12 @@ from asset_shepherd.agent_prompt import (
     build_agent_start_prompt,
 )
 from asset_shepherd.agent_tools import AssetShepherdTools
+from asset_shepherd.bedrock_responses import (
+    BedrockTokenProvider,
+    bedrock_responses_base_url,
+    provide_bedrock_token,
+    validate_bedrock_responses_model_id,
+)
 from asset_shepherd.models import (
     AgentMetrics,
     AgentTokenUsage,
@@ -150,6 +156,10 @@ class CompleteResponseOpenAIModel(OpenAIResponsesModel):
     Strands approval interrupt ends the invocation.
     """
 
+    def _client_args_for_request(self) -> dict[str, Any]:
+        """Resolve one request's client arguments without retaining response bodies."""
+        return dict(self._resolve_client_args())  # pyright: ignore[reportPrivateUsage]
+
     async def stream(
         self,
         messages: Messages,
@@ -170,7 +180,7 @@ class CompleteResponseOpenAIModel(OpenAIResponsesModel):
             model_state,
         )
         request["stream"] = False
-        async with openai.AsyncOpenAI(**self._resolve_client_args()) as client:  # pyright: ignore[reportPrivateUsage]
+        async with openai.AsyncOpenAI(**self._client_args_for_request()) as client:
             response = cast(Any, await client.responses.create(**request))
 
         response_id = getattr(response, "id", None)
@@ -232,31 +242,75 @@ class CompleteResponseOpenAIModel(OpenAIResponsesModel):
             yield self._format_chunk({"chunk_type": "metadata", "data": usage})
 
 
+class CompleteResponseBedrockModel(CompleteResponseOpenAIModel):
+    """Use the same complete Responses bridge against Amazon Bedrock's runtime endpoint."""
+
+    def __init__(
+        self,
+        *,
+        model_id: str,
+        region: str,
+        token_provider: BedrockTokenProvider = provide_bedrock_token,
+        **model_config: Any,
+    ) -> None:
+        """Bind a validated inference profile while minting credentials only per request."""
+        self._bedrock_region = region
+        self._bedrock_token_provider = token_provider
+        super().__init__(
+            client_args={
+                "api_key": "short-term-bedrock-token-is-injected-per-request",
+                "base_url": bedrock_responses_base_url(region),
+            },
+            model_id=validate_bedrock_responses_model_id(model_id),
+            **model_config,
+        )
+
+    def _client_args_for_request(self) -> dict[str, Any]:
+        """Mint or reuse a short-term token without saving it in model configuration."""
+        try:
+            token = self._bedrock_token_provider(self._bedrock_region)
+        except Exception as error:
+            raise AgentWorkflowError(
+                "Amazon Bedrock authentication failed for the workflow model"
+            ) from error
+        if not token:
+            raise AgentWorkflowError("Amazon Bedrock returned an empty workflow credential")
+        client_args = super()._client_args_for_request()
+        client_args["api_key"] = token
+        return client_args
+
+
 def build_environment_model(
     values: Mapping[str, str] = environ,
 ) -> tuple[Model, ModelConfiguration]:
     """Construct the configured provider; invocation remains caller-controlled and opt-in."""
     configuration = load_model_configuration(values)
+    effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
+    if effort not in {"low", "medium", "high", "xhigh", "max"}:
+        raise AgentWorkflowError("Unsupported workflow reasoning effort")
+    model_parameters = {
+        "reasoning": {"effort": effort, "context": "all_turns"},
+        "max_output_tokens": 8192,
+        "parallel_tool_calls": False,
+        "text": {"verbosity": "low"},
+    }
     if configuration.provider == "openai":
-        effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
-        if effort not in {"low", "medium", "high", "xhigh", "max"}:
-            raise AgentWorkflowError("Unsupported workflow reasoning effort")
         model = CompleteResponseOpenAIModel(
             client_args={"api_key": values["OPENAI_API_KEY"]},
             model_id=configuration.model_id,
             stateful=True,
-            params={
-                "reasoning": {"effort": effort, "context": "all_turns"},
-                "max_output_tokens": 8192,
-                "parallel_tool_calls": False,
-                "text": {"verbosity": "low"},
-            },
+            params=model_parameters,
         )
     else:
-        model = BedrockModel(
-            model_id=configuration.model_id,
-            region_name=cast(str, configuration.region),
-        )
+        try:
+            model = CompleteResponseBedrockModel(
+                model_id=configuration.model_id,
+                region=cast(str, configuration.region),
+                stateful=True,
+                params=model_parameters,
+            )
+        except ValueError as error:
+            raise AgentWorkflowError(str(error)) from error
     return model, configuration
 
 

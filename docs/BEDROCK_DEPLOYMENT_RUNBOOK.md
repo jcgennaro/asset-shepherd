@@ -1,6 +1,7 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; Step 1 complete, Step 2 next
+**Status:** Approved procedure; Step 1 complete, Step 2 adapters implemented, live gate blocked by
+AWS account verification
 
 **Last verified against official documentation:** 2026-08-29
 
@@ -35,7 +36,9 @@ until the remote-product gate passes.
 - [x] Step 1.4 the user confirmed an AWS Budget zero-cost alert and $100 promotional-credit
   allocation. The alert is notification rather than a hard spending cap, and credit eligibility
   remains subject to the account's credit terms.
-- [ ] Step 2 local all-Bedrock provider gate.
+- [x] Step 2.1/2.2 Bedrock intake, workflow transport, short-term-token, and launcher implementation.
+- [ ] Step 2.3 local all-Bedrock behavioral parity gate. The first bounded call reached the selected
+  endpoint on 2026-08-29 but AWS returned account-verification HTTP 403 before inference.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing.
 - [ ] Step 5 AgentCore runtime.
@@ -90,8 +93,8 @@ receive AWS credentials and does not invoke the private agent runtime directly.
 
 | Concern | Current implementation | Required migration |
 |---|---|---|
-| Workflow model | Strands `OpenAIResponsesModel` or `BedrockModel` selected by environment | Configure and evaluate the existing Bedrock path |
-| Intake model | Provider-neutral interface with OpenAI and deterministic implementations | Add a Bedrock implementation emitting the same validated schema |
+| Workflow model | Strands complete-response adapter over Bedrock Responses, with optional direct-OpenAI development adapter | Complete live Bedrock behavior evaluation |
+| Intake model | Bedrock constrained-tool adapter, plus OpenAI development and deterministic test adapters | Complete live typed-intake evaluation |
 | Agent session | `SnapshotSessionManager` with `LocalFileStorage` under one workspace | Replace storage with Strands S3 session storage while retaining `workspace_id` |
 | Workspace record | Atomic JSON files plus process-local locking | DynamoDB record with optimistic/conditional writes |
 | Binary artifacts | Per-workspace local directories | Private S3 prefixes with hashes, lifecycle, and presigned transfer |
@@ -223,6 +226,32 @@ short-term Bedrock bearer token derived from the `asset-shepherd` IAM session. I
 direct OpenAI API endpoint or require a long-term Bedrock key.
 
 ### 2.3 Behavioral parity evaluation
+
+Implementation status: the two adapters and offline acceptance tests are complete. The
+least-privilege profile can mint the required short-term token, and no OpenAI key is needed. AWS is
+still verifying the account, so do not mark this gate complete or begin Step 3 until the following
+bounded retry succeeds.
+
+From a fresh PowerShell session:
+
+```powershell
+$env:AWS_PROFILE = 'asset-shepherd'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock'
+$env:ASSET_SHEPHERD_MODEL_ID = 'us.openai.gpt-5.6-luna'
+$env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'xhigh'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'xhigh'
+$env:ASSET_SHEPHERD_RUN_LIVE = '1'
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+
+uv run pytest -q `
+  tests/test_intake_analyzer.py::test_opt_in_live_bedrock_target_intake `
+  tests/test_agent.py::test_opt_in_live_strands_provider_workflow
+```
+
+If AWS again reports that the account is being verified, wait for AWS to clear the account. Do not
+broaden IAM permissions, change model providers, or add a direct-OpenAI fallback in response.
 
 Run the current local browser product through Bedrock before changing storage or hosting. Cover:
 

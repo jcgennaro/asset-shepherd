@@ -69,10 +69,11 @@ are optional, but either can strengthen the Technical Implementation score. Free
 access during judging is mandatory even though the separate Devpost **live demo link** field is
 described as optional.
 
-The selected production path is not implemented yet. The current environment-selected Bedrock path
-constructs Strands `BedrockModel` over Converse, while D071 selects a Responses-compatible adapter
-for Luna/xhigh parity. Do not claim all-Bedrock parity until that adapter and constrained intake tool
-pass image, sequential-tool, approval/resume, validation, and usage-reporting tests.
+The selected Bedrock Responses transport and constrained intake tool are implemented. Offline
+acceptance proves their request, validation, authentication, and no-fallback boundaries, but AWS
+account verification currently rejects the first live request before inference. Do not claim
+all-Bedrock parity until the live path passes image, sequential-tool, approval/resume, validation,
+and usage-reporting tests.
 
 ### New work and disclosure
 
