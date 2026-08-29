@@ -4,11 +4,59 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D074 — Use Nova 2 Lite as a reversible Converse diagnostic, not the Luna parity baseline
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED; bounded live intake and one full Strands workflow passed
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The selected Luna/xhigh Bedrock Responses path reached AWS but remained unavailable to the account.
+The official model-access API now distinguishes that condition: Luna reports authorization,
+entitlement, and region availability, but `agreementAvailability=NOT_AVAILABLE`, while an agreement
+offer exists. Creating that one-time third-party agreement is an administrator/EULA action and must
+not be delegated to the least-privilege application role. Amazon Nova 2 Lite reports every
+availability field as available and does not depend on a third-party Marketplace agreement, so it
+can independently test the Bedrock, IAM, Strands, and tool-contract path while Luna access is being
+resolved.
+
+**Decision**
+
+Preserve `bedrock` as the Luna Responses parity provider and add `bedrock-nova` as an explicit,
+reversible provider. Nova uses Strands `BedrockModel` over Converse with
+`us.amazon.nova-2-lite-v1:0` in `us-east-1`; it does not use the OpenAI-compatible endpoint or a
+Bedrock bearer token. Its intake adapter forces exactly one `submit_target_intake` tool call,
+inlines generated schema references, keeps only Nova's supported top-level `type`, `properties`,
+and `required` fields, and then applies the unchanged strict Pydantic and confidence gates.
+
+Use medium reasoning for this trial. AWS documents medium as the agentic-workflow setting, and the
+live API rejects a bounded `maxTokens` value when Nova high reasoning is enabled. Asset Shepherd
+therefore permits only low or medium Nova reasoning, fixes temperature to zero for tool use, and
+bounds workflow and intake output at 8,192 and 4,096 tokens respectively. Do not silently translate
+Luna `xhigh` to a Nova setting. Keep exact Nova invocation/profile resources in a separate inline
+runtime policy so the fallback can be removed without changing Luna permissions.
+
+**Evidence and consequences**
+
+Read-only availability checks found the US Nova inference profile active across the same three US
+regions used by the project. A least-privilege 63-token connectivity call returned `NOVA_READY`.
+The live intake produced a validated Computer Chip/Unreal/7 × 1.2 × 6.23 cm/one-piece proposal.
+The normal opt-in Strands approval-through-package workflow passed in 113.83 seconds through Nova.
+This proves that the account, runtime role, Bedrock Runtime, Converse transport, Strands loop, and
+typed tools work together; it does not establish Luna behavioral parity or complete the eight-case
+browser matrix. Luna remains the selected production-parity model until its one-time agreement is
+reviewed and accepted by an administrator or the user deliberately changes that decision.
+
 ### D073 — Use one fail-closed Bedrock Responses transport for intake and Strands
 
 **Date:** 2026-08-29
 
-**Status:** ACCEPTED; live behavior gate awaiting AWS account verification
+**Status:** ACCEPTED; live behavior gate awaiting the Luna model agreement
 
 **Decision owner:** User and Codex
 
@@ -46,7 +94,8 @@ and successfully mints a short-term token. The first bounded request reached
 `bedrock-runtime.us-east-1.amazonaws.com` but AWS returned HTTP 403 because the new account is still
 being verified. Therefore implementation is complete, but Step 2 behavioral parity—including image
 evidence, interrupt/resume, usage, and representative workflows—must not be claimed until AWS lifts
-that external restriction and the opt-in live tests pass.
+that external restriction and the opt-in live tests pass. D074 subsequently isolated the current
+Luna blocker to its unavailable one-time model agreement and proved the rest of the path with Nova.
 
 ### D072 — Treat official contest compliance as six release gates
 

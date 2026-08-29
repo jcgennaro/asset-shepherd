@@ -68,6 +68,24 @@ without setting `ASSET_SHEPHERD_MODEL_PROVIDER=bedrock`:
 .\scripts\Start-AssetShepherd.ps1
 ```
 
+If the Luna agreement is still pending, the reversible Nova 2 Lite diagnostic uses native Bedrock
+Converse and the same Strands/tool contracts without an OpenAI key:
+
+```powershell
+$env:AWS_PROFILE = 'asset-shepherd'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-nova'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-nova'
+$env:ASSET_SHEPHERD_MODEL_ID = 'us.amazon.nova-2-lite-v1:0'
+$env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'medium'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'medium'
+.\scripts\Start-AssetShepherd.ps1
+```
+
+Nova is an availability diagnostic, not a silent replacement for the Luna/xhigh parity baseline.
+Asset Shepherd rejects Nova `high`/`xhigh` in this bounded configuration because the live API does
+not accept an output-token limit with high reasoning.
+
 Open `http://127.0.0.1:8010`. **Gallery** starts a new asset or resumes one of seven isolated,
 persisted workspaces. The numbered workflow is **1 Upload → 2 Describe → 3 Shepherd → 4 Refine**.
 Upload performs objective GLB preflight before the user describes the intended endpoint and

@@ -11,6 +11,7 @@ from zipfile import ZipFile
 import pytest
 from jsonschema.validators import validator_for
 from strands.agent import AgentResult
+from strands.models.bedrock import BedrockModel
 from strands.types.content import Messages
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
@@ -27,6 +28,8 @@ from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     AgentWorkflowResult,
     ApprovalCard,
+    AssetIntentProvenance,
+    AssetTargetUse,
     Decisions,
     DecisionValue,
     InspectionResult,
@@ -476,6 +479,38 @@ def test_environment_model_builds_bedrock_responses_not_converse() -> None:
     assert configuration.model_id == "us.openai.gpt-5.6-luna"
 
 
+def test_environment_model_builds_nova_converse_as_separate_provider() -> None:
+    """The Nova trial uses Strands Converse without replacing the Luna Responses path."""
+    model, configuration = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-nova",
+            "ASSET_SHEPHERD_MODEL_ID": "us.amazon.nova-2-lite-v1:0",
+            "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+            "ASSET_SHEPHERD_WORKFLOW_REASONING": "medium",
+        }
+    )
+
+    assert isinstance(model, BedrockModel)
+    assert configuration.provider == "bedrock-nova"
+    assert configuration.model_id == "us.amazon.nova-2-lite-v1:0"
+    assert model.get_config().get("additional_request_fields") == {
+        "reasoningConfig": {"type": "enabled", "maxReasoningEffort": "medium"}
+    }
+
+
+def test_nova_rejects_unbounded_or_responses_only_reasoning_efforts() -> None:
+    """The bounded Nova trial must not silently reinterpret Luna xhigh."""
+    with pytest.raises(AgentWorkflowError, match="Nova reasoning effort"):
+        build_environment_model(
+            {
+                "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-nova",
+                "ASSET_SHEPHERD_MODEL_ID": "us.amazon.nova-2-lite-v1:0",
+                "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+                "ASSET_SHEPHERD_WORKFLOW_REASONING": "high",
+            }
+        )
+
+
 def test_persistent_session_requires_both_identity_and_storage(tmp_path: Path) -> None:
     """Scripted and future Bedrock agents share the same explicit session-state contract."""
     job = _job(tmp_path / "session-contract")
@@ -491,8 +526,29 @@ def test_opt_in_live_strands_provider_workflow(tmp_path: Path) -> None:
     if os.environ.get("ASSET_SHEPHERD_RUN_LIVE") != "1":
         pytest.skip("set ASSET_SHEPHERD_RUN_LIVE=1 with model configuration to opt in")
     output = tmp_path / "live"
+    intent = AssetIntentProvenance(
+        intent_id="1" * 32,
+        original_description=(
+            "A standing robot character for an Unreal game, approximately 1.8 meters tall."
+        ),
+        target_use=AssetTargetUse.RIG_READY_CHARACTER,
+        target_height_cm=180.0,
+        confirmed_story=(
+            "A standing robot character approximately 1.8 meters tall for later rigging in Unreal."
+        ),
+        confirmed_at=FIXED_TIME,
+        canonical_sha256="2" * 64,
+    )
+    job = AgentJob(
+        BROKEN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=intent,
+        agent_orchestrated=True,
+        clock=_fixed_clock,
+    )
     runtime = build_live_agent(
-        _job(output),
+        job,
         session_id="live-bedrock-test",
         session_root=tmp_path / "live-strands-state",
     )
@@ -500,4 +556,4 @@ def test_opt_in_live_strands_provider_workflow(tmp_path: Path) -> None:
     interrupt_id, _ = _approval_card(interrupted)
     completed = runtime.complete(runtime.resume(interrupt_id, approved=True))
     assert completed.job_result.ready_candidate
-    assert completed.metrics.provider == "bedrock"
+    assert completed.metrics.provider == os.environ["ASSET_SHEPHERD_MODEL_PROVIDER"]

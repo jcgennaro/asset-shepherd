@@ -13,11 +13,13 @@ from time import perf_counter
 from types import SimpleNamespace
 from typing import Any, Literal, TypeVar, cast
 
+import boto3
 import openai
 from pydantic import BaseModel
 from strands import Agent
 from strands.agent import AgentResult
 from strands.models import Model
+from strands.models.bedrock import BedrockModel
 from strands.models.openai_responses import OpenAIResponsesModel
 from strands.session import SessionManager, SnapshotSessionManager
 from strands.storage import LocalFileStorage
@@ -132,13 +134,13 @@ def load_model_configuration(
     if not model_id:
         raise AgentWorkflowError("Missing live model configuration: ASSET_SHEPHERD_MODEL_ID")
     region = values.get("ASSET_SHEPHERD_AWS_REGION") or values.get("AWS_REGION")
-    if provider == "bedrock" and not region:
+    if provider in {"bedrock", "bedrock-nova"} and not region:
         raise AgentWorkflowError(
             "Missing live model configuration: ASSET_SHEPHERD_AWS_REGION or AWS_REGION"
         )
     if provider == "openai" and not values.get("OPENAI_API_KEY"):
         raise AgentWorkflowError("Missing live model configuration: OPENAI_API_KEY")
-    if provider not in {"bedrock", "openai"}:
+    if provider not in {"bedrock", "bedrock-nova", "openai"}:
         raise AgentWorkflowError(f"Unsupported live model provider: {provider}")
     return ModelConfiguration(
         provider=provider,
@@ -285,9 +287,19 @@ def build_environment_model(
 ) -> tuple[Model, ModelConfiguration]:
     """Construct the configured provider; invocation remains caller-controlled and opt-in."""
     configuration = load_model_configuration(values)
-    effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
-    if effort not in {"low", "medium", "high", "xhigh", "max"}:
-        raise AgentWorkflowError("Unsupported workflow reasoning effort")
+    default_effort = "medium" if configuration.provider == "bedrock-nova" else "xhigh"
+    effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", default_effort)
+    allowed_efforts = (
+        {"low", "medium"}
+        if configuration.provider == "bedrock-nova"
+        else {"low", "medium", "high", "xhigh", "max"}
+    )
+    if effort not in allowed_efforts:
+        raise AgentWorkflowError(
+            "Nova reasoning effort must be low or medium while output remains bounded"
+            if configuration.provider == "bedrock-nova"
+            else "Unsupported workflow reasoning effort"
+        )
     model_parameters = {
         "reasoning": {"effort": effort, "context": "all_turns"},
         "max_output_tokens": 8192,
@@ -301,7 +313,7 @@ def build_environment_model(
             stateful=True,
             params=model_parameters,
         )
-    else:
+    elif configuration.provider == "bedrock":
         try:
             model = CompleteResponseBedrockModel(
                 model_id=configuration.model_id,
@@ -311,6 +323,27 @@ def build_environment_model(
             )
         except ValueError as error:
             raise AgentWorkflowError(str(error)) from error
+    else:
+        if configuration.aws_profile:
+            session = boto3.Session(
+                profile_name=configuration.aws_profile,
+                region_name=cast(str, configuration.region),
+            )
+        else:
+            session = boto3.Session(region_name=cast(str, configuration.region))
+        model = BedrockModel(
+            boto_session=session,
+            model_id=configuration.model_id,
+            max_tokens=8192,
+            temperature=0.0,
+            streaming=True,
+            additional_request_fields={
+                "reasoningConfig": {
+                    "type": "enabled",
+                    "maxReasoningEffort": effort,
+                }
+            },
+        )
     return model, configuration
 
 

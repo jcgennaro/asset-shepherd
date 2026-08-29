@@ -1,7 +1,7 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; Step 1 complete, Step 2 adapters implemented, live gate blocked by
-AWS account verification
+**Status:** Approved procedure; Step 1 complete, Nova live diagnostic passed, Luna parity awaiting
+its one-time model agreement
 
 **Last verified against official documentation:** 2026-08-29
 
@@ -37,8 +37,10 @@ until the remote-product gate passes.
   allocation. The alert is notification rather than a hard spending cap, and credit eligibility
   remains subject to the account's credit terms.
 - [x] Step 2.1/2.2 Bedrock intake, workflow transport, short-term-token, and launcher implementation.
-- [ ] Step 2.3 local all-Bedrock behavioral parity gate. The first bounded call reached the selected
-  endpoint on 2026-08-29 but AWS returned account-verification HTTP 403 before inference.
+- [x] D074 Nova diagnostic: least-privilege connectivity, typed intake, and one complete local
+  Strands approval-through-package workflow passed through native Bedrock Converse.
+- [ ] Step 2.3 local all-Bedrock Luna behavioral parity gate. Luna's one-time model agreement is not
+  yet available, and the eight-case browser matrix remains open.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing.
 - [ ] Step 5 AgentCore runtime.
@@ -93,8 +95,8 @@ receive AWS credentials and does not invoke the private agent runtime directly.
 
 | Concern | Current implementation | Required migration |
 |---|---|---|
-| Workflow model | Strands complete-response adapter over Bedrock Responses, with optional direct-OpenAI development adapter | Complete live Bedrock behavior evaluation |
-| Intake model | Bedrock constrained-tool adapter, plus OpenAI development and deterministic test adapters | Complete live typed-intake evaluation |
+| Workflow model | Strands complete-response Luna adapter over Bedrock Responses; reversible Nova adapter over Converse; optional direct-OpenAI development adapter | Complete Luna and browser behavior evaluation |
+| Intake model | Luna Responses and Nova Converse constrained-tool adapters, plus OpenAI development and deterministic test adapters | Complete Luna typed-intake evaluation |
 | Agent session | `SnapshotSessionManager` with `LocalFileStorage` under one workspace | Replace storage with Strands S3 session storage while retaining `workspace_id` |
 | Workspace record | Atomic JSON files plus process-local locking | DynamoDB record with optimistic/conditional writes |
 | Binary artifacts | Per-workspace local directories | Private S3 prefixes with hashes, lifecycle, and presigned transfer |
@@ -143,8 +145,8 @@ Do not paste the returned account number or credentials into project files.
 
 The current `asset-shepherd-admin` profile is a bootstrap administrator session, not the
 application runtime identity. The verified `asset-shepherd` role/profile is the runtime identity.
-It may invoke only the selected inference profile and required default project, inspect that
-profile, and generate/use short-term Bedrock bearer tokens. Do not attach broad Bedrock
+It may invoke only the exact Luna and Nova diagnostic inference profiles and routed foundation
+models, inspect those profiles, and generate/use short-term Bedrock bearer tokens. Do not attach broad Bedrock
 administration or long-term API-key permissions.
 
 ### 1.3 Region and model capability
@@ -177,7 +179,29 @@ Required model behavior:
 - sufficiently large context for the system contract, Job Contract, and bounded tool evidence;
 - predictable structured intake output; and
 - an explicit application-layer safety plan, because Bedrock Guardrails are not native to the
-  selected Responses runtime path.
+selected Responses runtime path.
+
+Use the current model-access API to distinguish IAM from account agreement state:
+
+```powershell
+aws bedrock get-foundation-model-availability `
+  --model-id openai.gpt-5.6-luna `
+  --profile asset-shepherd-admin `
+  --region us-east-1
+```
+
+`authorizationStatus=AUTHORIZED`, `entitlementAvailability=AVAILABLE`, and
+`regionAvailability=AVAILABLE` rule out the usual IAM/region causes. An
+`agreementAvailability.status=NOT_AVAILABLE` result means model access itself has not been created.
+The administrator must review the applicable EULA before selecting the model in the Bedrock model
+catalog or using `ListFoundationModelAgreementOffers` and `CreateFoundationModelAgreement`.
+Agreement permissions belong to the one-time administrator path, never the application runtime
+role. Official procedure:
+<https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html>.
+
+Nova 2 Lite is the current independent diagnostic because it reports every availability field as
+available. It uses `us.amazon.nova-2-lite-v1:0` through Converse. Passing Nova does not waive the
+Luna agreement or establish Luna/xhigh parity.
 
 ### 1.4 Cost checkpoint
 
@@ -250,8 +274,32 @@ uv run pytest -q `
   tests/test_agent.py::test_opt_in_live_strands_provider_workflow
 ```
 
-If AWS again reports that the account is being verified, wait for AWS to clear the account. Do not
-broaden IAM permissions, change model providers, or add a direct-OpenAI fallback in response.
+If Luna still reports that model access is unavailable, verify agreement state through the
+administrator path. Do not broaden the runtime role or add a direct-OpenAI production fallback.
+
+To exercise the already-authorized Nova diagnostic instead, change both providers together and use
+Nova's bounded medium reasoning setting:
+
+```powershell
+$env:AWS_PROFILE = 'asset-shepherd'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-nova'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-nova'
+$env:ASSET_SHEPHERD_MODEL_ID = 'us.amazon.nova-2-lite-v1:0'
+$env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'medium'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'medium'
+$env:ASSET_SHEPHERD_RUN_LIVE = '1'
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+
+uv run pytest -q `
+  tests/test_intake_analyzer.py::test_opt_in_live_bedrock_target_intake `
+  tests/test_agent.py::test_opt_in_live_strands_provider_workflow
+```
+
+Nova's provider-facing intake schema is normalized to its documented tool-schema subset, while the
+same strict Pydantic contract remains the server authority. The trial intentionally rejects Nova
+high reasoning because the live service requires `maxTokens` to be unset at high effort; medium is
+the documented agentic-workflow setting and retains 4,096/8,192 output limits.
 
 Run the current local browser product through Bedrock before changing storage or hosting. Cover:
 

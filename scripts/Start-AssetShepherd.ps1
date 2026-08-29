@@ -24,7 +24,7 @@ else {
     $env:ASSET_SHEPHERD_MODEL_PROVIDER.ToLowerInvariant()
 }
 
-if ($modelProvider -eq 'bedrock') {
+if ($modelProvider -in @('bedrock', 'bedrock-nova')) {
     if ([string]::IsNullOrWhiteSpace($env:ASSET_SHEPHERD_MODEL_ID)) {
         throw 'Bedrock mode requires ASSET_SHEPHERD_MODEL_ID.'
     }
@@ -47,7 +47,7 @@ if ($modelProvider -eq 'bedrock') {
     try {
         Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
         if (-not $hadPreviousIntakeProvider) {
-            $env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'
+            $env:ASSET_SHEPHERD_INTAKE_PROVIDER = $modelProvider
         }
         Push-Location $projectRoot
         try {

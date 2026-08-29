@@ -9,7 +9,9 @@ from dataclasses import dataclass, field
 from os import environ
 from typing import Annotated, Literal, Protocol, cast
 
+import boto3
 import httpx
+from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import Field, model_validator
 
 from asset_shepherd.bedrock_responses import (
@@ -618,6 +620,224 @@ class BedrockTargetIntakeAnalyzer(OpenAITargetIntakeAnalyzer):
         }
 
 
+class BedrockConverseClient(Protocol):
+    """Minimal Bedrock Runtime surface used by the Nova intake adapter."""
+
+    def converse(self, **kwargs: object) -> dict[str, object]:
+        """Return one complete Converse response."""
+        ...
+
+
+def _nova_tool_input_schema() -> dict[str, object]:
+    """Inline local references and keep Nova's three allowed top-level schema fields."""
+    root = TargetIntakeInference.model_json_schema()
+    definitions = cast(dict[str, object], root.get("$defs", {}))
+
+    def normalize(value: object) -> object:
+        if isinstance(value, list):
+            return [normalize(item) for item in cast(list[object], value)]
+        if not isinstance(value, dict):
+            return value
+        values = cast(dict[str, object], value)
+        reference = values.get("$ref")
+        if isinstance(reference, str) and reference.startswith("#/$defs/"):
+            definition_name = reference.removeprefix("#/$defs/")
+            definition = definitions.get(definition_name)
+            if not isinstance(definition, dict):
+                raise TargetIntakeAnalysisError(
+                    "The Nova intake schema contains an invalid reference."
+                )
+            merged = {
+                **cast(dict[str, object], definition),
+                **{key: item for key, item in values.items() if key != "$ref"},
+            }
+            return normalize(merged)
+        return {key: normalize(item) for key, item in values.items() if key != "$defs"}
+
+    normalized = cast(dict[str, object], normalize(root))
+    return {
+        "type": "object",
+        "properties": normalized["properties"],
+        "required": normalized["required"],
+    }
+
+
+@dataclass(frozen=True)
+class NovaTargetIntakeConfiguration:
+    """Explicit Nova 2 Lite Converse settings with normal AWS credential resolution."""
+
+    model_id: str
+    region: str
+    aws_profile: str | None = None
+    reasoning_effort: Literal["low", "medium"] = "medium"
+
+
+def load_nova_target_intake_configuration(
+    values: Mapping[str, str] = environ,
+) -> NovaTargetIntakeConfiguration:
+    """Load the explicit Nova inference profile used for the reversible provider trial."""
+    model_id = values.get("ASSET_SHEPHERD_INTAKE_MODEL") or values.get("ASSET_SHEPHERD_MODEL_ID")
+    if not model_id:
+        raise TargetIntakeAnalysisError(
+            "Nova intake is not configured. Set ASSET_SHEPHERD_MODEL_ID."
+        )
+    if not model_id.startswith(("us.amazon.nova-", "global.amazon.nova-")):
+        raise TargetIntakeAnalysisError(
+            "Nova intake requires a US or global Amazon Nova inference profile."
+        )
+    region = values.get("ASSET_SHEPHERD_AWS_REGION") or values.get("AWS_REGION")
+    if not region:
+        raise TargetIntakeAnalysisError(
+            "Nova intake is not configured. Set ASSET_SHEPHERD_AWS_REGION or AWS_REGION."
+        )
+    try:
+        validated_region = validate_bedrock_region(region)
+    except ValueError as error:
+        raise TargetIntakeAnalysisError(str(error)) from error
+    effort = values.get("ASSET_SHEPHERD_INTAKE_REASONING", "medium")
+    if effort not in {"low", "medium"}:
+        raise TargetIntakeAnalysisError(
+            "Nova intake reasoning effort must be low or medium while output remains bounded."
+        )
+    return NovaTargetIntakeConfiguration(
+        model_id=model_id,
+        region=validated_region,
+        aws_profile=values.get("AWS_PROFILE"),
+        reasoning_effort=cast(Literal["low", "medium"], effort),
+    )
+
+
+class NovaTargetIntakeAnalyzer:
+    """Nova 2 Lite Converse intake using one forced, server-validated tool submission."""
+
+    provider = "bedrock-nova"
+
+    def __init__(
+        self,
+        configuration: NovaTargetIntakeConfiguration,
+        *,
+        client: BedrockConverseClient | None = None,
+    ) -> None:
+        """Bind one regional Nova client or an injected zero-network test double."""
+        self.configuration = configuration
+        self.model_id = configuration.model_id
+        if client is not None:
+            self._client = client
+            return
+        session = boto3.Session(
+            profile_name=configuration.aws_profile,
+            region_name=configuration.region,
+        )
+        raw_client = session.client(  # pyright: ignore[reportUnknownMemberType]
+            "bedrock-runtime", region_name=configuration.region
+        )
+        self._client = cast(BedrockConverseClient, cast(object, raw_client))
+
+    def _request_payload(self, description: str) -> dict[str, object]:
+        """Build one bounded Converse request without relying on unsupported structured output."""
+        return {
+            "modelId": self.model_id,
+            "system": [{"text": TARGET_INTAKE_SYSTEM_PROMPT}],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"text": normalize_intent_description(description)}],
+                }
+            ],
+            "toolConfig": {
+                "tools": [
+                    {
+                        "toolSpec": {
+                            "name": BEDROCK_INTAKE_TOOL,
+                            "description": (
+                                "Submit the proposed asset target for server validation."
+                            ),
+                            "inputSchema": {"json": _nova_tool_input_schema()},
+                        }
+                    }
+                ],
+                "toolChoice": {"tool": {"name": BEDROCK_INTAKE_TOOL}},
+            },
+            "inferenceConfig": {"maxTokens": 4096, "temperature": 0.0},
+            "additionalModelRequestFields": {
+                "reasoningConfig": {
+                    "type": "enabled",
+                    "maxReasoningEffort": self.configuration.reasoning_effort,
+                }
+            },
+        }
+
+    @staticmethod
+    def _tool_input(payload: object) -> dict[str, object]:
+        """Extract exactly one named tool submission from a Converse response."""
+        if not isinstance(payload, dict):
+            raise TargetIntakeAnalysisError("The intake model returned an invalid response.")
+        output = cast(dict[str, object], payload).get("output")
+        if not isinstance(output, dict):
+            raise TargetIntakeAnalysisError("The intake model returned no target submission.")
+        message = cast(dict[str, object], output).get("message")
+        if not isinstance(message, dict):
+            raise TargetIntakeAnalysisError("The intake model returned no target submission.")
+        content = cast(dict[str, object], message).get("content")
+        if not isinstance(content, list):
+            raise TargetIntakeAnalysisError("The intake model returned no target submission.")
+        calls: list[dict[str, object]] = []
+        for raw_block in cast(list[object], content):
+            if not isinstance(raw_block, dict):
+                continue
+            tool_use = cast(dict[str, object], raw_block).get("toolUse")
+            if isinstance(tool_use, dict):
+                calls.append(cast(dict[str, object], tool_use))
+        if len(calls) != 1 or calls[0].get("name") != BEDROCK_INTAKE_TOOL:
+            raise TargetIntakeAnalysisError(
+                "The intake model did not return one valid target submission."
+            )
+        tool_input = calls[0].get("input")
+        if not isinstance(tool_input, dict):
+            raise TargetIntakeAnalysisError(
+                "The intake model returned an invalid target submission."
+            )
+        return cast(dict[str, object], tool_input)
+
+    def analyze(self, description: str) -> TargetIntakeContract:
+        """Invoke Nova once and apply the unchanged Pydantic and confidence gates."""
+        normalized = normalize_intent_description(description)
+        try:
+            response = self._client.converse(**self._request_payload(normalized))
+            inference = TargetIntakeInference.model_validate_json(
+                json.dumps(self._tool_input(response))
+            )
+        except ClientError as error:
+            error_response = cast(dict[str, object], error.response)
+            code = cast(dict[str, object], error_response.get("Error", {})).get("Code")
+            LOGGER.warning("Nova intake request failed with AWS error code %s", code)
+            if code in {"AccessDeniedException", "UnauthorizedException"}:
+                public_message = (
+                    "Amazon Bedrock access is not ready. Check model access and runtime "
+                    "permissions."
+                )
+            elif code in {"ThrottlingException", "ServiceQuotaExceededException"}:
+                public_message = "The intake model is busy. Try again in a moment."
+            else:
+                public_message = "I couldn't analyze that description right now. Try again."
+            raise TargetIntakeAnalysisError(public_message) from error
+        except BotoCoreError as error:
+            raise TargetIntakeAnalysisError("The intake model could not be reached.") from error
+        except ValueError as error:
+            if isinstance(error, TargetIntakeAnalysisError):
+                raise
+            LOGGER.warning("Nova intake response failed validation: %s", error)
+            raise TargetIntakeAnalysisError(
+                "The intake model did not return a valid target proposal."
+            ) from error
+        return contract_from_inference(
+            normalized,
+            inference,
+            provider=self.provider,
+            model_id=self.model_id,
+        )
+
+
 def build_target_intake_analyzer(
     values: Mapping[str, str] = environ,
 ) -> TargetIntakeAnalyzer:
@@ -627,6 +847,8 @@ def build_target_intake_analyzer(
         return OpenAITargetIntakeAnalyzer(load_openai_target_intake_configuration(values))
     if provider == "bedrock":
         return BedrockTargetIntakeAnalyzer(load_bedrock_target_intake_configuration(values))
+    if provider == "bedrock-nova":
+        return NovaTargetIntakeAnalyzer(load_nova_target_intake_configuration(values))
     if provider == "deterministic":
         return DeterministicTargetIntakeAnalyzer()
     raise TargetIntakeAnalysisError(f"Unsupported intake provider: {provider}")

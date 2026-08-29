@@ -2,6 +2,7 @@
 
 import json
 import os
+from typing import cast
 
 import httpx
 import pytest
@@ -12,6 +13,8 @@ from asset_shepherd.intake_analyzer import (
     OPENAI_INTAKE_MODEL,
     BedrockTargetIntakeAnalyzer,
     BedrockTargetIntakeConfiguration,
+    NovaTargetIntakeAnalyzer,
+    NovaTargetIntakeConfiguration,
     OpenAITargetIntakeAnalyzer,
     OpenAITargetIntakeConfiguration,
     TargetDimensionsInference,
@@ -21,6 +24,7 @@ from asset_shepherd.intake_analyzer import (
     build_target_intake_analyzer,
     contract_from_inference,
     load_bedrock_target_intake_configuration,
+    load_nova_target_intake_configuration,
 )
 from asset_shepherd.models import AssetEndpoint, AssetTargetUse
 from asset_shepherd.target_intake import TargetEvidenceSource
@@ -478,6 +482,111 @@ def test_bedrock_access_denial_has_actionable_bounded_copy() -> None:
     assert "private provider detail" not in str(caught.value)
 
 
+def test_nova_intake_forces_one_tool_and_preserves_server_validation() -> None:
+    """Nova uses its supported tool schema subset while Pydantic remains authoritative."""
+    captured: dict[str, object] = {}
+
+    class FakeNovaClient:
+        def converse(self, **kwargs: object) -> dict[str, object]:
+            captured.update(kwargs)
+            return {
+                "output": {
+                    "message": {
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "toolUse": {
+                                    "toolUseId": "tool-1",
+                                    "name": BEDROCK_INTAKE_TOOL,
+                                    "input": {
+                                        "engagement_decision": "PROCEED",
+                                        "asset_name": "Computer Chip",
+                                        "target_use": "STATIC_GAME_ASSET",
+                                        "target_use_confidence": 0.97,
+                                        "target_use_evidence": "The chip is a static game prop.",
+                                        "endpoint": "UNREAL",
+                                        "endpoint_detail": None,
+                                        "endpoint_confidence": 0.98,
+                                        "endpoint_evidence": "The description names Unreal.",
+                                        "target_dimensions_cm": {
+                                            "x_cm": 7.0,
+                                            "y_cm": 1.2,
+                                            "z_cm": 6.23,
+                                        },
+                                        "target_dimensions_confidence": 0.99,
+                                        "target_dimensions_evidence": (
+                                            "The description supplies approximate dimensions."
+                                        ),
+                                        "expected_piece_count": 1,
+                                        "expected_piece_count_evidence": (
+                                            "The description identifies one chip."
+                                        ),
+                                    },
+                                }
+                            }
+                        ],
+                    }
+                }
+            }
+
+    analyzer = NovaTargetIntakeAnalyzer(
+        NovaTargetIntakeConfiguration(
+            model_id="us.amazon.nova-2-lite-v1:0",
+            region="us-east-1",
+        ),
+        client=FakeNovaClient(),
+    )
+    contract = analyzer.analyze("One computer chip for Unreal, approximately 7 x 1.2 x 6.23 cm.")
+
+    assert contract.analyzer_provider == "bedrock-nova"
+    assert contract.ready_for_confirmation
+    assert contract.endpoint is AssetEndpoint.UNREAL
+    tool_config = captured["toolConfig"]
+    assert isinstance(tool_config, dict)
+    tool_config_values = cast(dict[str, object], tool_config)
+    assert tool_config_values["toolChoice"] == {"tool": {"name": BEDROCK_INTAKE_TOOL}}
+    tools = tool_config_values["tools"]
+    assert isinstance(tools, list)
+    tool_spec = cast(dict[str, object], cast(dict[str, object], tools[0])["toolSpec"])
+    input_schema = cast(dict[str, object], tool_spec["inputSchema"])
+    schema = cast(dict[str, object], input_schema["json"])
+    assert set(schema) == {"type", "properties", "required"}
+    assert "$ref" not in json.dumps(schema)
+    assert captured["inferenceConfig"] == {"maxTokens": 4096, "temperature": 0.0}
+    assert captured["additionalModelRequestFields"] == {
+        "reasoningConfig": {"type": "enabled", "maxReasoningEffort": "medium"}
+    }
+
+
+def test_nova_configuration_is_explicit_and_provider_selected() -> None:
+    """Nova cannot be selected with a base model ID or Luna-only xhigh reasoning."""
+    values = {
+        "ASSET_SHEPHERD_INTAKE_PROVIDER": "bedrock-nova",
+        "ASSET_SHEPHERD_MODEL_ID": "us.amazon.nova-2-lite-v1:0",
+        "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+        "ASSET_SHEPHERD_INTAKE_REASONING": "medium",
+    }
+    configuration = load_nova_target_intake_configuration(values)
+    analyzer = build_target_intake_analyzer(values)
+
+    assert configuration.model_id == "us.amazon.nova-2-lite-v1:0"
+    assert analyzer.provider == "bedrock-nova"
+    with pytest.raises(TargetIntakeAnalysisError, match="inference profile"):
+        load_nova_target_intake_configuration(
+            {
+                "ASSET_SHEPHERD_MODEL_ID": "amazon.nova-2-lite-v1:0",
+                "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+            }
+        )
+    with pytest.raises(TargetIntakeAnalysisError, match="low or medium"):
+        load_nova_target_intake_configuration(
+            {
+                **values,
+                "ASSET_SHEPHERD_INTAKE_REASONING": "high",
+            }
+        )
+
+
 @pytest.mark.live
 def test_opt_in_live_bedrock_target_intake() -> None:
     """Exercise the constrained intake submission through configured Bedrock when opted in."""
@@ -489,7 +598,7 @@ def test_opt_in_live_bedrock_target_intake() -> None:
         "One computer chip for an Unreal game, approximately 7 x 1.2 x 6.23 cm."
     )
 
-    assert contract.analyzer_provider == "bedrock"
+    assert contract.analyzer_provider == os.environ["ASSET_SHEPHERD_INTAKE_PROVIDER"]
     assert contract.ready_for_confirmation
     assert contract.endpoint is AssetEndpoint.UNREAL
     assert contract.expected_piece_count == 1
