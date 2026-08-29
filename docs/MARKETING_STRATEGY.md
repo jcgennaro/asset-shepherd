@@ -288,7 +288,9 @@ Potential third title:
 
 > Agents for Humans: Testing a 3D Asset Agent with Tripo, Blender, and Unreal Engine
 
-Use the final required event naming and hashtags. Link to the public repository only after it is ready for public inspection.
+Use the plain event name **Agents for Humans** in each title. The August 12 rules update removes the
+literal hashtag requirement even though lower rule text still retains inconsistent wording; recheck
+before publishing. Link to the public repository only after it is ready for public inspection.
 
 ## 12. Secrets and public-release hygiene
 

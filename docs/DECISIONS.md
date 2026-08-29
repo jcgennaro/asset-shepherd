@@ -4,6 +4,96 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D072 — Treat official contest compliance as six release gates
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M11 documentation and M12 release/submission
+
+**Context**
+
+The user requested a current independent review of the Agents for Humans official rules against the
+implementation and controlling project documents. The repository contains a genuine local Strands
+agent and began during the submission period, but those facts alone do not establish entrant
+eligibility, public judge access, complete submission media, ownership attestations, or final
+release hygiene. The live rules also contain stale lower-page blog language despite an August 12
+notice removing the `#AgentsforHumans` requirement.
+
+**Decision**
+
+Adopt `docs/CONTEST_COMPLIANCE_PLAN.md` as the executable contest release plan beneath the official
+rules and the Project Contract. A project may not be described as submission-ready until it closes
+six gates: entrant/registration attestation, eligible-build proof, public-repository proof,
+free judge-access proof, submission-package proof, and final-freeze proof. Recheck the official rules on
+September 10 and on submission day. Keep all personal eligibility and account evidence private;
+only record gate status publicly.
+
+Correct project documents that treated a literal `#AgentsforHumans` hashtag as mandatory. Optional
+Builder posts should include the plain words **Agents for Humans** in their title, which satisfies
+the surviving conservative reading, but the project will not depend on bonus points for basic
+eligibility. Bedrock-hosted GPT-5.6 Luna remains allowed: the rule requires real Strands Agents use,
+not an Anthropic or Amazon-native foundation model. AgentCore remains optional but beneficial.
+
+**Evidence and consequences**
+
+The 2026-08-29 rules snapshot fixes the submission deadline at September 14, 5:00 p.m. Pacific and
+requires free project access through the October 8 judging deadline. Git history begins August 21;
+the MIT license and README exist; Strands is the actual orchestrator. The current GitHub repository
+is still private, and remote access, final architecture, public sub-five-minute video, Devpost text,
+Builder ID confirmation, disclosures, release scans, and entrant attestations remain incomplete.
+The current answer is therefore “eligible implementation direction, incomplete submission,” not
+“compliant in all respects.”
+
+### D071 — Preserve the local Luna/xhigh workflow through Bedrock Responses
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The successful local agent-led runs use OpenAI `gpt-5.6-luna` with `xhigh` reasoning through the
+Responses API. The user prefers not to use an Anthropic model and wants the AWS deployment to keep
+the same agent baseline rather than introducing a simultaneous provider and model-behavior change.
+The account-visible Bedrock catalog in `us-east-1` exposes active US and global inference profiles
+for GPT-5.6 Luna with text and image input. Amazon Bedrock's model card supports Responses,
+Chat Completions, and Converse for this model, but does not advertise Bedrock structured outputs.
+
+**Decision**
+
+Use OpenAI GPT-5.6 Luna through Amazon Bedrock as the first production-parity model. Freeze the
+logical model as `gpt-5.6-luna`, the local Bedrock region as `us-east-1`, the initial geographic
+inference profile as `us.openai.gpt-5.6-luna`, and reasoning effort as `xhigh`.
+
+Use the OpenAI-compatible Responses API on the recommended `bedrock-runtime` endpoint for the
+parity gate so the workflow retains its existing Responses tool-call and reasoning contract. AWS
+credentials and a short-term Bedrock bearer token replace the direct OpenAI API key; production
+must not depend on a long-term Bedrock API key. The generic Strands `BedrockModel`/Converse path
+remains available for future provider experiments but is not the parity baseline if it cannot
+preserve the selected Responses reasoning controls.
+
+Semantic intake uses the same Bedrock-hosted Luna/xhigh model. Because Bedrock does not currently
+advertise structured outputs for this model, intake must return its existing exact typed schema
+through a constrained tool call or another tested fail-closed adapter and still pass the unchanged
+Pydantic and confidence gates. It may not weaken validation or silently fall back to direct OpenAI.
+
+**Evidence and consequences**
+
+The repository already records successful live agent runs with `gpt-5.6-luna`/`xhigh`. Read-only
+account inspection confirms `openai.gpt-5.6-luna` is active with text and image input and that
+`us.openai.gpt-5.6-luna` routes within `us-east-1`, `us-east-2`, and `us-west-2`. The bounded smoke
+test must still prove image input, sequential custom tool calls, typed intake, interrupt/resume,
+and usage reporting before this becomes the production provider. No model call is authorized by
+this decision alone.
+
 ### D070 — Migrate to Bedrock and AgentCore through three independent gates
 
 **Date:** 2026-08-29

@@ -14,6 +14,7 @@ verification agent for game developers.
 - [Real-world validation plan](docs/REAL_WORLD_VALIDATION_PLAN.md)
 - [Project status](docs/PROJECT_STATUS.md)
 - [Decision log](docs/DECISIONS.md)
+- [Contest compliance plan](docs/CONTEST_COMPLIANCE_PLAN.md)
 - [Web design and flow](docs/WEB_DESIGN_AND_FLOW.md)
 - [Checks and authority](docs/CHECKS_AND_AUTHORITY.md)
 - [Future component labeling and removal](docs/FUTURE_COMPONENT_HANDLING.md) — deferred, not MVP
@@ -56,51 +57,33 @@ Start Asset Shepherd later with one command:
 .\scripts\Start-AssetShepherd.ps1
 ```
 
-Open `http://127.0.0.1:8010`. The flow starts by asking the user to describe the model they are
-already working on.
-The interim OpenAI intake provider uses `gpt-5.6-luna` with `xhigh` reasoning to propose a supported
-use and plausible semantic scale from ordinary language. Only the description is sent; the GLB
-stays local. The user adjusts or confirms that typed proposal before rules or upload are available.
-The frozen intake records provider/model provenance, and changing intent starts a new inspection.
-Use `uv run asset-shepherd web --offline-intake` for the explicit-text, zero-network fallback.
+Open `http://127.0.0.1:8010`. **Gallery** starts a new asset or resumes one of seven isolated,
+persisted workspaces. The numbered workflow is **1 Upload → 2 Describe → 3 Shepherd → 4 Refine**.
+Upload performs objective GLB preflight before the user describes the intended endpoint and
+approximate dimensions. Shepherd lets the Strands agent choose sensing tools, assess evidence, and
+propose typed repairs. The user reviews consequential changes; the selected input or candidate can
+then enter as many numbered Refine iterations as needed before download.
+
+The interim local live provider uses OpenAI `gpt-5.6-luna` with `xhigh` reasoning through the
+Responses API for semantic intake and workflow decisions. The GLB stays local; the provider receives
+the description, structured measurements, and standardized rendered evidence needed for the turn.
+Each workspace owns its own durable Strands session and frozen job state, so refresh and restart
+resume the same asset without sharing conversation state or repeating mutation. Use
+`uv run asset-shepherd web --offline-intake` for the explicit-text intake fallback. Deterministic
+providers remain available for zero-network tests.
+
 The Windows launch scripts keep the encrypted development key under the current user's local app
 data, outside the repository. The launcher exposes it only to the running server process and removes
-it when that command ends.
+it when that command ends. D071 moves production to the same Luna/xhigh behavior through Amazon
+Bedrock Responses; the direct OpenAI API remains an interim local provider until that parity gate
+passes.
 
-The versioned D019 reference is at `http://127.0.0.1:8010/workspace`. It starts with a short asset
-description plus the untouched GLB, performs profile-free objective preflight, uses the same
-semantic proposal, and asks only for fields that remain genuinely ambiguous. A
-persistent Job Contract shows measured source facts, the derived
-frozen policy, current assessments and action state, exact decision, verification, and package state
-beside the conversation. Ordinary users never choose a named scale preset. Advanced customization is limited
-to fields already enforced by `ProjectProfile`; safety and repair boundaries remain fixed.
-
-The persistent left pane shows the shared **Describe -> Agree -> Inspect -> Decide -> Download**
-workflow. Intake presents **Rules -> Upload** one step at a time, and each job presents only its
-current Inspect, Decide, or Download view. Intake currently calls OpenAI through a provider-neutral
-boundary; the repair workflow still uses a zero-network scripted provider over the real Strands
-loop. That repair path is a deterministic test harness, not the completed product agent. D036
-requires a real workflow model to choose sensors, assess evidence, choose disposition, and initiate
-typed supported actions. Deterministic tools remain authoritative for measurements, exact action
-consequences, authorization enforcement, mutation scope, and invariant verification.
-
-New conversational jobs use one immutable, versioned **Unreal Static Game Asset Policy Family**.
-Asset Shepherd proposes the complete job policy from the already-confirmed target story, including
-its height, bounded tolerances, and explicit standing/hanging/hovering intent; unspecified project
-rules retain conservative family defaults. Users no longer select a named scale preset or re-enter
-height. **Review all active rules** and **Why these rules?** keep the proposal inspectable, while
-advanced adjustment remains limited to supported target-state and report-only budget fields.
-Upload freezes the resolved policy, and provenance records its family and resolved identifiers,
-explicit differences, per-rule sources, version, and canonical SHA-256. Historical repository
-profiles remain immutable for CLI reproduction and existing evidence. Changing rules starts a new
-inspection and job.
-
-The M8 form routes preserve jobs only while the process runs. The D019 `/workspace` path persists
-structured state and the native Strands interrupt so refresh, application restart, and agent-runtime
-restart resume the exact job without duplicate mutation or packaging. Local private workspace state
-has a seven-day retention marker; production cleanup remains part of the AWS gate. The 3D preview
-uses the pinned official `<model-viewer>` browser component; GLB files remain served from the local
-Asset Shepherd origin.
+The agent decides which checks and bounded actions are appropriate. Deterministic tools remain
+authoritative for measurements, exact action consequences, authorization, source immutability,
+mutation scope, independent verification, and packaging. The 3D preview uses the pinned local
+`<model-viewer>` distribution, while standardized model-visible evidence is rendered separately.
+Production persistence, judge access, and renderer portability remain explicit AWS deployment
+gates rather than being implied by the local product.
 
 ## Deterministic repair-engine harness
 

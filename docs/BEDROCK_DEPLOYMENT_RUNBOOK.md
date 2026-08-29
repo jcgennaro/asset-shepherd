@@ -1,6 +1,6 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; execution starts at Step 1
+**Status:** Approved procedure; Step 1 complete, Step 2 next
 
 **Last verified against official documentation:** 2026-08-29
 
@@ -27,9 +27,14 @@ until the remote-product gate passes.
 
 - [x] Step 1.1 workstation inspection: AWS CLI v2.36.34 is installed per-user. The Codex process
   inherited an older PATH, so the current shell cannot resolve `aws`; a new terminal should.
-- [ ] Step 1.2 dedicated `asset-shepherd` profile and verified caller identity.
-- [ ] Step 1.3 account-available Bedrock model and region.
-- [ ] Step 1.4 budget alert.
+- [x] Step 1.2 the bootstrap administrator identity is verified through the local
+  `asset-shepherd-admin` profile; the separate least-privilege `asset-shepherd` role/profile is
+  created and verified without making a paid model call. Do not publish the underlying IAM user.
+- [x] Step 1.3 GPT-5.6 Luna is active in `us-east-1`; the parity configuration is
+  `us.openai.gpt-5.6-luna` through Bedrock Responses with `xhigh` reasoning (D071).
+- [x] Step 1.4 the user confirmed an AWS Budget zero-cost alert and $100 promotional-credit
+  allocation. The alert is notification rather than a hard spending cap, and credit eligibility
+  remains subject to the account's credit terms.
 - [ ] Step 2 local all-Bedrock provider gate.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing.
@@ -133,11 +138,33 @@ aws configure get region --profile asset-shepherd
 
 Do not paste the returned account number or credentials into project files.
 
+The current `asset-shepherd-admin` profile is a bootstrap administrator session, not the
+application runtime identity. The verified `asset-shepherd` role/profile is the runtime identity.
+It may invoke only the selected inference profile and required default project, inspect that
+profile, and generate/use short-term Bedrock bearer tokens. Do not attach broad Bedrock
+administration or long-term API-key permissions.
+
 ### 1.3 Region and model capability
 
 Choose a region in which the account can invoke a current multimodal, tool-capable Bedrock model.
 Record the chosen region and model ID only in local environment configuration. Confirm model access
 with the Bedrock model catalog and a bounded provider smoke test only after Step 1.4.
+
+The selected parity candidate is:
+
+```text
+Provider: OpenAI through Amazon Bedrock
+Logical model: gpt-5.6-luna
+Bedrock region: us-east-1
+Bedrock runtime inference profile: us.openai.gpt-5.6-luna
+API: OpenAI-compatible Responses on bedrock-runtime
+Reasoning effort: xhigh
+```
+
+The model catalog confirms text and image input. The smoke test must separately prove custom tool
+calling and the exact typed intake boundary. Bedrock does not currently advertise structured
+outputs for this model, so the intake adapter must use a constrained typed tool or another
+fail-closed mechanism without weakening the existing Pydantic schema.
 
 Required model behavior:
 
@@ -146,7 +173,8 @@ Required model behavior:
 - the existing typed tool schemas;
 - sufficiently large context for the system contract, Job Contract, and bounded tool evidence;
 - predictable structured intake output; and
-- guardrail compatibility.
+- an explicit application-layer safety plan, because Bedrock Guardrails are not native to the
+  selected Responses runtime path.
 
 ### 1.4 Cost checkpoint
 
@@ -156,7 +184,7 @@ development thresholds and retain evidence that the alert exists without committ
 **Step 1 gate:** AWS CLI v2 works, the `asset-shepherd` identity is known, one region/model candidate
 is recorded locally, and a budget alert exists. No application resource is required yet.
 
-## Step 2 — Remove OpenAI from the production execution path
+## Step 2 — Remove the direct OpenAI API from the production execution path
 
 ### 2.1 Bedrock semantic intake
 
@@ -164,6 +192,10 @@ Implement `BedrockTargetIntakeAnalyzer` behind the existing `TargetIntakeAnalyze
 produce `TargetIntakeInference`, pass the same Pydantic validation and confidence gates, and retain
 provider/model provenance. Normalize the generated schema to the subset supported by the selected
 Bedrock model rather than weakening server-side validation.
+
+For D071, use the Bedrock-hosted Luna/xhigh Responses path and require the model to submit the exact
+intake object through a constrained custom tool because Bedrock does not advertise native
+structured outputs for GPT-5.6 Luna. Reject absent, malformed, or repeated incompatible submissions.
 
 The deterministic intake implementation remains the zero-network test fallback. The OpenAI adapter
 may remain an optional development adapter, but production startup must not require an OpenAI key.
@@ -175,13 +207,20 @@ Use explicit local environment values:
 ```powershell
 $env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'
 $env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock'
-$env:ASSET_SHEPHERD_MODEL_ID = '<account-available-model-id>'
-$env:ASSET_SHEPHERD_AWS_REGION = '<selected-region>'
+$env:ASSET_SHEPHERD_MODEL_ID = 'us.openai.gpt-5.6-luna'
+$env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'xhigh'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'xhigh'
 $env:AWS_PROFILE = 'asset-shepherd'
 ```
 
 Update the launcher so Bedrock configuration does not pass through the saved-OpenAI-key path. Keep
 model ID, region, retry, timeout, token, and reasoning controls explicit and secret-free.
+
+The provider implementation should use the OpenAI-compatible Responses API at
+`https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1` with an automatically refreshed
+short-term Bedrock bearer token derived from the `asset-shepherd` IAM session. It must not reuse the
+direct OpenAI API endpoint or require a long-term Bedrock key.
 
 ### 2.3 Behavioral parity evaluation
 

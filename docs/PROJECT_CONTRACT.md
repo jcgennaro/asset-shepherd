@@ -86,7 +86,9 @@ The official hackathon requirements, checked when this contract was written, inc
 - Include an AWS Builder ID.
 - Provide free testing access through the judging period.
 - A live demo and Amazon Bedrock AgentCore deployment are optional but strengthen Technical Implementation.
-- Up to three public Builder Center posts using `#AgentsforHumans` can add up to 0.6 points.
+- Up to three public `builder.aws.com` posts can add 0.2 points each, up to 0.6 points. The current
+  rules remove the literal `#AgentsforHumans` requirement; the safest title still includes the plain
+  words **Agents for Humans** because lower rule text retains that wording.
 
 Codex must recheck the current official rules before release because hackathon pages can change. The final submission checklist must use the rules as they exist at submission time.
 
@@ -1470,7 +1472,8 @@ And:
 - Add security/privacy and testing notes.
 - Add pre-existing-work disclosure.
 - Add licenses and attribution for dependencies/assets.
-- Draft and publish up to three Builder Center posts using `#AgentsforHumans`.
+- Draft and publish up to three `builder.aws.com` posts whose titles include **Agents for Humans**;
+  do not treat a literal hashtag as required unless a later official-rules recheck restores it.
 - Prepare Devpost text and testing instructions.
 
 **Gate:**
