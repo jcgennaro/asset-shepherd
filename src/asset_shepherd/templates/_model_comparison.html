@@ -5,21 +5,17 @@
   <header class="comparison-header{% if comparison_source_only %} source-only{% endif %}">
     {% if not comparison_source_only %}<h3>{% if comparison_candidate_ready %}{{ before_label }} and {{ ready_after_label }}{% else %}{{ before_label }} and rejected candidate{% endif %}</h3>{% endif %}
     <div class="comparison-tools" aria-label="{% if comparison_source_only %}Uploaded model{% else %}Comparison view{% endif %} controls">
-      <div class="comparison-fit-tools" role="group" aria-label="Fit view">
-        {% if comparison_source_only %}
-          <button type="button" class="comparison-icon-button active" data-comparison-fit="both" aria-pressed="true" title="Fit model to window">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
-            <span class="visually-hidden">Fit model to window</span>
-          </button>
-        {% else %}
-          <span class="comparison-tool-glyph" title="Fit to window" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
-          </span>
-          <button type="button" class="active" data-comparison-fit="both" aria-pressed="true" title="Fit both models to the window">Both</button>
-          <button type="button" data-comparison-fit="before" aria-pressed="false" title="Center and fit {{ before_label }}">{{ before_label }}</button>
-          <button type="button" data-comparison-fit="after" aria-pressed="false" title="Center and fit {% if comparison_candidate_ready %}{{ ready_after_label }}{% else %}the rejected candidate{% endif %}">{% if comparison_candidate_ready %}{{ ready_after_label }}{% else %}Candidate{% endif %}</button>
-        {% endif %}
-      </div>
+      {% if comparison_source_only %}
+        <button type="button" class="comparison-icon-button" data-comparison-fit="both" title="Fit model to window">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
+          <span class="visually-hidden">Fit model to window</span>
+        </button>
+      {% else %}
+        <button type="button" class="comparison-icon-button" data-comparison-cycle title="Cycle viewpoint: Both → {{ before_label }}" aria-label="Cycle viewpoint. Showing both models. Click to show {{ before_label }}.">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5"/></svg>
+          <span class="visually-hidden" data-comparison-cycle-label>Cycle viewpoint. Showing both models. Click to show {{ before_label }}.</span>
+        </button>
+      {% endif %}
       <button type="button" class="comparison-icon-button" data-comparison-axes aria-pressed="false" title="Show metric X, Y, and Z axes with about five major ticks per axis">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V6m0 12h13M5 18l8-8M3 8l2-2 2 2m9 8l2 2-2 2m-5-8 2-2v3"/></svg>
         <span class="visually-hidden">Metric axes</span>

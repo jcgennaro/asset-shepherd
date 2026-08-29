@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-28
-**Current commit:** Progressive blocked-refinement editor (this file is included)
+**Last updated:** 2026-08-29
+**Current commit:** Single comparison viewpoint control (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,17 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D069 comparison-control consolidation: comparison viewers now replace the passive square glyph
+  and separate Both/Before/After buttons with one square **Cycle viewpoint** action. It advances
+  Both → Before → After → Both through the existing smoothly interpolated fit path and updates its
+  hover and accessible text with the current and next view. Source-only viewers retain one direct
+  fit-to-window button. Live browser acceptance on the completed Humanoid Woman workspace exercised
+  all three transitions and returned to Both with no console errors. That real run also reduced a
+  76.6 × 97.8 × 26.3 m source to a proportionally fitted 0.787 × 1.01 × 0.271 m candidate while
+  preserving appearance, pose, grounding, resources, and protected topology seams. The common gate
+  passes with 177 tests, one opt-in skip, lock validation, Ruff, formatting, and zero Pyright
+  findings.
 
 - D068 refinement interaction correction: the generic disclosure widget has been removed. The
   blocked result initially presents one standard, center-aligned **Refine…** button. Activating it

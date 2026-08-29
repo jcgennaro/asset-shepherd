@@ -424,6 +424,7 @@ function initializeModelComparison(comparison) {
   }
 
   const config = JSON.parse(configElement.textContent || "{}");
+  const beforeLabel = comparison.dataset.beforeLabel || "Before";
   const afterLabel = comparison.dataset.afterLabel || "After";
   const sourceOnly = comparison.classList.contains("source-only");
   const workingScope = comparison.closest(".conversation-pane");
@@ -436,6 +437,9 @@ function initializeModelComparison(comparison) {
   let bananaAnimationFrame = 0;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const fitButtons = [...comparison.querySelectorAll("[data-comparison-fit]")];
+  const cycleButton = comparison.querySelector("[data-comparison-cycle]");
+  const cycleLabel = comparison.querySelector("[data-comparison-cycle-label]");
+  const fitModes = ["both", "before", "after"];
   const targetGraphics = new Map();
   const originGraphics = new Map();
   const axisGraphics = new Map();
@@ -949,15 +953,29 @@ function initializeModelComparison(comparison) {
       setBananaPose(bananaFinalOffset, [1, 1, 1], 0);
     }
     for (const button of fitButtons) {
-      const selected = button.dataset.comparisonFit === mode;
-      button.classList.toggle("active", selected);
-      button.setAttribute("aria-pressed", String(selected));
+      button.classList.toggle("active", button.dataset.comparisonFit === mode);
+    }
+    if (cycleButton instanceof HTMLButtonElement) {
+      const currentIndex = fitModes.indexOf(mode);
+      const nextMode = fitModes[(currentIndex + 1) % fitModes.length];
+      const labels = { both: "Both", before: beforeLabel, after: afterLabel };
+      const tooltip = `Cycle viewpoint: ${labels[mode]} → ${labels[nextMode]}`;
+      const accessibleLabel = `Cycle viewpoint. Showing ${labels[mode]}. Click to show ${labels[nextMode]}.`;
+      cycleButton.title = tooltip;
+      cycleButton.setAttribute("aria-label", accessibleLabel);
+      if (cycleLabel) {
+        cycleLabel.textContent = accessibleLabel;
+      }
     }
   }
 
   for (const button of fitButtons) {
     button.addEventListener("click", () => fit(button.dataset.comparisonFit));
   }
+  cycleButton?.addEventListener("click", () => {
+    const currentIndex = fitModes.indexOf(activeFitMode);
+    fit(fitModes[(currentIndex + 1) % fitModes.length]);
+  });
   axesButton?.addEventListener("click", () => {
     axesVisible = !axesVisible;
     axesButton.setAttribute("aria-pressed", String(axesVisible));

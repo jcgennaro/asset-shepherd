@@ -850,9 +850,10 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     offsets = re.findall(r'<extra-model[^>]+offset="([^"]+)"', completed.text)
     assert len(offsets) == 2
     assert all("m" not in offset for offset in offsets)
-    assert 'data-comparison-fit="both"' in completed.text
-    assert 'data-comparison-fit="before"' in completed.text
-    assert 'data-comparison-fit="after"' in completed.text
+    assert completed.text.count("data-comparison-cycle") == 2
+    assert 'title="Cycle viewpoint: Both → Before"' in completed.text
+    assert 'data-comparison-fit="before"' not in completed.text
+    assert 'data-comparison-fit="after"' not in completed.text
     assert completed.text.count('data-comparison-origin="before"') == 1
     assert completed.text.count('data-comparison-origin="after"') == 1
     assert "Show metric X, Y, and Z axes" in completed.text

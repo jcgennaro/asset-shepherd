@@ -2739,21 +2739,12 @@ model-viewer {
   font-weight: 680;
 }
 
-.comparison-tools,
-.comparison-fit-tools {
+.comparison-tools {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.comparison-fit-tools {
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(3, 10, 9, 0.58);
-}
-
-.comparison-fit-tools button,
 .comparison-icon-button {
   min-height: 34px;
   border: 1px solid transparent;
@@ -2766,15 +2757,8 @@ model-viewer {
   font-weight: 700;
 }
 
-.comparison-fit-tools button {
-  padding: 5px 9px;
-}
-
-.comparison-fit-tools button:hover,
-.comparison-fit-tools button:focus-visible,
 .comparison-icon-button:hover,
 .comparison-icon-button:focus-visible,
-.comparison-fit-tools button.active,
 .comparison-icon-button.active {
   border-color: rgba(242, 198, 107, 0.5);
   color: var(--text);
@@ -3472,14 +3456,6 @@ model-viewer {
   .comparison-tools {
     width: 100%;
     justify-content: space-between;
-  }
-
-  .comparison-fit-tools {
-    min-width: 0;
-  }
-
-  .comparison-fit-tools button {
-    padding-inline: 7px;
   }
 
   .model-comparison .comparison-viewer {

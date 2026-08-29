@@ -4,6 +4,37 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D069 — Cycle comparison viewpoints through one icon control
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation UX
+
+**Context**
+
+The comparison viewer devoted four adjacent controls to one camera concern: a passive fit glyph and
+separate Both, Before, and After buttons. The segmented treatment consumed attention and space
+without adding four distinct capabilities.
+
+**Decision**
+
+For a before/after comparison, use the existing square fit glyph as one **Cycle viewpoint** button.
+Each activation advances Both → Before → After → Both through the existing smooth camera-fit path.
+The button's tooltip and accessible name must always state the current view and the next view. A
+source-only viewer retains the same glyph as a simple **Fit model to window** action because it has
+no alternate viewpoint to cycle.
+
+**Evidence and consequences**
+
+The completed Humanoid Woman workspace renders one viewpoint button plus the independent axes and
+banana toggles. Live browser interaction on port 8010 completed the full three-click cycle, updated
+the tooltip and accessible name after every transition, and produced no browser-console errors.
+The camera, HUD, metric axes, and banana continue to use the same selected-bounds fit function.
+
 ### D068 — Route safe component ambiguity into labeled review
 
 **Date:** 2026-08-28
