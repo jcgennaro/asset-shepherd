@@ -75,6 +75,7 @@ Converse and the same Strands/tool contracts without an OpenAI key:
 $env:AWS_PROFILE = 'asset-shepherd'
 $env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-nova'
 $env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-nova'
+$env:ASSET_SHEPHERD_INTAKE_MODEL = 'us.amazon.nova-2-lite-v1:0'
 $env:ASSET_SHEPHERD_MODEL_ID = 'us.amazon.nova-2-lite-v1:0'
 $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
 $env:ASSET_SHEPHERD_INTAKE_REASONING = 'medium'
