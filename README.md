@@ -140,3 +140,8 @@ Live Bedrock use for the Strands repair workflow remains opt-in and has no hard-
 `.env.example` into your environment, set `ASSET_SHEPHERD_MODEL_ID` and region to values available
 in your account, and use the standard `AWS_PROFILE`. The live integration test runs only when
 `ASSET_SHEPHERD_RUN_LIVE=1`; ordinary tests never look up credentials or make network requests.
+
+The staged provider, persistence, rendering, AgentCore, web-hosting, observability, and acceptance
+procedure is documented in
+[`docs/BEDROCK_DEPLOYMENT_RUNBOOK.md`](docs/BEDROCK_DEPLOYMENT_RUNBOOK.md). Follow its gates in order;
+do not combine the first Bedrock behavior test with cloud-storage and hosting changes.

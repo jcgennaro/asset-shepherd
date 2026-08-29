@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-29
-**Current commit:** Single comparison viewpoint control (this file is included)
+**Current commit:** Bedrock and AgentCore deployment procedure (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,18 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D070 deployment procedure: `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` separates the M9 move into a local
+  Bedrock provider gate, cloud-portability gate, and remote-product gate. It preserves
+  `workspace_id` as the per-asset session authority, selects Strands S3 snapshots plus private S3
+  artifacts and conditional DynamoDB workflow state, keeps the interactive web app separate from
+  AgentCore, and makes the local Blender visual-sensing dependency an explicit portability gate.
+  Step 1 begins with credential-free workstation inspection; paid calls and resource creation still
+  require identity, model/region, budget, and cost checkpoints.
+- D070 Step 1.1 preflight: WinGet reports a per-user AWS CLI v2.36.34 installation and the executable
+  runs successfully by absolute path. The current Codex process inherited an older PATH and cannot
+  resolve `aws`; a fresh terminal should. No AWS config or credentials file exists yet, so no caller
+  identity, region, model access, or budget assertion has been made.
 
 - D069 comparison-control consolidation: comparison viewers now replace the passive square glyph
   and separate Both/Before/After buttons with one square **Cycle viewpoint** action. It advances
@@ -753,16 +765,17 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 The remaining D036 local acceptance work is unblocked and precedes AWS work. RW2 requires untouched
 Debug Beetle and Cloudforge Workbench exports. Paid or remote M9 work requires
 the user to configure or confirm a dedicated `asset-shepherd` AWS profile, selected Bedrock
-region/model access, and a budget alert. Read-only preflight found that AWS CLI is not installed on
-this workstation (`Get-Command aws` returned no command). A human-cleaned reference and manual-time
-record remain required for the full RW4 comparison gate.
+region/model access, and a budget alert. AWS CLI v2.36.34 is installed per-user, but the current
+process has a stale PATH and no AWS config or credentials file exists. A human-cleaned reference and
+manual-time record remain required for the full RW4 comparison gate.
 
 ## Next action
 
-Complete the remaining D036 local cases before Bedrock or deployment work: add changed-goal and
-ambiguous-orientation live evaluations, then exercise a consequential continuation turn whose fresh
-agent assessment requests a new action and approval. The no-change live continuation, durable
-archive, provenance link, and browser review are complete. Preserve the current mutation scope,
+Execute Step 1 of `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md`: confirm AWS CLI v2, configure or verify the
+dedicated `asset-shepherd` identity, select an account-available multimodal/tool-capable Bedrock
+model and region, and confirm a budget alert. Before the Step 2 Bedrock gate, close the remaining
+D036 changed-goal and ambiguous-orientation behavior cases and exercise a consequential continuation
+turn whose fresh assessment requests a new action and approval. Preserve the current mutation scope,
 exact authorization, durability, and invariant checks; do not restore deterministic target-dependent
 planning.
 

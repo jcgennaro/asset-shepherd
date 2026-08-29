@@ -4,6 +4,51 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D070 — Migrate to Bedrock and AgentCore through three independent gates
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The local product now has a genuine Strands agent, bounded model-directed tools, per-asset durable
+sessions, exact approval, repeatable refinement, and successful real-asset repair runs. Moving it
+from the interim OpenAI provider and one Windows workstation to AWS could nevertheless entangle
+three unrelated failure domains: model behavior, persistent storage/rendering, and remote hosting.
+The current workflow provider already has a Bedrock constructor, while semantic intake remains
+OpenAI-only, snapshots and artifacts remain filesystem-backed, and standardized visual sensing
+invokes a locally installed Blender executable.
+
+**Decision**
+
+Adopt `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` as the executable M9 deployment procedure. Prove three
+gates in order: the unchanged local product runs entirely through Bedrock; required state,
+artifacts, and visual evidence no longer depend on a workstation; and the remote browser product
+passes upload-through-download acceptance. Keep `workspace_id` as the single per-asset session
+authority. Use Strands S3 session storage for distributed snapshots, private S3 for binary
+artifacts, and conditional DynamoDB records for workflow/idempotency state. Do not introduce
+AgentCore Memory in the first deployment.
+
+Host the Strands runtime in AgentCore only after local Bedrock behavior passes. Keep the interactive
+FastAPI/Jinja web service separate and invoke the private runtime service-to-service. Prefer a
+lightweight deployable renderer; if it fails a written acceptance test, a separate bounded x86
+render worker requires a fresh cost/architecture approval. Preserve the working local product until
+the complete remote gate passes.
+
+**Evidence and consequences**
+
+The runbook maps current code boundaries to eight gated steps, records credential and cost
+checkpoints, specifies restart/idempotency acceptance, and links current official Strands and AWS
+documentation. Step 1.1 found an existing per-user AWS CLI v2.36.34 installation whose PATH update
+has not reached the current Codex process, and no AWS profile/configuration yet exists. Paid calls
+and AWS infrastructure still require verified caller identity, model/region access, and a budget
+alert; no resource is authorized merely by adopting this procedure.
+
 ### D069 — Cycle comparison viewpoints through one icon control
 
 **Date:** 2026-08-29
