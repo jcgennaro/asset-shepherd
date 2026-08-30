@@ -1,7 +1,7 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; Kimi intake and full Strands workflow passed locally, browser matrix
-and cloud deployment remain open
+**Status:** Approved procedure; Kimi and Claude Haiku 4.5 intake/full Strands workflows passed
+through the least-privilege runtime role, while the browser matrix and cloud deployment remain open
 
 **Last verified against official documentation:** 2026-08-29
 
@@ -31,15 +31,16 @@ until the remote-product gate passes.
 - [x] Step 1.2 the bootstrap administrator identity is verified through the local
   `asset-shepherd-admin` profile; the separate least-privilege `asset-shepherd` role/profile is
   created and verified without making a paid model call. Do not publish the underlying IAM user.
-- [x] Step 1.3 Kimi K2.5, Mistral Large 3, Qwen3 VL 235B, and Nova 2 Lite accept bounded
-  tool-and-image probes in `us-east-1`; Kimi is the recommended selection (D077).
+- [x] Step 1.3 Kimi K2.5, Claude Haiku 4.5, Mistral Large 3, Qwen3 VL 235B, and Nova 2 Lite accept
+  bounded calls in `us-east-1`; Kimi is the recommended selection (D077/D078).
 - [x] Step 1.4 the user confirmed an AWS Budget zero-cost alert and $100 promotional-credit
   allocation. The alert is notification rather than a hard spending cap, and credit eligibility
   remains subject to the account's credit terms.
 - [x] Step 2.1/2.2 Bedrock intake, workflow transport, short-term-token, and launcher implementation.
 - [x] D074 Nova diagnostic: least-privilege connectivity, typed intake, and one complete local
   Strands approval-through-package workflow passed through native Bedrock Converse.
-- [x] D077 canonical `bedrock-converse` adapter and four-model allowlist. Kimi K2.5 passed typed
+- [x] D077/D078 canonical `bedrock-converse` adapter and five-model allowlist. Kimi K2.5 and Claude
+  Haiku 4.5 passed typed
   intake and the complete image/tool/approval/verification/package workflow; the upload UI persists
   a fail-closed per-asset model selection with usage hints.
 - [x] One representative local browser loop reached verified packaging through Nova: intake and
@@ -50,9 +51,10 @@ until the remote-product gate passes.
   diagnostic path, not the default parity model or a completed browser matrix.
 - [x] D075 selects App Runner as the first public FastAPI host beside private AgentCore, with
   ECS/Fargate retained only as a measured fallback. No remote resources have been deployed yet.
-- [ ] Step 2.3 local all-Bedrock browser matrix. Kimi is the recommended model; the bootstrap login
-  must be renewed and the runtime role granted exact allowlisted resources. Luna's optional
-  Responses evaluation remains blocked by its one-time agreement.
+- [ ] Step 2.3 local all-Bedrock browser matrix. Kimi is the recommended model; the refreshed
+  bootstrap session installed exact-resource runtime policies and all five choices now invoke
+  through the least-privilege profile. Luna's optional Responses evaluation remains separately
+  blocked by its one-time agreement.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing.
 - [ ] Step 5 AgentCore runtime.
@@ -223,10 +225,12 @@ Application reasoning override: none
 ```
 
 Kimi has passed typed intake, image evidence, sequential tools, native approval/resume, candidate
-reassessment, and deterministic packaging. Mistral Large 3 and Qwen3 VL 235B passed bounded typed
-tool and image probes and remain experimental. Nova passed the full workflow but needed more user
-correction in the browser case. The server allowlist and capability registry, not an arbitrary
-environment or posted value, control the models exposed to users.
+reassessment, and deterministic packaging. Claude Haiku 4.5 passed the same opt-in intake and full
+Strands workflow through its US inference profile and remains an experimental speed/quality/cost
+comparison. Mistral Large 3 and Qwen3 VL 235B passed bounded typed tool and image probes and remain
+experimental. Nova passed the full workflow but needed more user correction in the browser case.
+The server allowlist and capability registry, not an arbitrary environment or posted value,
+control the models exposed to users.
 
 Required model behavior:
 
@@ -313,9 +317,9 @@ deployment-owned settings.
 ### 2.3 Behavioral parity evaluation
 
 Implementation status: the model-neutral Converse adapter, persisted selector, and offline
-acceptance tests are complete. Kimi passed both live integration tests under the bootstrap
-administrator. Renew AWS login and add exact runtime-role resources before the hosted matrix; do
-not begin Step 3 until that bounded matrix succeeds.
+acceptance tests are complete. Kimi and Claude Haiku 4.5 passed both live integration tests through
+the least-privilege runtime role. Exact invoke resources are installed for every visible choice; do
+not begin Step 3 until the bounded hosted browser matrix succeeds.
 
 From a fresh PowerShell session:
 

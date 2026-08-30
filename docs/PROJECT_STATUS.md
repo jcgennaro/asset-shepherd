@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-29
-**Current commit:** Model-neutral Bedrock Converse allowlist and Kimi live gate (this file is included)
+**Current commit:** Least-privilege Converse allowlist plus Claude Haiku 4.5 live gate (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D075 App Runner web topology; D077 model-neutral Converse allowlist and Kimi live gate |  | Kimi is the recommended Bedrock model and passes intake plus the full Strands workflow; full browser matrix and remote deployment remain open |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D075 App Runner web topology; D077 model-neutral Converse allowlist and Kimi live gate; D078 Claude Haiku 4.5 least-privilege live gate |  | Kimi is recommended; Kimi and Haiku pass intake plus the full Strands workflow; browser matrix and remote deployment remain open |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -52,6 +52,16 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D078 Claude Haiku 4.5 evaluation: the accepted AWS Marketplace agreement exposed the active US
+  inference profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`; direct on-demand invocation was
+  correctly rejected, so the product registers the working profile rather than the foundation-model
+  ID. The `AssetShepherdBedrockRuntime` role received only `InvokeModel` and
+  `InvokeModelWithResponseStream` on that exact profile and its three routed foundation-model ARNs.
+  A runtime-profile smoke call and both opt-in typed-intake/full-Strands tests pass; the full test
+  includes image evidence, tools, approval, mutation, verification, and packaging in 58.13 seconds.
+  Haiku is exposed as an experimental speed/quality/cost comparison, not a replacement for the
+  recommended Kimi model. The same runtime role now successfully invokes all five visible choices.
+
 - D077 model-neutral Converse provider: Upload now exposes one compact, server-side allowlist with
   Kimi K2.5 recommended, experimental Mistral Large 3 and Qwen3 VL alternatives, and Nova 2 Lite as
   a lower-cost diagnostic. The selected provider/model is persisted through staged upload, durable
@@ -62,8 +72,9 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   66.71 seconds with image evidence, seven successful workflow tools, one native interrupt, prompt
   v13, and a verified candidate. Browser inspection confirmed the four choices and hints and carried
   Kimi from Upload into Describe; the hosted intake retry then encountered an expired bootstrap AWS
-  login token, not a model or application validation error. Runtime-role grants and the remaining
-  browser matrix are still open. The common gate passes with 201 tests, two opt-in live skips,
+  login token, not a model or application validation error. The login was renewed and exact runtime-
+  role resources now pass Kimi/Mistral/Qwen/Haiku/Nova smoke calls; the remaining browser matrix is
+  still open. The common gate passes with 201 tests, two opt-in live skips,
   lock validation, Ruff, formatting, PowerShell parsing, and zero Pyright findings; both Kimi live
   tests pass when explicitly enabled.
 

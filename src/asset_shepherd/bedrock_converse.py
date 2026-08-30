@@ -42,6 +42,14 @@ KIMI_K2_5 = BedrockConverseModel(
     requires_tool_result_image_hoisting=True,
 )
 
+CLAUDE_HAIKU_4_5 = BedrockConverseModel(
+    key="claude-haiku-4.5",
+    display_name="Claude Haiku 4.5",
+    model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    workflow_max_tokens=16_384,
+    hint="Experimental — fast; compare repair quality and cost before choosing it routinely.",
+)
+
 MISTRAL_LARGE_3 = BedrockConverseModel(
     key="mistral-large-3",
     display_name="Mistral Large 3",
@@ -74,6 +82,7 @@ _IN_REGION_MODELS = {
     model.model_id: model
     for model in (
         KIMI_K2_5,
+        CLAUDE_HAIKU_4_5,
         MISTRAL_LARGE_3,
         QWEN3_VL_235B,
     )

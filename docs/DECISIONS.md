@@ -4,6 +4,43 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D078 — Add Claude Haiku 4.5 only through its proven US inference profile
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED; least-privilege intake and full workflow passed
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The user received an accepted zero-dollar AWS Marketplace agreement for Claude Haiku 4.5 and asked
+to evaluate it despite uncertainty about cost effectiveness. The Bedrock catalog exposes the direct
+foundation-model ID, but a bounded call proved that on-demand throughput does not accept that ID.
+The active US inference profile succeeds and routes across three documented US foundation-model
+resources. Marketplace acceptance therefore cannot be treated as proof of a usable application
+configuration.
+
+**Decision**
+
+Add Claude Haiku 4.5 to the existing `bedrock-converse` capability registry using only
+`us.anthropic.claude-haiku-4-5-20251001-v1:0`. Label it experimental and tell users to compare repair
+quality and cost before selecting it routinely. Keep Kimi recommended. Grant the application role
+only `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on the exact US inference
+profile and its routed foundation-model ARNs. Do not add an Anthropic-specific adapter or make the
+unusable direct ID selectable.
+
+**Evidence and consequences**
+
+The least-privilege `asset-shepherd` profile completed a bounded Haiku call. The existing live typed
+intake and full Strands approval-through-package tests then passed in 58.13 seconds without a model-
+specific transport change. This validates access, tool/image compatibility, approval/resume, and
+deterministic packaging, but it does not establish comparative cost or quality on the real browser
+matrix. D077's initial four-model allowlist is extended to five by this decision; its fail-closed,
+per-workspace selection and one-adapter architecture remain unchanged.
+
 ### D077 — Use one allowlisted Converse adapter with Kimi recommended per asset
 
 **Date:** 2026-08-29
@@ -31,7 +68,8 @@ a reason to change the model-visible evidence or duplicate the workflow.
 **Decision**
 
 Use `bedrock-converse` as the canonical model-neutral provider. Keep a fail-closed capability
-registry for exactly Kimi K2.5, Mistral Large 3, Qwen3 VL 235B, and Nova 2 Lite. Kimi is the
+registry initially covering Kimi K2.5, Mistral Large 3, Qwen3 VL 235B, and Nova 2 Lite; D078 later
+adds Claude Haiku 4.5 through the same contract. Kimi is the
 recommended choice. Mark Mistral and Qwen as experimental choices for especially long/complex and
 visually ambiguous work; present Nova as a lower-cost diagnostic that may need more user correction.
 The existing Luna Responses adapter remains a pending specialist/compatibility path outside this
@@ -56,12 +94,12 @@ project-ready candidate with one remaining material warning, and explicit `bedro
 `moonshotai.kimi-k2.5` provenance. A direct control proved that the image-hoisting normalization
 removes the Bedrock validation failure without altering stored tool history.
 
-Browser acceptance confirmed the compact four-model allowlist, single recommendation, hints,
+Browser acceptance confirmed the initial compact four-model allowlist, single recommendation, hints,
 default Kimi selection, and preservation across Upload. The subsequent hosted intake was blocked
 only because the bootstrap AWS login token expired; the independent live intake and full workflow
-had already passed. The least-privilege runtime role still needs exact Kimi/Mistral/Qwen invoke
-resources before those models are used outside the administrator smoke gate. Full browser cases,
-cloud-portable state, AgentCore, and remote hosting remain open.
+had already passed. That authentication checkpoint is now closed: the refreshed login installed
+exact Kimi/Mistral/Qwen invoke resources, and all visible models pass least-privilege smoke calls.
+Full browser cases, cloud-portable state, AgentCore, and remote hosting remain open.
 
 ### D076 — Do not add a Grok provider path until account invocation succeeds
 

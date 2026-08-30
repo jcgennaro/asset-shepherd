@@ -84,10 +84,12 @@ def test_bedrock_upload_offers_only_hinted_models_and_persists_the_choice(
     assert "Agent model: <span" in upload.text
     assert upload.text.count("Recommended") == 1
     assert "Kimi K2.5" in upload.text
+    assert "Claude Haiku 4.5" in upload.text
     assert "Mistral Large 3" in upload.text
     assert "Qwen3 VL 235B" in upload.text
     assert "Nova 2 Lite" in upload.text
     assert "try when visual evidence is the main uncertainty" in upload.text
+    assert "compare repair quality and cost" in upload.text
     assert "Lower-cost diagnostic" in upload.text
 
     uploaded = client.post(

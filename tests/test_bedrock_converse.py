@@ -16,6 +16,7 @@ def test_model_allowlist_has_one_recommended_choice_and_actionable_hints() -> No
 
     assert [model.display_name for model in models] == [
         "Kimi K2.5",
+        "Claude Haiku 4.5",
         "Mistral Large 3",
         "Qwen3 VL 235B",
         "Nova 2 Lite",

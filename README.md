@@ -60,9 +60,10 @@ $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
 
 The upload screen keeps model choice out of the numbered workflow. Its compact **Agent model**
 disclosure offers only the reviewed Bedrock Converse allowlist and explains when to try each model:
-Kimi K2.5 is recommended; Mistral Large 3 and Qwen3 VL are experimental long-context and visual
-alternatives; Nova 2 Lite is a lower-cost diagnostic. The selected model is stored with that asset,
-so resume and Refine never silently change it. Arbitrary posted model IDs fail closed.
+Kimi K2.5 is recommended; Claude Haiku 4.5 is an experimental speed/cost comparison; Mistral Large
+3 and Qwen3 VL are experimental long-context and visual alternatives; Nova 2 Lite is a lower-cost
+diagnostic. The selected model is stored with that asset, so resume and Refine never silently
+change it. Arbitrary posted model IDs fail closed.
 
 The optional direct-OpenAI development adapter remains available. Save its key once, then start
 without setting `ASSET_SHEPHERD_MODEL_PROVIDER=bedrock`:
