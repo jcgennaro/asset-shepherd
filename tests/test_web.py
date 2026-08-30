@@ -1212,6 +1212,12 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     ).read_text(encoding="utf-8")
     assert "data-scene-notebook" in workspace_template
     assert "data-notebook-scene-slot" in workspace_template
+    assert "view.proposal_summary" in workspace_template
+    assert "view.decision_summary" in workspace_template
+    assert "view.outcome_summary" in workspace_template
+    assert "current_turn_decision_summary" in workspace_template
+    assert "current_turn_outcome_summary" in workspace_template
+    assert "notebook-intake-message" in workspace_template
     assert "data-notebook-shared-scene" in workspace_template
     assert "hosted_turn_scene" in workspace_template
 

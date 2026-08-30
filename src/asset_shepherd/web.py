@@ -73,6 +73,7 @@ from asset_shepherd.models import (
     AssetTargetUse,
     CheckStatus,
     ComponentRemovalPayload,
+    ConversationTurnRecord,
     DecisionRecord,
     DecisionValue,
     DegenerateGeometryPayload,
@@ -105,6 +106,11 @@ _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
 _DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
 mimetypes.add_type("model/gltf-binary", ".glb")
 logger = logging.getLogger(__name__)
+
+
+def _workspace_notebook_url(request: Request, workspace_id: str) -> str:
+    """Return the newest visible notebook entry after a workflow transition."""
+    return f"{request.url_for('hosted_workspace_page', workspace_id=workspace_id)}#current-turn"
 
 
 def _asset_download_stem(asset_name: str) -> str:
@@ -340,6 +346,16 @@ class ResultPresentationView:
     next_step: str
     package_label: str
     download_label: str
+
+
+@dataclass(frozen=True)
+class NotebookTurnView:
+    """One completed agent/user/model-state exchange in the scroll notebook."""
+
+    turn: ConversationTurnRecord
+    proposal_summary: str
+    decision_summary: str | None
+    outcome_summary: str
 
 
 @dataclass(frozen=True)
@@ -2412,6 +2428,19 @@ def _completion_sentence(workspace: HostedWorkspace, job: AgentJob | None) -> st
     return _one_sentence(presentation.summary if presentation else "The workflow stopped.")
 
 
+def _current_turn_outcome_summary(
+    workspace: HostedWorkspace,
+    job: AgentJob | None,
+) -> str | None:
+    """Return the newest completed assessment without hiding its preceding proposal."""
+    completed = _completion_sentence(workspace, job)
+    if completed is not None:
+        return completed
+    if job is not None and job.candidate_reassessment is not None:
+        return _one_sentence(job.candidate_reassessment.summary)
+    return None
+
+
 def _has_next_turn_candidate(job: AgentJob | None) -> bool:
     """Return whether a completed turn produced a candidate that can seed another turn."""
     if job is None:
@@ -2846,6 +2875,79 @@ def _archived_turn_summary(workspace: HostedWorkspace, turn_index: int) -> str:
     except (OSError, TypeError, json.JSONDecodeError):
         pass
     return "This iteration is saved with its verification record."
+
+
+def _summary_from_json(path: Path, field: str) -> str | None:
+    """Read one compact model-authored summary from a trusted workspace artifact."""
+    try:
+        payload = cast(dict[str, object], json.loads(path.read_text(encoding="utf-8")))
+        value = payload.get(field)
+        return _one_sentence(value) if isinstance(value, str) and value.strip() else None
+    except (OSError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def _decision_sentence(approved: int, rejected: int) -> str | None:
+    """Turn structured authorization records into one user-side notebook message."""
+    if approved and not rejected:
+        return "Approved the proposed repair."
+    if rejected and not approved:
+        return "Rejected the proposed repair."
+    if approved or rejected:
+        return f"Approved {approved} proposed changes and rejected {rejected}."
+    return None
+
+
+def _decision_sentence_from_records(records: object) -> str | None:
+    """Read only explicit user decisions from a serialized Decisions record list."""
+    if not isinstance(records, list):
+        return None
+    approved = 0
+    rejected = 0
+    for raw_record in cast(list[object], records):
+        if not isinstance(raw_record, dict):
+            continue
+        record = cast(dict[str, object], raw_record)
+        decision = record.get("decision")
+        if decision == DecisionValue.APPROVED.value:
+            approved += 1
+        elif decision == DecisionValue.REJECTED.value:
+            rejected += 1
+    return _decision_sentence(approved, rejected)
+
+
+def _current_turn_decision_summary(job: AgentJob | None) -> str | None:
+    """Return the current turn's explicit human authorization as notebook copy."""
+    if job is None or job.decisions is None:
+        return None
+    approved = sum(record.decision is DecisionValue.APPROVED for record in job.decisions.records)
+    rejected = sum(record.decision is DecisionValue.REJECTED for record in job.decisions.records)
+    return _decision_sentence(approved, rejected)
+
+
+def _archived_turn_view(
+    workspace: HostedWorkspace,
+    turn: ConversationTurnRecord,
+) -> NotebookTurnView:
+    """Recover the proposal, decision, and outcome for one immutable archived turn."""
+    turn_root = workspace.root / "turns" / f"turn-{turn.turn_index:03d}"
+    proposal = _summary_from_json(turn_root / "agent_assessment.json", "summary")
+    decision: str | None = None
+    decisions_path = turn_root / "output" / "decisions.json"
+    try:
+        decisions = cast(
+            dict[str, object],
+            json.loads(decisions_path.read_text(encoding="utf-8")),
+        )
+        decision = _decision_sentence_from_records(decisions.get("records"))
+    except (OSError, TypeError, json.JSONDecodeError):
+        pass
+    return NotebookTurnView(
+        turn=turn,
+        proposal_summary=proposal or "Asset Shepherd assessed this iteration.",
+        decision_summary=decision,
+        outcome_summary=_archived_turn_summary(workspace, turn.turn_index),
+    )
 
 
 def _approval_assessment_sentence(job: AgentJob | None) -> str | None:
@@ -3296,7 +3398,11 @@ def create_app(
                     _result_presentation(runtime_job) if runtime_job is not None else None
                 ),
                 "completion_sentence": _completion_sentence(workspace, runtime_job),
+                "current_turn_outcome_summary": _current_turn_outcome_summary(
+                    workspace, runtime_job
+                ),
                 "agent_assessment_sentence": _approval_assessment_sentence(runtime_job),
+                "current_turn_decision_summary": _current_turn_decision_summary(runtime_job),
                 "decision_summary": (
                     _decision_summary(runtime_job) if runtime_job is not None else "pending"
                 ),
@@ -3365,13 +3471,7 @@ def create_app(
                 "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
                 "prior_turns": runtime_job.prior_turns if runtime_job else (),
                 "prior_turn_views": (
-                    tuple(
-                        {
-                            "turn": turn,
-                            "summary": _archived_turn_summary(workspace, turn.turn_index),
-                        }
-                        for turn in runtime_job.prior_turns
-                    )
+                    tuple(_archived_turn_view(workspace, turn) for turn in runtime_job.prior_turns)
                     if runtime_job
                     else ()
                 ),
@@ -4119,7 +4219,7 @@ def create_app(
             )
         discard_hosted_start_draft(draft)
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace.record.workspace_id),
+            _workspace_notebook_url(request, workspace.record.workspace_id),
             status_code=303,
         )
 
@@ -4219,7 +4319,7 @@ def create_app(
         finally:
             asset.file.close()
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace.record.workspace_id),
+            _workspace_notebook_url(request, workspace.record.workspace_id),
             status_code=303,
         )
 
@@ -4277,7 +4377,7 @@ def create_app(
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=400)
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            _workspace_notebook_url(request, workspace_id),
             status_code=303,
         )
 
@@ -4328,7 +4428,7 @@ def create_app(
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=400)
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            _workspace_notebook_url(request, workspace_id),
             status_code=303,
         )
 
@@ -4373,7 +4473,7 @@ def create_app(
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=400)
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            _workspace_notebook_url(request, workspace_id),
             status_code=303,
         )
 
@@ -4490,7 +4590,7 @@ def create_app(
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=409)
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            _workspace_notebook_url(request, workspace_id),
             status_code=303,
         )
 
@@ -4523,7 +4623,7 @@ def create_app(
         if decision == "accept" and request.headers.get("x-asset-shepherd-transition") == "accept":
             return Response(status_code=204, headers={"Cache-Control": "no-store"})
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            _workspace_notebook_url(request, workspace_id),
             status_code=303,
         )
 
@@ -4543,7 +4643,7 @@ def create_app(
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=409)
         return RedirectResponse(
-            request.url_for("hosted_workspace_page", workspace_id=workspace_id),
+            _workspace_notebook_url(request, workspace_id),
             status_code=303,
         )
 

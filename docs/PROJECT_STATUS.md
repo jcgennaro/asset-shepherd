@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-30
-**Current commit:** Scroll-driven shared-scene notebook (this file is included)
+**Current commit:** Append-only shared-scene notebook and provider-end completion recovery (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,17 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D080 append-only notebook and bounded completion recovery: the exact successful Kimi riding-crop
+  run `91b21e479f914f80888c266d473b06d4` ended after recording a positive candidate reassessment but
+  before calling deterministic verification/package. The recovered turn independently verifies and
+  packages on reload without another model call because its decisions, executed outcome, provenance,
+  and required visual reassessment are all present; incomplete or interrupted turns remain fail-closed.
+  The workspace now keeps description, proposal, user decision, outcome, and model state together in
+  scroll order instead of replacing its contents after approval. Browser acceptance on the exact run
+  shows no failure banner and one live 3D viewer; a saved two-iteration run exposes both chronological
+  scene slots and rail navigation while maintaining exactly one `<model-viewer>`. The full gate passes
+  with 204 tests, two opt-in live skips, lock validation, Ruff, formatting, and zero Pyright findings.
 
 - D079 shared-scene notebook: completed turns now render as ordered Asset Shepherd outcome,
   hash-bound 3D state, and user reply cells. The turn nearest the viewport center receives the only

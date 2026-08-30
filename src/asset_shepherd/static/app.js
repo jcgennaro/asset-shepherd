@@ -1,4 +1,6 @@
-window.scrollTo(0, 0);
+if (!window.location.hash) {
+  window.scrollTo(0, 0);
+}
 
 for (const fileInput of document.querySelectorAll("[data-file-input]")) {
   const dropZone = fileInput.closest("[data-drop-zone]");

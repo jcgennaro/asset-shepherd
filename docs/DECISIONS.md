@@ -4,6 +4,55 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D080 — Preserve the whole notebook and finish invariant-only work after provider end-turn
+
+**Date:** 2026-08-30
+
+**Status:** ACCEPTED; append-only presentation and bounded completion recovery implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The first shared-scene notebook kept one live 3D viewer, but the current proposal was still replaced
+by its result after approval. That concealed the actual exchange instead of letting the user read the
+description, recommendation, decision, and resulting model state in order. During a successful Kimi
+K2.5 riding-crop run, the provider recorded a positive candidate reassessment and said it was ready
+to verify and package, then ended the response before calling the final tool. The repair and visual
+judgment were complete, but the product reported that the agent ended early and withheld the valid
+candidate.
+
+**Decision**
+
+Render the workspace as an append-only chronological notebook. Keep the intake description and each
+turn's agent proposal, explicit user decision, agent outcome, saved 3D state, and continuation comment
+visible in scroll order. Append the current decision and outcome below its proposal instead of
+replacing earlier content. Workflow-rail navigation scrolls to these entries, and the existing single
+shared viewer moves to the scene closest to the viewport center; the page never keeps multiple live
+3D scenes.
+
+Treat independent verification and packaging as mandatory invariant work once the agent has already
+selected and executed the authorized action and, for every visually consequential mutation, recorded
+the required candidate reassessment. If a model provider ends precisely at that final boundary,
+deterministic code may run `verify_and_package` without another model call. The recovery is fail-closed:
+it cannot select, authorize, execute, revise, or visually approve a repair, and it does not run while
+an interrupt or required reassessment is missing. The same rule applies when reopening a persisted
+workspace so a transient provider end-turn does not strand a completed candidate.
+
+**Evidence and consequences**
+
+The exact Kimi workspace `91b21e479f914f80888c266d473b06d4` contained a valid component-removal
+candidate, positive four-view reassessment, hashes, decisions, and provenance but no package. Reloading
+under the bounded rule independently verified it, produced the result and verification artifacts, and
+changed the failed presentation into a downloadable completed turn without another inference or model
+mutation. Browser acceptance on that workspace shows proposal, approval, outcome, and one live current
+scene together. A saved two-iteration riding-crop conversation shows all prior exchanges and both scene
+slots in order while keeping exactly one `<model-viewer>`; rail navigation activates the requested
+iteration. Tests cover the visual-reassessment boundary and notebook structure. This decision does not
+weaken the agent's authority over sensing, disposition, action choice, or visual judgment.
+
 ### D079 — Make each approval exchange one chronological, atomic user turn
 
 **Date:** 2026-08-29

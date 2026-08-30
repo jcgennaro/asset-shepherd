@@ -578,6 +578,41 @@ class AgentJob:
         """Return the only mutable GLB candidate path inside this job."""
         return self.output_dir / "candidate.glb"
 
+    @property
+    def deterministic_completion_available(self) -> bool:
+        """Return whether invariant verification can finish this already-decided turn.
+
+        A provider may end its response immediately after recording the required visual
+        reassessment instead of making the final ``verify_and_package`` tool call. Verification
+        and packaging do not choose or mutate a repair; they enforce the mandatory invariant
+        boundary over the candidate the agent already chose and executed. This predicate keeps
+        that recovery narrow and fail-closed.
+
+        """
+        if self.result is not None or self.pending_interrupt_id is not None:
+            return False
+        if self.inspection is None or self.selected_plan is None or self.started_at is None:
+            return False
+        if self.selected_plan.blocked:
+            return True
+        if self.decisions is None or self.outcome is None or self.provenance is None:
+            return False
+        visually_consequential_kinds = {
+            RepairKind.NORMALIZATION_TRANSFORM,
+            RepairKind.WELD_IDENTICAL_VERTICES,
+            RepairKind.CLEAN_DEGENERATE_GEOMETRY,
+            RepairKind.REMOVE_DISCONNECTED_COMPONENTS,
+        }
+        visually_consequential_action_ids = {
+            candidate.id
+            for candidate in self.selected_plan.candidates
+            if candidate.kind in visually_consequential_kinds
+        }
+        requires_visual_reassessment = bool(
+            visually_consequential_action_ids.intersection(self.outcome.executed_action_ids)
+        )
+        return not requires_visual_reassessment or self.candidate_reassessment is not None
+
     def _require_output_path(self, path: Path) -> None:
         try:
             path.resolve(strict=False).relative_to(self.output_dir)

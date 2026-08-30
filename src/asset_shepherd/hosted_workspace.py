@@ -1112,6 +1112,12 @@ class HostedWorkspaceStore:
                 activity_sink=self._activity_sink(workspace.root),
             )
         )
+        if runtime_job.deterministic_completion_available:
+            # Complete a persisted turn whose provider stopped immediately after its final
+            # required assessment. This performs only fresh verification and packaging; it does
+            # not choose, authorize, or execute another repair.
+            runtime_job.verify_and_package()
+            self._finish_activity(workspace, "COMPLETE")
         result_path = workspace.output_dir / "agent_result.json"
         if result_path.is_file():
             workspace.workflow_result = AgentWorkflowResult.model_validate_json(

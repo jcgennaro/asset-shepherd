@@ -802,6 +802,7 @@ def test_executed_agent_action_requires_and_packages_visual_reassessment(
     )
     assert plan.planning_authority == "AGENT_ORCHESTRATED"
     job.execute(approved=True, interrupt_id="test-interrupt-v1")
+    assert not job.deterministic_completion_available
 
     with pytest.raises(AgentWorkflowError, match="visual candidate reassessment"):
         job.verify_and_package()
@@ -820,6 +821,7 @@ def test_executed_agent_action_requires_and_packages_visual_reassessment(
         source_views_used=["front.png", "right.png", "back.png", "left.png"],
         candidate_views_used=["front.png", "right.png", "back.png", "left.png"],
     )
+    assert job.deterministic_completion_available
     verification, result = job.verify_and_package()
 
     assert result is not None

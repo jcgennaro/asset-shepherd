@@ -883,6 +883,12 @@ class AssetShepherdAgent:
             raise AgentWorkflowError("The agent has not been invoked")
         if current.stop_reason == "interrupt":
             raise AgentWorkflowError("The agent cannot complete while approval is pending")
+        if self.job.result is None and self.job.deterministic_completion_available:
+            # Provider-neutral safety net: the model already chose and executed the repair and,
+            # when required, recorded its visual reassessment. Independent verification and
+            # packaging are mandatory invariant work, so an early provider end-turn must not
+            # discard an otherwise complete candidate or require another model invocation.
+            self.job.verify_and_package()
         if self.job.result is None or self.job.last_verification is None:
             if self.job.agent_assessment is None and self.job.inspection is not None:
                 raise AgentWorkflowError(

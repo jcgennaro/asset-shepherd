@@ -4061,6 +4061,14 @@ model-viewer {
   margin: 4px 0 0;
 }
 
+.notebook-intake-message {
+  margin-bottom: 2px;
+}
+
+.current-turn-message {
+  scroll-margin-top: 18vh;
+}
+
 #current-turn {
   scroll-margin-top: 24px;
 }

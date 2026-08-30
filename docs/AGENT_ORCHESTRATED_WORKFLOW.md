@@ -54,6 +54,12 @@ other measurements, rendered evidence, and clarification when needed.
 - Reassessing the candidate after every change and iterating when useful.
 - Calling verification and packaging only when it believes the candidate is ready for those stages.
 
+Readiness may also be expressed by completing the authorized action and recording every required
+candidate reassessment. If a model provider ends its response at that exact final boundary, the
+deterministic layer may fulfill the mandatory verification-and-package obligation without asking the
+model for another turn. It may not use that recovery to choose, authorize, execute, revise, or
+visually approve any action.
+
 The agent does not authorize its own consequential action and cannot override a failed invariant.
 
 ### Deterministic tools own
@@ -118,6 +124,10 @@ flowchart LR
 The loop returns to sensing after every mutation. Verification is a gate near the end of a candidate
 turn, not a substitute for agent reassessment.
 
+If the provider ends after the final required reassessment but before its explicit package call, the
+turn may cross only the invariant verification/package gate automatically. Missing decisions,
+provenance, outcome, required visual reassessment, or a pending interrupt keep the turn stopped.
+
 The product navigation has two levels. **Gallery** selects a saved workspace or starts a new one;
 it is not a numbered workflow step. A selected workspace exposes **1 Upload, 2 Describe, 3
 Shepherd, 4 Refine**. Shepherd creates the first candidate. Before entering Refine, the user chooses
@@ -127,6 +137,13 @@ onward, the selected immutable iteration remains visible with its measured wiref
 and optional metric axes or banana reference. During tool work, that context remains visible and
 orbits slowly unless reduced motion is requested. Download remains an outcome rather than a fifth
 step.
+
+The workspace itself is an append-only conversation notebook. It retains the intake description and
+then, for every pass, the agent proposal, the user's structured/freeform decision, the agent outcome,
+the resulting model state, and any continuation request. New information is appended below prior
+information; completing a pass never replaces its proposal. The workflow rail scrolls to notebook
+entries. Only the scene nearest the viewport center owns the one live 3D viewer, so history remains
+inspectable without running several renderers at once.
 
 World bounds are calculated from positions actually referenced by surviving primitive indices, not
 from every tuple stored in a POSITION accessor. Therefore exact component deletion immediately
