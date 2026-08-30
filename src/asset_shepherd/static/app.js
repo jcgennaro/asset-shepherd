@@ -401,11 +401,19 @@ if (descriptionExamplesDialog instanceof HTMLDialogElement && descriptionExample
   });
 }
 
-for (const viewer of document.querySelectorAll("model-viewer")) {
+function bindViewerError(viewer) {
+  if (viewer.dataset.errorBound === "true") {
+    return;
+  }
+  viewer.dataset.errorBound = "true";
   viewer.addEventListener("error", () => {
     viewer.classList.add("viewer-error");
     viewer.setAttribute("aria-label", `${viewer.getAttribute("alt")} — preview unavailable`);
   });
+}
+
+for (const viewer of document.querySelectorAll("model-viewer")) {
+  bindViewerError(viewer);
 }
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
@@ -1063,10 +1071,143 @@ function initializeModelComparison(comparison) {
   }
 }
 
-if (document.querySelector("[data-model-comparison]")) {
+function initializeRenderedScene(root) {
+  for (const viewer of root.querySelectorAll("model-viewer")) {
+    bindViewerError(viewer);
+  }
+  const comparisons = root.querySelectorAll("[data-model-comparison]");
+  if (!comparisons.length) {
+    return;
+  }
   customElements.whenDefined("model-viewer").then(() => {
-    document.querySelectorAll("[data-model-comparison]").forEach(initializeModelComparison);
+    comparisons.forEach(initializeModelComparison);
   });
+}
+
+initializeRenderedScene(document);
+
+function initializeSceneNotebook(notebook) {
+  const sharedScene = notebook.querySelector("[data-notebook-shared-scene]");
+  const slots = [...notebook.querySelectorAll("[data-notebook-scene-slot]")];
+  if (!sharedScene || slots.length < 2) {
+    return;
+  }
+
+  const sceneCache = new Map([[sharedScene.dataset.sceneKey, sharedScene.innerHTML]]);
+  const sceneLinks = [...document.querySelectorAll("[data-notebook-scene-link]")];
+  let activeKey = sharedScene.dataset.sceneKey;
+  let requestSequence = 0;
+  let frame = 0;
+
+  function renderScene(html, key) {
+    if (key !== activeKey) {
+      return;
+    }
+    sharedScene.innerHTML = html;
+    sharedScene.dataset.sceneKey = key;
+    sharedScene.removeAttribute("aria-busy");
+    sharedScene.closest("[data-notebook-scene-slot]")?.classList.remove("loading");
+    initializeRenderedScene(sharedScene);
+  }
+
+  async function loadScene(slot, key) {
+    const cached = sceneCache.get(key);
+    if (cached) {
+      renderScene(cached, key);
+      return;
+    }
+    const sceneUrl = slot.dataset.sceneUrl;
+    if (!sceneUrl) {
+      return;
+    }
+    const sequence = ++requestSequence;
+    sharedScene.setAttribute("aria-busy", "true");
+    slot.classList.add("loading");
+    try {
+      const response = await fetch(sceneUrl, {
+        headers: { Accept: "text/html", "X-Asset-Shepherd-Notebook": "1" },
+      });
+      if (!response.ok) {
+        throw new Error(`Scene request failed with HTTP ${response.status}`);
+      }
+      const html = await response.text();
+      sceneCache.set(key, html);
+      if (sequence === requestSequence) {
+        renderScene(html, key);
+      }
+    } catch (_error) {
+      if (sequence !== requestSequence || key !== activeKey) {
+        return;
+      }
+      sharedScene.removeAttribute("aria-busy");
+      slot.classList.remove("loading");
+      sharedScene.innerHTML =
+        '<p class="notebook-scene-error" role="alert">This saved 3D state could not be loaded.</p>';
+    }
+  }
+
+  function activateSlot(slot) {
+    const key = slot.dataset.sceneKey;
+    if (!key || key === activeKey) {
+      return;
+    }
+    const previousSlot = sharedScene.closest("[data-notebook-scene-slot]");
+    const targetTop = slot.getBoundingClientRect().top;
+    if (activeKey && !sceneCache.has(activeKey)) {
+      sceneCache.set(activeKey, sharedScene.innerHTML);
+    }
+    previousSlot?.classList.remove("active", "loading");
+    previousSlot?.removeAttribute("aria-current");
+    slot.classList.add("active");
+    slot.setAttribute("aria-current", "true");
+    slot.append(sharedScene);
+    activeKey = key;
+    for (const link of sceneLinks) {
+      link.closest("li")?.classList.toggle("scene-current", link.dataset.notebookSceneLink === key);
+    }
+    const movedTop = slot.getBoundingClientRect().top;
+    if (Math.abs(movedTop - targetTop) > 1) {
+      window.scrollBy({ top: movedTop - targetTop, behavior: "auto" });
+    }
+    loadScene(slot, key);
+  }
+
+  function selectNearestSlot() {
+    frame = 0;
+    const viewportCenter = window.innerHeight / 2;
+    let nearest = slots[0];
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const slot of slots) {
+      const bounds = slot.getBoundingClientRect();
+      const distance = Math.abs(bounds.top + bounds.height / 2 - viewportCenter);
+      if (distance < nearestDistance) {
+        nearest = slot;
+        nearestDistance = distance;
+      }
+    }
+    activateSlot(nearest);
+  }
+
+  function scheduleSelection() {
+    if (!frame) {
+      frame = window.requestAnimationFrame(selectNearestSlot);
+    }
+  }
+
+  const initialSlot = sharedScene.closest("[data-notebook-scene-slot]");
+  initialSlot?.setAttribute("aria-current", "true");
+  for (const link of sceneLinks) {
+    link
+      .closest("li")
+      ?.classList.toggle("scene-current", link.dataset.notebookSceneLink === activeKey);
+  }
+  window.addEventListener("scroll", scheduleSelection, { passive: true });
+  window.addEventListener("resize", scheduleSelection);
+  scheduleSelection();
+}
+
+for (const notebook of document.querySelectorAll("[data-scene-notebook]")) {
+  initializeSceneNotebook(notebook);
 }
 
 const inspectionExperience = document.querySelector("[data-inspection-experience]");

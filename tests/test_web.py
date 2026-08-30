@@ -1195,12 +1195,25 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'proposal?.classList.remove("active")' in script.text
     assert "!activeComponentId || graphics.id !== activeComponentId" not in script.text
     assert "targetWidth" not in script.text
+    assert "function initializeSceneNotebook(notebook)" in script.text
+    assert 'notebook.querySelector("[data-notebook-shared-scene]")' in script.text
+    assert 'window.addEventListener("scroll", scheduleSelection' in script.text
+    assert "const viewportCenter = window.innerHeight / 2" in script.text
+    assert "slot.append(sharedScene)" in script.text
 
     comparison_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"
     ).read_text(encoding="utf-8")
     assert 'interpolation-decay="240"' in comparison_template
     assert 'auto-rotate-delay="0" rotation-per-second="4deg"' in comparison_template
+
+    workspace_template = (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "hosted_workspace.html"
+    ).read_text(encoding="utf-8")
+    assert "data-scene-notebook" in workspace_template
+    assert "data-notebook-scene-slot" in workspace_template
+    assert "data-notebook-shared-scene" in workspace_template
+    assert "hosted_turn_scene" in workspace_template
 
     checklist_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"
@@ -1213,6 +1226,8 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert ".component-color-0" in stylesheet.text
     assert ".component-color-5" in stylesheet.text
     assert ".component-proposal.active" in stylesheet.text
+    assert ".notebook-scene-slot.active" in stylesheet.text
+    assert ".intent-rail li.scene-current" in stylesheet.text
 
 
 def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:

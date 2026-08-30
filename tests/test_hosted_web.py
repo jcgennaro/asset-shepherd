@@ -1,6 +1,8 @@
 """Browser-route acceptance for the D019 conversation-led workspace."""
 
 import re
+from hashlib import sha256
+from io import BytesIO
 from pathlib import Path
 from typing import cast
 from urllib.parse import urlparse
@@ -128,6 +130,37 @@ def _hidden(html: str, name: str) -> str:
     match = re.search(rf'name="{name}" value="([^"]+)"', html)
     assert match is not None
     return match.group(1)
+
+
+def test_completed_turn_scene_is_lazy_and_hash_bound(tmp_path: Path) -> None:
+    """A notebook turn loads one archived GLB only through its exact recorded hash."""
+    app = create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs")
+    hosted_store = cast(HostedWorkspaceStore, app.state.hosted_workspace_store)
+    workspace = hosted_store.create(
+        DESCRIPTION,
+        BROKEN_PATH.name,
+        BytesIO(BROKEN_PATH.read_bytes()),
+    )
+    archived = workspace.root / "turns" / "turn-000" / "output" / "repaired.glb"
+    archived.parent.mkdir(parents=True)
+    archived.write_bytes((PROJECT_ROOT / "fixtures" / "clean_robot.glb").read_bytes())
+    output_sha256 = sha256(archived.read_bytes()).hexdigest()
+    (workspace.root / "conversation.json").write_text(
+        f'{{"schema_version":1,"turns":[{{"turn_index":0,"output_sha256":"{output_sha256}"}}]}}',
+        encoding="utf-8",
+    )
+    client = TestClient(app)
+    base = f"/workspace/{workspace.record.workspace_id}/turns/0"
+
+    scene = client.get(f"{base}/scene")
+
+    assert scene.status_code == 200
+    assert scene.text.count("<model-viewer") == 1
+    assert 'class="model-comparison source-only"' in scene.text
+    assert f"{base}/model.glb" in scene.text
+    asset = client.get(f"{base}/model.glb")
+    assert asset.status_code == 200
+    assert asset.content == archived.read_bytes()
 
 
 def test_conversation_route_preflights_then_survives_restart_through_download(

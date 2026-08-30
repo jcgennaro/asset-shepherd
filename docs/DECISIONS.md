@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-08-29
 
-**Status:** ACCEPTED; first approval-turn slice implemented
+**Status:** ACCEPTED; approval and shared-scene notebook implemented
 
 **Decision owner:** User and Codex
 
@@ -40,8 +40,11 @@ fresh plan and fresh approval.
 Use one wide turn composer and one dynamic primary action: **Apply recommendations** when the
 structured defaults are unchanged and no prose is present, otherwise **Send revision**. Offer
 **Download this version** as the human override that does not authorize pending recommendations.
-Remove per-row comment boxes. The follow-on notebook presentation will render completed turns in
-order, keep only one live model scene, and make rail entries scroll targets.
+Remove per-row comment boxes. Render completed turns in order, keep only one live model scene, and
+make rail entries scroll targets. Each archived turn resolves its displayed GLB by the immutable
+`output_sha256` in `conversation.json`; a missing or mismatched asset fails closed. As the user
+scrolls, the scene slot nearest the viewport center receives the one shared scene host. Historical
+scene markup loads only when needed and leaves the live DOM when another turn takes over.
 
 **Evidence and consequences**
 
@@ -50,8 +53,9 @@ a Remove override requests a registered proposal rather than authorizing deletio
 revision validator now accepts safe exact component IDs even when the archived plan did not contain
 a removal candidate. Unit coverage proves a user can request removal from an all-Keep agent plan
 without creating a candidate or mutating the source. This expands review authority, not autonomous
-mutation authority. Full historical scene switching remains a presentation follow-up; the current
-page still renders only one active `<model-viewer>`.
+mutation authority. Browser acceptance on the two-iteration Riding Crop proves that scrolling and
+rail navigation swap between the archived turn URL and current model URL in both directions while
+the DOM remains at exactly one `<model-viewer>` and reports no console errors.
 
 ### D078 — Add Claude Haiku 4.5 only through its proven US inference profile
 

@@ -249,8 +249,8 @@ Reduced-motion preference skips both effects.
 The Apache-licensed Google `<model-viewer>` 4.3.1 browser distribution is served from the package,
 so previews do not rely on a public CDN at runtime.
 
-The workflow workspace is converging on a chronological notebook: agent report, current model state,
-then one human turn. The human turn has three outcomes:
+The workflow workspace is a chronological notebook: agent report, current model state, then one
+human turn. The human turn has three outcomes:
 
 1. **Apply recommendations** with all agent defaults unchanged.
 2. Change any structured `Accept/Reject` or component `Keep/Remove` choice, optionally add one
@@ -258,10 +258,12 @@ then one human turn. The human turn has three outcomes:
 3. **Download this version** without authorizing the pending recommendations.
 
 There are no per-row comment boxes and no second freeform refinement form competing with the active
-turn composer. The workflow rail is history navigation. The page keeps only one live 3D scene; a
-later presentation slice may retarget that shared scene as historical turn anchors approach the
-viewport center without creating several simultaneously running renderers. A ready candidate still
-offers the fixed GLB first and the complete evidence package second.
+turn composer. The workflow rail is history navigation: Shepherd and Refine entries scroll to their
+conversation anchors and reflect the scene currently being viewed. The turn nearest the viewport
+center receives the one shared 3D scene host. Historical scenes load on demand from an exact
+archived output hash, then leave the live DOM when another turn becomes active; the page never runs
+a stack of WebGL viewers. A ready candidate still offers the fixed GLB first and the complete
+evidence package second.
 
 The successful ZIP still contains exactly:
 

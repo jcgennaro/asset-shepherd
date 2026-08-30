@@ -2770,6 +2770,84 @@ def _proposed_pivot_marker(job: AgentJob | None) -> tuple[float, float, float] |
     return None
 
 
+def _hosted_workspace_scene(
+    workspace: HostedWorkspace,
+) -> tuple[ComparisonSceneView | SourceSceneView | None, bool, bool, str, str]:
+    """Build the current turn's one authoritative interactive scene."""
+    runtime_job = workspace.runtime.job if workspace.runtime is not None else None
+    comparison_scene: ComparisonSceneView | SourceSceneView | None = None
+    comparison_candidate_ready = False
+    comparison_source_only = True
+    if (
+        runtime_job is not None
+        and runtime_job.outcome is not None
+        and runtime_job.outcome.executed_action_ids
+    ):
+        comparison_candidate_path = (
+            workspace.output_dir / "repaired.glb"
+            if workspace.ready_candidate
+            else _failed_candidate_path(runtime_job)
+        )
+        if comparison_candidate_path is not None:
+            comparison_scene = _comparison_scene(runtime_job.source, comparison_candidate_path)
+            comparison_candidate_ready = workspace.ready_candidate
+            comparison_source_only = False
+    current_source_path = runtime_job.source if runtime_job is not None else workspace.source_path
+    if comparison_scene is None and current_source_path.is_file():
+        inspection = runtime_job.inspection if runtime_job is not None else None
+        comparison_scene = _source_scene(
+            current_source_path,
+            inspection,
+            proposed_origin_m=_proposed_pivot_marker(runtime_job),
+        )
+    refine_iteration = runtime_job.turn_index if runtime_job is not None else 0
+    before_label = f"Iteration {refine_iteration}" if refine_iteration else "Uploaded model"
+    after_label = f"Iteration {refine_iteration + 1}" if refine_iteration else "Candidate"
+    return (
+        comparison_scene,
+        comparison_candidate_ready,
+        comparison_source_only,
+        before_label,
+        after_label,
+    )
+
+
+def _archived_turn_summary(workspace: HostedWorkspace, turn_index: int) -> str:
+    """Recover concise agent-authored outcome evidence for one notebook turn."""
+    turn_root = workspace.root / "turns" / f"turn-{turn_index:03d}"
+    verification_path = turn_root / "output" / "verification.json"
+    try:
+        verification = cast(
+            dict[str, object],
+            json.loads(verification_path.read_text(encoding="utf-8")),
+        )
+        checks = verification.get("checks")
+        if isinstance(checks, list):
+            for check_value in cast(list[object], checks):
+                if not isinstance(check_value, dict):
+                    continue
+                check = cast(dict[str, object], check_value)
+                if check.get("code") != "AGENT_VISUAL_REASSESSMENT":
+                    continue
+                actual = check.get("actual")
+                if isinstance(actual, str) and actual.strip():
+                    return _one_sentence(actual)
+                description = check.get("description")
+                if isinstance(description, str) and description.strip():
+                    return _one_sentence(description)
+    except (OSError, TypeError, json.JSONDecodeError):
+        pass
+    assessment_path = turn_root / "agent_assessment.json"
+    try:
+        assessment = json.loads(assessment_path.read_text(encoding="utf-8"))
+        summary = assessment.get("summary")
+        if isinstance(summary, str) and summary.strip():
+            return _one_sentence(summary)
+    except (OSError, TypeError, json.JSONDecodeError):
+        pass
+    return "This iteration is saved with its verification record."
+
+
 def _approval_assessment_sentence(job: AgentJob | None) -> str | None:
     """Keep pre-approval agent language explicitly prospective."""
     if job is None or job.agent_assessment is None:
@@ -3157,43 +3235,14 @@ def create_app(
         approval_card = None
         if runtime_job is not None and runtime_job.pending_interrupt_id is not None:
             approval_card = runtime_job.approval_card()
-        comparison_scene = None
-        comparison_candidate_ready = False
-        comparison_source_only = True
-        if (
-            runtime_job is not None
-            and runtime_job.outcome is not None
-            and runtime_job.outcome.executed_action_ids
-        ):
-            comparison_candidate_path = (
-                workspace.output_dir / "repaired.glb"
-                if workspace.ready_candidate
-                else _failed_candidate_path(runtime_job)
-            )
-            if comparison_candidate_path is not None:
-                comparison_scene = _comparison_scene(
-                    runtime_job.source,
-                    comparison_candidate_path,
-                )
-                comparison_candidate_ready = workspace.ready_candidate
-                comparison_source_only = False
-        current_source_path = (
-            runtime_job.source if runtime_job is not None else workspace.source_path
-        )
-        if comparison_scene is None and current_source_path.is_file():
-            inspection = runtime_job.inspection if runtime_job is not None else None
-            comparison_scene = _source_scene(
-                current_source_path,
-                inspection,
-                proposed_origin_m=_proposed_pivot_marker(runtime_job),
-            )
+        (
+            comparison_scene,
+            comparison_candidate_ready,
+            comparison_source_only,
+            comparison_before_label,
+            comparison_after_label,
+        ) = _hosted_workspace_scene(workspace)
         refine_iteration = runtime_job.turn_index if runtime_job is not None else 0
-        comparison_before_label = (
-            f"Iteration {refine_iteration}" if refine_iteration else "Uploaded model"
-        )
-        comparison_after_label = (
-            f"Iteration {refine_iteration + 1}" if refine_iteration else "Candidate"
-        )
         expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
         if target_draft is not None and target_draft.ready_for_confirmation:
@@ -3315,6 +3364,17 @@ def create_app(
                 "cannot_repair": cannot_repair,
                 "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
                 "prior_turns": runtime_job.prior_turns if runtime_job else (),
+                "prior_turn_views": (
+                    tuple(
+                        {
+                            "turn": turn,
+                            "summary": _archived_turn_summary(workspace, turn.turn_index),
+                        }
+                        for turn in runtime_job.prior_turns
+                    )
+                    if runtime_job
+                    else ()
+                ),
                 "error": error,
                 "active_mode": "conversation",
                 "active_style": workspace.record.asset_name,
@@ -4498,6 +4558,44 @@ def create_app(
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
+    def hosted_turn_asset(workspace_id: str, turn_index: int) -> Response:
+        """Serve the immutable hash-bound output of one completed notebook turn."""
+        source_path = hosted_store.archived_turn_output_path(workspace_id, turn_index)
+        if source_path is None:
+            return Response(status_code=404)
+        return FileResponse(
+            source_path,
+            media_type="model/gltf-binary",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
+    def hosted_turn_scene(request: Request, workspace_id: str, turn_index: int) -> Response:
+        """Render a completed turn only when its notebook scene becomes active."""
+        source_path = hosted_store.archived_turn_output_path(workspace_id, turn_index)
+        if source_path is None:
+            return Response(status_code=404)
+        try:
+            scene = _source_scene(source_path)
+        except (OSError, ValueError):
+            return Response(status_code=404)
+        return templates.TemplateResponse(
+            request=request,
+            name="_model_comparison.html",
+            context={
+                "comparison_scene": scene,
+                "comparison_candidate_ready": False,
+                "comparison_source_only": True,
+                "comparison_before_label": f"Iteration {turn_index + 1}",
+                "comparison_after_label": "",
+                "comparison_source_url": request.url_for(
+                    "hosted_turn_asset",
+                    workspace_id=workspace_id,
+                    turn_index=turn_index,
+                ),
+            },
+            headers={"Cache-Control": "private, no-store"},
+        )
+
     def hosted_workspace_activity(workspace_id: str) -> Response:
         """Expose concise observable tool activity without model reasoning or transcript text."""
         activity = hosted_store.activity(workspace_id)
@@ -4786,6 +4884,19 @@ def create_app(
         hosted_source_asset,
         methods=["GET"],
         name="hosted_source_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/turns/{turn_index}/model.glb",
+        hosted_turn_asset,
+        methods=["GET"],
+        name="hosted_turn_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/turns/{turn_index}/scene",
+        hosted_turn_scene,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="hosted_turn_scene",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/activity",

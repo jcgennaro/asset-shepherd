@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-29
-**Current commit:** Atomic notebook-turn approval and component override slice (this file is included)
+**Last updated:** 2026-08-30
+**Current commit:** Scroll-driven shared-scene notebook (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -52,6 +52,22 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D079 shared-scene notebook: completed turns now render as ordered Asset Shepherd outcome,
+  hash-bound 3D state, and user reply cells. The turn nearest the viewport center receives the only
+  live scene; historical GLBs resolve against `conversation.json` `output_sha256`, load only on
+  demand, and are replaced when another turn takes over. Shepherd/Refine rail links navigate and
+  highlight the active state. Browser acceptance on the saved two-iteration Riding Crop swaps from
+  `/turns/0/model.glb` to the current model and back while keeping exactly one `<model-viewer>` and
+  producing no console errors. Focused route/store tests cover lazy scene HTML and fail-closed hash
+  mismatch behavior. The full gate passes with 204 tests, two opt-in live skips, lock validation,
+  Ruff, formatting, and zero Pyright findings.
+
+- Luna access recheck on 2026-08-30: the model-access API still reports authorization, entitlement,
+  and `us-east-1` region availability, but `agreementAvailability.status` remains `NOT_AVAILABLE`.
+  A bounded call to the documented Bedrock Runtime Responses endpoint returns HTTP 403 stating that
+  `openai.gpt-5.6-luna` is unavailable for this account. This rules out the application adapter and
+  ordinary runtime-role IAM as the current blocker; Kimi remains the working recommended provider.
+
 - D079 atomic approval turn: the exact three-component riding-crop run was not a detector failure;
   the agent explicitly classified the three bodies as intentional handle/shaft/paddle parts. The UI
   now keeps that recommendation as the default while exposing every deterministically safe C1/C2/C3
@@ -62,8 +78,7 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   three Keep/Remove controls, one whole-turn composer, the dynamic revision contract, one live 3D
   viewer, and the readable stacked layout at the in-app viewport width. The common gate passes with
   202 tests, two opt-in live skips, lock validation, Ruff, formatting, and zero Pyright findings.
-  This is the first implemented slice of the documented chronological notebook UI; historical
-  shared-scene switching remains open.
+  This is the approval/composer slice of the now-complete shared-scene notebook presentation.
 
 - D078 Claude Haiku 4.5 evaluation: the accepted AWS Marketplace agreement exposed the active US
   inference profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`; direct on-demand invocation was

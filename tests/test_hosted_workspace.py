@@ -1,6 +1,7 @@
 """D019 acceptance tests for objective preflight and durable hosted job state."""
 
 import json
+from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 
@@ -116,6 +117,31 @@ def test_source_route_resolves_the_selected_immutable_iteration(tmp_path: Path) 
 
     assert store.source_path(workspace.record.workspace_id) == selected.resolve()
     assert store.turn_index(workspace.record.workspace_id) == 1
+
+
+def test_archived_turn_output_is_resolved_only_by_its_recorded_hash(tmp_path: Path) -> None:
+    """Notebook history cannot substitute another GLB for a completed turn."""
+    store = HostedWorkspaceStore(tmp_path / "hosted", _family())
+    workspace = _create(store)
+    archived = workspace.root / "turns" / "turn-000" / "output" / "repaired.glb"
+    archived.parent.mkdir(parents=True)
+    archived.write_bytes(CLEAN_PATH.read_bytes())
+    output_sha256 = sha256(archived.read_bytes()).hexdigest()
+    (workspace.root / "conversation.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "turns": [{"turn_index": 0, "output_sha256": output_sha256}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert store.archived_turn_output_path(workspace.record.workspace_id, 0) == archived.resolve()
+    assert store.archived_turn_output_path(workspace.record.workspace_id, 1) is None
+
+    archived.write_bytes(BROKEN_PATH.read_bytes())
+    assert store.archived_turn_output_path(workspace.record.workspace_id, 0) is None
 
 
 def test_gallery_limit_requires_an_explicit_replacement(tmp_path: Path) -> None:

@@ -334,9 +334,10 @@ script.
 
 The target interaction surface presents those iterations as a chronological notebook: agent report,
 model state, then the atomic human response. Completed turns remain readable in order. The workflow
-rail navigates turn anchors instead of duplicating controls, and only one 3D scene is live at a time.
-The first implementation slice establishes the single composer and single current scene; retargeting
-that shared scene from historical scroll position remains a presentation follow-up.
+rail navigates turn anchors instead of duplicating controls. Only one 3D scene is live: the turn
+nearest the viewport center receives the shared scene host, while historical markup loads lazily
+from an output-hash-bound route. Moving to another turn replaces that markup instead of leaving
+another WebGL renderer alive.
 
 ### 10. Verify invariants
 

@@ -331,6 +331,53 @@ class HostedWorkspaceStore:
                 return None
         return path if path.is_file() else None
 
+    def archived_turn_output_path(self, workspace_id: str, turn_index: int) -> Path | None:
+        """Resolve one completed turn's exact hash-bound GLB inside its workspace."""
+        if turn_index < 0:
+            return None
+        try:
+            root = self._record_path(workspace_id).parent.resolve(strict=True)
+            manifest_path = root / "conversation.json"
+            if not manifest_path.is_file():
+                return None
+            manifest = cast(
+                dict[str, object],
+                json.loads(manifest_path.read_text(encoding="utf-8")),
+            )
+            raw_turns = manifest.get("turns")
+            if not isinstance(raw_turns, list):
+                return None
+            expected_hash: str | None = None
+            for raw_turn_value in cast(list[object], raw_turns):
+                if not isinstance(raw_turn_value, dict):
+                    continue
+                raw_turn = cast(dict[str, object], raw_turn_value)
+                if raw_turn.get("turn_index") != turn_index:
+                    continue
+                value = raw_turn.get("output_sha256")
+                if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value):
+                    expected_hash = value
+                break
+            if expected_hash is None:
+                return None
+
+            candidates = [root / "source.glb"]
+            for archived_index in range(turn_index + 1):
+                archived_output = root / "turns" / f"turn-{archived_index:03d}" / "output"
+                candidates.extend(
+                    (archived_output / "repaired.glb", archived_output / "candidate.glb")
+                )
+            for candidate in candidates:
+                if not candidate.is_file():
+                    continue
+                resolved = candidate.resolve(strict=True)
+                resolved.relative_to(root)
+                if sha256(resolved.read_bytes()).hexdigest() == expected_hash:
+                    return resolved
+        except (HostedWorkspaceError, OSError, ValueError, TypeError, json.JSONDecodeError):
+            return None
+        return None
+
     def turn_index(self, workspace_id: str) -> int:
         """Return the durable Refine iteration number without loading a model runtime."""
         try:

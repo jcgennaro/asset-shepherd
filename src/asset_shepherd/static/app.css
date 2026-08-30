@@ -3978,6 +3978,57 @@ model-viewer {
   scroll-margin-top: 24px;
 }
 
+.notebook-scene-slot {
+  position: relative;
+  display: grid;
+  min-height: 88px;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--success) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
+  scroll-margin-block: 12vh;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.notebook-scene-slot::before {
+  color: color-mix(in srgb, var(--success) 45%, var(--muted));
+  content: "◇";
+  font-size: 1.45rem;
+}
+
+.notebook-scene-slot.active {
+  min-height: clamp(500px, calc(60vh + 78px), 758px);
+  display: block;
+  border-color: transparent;
+  background: transparent;
+}
+
+.notebook-scene-slot.active::before {
+  display: none;
+}
+
+.notebook-shared-scene {
+  width: 100%;
+}
+
+.notebook-shared-scene > .model-comparison {
+  margin-top: 0;
+}
+
+.notebook-scene-slot.loading .notebook-shared-scene {
+  min-height: inherit;
+  opacity: 0.45;
+}
+
+.notebook-scene-error {
+  display: grid;
+  min-height: 160px;
+  margin: 0;
+  place-items: center;
+  color: var(--danger);
+  font-size: 1rem;
+}
+
 .history-agent-message,
 .history-user-message {
   margin: 0;
@@ -4018,6 +4069,18 @@ model-viewer {
   display: contents;
   color: inherit;
   text-decoration: none;
+}
+
+.workflow-anchor {
+  display: contents;
+  color: inherit;
+  text-decoration: none;
+}
+
+.intent-rail li.scene-current {
+  border-left-color: var(--success);
+  color: var(--text);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
 }
 
 .conversation-prompt {

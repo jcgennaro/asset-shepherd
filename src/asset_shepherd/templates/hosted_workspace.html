@@ -10,12 +10,20 @@
     {% endif %}
 
     <div class="hosted-columns">
-      <main class="conversation-pane" aria-label="Asset conversation">
-        {% if prior_turns %}
+      <main class="conversation-pane" aria-label="Asset conversation" data-scene-notebook>
+        {% if prior_turn_views %}
           <section class="conversation-history" aria-label="Earlier turns">
-            {% for turn in prior_turns %}
+            {% for view in prior_turn_views %}
+              {% set turn = view.turn %}
               <article class="conversation-turn-record" id="turn-{{ turn.turn_index + 1 }}">
-                <p class="history-agent-message"><strong>Asset Shepherd</strong><span>Iteration {{ turn.turn_index + 1 }} · {{ turn.verification_state.value|replace('_', ' ')|lower }}</span></p>
+                <p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ view.summary }}</span></p>
+                <div
+                  class="notebook-scene-slot"
+                  data-notebook-scene-slot
+                  data-scene-key="turn-{{ turn.turn_index }}"
+                  data-scene-url="{{ url_for('hosted_turn_scene', workspace_id=record.workspace_id, turn_index=turn.turn_index) }}"
+                  aria-label="Saved 3D state after iteration {{ turn.turn_index + 1 }}">
+                </div>
                 <blockquote class="history-user-message"><strong>You</strong><p>{{ turn.continuation_feedback }}</p></blockquote>
               </article>
             {% endfor %}
@@ -122,21 +130,27 @@
           </form>
         {% endif %}
 
-        {% if comparison_scene %}
-          {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
-          {% if not comparison_source_only %}
-            {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}{% else %}{% set comparison_after_url = url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) %}{% endif %}
-          {% endif %}
-          {% include "_model_comparison.html" %}
-        {% elif job and job.result %}
-            <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
-              <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
-                <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
-              </article>
-              {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
-                <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
-              </article>{% endif %}
+        {% if comparison_scene or (job and job.result) %}
+          <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="current-{{ refine_iteration }}" aria-label="Current 3D state">
+            <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="current-{{ refine_iteration }}">
+              {% if comparison_scene %}
+                {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
+                {% if not comparison_source_only %}
+                  {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}{% else %}{% set comparison_after_url = url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) %}{% endif %}
+                {% endif %}
+                {% include "_model_comparison.html" %}
+              {% else %}
+                <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
+                  <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
+                    <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+                  </article>
+                  {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
+                    <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+                  </article>{% endif %}
+                </div>
+              {% endif %}
             </div>
+          </div>
         {% endif %}
 
         {% if job and job.result and cannot_repair %}
