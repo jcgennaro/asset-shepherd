@@ -373,7 +373,7 @@ class AgentJob:
         ):
             raise AgentWorkflowError("Plan revision requires a rejection or comment")
 
-        active_lanes: set[ProposalLane] = set()
+        active_lanes: set[ProposalLane] = {ProposalLane.GENERAL}
         for candidate in self.selected_plan.candidates:
             if candidate.kind is RepairKind.NORMALIZATION_TRANSFORM:
                 active_lanes.add(ProposalLane.SIZE_AND_POSE)
@@ -385,11 +385,6 @@ class AgentJob:
                 active_lanes.add(ProposalLane.TOPOLOGY)
             elif candidate.kind in {RepairKind.RENAME_MESH, RepairKind.RENAME_NODE}:
                 active_lanes.add(ProposalLane.DISPLAY_NAMES)
-        unknown_lanes = {response.lane for response in responses} - active_lanes
-        if unknown_lanes:
-            raise AgentWorkflowError(
-                f"Plan feedback references inactive proposal lanes: {sorted(unknown_lanes)}"
-            )
         active_removed_component_ids = {
             component_id
             for candidate in self.selected_plan.candidates
@@ -398,11 +393,20 @@ class AgentJob:
             for component_id in primitive.removed_component_ids
         }
         active_component_ids = set(active_removed_component_ids)
-        if active_removed_component_ids and inspection.diagnostics is not None:
-            active_component_ids.update(
+        if inspection.diagnostics is not None:
+            safe_review_component_ids = {
                 component.component_id
                 for primitive in inspection.diagnostics.primitives
+                if primitive.component_removal_safe and len(primitive.disconnected_components) > 1
                 for component in primitive.disconnected_components
+            }
+            if safe_review_component_ids:
+                active_lanes.add(ProposalLane.TOPOLOGY)
+                active_component_ids.update(safe_review_component_ids)
+        unknown_lanes = {response.lane for response in responses} - active_lanes
+        if unknown_lanes:
+            raise AgentWorkflowError(
+                f"Plan feedback references inactive proposal lanes: {sorted(unknown_lanes)}"
             )
         unknown_component_ids = {
             response.component_id for response in responses if response.component_id is not None

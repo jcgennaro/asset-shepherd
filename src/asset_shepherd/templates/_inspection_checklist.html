@@ -30,9 +30,7 @@
                             <option value="accept" selected>Keep</option>
                             <option value="request_remove">Remove</option>
                           {% endif %}
-                          <option value="comment">Comment</option>
                         </select>
-                        <textarea name="comment_component_{{ component.component_id }}" form="{{ proposal_response_form_id }}" maxlength="1000" aria-label="Comment on {{ component.label }}" placeholder="Tell the agent what to change" hidden data-proposal-comment></textarea>
                       </div>
                     {% else %}
                       <span class="component-disposition">Keep</span>
@@ -47,9 +45,7 @@
                 <select name="response_{{ response_name }}" form="{{ proposal_response_form_id }}" aria-label="Response to {{ check.label }}" data-proposal-disposition>
                   <option value="accept" selected>Accept</option>
                   <option value="reject">Reject</option>
-                  <option value="comment">Comment</option>
                 </select>
-                <textarea name="comment_{{ response_name }}" form="{{ proposal_response_form_id }}" maxlength="1000" aria-label="Comment on {{ check.label }}" placeholder="Tell the agent what to change" hidden data-proposal-comment></textarea>
               </div>
             {% endif %}
           </td>

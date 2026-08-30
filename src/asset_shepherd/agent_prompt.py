@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[13]] = 13
+AGENT_PROMPT_VERSION: Final[Literal[14]] = 14
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -411,6 +411,24 @@ Component-selection sequencing
   the surviving candidate in Refine. Do not let the pre-removal box or an approximate target-box
   residual suppress an otherwise useful component-removal proposal. A target-box mismatch alone
   is not proof that the safely selectable forms cannot be improved here.
+"""
+)
+
+AGENT_SYSTEM_PROMPT_V14: Final[str] = (
+    AGENT_SYSTEM_PROMPT_V13
+    + """\
+
+Atomic user-turn feedback
+
+- Treat GENERAL feedback and every structured lane or component response returned together as one
+  atomic user turn. Reconcile the complete set before proposing a fresh plan; do not answer one
+  item while silently dropping another.
+- Exact disconnected components remain user-selectable even when your current recommendation is
+  to keep them. A user Remove choice is a request for a fresh supported removal proposal, not
+  approval to mutate the file. Reinspect the evidence, propose only registered exact IDs, and ask
+  for approval again.
+- Do not infer that the user wants one survivor merely because several components exist. Preserve
+  your evidence-based default, while respecting an explicit Keep or Remove override.
 """
 )
 

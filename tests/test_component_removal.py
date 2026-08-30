@@ -282,6 +282,76 @@ def test_component_specific_feedback_reopens_planning_without_mutation(tmp_path:
     assert not (tmp_path / "job" / "candidate.glb").exists()
 
 
+def test_user_can_request_removal_when_agent_recommends_keeping_every_component(
+    tmp_path: Path,
+) -> None:
+    """Exact safe components stay editable even when the agent's default is Keep."""
+    source = tmp_path / "source.glb"
+    _write_components(source, ((0, 0, 0), (3, 0, 0), (6, 0, 0)))
+    profile = fixture_profile()
+    inspection = inspect_asset(source, profile)
+    assert inspection.diagnostics is not None
+    component_ids = tuple(
+        component.component_id
+        for component in inspection.diagnostics.primitives[0].disconnected_components
+    )
+    assessment = AgentRepairAssessment(
+        assessment_id="assessment-0123456789abcdef-v1",
+        disposition=AgentDisposition.REPAIR,
+        summary="Keep all three visually coherent parts and normalize their combined size.",
+        evidence=("All four views show three deliberate parts of one assembled tool.",),
+        confidence=0.8,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=True,
+        source_views_used=("front", "side", "three_quarter", "top"),
+    )
+    plan = plan_agent_repairs(
+        inspection,
+        profile,
+        assessment,
+        confirmed_target_height_m=1.0,
+    )
+    assert not any(
+        isinstance(candidate.payload, ComponentRemovalPayload) for candidate in plan.candidates
+    )
+    job = AgentJob(
+        source=source,
+        profile_path=Path("profiles/unreal_indie_robot.json"),
+        output_dir=tmp_path / "job",
+        agent_orchestrated=True,
+    )
+    job.inspection = inspection
+    job.agent_assessment = assessment
+    job.selected_plan = plan
+    job.output_dir.mkdir(parents=True)
+    (job.output_dir / "repair_plan.json").write_text(
+        plan.model_dump_json(indent=2), encoding="utf-8"
+    )
+    job.agent_assessment_path.write_text(assessment.model_dump_json(indent=2), encoding="utf-8")
+    job.set_pending_interrupt("component-override-v1")
+
+    topology = _inspection_checks(job)[2]
+    assert len(topology.component_proposals) == 3
+    assert not any(item.proposed_removal for item in topology.component_proposals)
+    responses = (
+        ProposalResponse(
+            lane=ProposalLane.TOPOLOGY,
+            component_id=component_ids[0],
+            disposition=ProposalDisposition.COMMENT,
+            comment="Remove this currently retained component in the revised plan.",
+        ),
+        ProposalResponse(
+            lane=ProposalLane.GENERAL,
+            disposition=ProposalDisposition.COMMENT,
+            comment="Keep the visually complete riding crop and remove the two stray copies.",
+        ),
+    )
+
+    assert job.request_plan_revision(responses) == responses
+    assert job.selected_plan is None
+    assert job.outcome is None
+
+
 def test_rejected_component_selection_preserves_all_geometry(tmp_path: Path) -> None:
     """Rejecting the exact selection records the decision and executes no component filter."""
     source = tmp_path / "source.glb"

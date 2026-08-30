@@ -267,31 +267,31 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
 
 for (const form of document.querySelectorAll("[data-plan-response-form]")) {
   const submit = form.querySelector("[data-plan-response-submit]");
+  const turnComment = form.querySelector("[data-turn-comment]");
   const dispositions = Array.from(
     document.querySelectorAll(`[form="${form.id}"][data-proposal-disposition]`),
   );
   const sync = () => {
     let requestsRevision = false;
     for (const disposition of dispositions) {
-      const response = disposition.closest("[data-proposal-response]");
-      const comment = response?.querySelector("[data-proposal-comment]");
-      const isComment = disposition.value === "comment";
-      if (comment instanceof HTMLTextAreaElement) {
-        comment.hidden = !isComment;
-        comment.required = isComment;
-      }
       requestsRevision ||= disposition.value !== "accept";
+    }
+    if (turnComment instanceof HTMLTextAreaElement && turnComment.value.trim()) {
+      requestsRevision = true;
     }
     if (submit instanceof HTMLButtonElement) {
       submit.value = requestsRevision ? "revise" : "approve";
       const label = submit.firstChild;
       if (label) {
-        label.textContent = requestsRevision ? "Revise plan " : "Approve ";
+        label.textContent = requestsRevision ? "Send revision " : "Apply recommendations ";
       }
     }
   };
   for (const disposition of dispositions) {
     disposition.addEventListener("change", sync);
+  }
+  if (turnComment instanceof HTMLTextAreaElement) {
+    turnComment.addEventListener("input", sync);
   }
   sync();
 }

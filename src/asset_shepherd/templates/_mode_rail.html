@@ -26,7 +26,7 @@
               {% if refine_iteration|default(0) > 0 %}
                 <ol class="refine-iterations" aria-label="Refinement iterations">
                   {% for iteration in range(1, refine_iteration + 1) %}
-                    <li{% if iteration == refine_iteration %} class="active" aria-current="step"{% endif %}><span>4.{{ iteration }}</span><strong>Iteration {{ iteration }}</strong></li>
+                    <li{% if iteration == refine_iteration %} class="active" aria-current="step"{% endif %}><a href="{% if iteration == refine_iteration %}#current-turn{% else %}#turn-{{ iteration }}{% endif %}"><span>4.{{ iteration }}</span><strong>Iteration {{ iteration }}</strong></a></li>
                   {% endfor %}
                 </ol>
               {% endif %}

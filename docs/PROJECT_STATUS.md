@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-29
-**Current commit:** Least-privilege Converse allowlist plus Claude Haiku 4.5 live gate (this file is included)
+**Current commit:** Atomic notebook-turn approval and component override slice (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,19 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D079 atomic approval turn: the exact three-component riding-crop run was not a detector failure;
+  the agent explicitly classified the three bodies as intentional handle/shaft/paddle parts. The UI
+  now keeps that recommendation as the default while exposing every deterministically safe C1/C2/C3
+  Keep/Remove choice. Structured choices and one wide whole-turn comment submit together; any
+  change becomes **Send revision**, archives the old proposal, and resumes the agent without
+  mutation. Prompt v14 preserves the agent/deterministic authority boundary, and focused component,
+  prompt, and hosted-workflow tests pass. Browser acceptance on the exact saved workspace confirms
+  three Keep/Remove controls, one whole-turn composer, the dynamic revision contract, one live 3D
+  viewer, and the readable stacked layout at the in-app viewport width. The common gate passes with
+  202 tests, two opt-in live skips, lock validation, Ruff, formatting, and zero Pyright findings.
+  This is the first implemented slice of the documented chronological notebook UI; historical
+  shared-scene switching remains open.
 
 - D078 Claude Haiku 4.5 evaluation: the accepted AWS Marketplace agreement exposed the active US
   inference profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`; direct on-demand invocation was

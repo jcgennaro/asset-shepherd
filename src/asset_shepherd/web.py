@@ -2060,6 +2060,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             proposed_removal=component.component_id in proposed_component_ids,
         )
         for primitive in diagnostic_primitives
+        if primitive.component_removal_safe
         for component in primitive.disconnected_components
     )
     return (
@@ -2093,7 +2094,15 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 else None
             ),
             action_heading,
-            component_proposals if component_action and not after_action else (),
+            (
+                component_proposals
+                if not after_action
+                and any(
+                    primitive.component_removal_safe and len(primitive.disconnected_components) > 1
+                    for primitive in diagnostic_primitives
+                )
+                else ()
+            ),
         ),
         InspectionCheckView(
             "Materials and textures",
@@ -3179,9 +3188,11 @@ def create_app(
                 proposed_origin_m=_proposed_pivot_marker(runtime_job),
             )
         refine_iteration = runtime_job.turn_index if runtime_job is not None else 0
-        comparison_before_label = f"Iteration {refine_iteration}" if refine_iteration else "Before"
+        comparison_before_label = (
+            f"Iteration {refine_iteration}" if refine_iteration else "Uploaded model"
+        )
         comparison_after_label = (
-            f"Iteration {refine_iteration + 1}" if refine_iteration else "After"
+            f"Iteration {refine_iteration + 1}" if refine_iteration else "Candidate"
         )
         expectation_groups: tuple[ExpectationGroupView, ...] = ()
         target_draft = workspace.record.target_draft
@@ -3303,6 +3314,7 @@ def create_app(
                 ),
                 "cannot_repair": cannot_repair,
                 "turns_remaining": runtime_job.turns_remaining if runtime_job else 0,
+                "prior_turns": runtime_job.prior_turns if runtime_job else (),
                 "error": error,
                 "active_mode": "conversation",
                 "active_style": workspace.record.asset_name,
@@ -4317,6 +4329,7 @@ def create_app(
         comment_topology: Annotated[str | None, Form()] = None,
         response_display_names: Annotated[str | None, Form()] = None,
         comment_display_names: Annotated[str | None, Form()] = None,
+        turn_comment: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Bind exact approval or typed plan feedback to the durable Strands interrupt."""
         workspace: HostedWorkspace | None = None
@@ -4357,6 +4370,15 @@ def create_app(
                         lane=lane,
                         disposition=disposition,
                         comment=comment if disposition is ProposalDisposition.COMMENT else None,
+                    )
+                )
+            general_comment = turn_comment.strip() if turn_comment else None
+            if general_comment:
+                responses.append(
+                    ProposalResponse(
+                        lane=ProposalLane.GENERAL,
+                        disposition=ProposalDisposition.COMMENT,
+                        comment=general_comment,
                     )
                 )
             submitted_form = await request.form()

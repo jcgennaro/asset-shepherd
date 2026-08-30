@@ -4,6 +4,55 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D079 — Make each approval exchange one chronological, atomic user turn
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED; first approval-turn slice implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The approval page exposed separate comments inside repair lanes, component selectors only when the
+agent had already proposed removal, and an overall approval button elsewhere. In workspace
+`310d83ab86214295a730395c165f1de4`, deterministic inspection found three exact safely selectable
+components, but the agent reasonably interpreted them as three intentional parts of one riding
+crop. Because the component controls were suppressed, the human could not directly override that
+semantic judgment and had to discover an unrelated feedback affordance.
+
+The user selected a notebook-like interaction model: chronological agent and user turns, one place
+for user prose, structured choices submitted with that prose, one active 3D scene, and a workflow
+rail that navigates history rather than duplicating controls.
+
+**Decision**
+
+Treat every approval exchange as one atomic turn. Always expose exact Keep/Remove controls when
+deterministic diagnostics prove disconnected-component removal is safe, including when the agent's
+default is Keep. Preserve the agent's recommendation as the selected default; do not automatically
+infer that multiple components are unwanted. Combine all structured lane/component choices and one
+optional whole-turn comment into one typed interrupt response. Any changed choice or non-empty
+comment archives the proposal without mutation and resumes the same workspace-scoped agent for a
+fresh plan and fresh approval.
+
+Use one wide turn composer and one dynamic primary action: **Apply recommendations** when the
+structured defaults are unchanged and no prose is present, otherwise **Send revision**. Offer
+**Download this version** as the human override that does not authorize pending recommendations.
+Remove per-row comment boxes. The follow-on notebook presentation will render completed turns in
+order, keep only one live model scene, and make rail entries scroll targets.
+
+**Evidence and consequences**
+
+Prompt v14 tells the agent that general prose and structured responses are one atomic turn and that
+a Remove override requests a registered proposal rather than authorizing deletion. The deterministic
+revision validator now accepts safe exact component IDs even when the archived plan did not contain
+a removal candidate. Unit coverage proves a user can request removal from an all-Keep agent plan
+without creating a candidate or mutating the source. This expands review authority, not autonomous
+mutation authority. Full historical scene switching remains a presentation follow-up; the current
+page still renders only one active `<model-viewer>`.
+
 ### D078 — Add Claude Haiku 4.5 only through its proven US inference profile
 
 **Date:** 2026-08-29

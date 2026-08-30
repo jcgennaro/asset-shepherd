@@ -228,7 +228,7 @@
       "$ref": "#/$defs/AgentMetrics"
     },
     "prompt_version": {
-      "default": 13,
+      "default": 14,
       "enum": [
         1,
         2,
@@ -242,7 +242,8 @@
         10,
         11,
         12,
-        13
+        13,
+        14
       ],
       "title": "Prompt Version",
       "type": "integer"

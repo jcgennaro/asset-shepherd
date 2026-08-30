@@ -249,10 +249,19 @@ Reduced-motion preference skips both effects.
 The Apache-licensed Google `<model-viewer>` 4.3.1 browser distribution is served from the package,
 so previews do not rely on a public CDN at runtime.
 
-After comparison, **Did we get it right?** remains the only result decision. **Yes** records durable
-acceptance without navigating away and changes that panel in place to **Ready to download**. A ready
-candidate offers the fixed GLB first and the complete evidence package second. The standard
-POST/redirect response remains as a no-JavaScript fallback. **No** retains the bounded feedback loop.
+The workflow workspace is converging on a chronological notebook: agent report, current model state,
+then one human turn. The human turn has three outcomes:
+
+1. **Apply recommendations** with all agent defaults unchanged.
+2. Change any structured `Accept/Reject` or component `Keep/Remove` choice, optionally add one
+   whole-turn comment, then **Send revision**. The complete set is one atomic interrupt response.
+3. **Download this version** without authorizing the pending recommendations.
+
+There are no per-row comment boxes and no second freeform refinement form competing with the active
+turn composer. The workflow rail is history navigation. The page keeps only one live 3D scene; a
+later presentation slice may retarget that shared scene as historical turn anchors approach the
+viewport center without creating several simultaneously running renderers. A ready candidate still
+offers the fixed GLB first and the complete evidence package second.
 
 The successful ZIP still contains exactly:
 

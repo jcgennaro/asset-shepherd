@@ -275,12 +275,20 @@ weld gaps, merge shells, infer semantics, or apply keep-largest/remove-small heu
 The agent explains the proposed result in one compact message. The exact typed proposal is shown
 through the structured decision control.
 
-Each proposed repair lane offers `Accept`, `Reject`, or `Comment`. These are plan responses, not
-independent mutation buttons. If every active lane is accepted, the one overall `Approve` action
-binds consequential authorization to the exact proposed action hash. Any rejection or comment
-changes that action to `Revise plan`: the proposal and typed feedback are archived durably, no GLB
-mutation occurs, and the same workspace-scoped agent resumes to gather evidence and form a fresh
-proposal. It may not silently restore a rejected action or argue past the user's response.
+Each proposed repair lane offers `Accept` or `Reject`, and each safely selectable disconnected body
+offers `Keep` or `Remove`. These are plan responses, not independent mutation buttons. Exact safe
+components stay selectable even when the agent recommends keeping all of them; the selected
+defaults communicate the recommendation without taking authority away from the human. One optional
+wide comment applies to the whole turn instead of creating competing per-row conversations.
+
+All structured choices and the optional comment are returned through the native interrupt as one
+atomic typed user turn. If every active default remains selected and the comment is empty, **Apply
+recommendations** binds consequential authorization to the exact proposed action hash. Any changed
+choice or non-empty comment changes that action to **Send revision**: the proposal and complete
+feedback set are archived durably, no GLB mutation occurs, and the same workspace-scoped agent
+resumes to gather evidence and form a fresh proposal. It may not silently restore a rejected action,
+drop one part of the atomic response, or argue past the user's response. **Download this version**
+exposes the current iteration without approving the pending proposal.
 
 Non-consequential actions may use an explicitly preauthorized project rule, but the agent must still
 initiate the action tool call; there is no background mutation pass. While an agent request is in
@@ -323,6 +331,12 @@ If a repair introduces or reveals another problem, the agent returns to inspecti
 new action. Every new consequential action receives a fresh proposal and approval. Iteration is
 bounded by configured time, cost, and repeated-failure limits, not by a hard-coded one-retry repair
 script.
+
+The target interaction surface presents those iterations as a chronological notebook: agent report,
+model state, then the atomic human response. Completed turns remain readable in order. The workflow
+rail navigates turn anchors instead of duplicating controls, and only one 3D scene is live at a time.
+The first implementation slice establishes the single composer and single current scene; retargeting
+that shared scene from historical scroll position remains a presentation follow-up.
 
 ### 10. Verify invariants
 
