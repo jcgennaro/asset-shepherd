@@ -4,6 +4,55 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D075 — Host the first remote web product on App Runner beside private AgentCore
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED; implementation and remote acceptance remain open
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+Changing the local model provider to Bedrock does not move the FastAPI/Jinja site, GLB tools,
+renderer, or workspace files off the user's workstation. The product needs a separately hosted web
+process, durable cloud state, private asset storage, and a private agent runtime before a judge can
+open it remotely. The first web host should minimize infrastructure work without becoming a second
+workflow or state authority.
+
+**Options considered**
+
+- Run the public FastAPI service as a Linux container on AWS App Runner and invoke a separate
+  private AgentCore Runtime.
+- Start with ECS/Fargate for both public web compute and private workflow compute.
+- Put the interactive website inside AgentCore Runtime.
+- Keep the website local while using Bedrock or AgentCore remotely.
+
+**Decision**
+
+Package the existing FastAPI/Jinja application as one stateless Linux container in private ECR and
+use AWS App Runner as the first public HTTPS web host. Keep the Strands workflow in a separate
+private AgentCore Runtime. Move GLBs, renders, packages, and Strands snapshots to workspace-scoped
+private S3 prefixes, and move workspace/command coordination to conditional DynamoDB records before
+the remote-product gate. The browser receives application sessions and exact-object transfer URLs,
+never AWS credentials.
+
+The local launcher remains a local Uvicorn workflow at `127.0.0.1`; selecting a Bedrock provider
+changes inference only and never deploys or redirects the site. ECS/Fargate is a measured fallback
+if an App Runner compatibility spike fails on request duration, startup, or cost. The product keeps
+one typed workflow, authority contract, and UI across local and AWS configurations.
+
+**Evidence and consequences**
+
+`docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` now records the local/cloud responsibility map, container
+spike, App Runner service boundary, remote URL behavior, permissions boundary, durable-state gate,
+and rollback requirement. This decision selects architecture; it does not claim that ECR, App
+Runner, S3, DynamoDB, or AgentCore resources have been deployed. Step 3 cloud portability remains
+the next prerequisite. App Runner instances and filesystems are explicitly disposable, so a
+replacement instance must not lose or duplicate a workspace, decision, mutation, or package.
+
 ### D074 — Use Nova 2 Lite as a reversible Converse diagnostic, not the Luna parity baseline
 
 **Date:** 2026-08-29

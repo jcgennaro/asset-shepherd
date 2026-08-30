@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-29
-**Current commit:** Reversible Nova 2 Lite Converse provider (this file is included)
+**Current commit:** AWS web-hosting plan and Nova browser diagnostic (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova Converse diagnostic |  | Nova proves the Bedrock/Strands/tool path; Luna parity awaits its one-time model agreement and the browser matrix |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova Converse diagnostic; D075 App Runner web topology |  | Nova proves the Bedrock/Strands/tool path; Luna parity awaits its one-time model agreement and the browser matrix; remote resources are not deployed |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -52,6 +52,16 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D075 remote web topology: the first public deployment will run the existing FastAPI/Jinja product
+  as a stateless Linux container on AWS App Runner, while a separate private AgentCore Runtime owns
+  the Strands workflow. Private S3 prefixes hold GLBs, evidence, packages, and Strands snapshots;
+  conditional DynamoDB records hold workspace and command state. The local launcher remains local,
+  and choosing Bedrock changes inference rather than hosting. ECS/Fargate is a measured fallback,
+  not a parallel implementation. The deployment runbook now specifies the container spike,
+  permissions and browser boundaries, disposable-instance gate, remote URL, and rollback behavior.
+  This is an accepted plan only: no ECR, App Runner, S3, DynamoDB, or AgentCore resource has yet been
+  deployed.
+
 - D074 Nova diagnostic provider: `bedrock-nova` now runs Amazon Nova 2 Lite through native Bedrock
   Converse while preserving `bedrock` as the Luna/xhigh Responses baseline. Nova semantic intake
   forces the same single typed submission, normalizes only the provider-facing tool schema, and
@@ -59,8 +69,16 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   limits keep the trial deterministic and bounded; unsupported `high`/`xhigh` settings fail closed.
   The runtime role received a separate exact-resource Nova policy. Live evidence includes a
   63-token connectivity call, a correct Computer Chip intake proposal, and a complete Strands
-  approval-through-package test in 113.83 seconds. This removes account/IAM/Strands as the Luna
-  blocker but does not complete Luna parity or the representative browser matrix. The common gate
+  approval-through-package test in 113.83 seconds. A separate browser run then exercised upload,
+  typed intake, sensing, retry, user correction, structured approval, mutation, visual
+  reassessment, independent verification, and packaging. Medium reasoning first exhausted the
+  8,192-token output limit; low reasoning resumed but initially repaired names only. After the user
+  explicitly identified the ignored scale defect, Nova proposed an approval-gated proportional fit
+  and produced a verified `1.22376 x 0.820321 x 0.268958 m` candidate grounded at `Y=0`, with only
+  the pre-existing material-budget warning. Nova is therefore usable as a diagnostic/fallback but
+  is not the default parity model: first-turn completeness and multi-minute correction latency need
+  more evaluation. This removes account/IAM/Strands as the Luna blocker but does not complete Luna
+  parity or the representative browser matrix. The current common gate
   passes with 191 tests, two opt-in live skips, lock validation, Ruff, formatting, PowerShell
   parsing, and zero Pyright findings; both Nova opt-in tests also pass when run explicitly.
 

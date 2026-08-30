@@ -39,6 +39,14 @@ until the remote-product gate passes.
 - [x] Step 2.1/2.2 Bedrock intake, workflow transport, short-term-token, and launcher implementation.
 - [x] D074 Nova diagnostic: least-privilege connectivity, typed intake, and one complete local
   Strands approval-through-package workflow passed through native Bedrock Converse.
+- [x] One representative local browser loop reached verified packaging through Nova: intake and
+  sensing succeeded, the first medium-reasoning turn exhausted its 8,192-token allowance, a
+  low-reasoning retry produced only naming cleanup, explicit user correction produced an
+  approval-gated proportional fit, and deterministic execution independently verified the final
+  `1.22376 x 0.820321 x 0.268958 m` candidate grounded at `Y=0`. This qualifies Nova as a usable
+  diagnostic path, not the default parity model or a completed browser matrix.
+- [x] D075 selects App Runner as the first public FastAPI host beside private AgentCore, with
+  ECS/Fargate retained only as a measured fallback. No remote resources have been deployed yet.
 - [ ] Step 2.3 local all-Bedrock Luna behavioral parity gate. Luna's one-time model agreement is not
   yet available, and the eight-case browser matrix remains open.
 - [ ] Step 3 cloud-portable state and artifacts.
@@ -90,6 +98,46 @@ flowchart TD
 
 The web service authenticates users and invokes AgentCore service-to-service. The browser does not
 receive AWS credentials and does not invoke the private agent runtime directly.
+
+### Local and remote execution are configurations of one product
+
+Running `scripts/Start-AssetShepherd.ps1` does not deploy anything. It starts Uvicorn on the
+selected workstation, by default at `http://127.0.0.1:8010`. Choosing `bedrock` or
+`bedrock-nova` changes only the remote inference provider used by that local process. The local
+FastAPI application, Strands orchestration, GLB tools, renderer, workspace files, and browser UI
+remain on that workstation.
+
+The AWS deployment uses the same application contracts with cloud-backed adapters:
+
+| Concern | Local configuration | AWS configuration |
+|---|---|---|
+| Browser address | `http://127.0.0.1:8010` | App Runner HTTPS service URL or approved custom domain |
+| FastAPI/Jinja web process | Local Uvicorn process | Stateless App Runner container |
+| Workflow execution | Local Strands process | Private AgentCore Runtime invocation |
+| Model inference | Bedrock over outbound HTTPS | Bedrock from the AgentCore execution role |
+| GLBs, evidence, packages | Isolated local workspace directories | Private S3 workspace prefixes |
+| Workspace and command state | Atomic local JSON plus locks | Conditional DynamoDB records |
+| Strands snapshots | Workspace-local session storage | Workspace-scoped S3 session storage |
+
+There are not separate local and cloud products. Provider, storage, session, and workflow-runtime
+interfaces select the environment while typed state, authorization, tools, verification, and UI
+behavior stay shared.
+
+### Selected first web host
+
+Use **AWS App Runner** for the first remote FastAPI deployment, packaged as a Linux container in a
+private Amazon ECR repository. App Runner is selected over an initial ECS/Fargate web deployment
+because it supplies a managed public HTTPS service and container rollout with less infrastructure
+while the product has one web process. App Runner does not become a state authority: its filesystem
+and instances are disposable, and all durable workspace data must already be in S3/DynamoDB before
+the remote-product gate.
+
+AgentCore remains a separate private runtime for the Strands workflow. The App Runner instance role
+may invoke that runtime and access only the required S3/DynamoDB records. The browser receives
+application sessions and short-lived exact-object transfer URLs, never AWS credentials. If a
+compatibility spike proves App Runner cannot meet measured request-duration, startup, or cost
+requirements, switching the web compute layer to ECS/Fargate requires a recorded decision but does
+not change the application or agent contracts.
 
 ## Current implementation map
 
@@ -400,9 +448,29 @@ derives the asset workspace from the authenticated user/session, not arbitrary b
 
 ## Step 6 — Deploy the interactive web product
 
-Deploy the existing FastAPI/Jinja application separately through the simplest stable route after a
-small compatibility spike. ECS/Fargate or App Runner are candidates; select one from measured
-startup, filesystem, request-duration, and cost behavior rather than branding.
+Deploy the existing FastAPI/Jinja application to **AWS App Runner** after a small container
+compatibility spike. Keep ECS/Fargate as the measured fallback, not a parallel implementation.
+
+### 6.1 Container compatibility
+
+- Add one production Linux container definition that installs only declared project/runtime
+  dependencies and starts Uvicorn on the port supplied by the hosting environment.
+- Run that exact image locally with Nova and complete upload, approval, refinement, and download.
+- Prove the process makes no durability assumption about its container filesystem.
+- Keep visual sensing behind the Step 4 portable-renderer boundary; do not install desktop Blender
+  in the App Runner web container.
+
+### 6.2 App Runner service
+
+- Push the accepted image to one private ECR repository.
+- Create one App Runner service with manual deployment for the initial gate, a public HTTPS endpoint,
+  health check, bounded CPU/memory, and an instance role containing only the required
+  AgentCore/S3/DynamoDB/CloudWatch permissions.
+- Supply non-secret model, region, bucket, table, retention, and runtime identifiers through service
+  configuration. Use AWS-managed identity/secret mechanisms for anything sensitive.
+- Keep at least one explicit version/tag and rollback target until the remote gate passes.
+
+### 6.3 Browser and service boundaries
 
 The web service owns browser routes, user authentication, gallery authorization, presigned transfer,
 and AgentCore invocation. It does not own model reasoning or bypass the structured workflow state.
@@ -412,8 +480,13 @@ For the competition deployment, provide either logged-out access or one document
 Prefer web authentication plus service-to-service SigV4 invocation; do not distribute AWS
 credentials to the browser.
 
+The first successful deployment receives an AWS-managed `awsapprunner.com` HTTPS URL. A custom
+domain is optional and comes only after the default URL passes the full acceptance matrix. The local
+launcher continues to serve `127.0.0.1`; it never redirects to or updates the remote service.
+
 **Step 6 gate:** a fresh user can upload, leave, return through the gallery, approve/refine, and
-download from the remote URL.
+download from the remote URL. Restarting or replacing the App Runner instance does not lose or
+duplicate any workspace state, mutation, decision, or package.
 
 ## Step 7 — Guardrails, observability, retention, and cost
 
@@ -472,3 +545,7 @@ before public release or submission work.
 - [AgentCore quotas](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/bedrock-agentcore-limits.html)
 - [AgentCore authentication](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-oauth.html)
 - [AgentCore observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html)
+- [AWS App Runner overview](https://docs.aws.amazon.com/apprunner/latest/dg/what-is-apprunner.html)
+- [Create an App Runner service](https://docs.aws.amazon.com/apprunner/latest/dg/manage-create.html)
+- [App Runner service from an ECR image](https://docs.aws.amazon.com/apprunner/latest/dg/service-source-image.html)
+- [App Runner default and custom domains](https://docs.aws.amazon.com/apprunner/latest/dg/manage-custom-domains.html)
