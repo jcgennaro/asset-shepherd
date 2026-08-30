@@ -1,7 +1,7 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; Step 1 complete, Nova live diagnostic passed, Luna parity awaiting
-its one-time model agreement
+**Status:** Approved procedure; Kimi intake and full Strands workflow passed locally, browser matrix
+and cloud deployment remain open
 
 **Last verified against official documentation:** 2026-08-29
 
@@ -31,14 +31,17 @@ until the remote-product gate passes.
 - [x] Step 1.2 the bootstrap administrator identity is verified through the local
   `asset-shepherd-admin` profile; the separate least-privilege `asset-shepherd` role/profile is
   created and verified without making a paid model call. Do not publish the underlying IAM user.
-- [x] Step 1.3 GPT-5.6 Luna is active in `us-east-1`; the parity configuration is
-  `us.openai.gpt-5.6-luna` through Bedrock Responses with `xhigh` reasoning (D071).
+- [x] Step 1.3 Kimi K2.5, Mistral Large 3, Qwen3 VL 235B, and Nova 2 Lite accept bounded
+  tool-and-image probes in `us-east-1`; Kimi is the recommended selection (D077).
 - [x] Step 1.4 the user confirmed an AWS Budget zero-cost alert and $100 promotional-credit
   allocation. The alert is notification rather than a hard spending cap, and credit eligibility
   remains subject to the account's credit terms.
 - [x] Step 2.1/2.2 Bedrock intake, workflow transport, short-term-token, and launcher implementation.
 - [x] D074 Nova diagnostic: least-privilege connectivity, typed intake, and one complete local
   Strands approval-through-package workflow passed through native Bedrock Converse.
+- [x] D077 canonical `bedrock-converse` adapter and four-model allowlist. Kimi K2.5 passed typed
+  intake and the complete image/tool/approval/verification/package workflow; the upload UI persists
+  a fail-closed per-asset model selection with usage hints.
 - [x] One representative local browser loop reached verified packaging through Nova: intake and
   sensing succeeded, the first medium-reasoning turn exhausted its 8,192-token allowance, a
   low-reasoning retry produced only naming cleanup, explicit user correction produced an
@@ -47,8 +50,9 @@ until the remote-product gate passes.
   diagnostic path, not the default parity model or a completed browser matrix.
 - [x] D075 selects App Runner as the first public FastAPI host beside private AgentCore, with
   ECS/Fargate retained only as a measured fallback. No remote resources have been deployed yet.
-- [ ] Step 2.3 local all-Bedrock Luna behavioral parity gate. Luna's one-time model agreement is not
-  yet available, and the eight-case browser matrix remains open.
+- [ ] Step 2.3 local all-Bedrock browser matrix. Kimi is the recommended model; the bootstrap login
+  must be renewed and the runtime role granted exact allowlisted resources. Luna's optional
+  Responses evaluation remains blocked by its one-time agreement.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing.
 - [ ] Step 5 AgentCore runtime.
@@ -69,7 +73,8 @@ until the remote-product gate passes.
 - Do not put the interactive FastAPI/Jinja website inside the AgentCore invocation contract.
 - Do not send GLB bytes through every model or AgentCore turn. Upload assets to private object
   storage and pass only a workspace-scoped reference plus its hash.
-- Do not hard-code a Bedrock model ID or assume an old tutorial's region availability.
+- Do not scatter a Bedrock model ID outside the reviewed capability registry or assume an old
+  tutorial's region availability.
 - Do not create paid resources or invoke a paid model before caller identity, region/model access,
   and a budget alert are confirmed.
 - Stop for approval before architecture expected to cost more than $10 during development or more
@@ -102,8 +107,9 @@ receive AWS credentials and does not invoke the private agent runtime directly.
 ### Local and remote execution are configurations of one product
 
 Running `scripts/Start-AssetShepherd.ps1` does not deploy anything. It starts Uvicorn on the
-selected workstation, by default at `http://127.0.0.1:8010`. Choosing `bedrock` or
-`bedrock-nova` changes only the remote inference provider used by that local process. The local
+selected workstation, by default at `http://127.0.0.1:8010`. Choosing `bedrock`,
+`bedrock-converse`, or the legacy `bedrock-nova` alias changes only the remote inference provider
+used by that local process. The local
 FastAPI application, Strands orchestration, GLB tools, renderer, workspace files, and browser UI
 remain on that workstation.
 
@@ -143,8 +149,8 @@ not change the application or agent contracts.
 
 | Concern | Current implementation | Required migration |
 |---|---|---|
-| Workflow model | Strands complete-response Luna adapter over Bedrock Responses; reversible Nova adapter over Converse; optional direct-OpenAI development adapter | Complete Luna and browser behavior evaluation |
-| Intake model | Luna Responses and Nova Converse constrained-tool adapters, plus OpenAI development and deterministic test adapters | Complete Luna typed-intake evaluation |
+| Workflow model | Capability-aware Bedrock Converse adapter with Kimi recommended and three bounded alternatives; Luna Responses and direct-OpenAI development adapters remain | Complete Kimi browser matrix and runtime-role policy |
+| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI development, and deterministic test adapters | Complete hosted Kimi browser evaluation after authentication renewal |
 | Agent session | `SnapshotSessionManager` with `LocalFileStorage` under one workspace | Replace storage with Strands S3 session storage while retaining `workspace_id` |
 | Workspace record | Atomic JSON files plus process-local locking | DynamoDB record with optimistic/conditional writes |
 | Binary artifacts | Per-workspace local directories | Private S3 prefixes with hashes, lifecycle, and presigned transfer |
@@ -193,9 +199,11 @@ Do not paste the returned account number or credentials into project files.
 
 The current `asset-shepherd-admin` profile is a bootstrap administrator session, not the
 application runtime identity. The verified `asset-shepherd` role/profile is the runtime identity.
-It may invoke only the exact Luna and Nova diagnostic inference profiles and routed foundation
-models, inspect those profiles, and generate/use short-term Bedrock bearer tokens. Do not attach broad Bedrock
-administration or long-term API-key permissions.
+It may invoke only the exact allowlisted foundation models and Nova inference-profile resources,
+inspect those resources, and generate/use short-term Bedrock bearer tokens when a Responses model
+needs them. Do not attach broad Bedrock administration or long-term API-key permissions. Add each
+model's exact `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` resources only after
+its administrator smoke gate passes.
 
 ### 1.3 Region and model capability
 
@@ -203,21 +211,22 @@ Choose a region in which the account can invoke a current multimodal, tool-capab
 Record the chosen region and model ID only in local environment configuration. Confirm model access
 with the Bedrock model catalog and a bounded provider smoke test only after Step 1.4.
 
-The selected parity candidate is:
+The recommended candidate is:
 
 ```text
-Provider: OpenAI through Amazon Bedrock
-Logical model: gpt-5.6-luna
+Provider: Bedrock Converse
+Logical model: Kimi K2.5
 Bedrock region: us-east-1
-Bedrock runtime inference profile: us.openai.gpt-5.6-luna
-API: OpenAI-compatible Responses on bedrock-runtime
-Reasoning effort: xhigh
+Bedrock model ID: moonshotai.kimi-k2.5
+API: Bedrock Runtime Converse
+Application reasoning override: none
 ```
 
-The model catalog confirms text and image input. The smoke test must separately prove custom tool
-calling and the exact typed intake boundary. Bedrock does not currently advertise structured
-outputs for this model, so the intake adapter must use a constrained typed tool or another
-fail-closed mechanism without weakening the existing Pydantic schema.
+Kimi has passed typed intake, image evidence, sequential tools, native approval/resume, candidate
+reassessment, and deterministic packaging. Mistral Large 3 and Qwen3 VL 235B passed bounded typed
+tool and image probes and remain experimental. Nova passed the full workflow but needed more user
+correction in the browser case. The server allowlist and capability registry, not an arbitrary
+environment or posted value, control the models exposed to users.
 
 Required model behavior:
 
@@ -226,10 +235,11 @@ Required model behavior:
 - the existing typed tool schemas;
 - sufficiently large context for the system contract, Job Contract, and bounded tool evidence;
 - predictable structured intake output; and
-- an explicit application-layer safety plan, because Bedrock Guardrails are not native to the
-selected Responses runtime path.
+- an explicit application-layer safety plan without assuming one Guardrails integration behaves
+  identically across every allowlisted model and API.
 
-Use the current model-access API to distinguish IAM from account agreement state:
+Luna remains an optional Responses candidate outside the Converse UI allowlist. Use the current
+model-access API to distinguish IAM from its account agreement state:
 
 ```powershell
 aws bedrock get-foundation-model-availability `
@@ -247,9 +257,8 @@ Agreement permissions belong to the one-time administrator path, never the appli
 role. Official procedure:
 <https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html>.
 
-Nova 2 Lite is the current independent diagnostic because it reports every availability field as
-available. It uses `us.amazon.nova-2-lite-v1:0` through Converse. Passing Nova does not waive the
-Luna agreement or establish Luna/xhigh parity.
+Nova 2 Lite remains the lower-cost diagnostic. It uses `us.amazon.nova-2-lite-v1:0` through the
+same canonical Converse adapter. Passing Nova does not establish Kimi behavior or Luna/xhigh parity.
 
 Grok 4.6 is a deferred Responses candidate, not a working fallback. On 2026-08-29 the model-access
 API reported every Grok availability field as available and both `us.xai.grok-4.6` and
@@ -270,14 +279,13 @@ is recorded locally, and a budget alert exists. No application resource is requi
 
 ### 2.1 Bedrock semantic intake
 
-Implement `BedrockTargetIntakeAnalyzer` behind the existing `TargetIntakeAnalyzer` protocol. It must
-produce `TargetIntakeInference`, pass the same Pydantic validation and confidence gates, and retain
-provider/model provenance. Normalize the generated schema to the subset supported by the selected
-Bedrock model rather than weakening server-side validation.
+Use `BedrockConverseTargetIntakeAnalyzer` behind the existing `TargetIntakeAnalyzer` protocol. It
+must produce `TargetIntakeInference`, pass the same Pydantic validation and confidence gates, and
+retain provider/model provenance. Normalize the generated schema to the portable forced-tool
+subset without weakening server-side validation. Reject absent, malformed, or repeated submissions.
 
-For D071, use the Bedrock-hosted Luna/xhigh Responses path and require the model to submit the exact
-intake object through a constrained custom tool because Bedrock does not advertise native
-structured outputs for GPT-5.6 Luna. Reject absent, malformed, or repeated incompatible submissions.
+The optional D071 Luna path continues to use its constrained Responses tool adapter. Both paths
+produce the same target contract; neither may silently fall back to direct OpenAI.
 
 The deterministic intake implementation remains the zero-network test fallback. The OpenAI adapter
 may remain an optional development adapter, but production startup must not require an OpenAI key.
@@ -287,40 +295,36 @@ may remain an optional development adapter, but production startup must not requ
 Use explicit local environment values:
 
 ```powershell
-$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'
-$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock'
-$env:ASSET_SHEPHERD_MODEL_ID = 'us.openai.gpt-5.6-luna'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_ID = 'moonshotai.kimi-k2.5'
 $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
-$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'xhigh'
-$env:ASSET_SHEPHERD_INTAKE_REASONING = 'xhigh'
 $env:AWS_PROFILE = 'asset-shepherd'
 ```
 
 Update the launcher so Bedrock configuration does not pass through the saved-OpenAI-key path. Keep
 model ID, region, retry, timeout, token, and reasoning controls explicit and secret-free.
 
-The provider implementation should use the OpenAI-compatible Responses API at
-`https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1` with an automatically refreshed
-short-term Bedrock bearer token derived from the `asset-shepherd` IAM session. It must not reuse the
-direct OpenAI API endpoint or require a long-term Bedrock key.
+The canonical provider uses the regional Bedrock Runtime Converse API with normal AWS session
+credential resolution. It must not reuse the direct OpenAI API endpoint or require a long-term
+Bedrock key. The upload UI may change only the allowlisted model ID; region and credentials remain
+deployment-owned settings.
 
 ### 2.3 Behavioral parity evaluation
 
-Implementation status: the two adapters and offline acceptance tests are complete. The
-least-privilege profile can mint the required short-term token, and no OpenAI key is needed. AWS is
-still verifying the account, so do not mark this gate complete or begin Step 3 until the following
-bounded retry succeeds.
+Implementation status: the model-neutral Converse adapter, persisted selector, and offline
+acceptance tests are complete. Kimi passed both live integration tests under the bootstrap
+administrator. Renew AWS login and add exact runtime-role resources before the hosted matrix; do
+not begin Step 3 until that bounded matrix succeeds.
 
 From a fresh PowerShell session:
 
 ```powershell
 $env:AWS_PROFILE = 'asset-shepherd'
-$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'
-$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock'
-$env:ASSET_SHEPHERD_MODEL_ID = 'us.openai.gpt-5.6-luna'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_ID = 'moonshotai.kimi-k2.5'
 $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
-$env:ASSET_SHEPHERD_INTAKE_REASONING = 'xhigh'
-$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'xhigh'
 $env:ASSET_SHEPHERD_RUN_LIVE = '1'
 Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
 
@@ -329,16 +333,17 @@ uv run pytest -q `
   tests/test_agent.py::test_opt_in_live_strands_provider_workflow
 ```
 
-If Luna still reports that model access is unavailable, verify agreement state through the
-administrator path. Do not broaden the runtime role or add a direct-OpenAI production fallback.
+If the runtime role reports access denied while the administrator smoke passes, add only the exact
+allowlisted model resources. Do not attach broad Bedrock access or add a direct-OpenAI production
+fallback. Luna can be retried separately after its agreement becomes available.
 
 To exercise the already-authorized Nova diagnostic instead, change both providers together and use
 Nova's bounded medium reasoning setting:
 
 ```powershell
 $env:AWS_PROFILE = 'asset-shepherd'
-$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-nova'
-$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-nova'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-converse'
 $env:ASSET_SHEPHERD_INTAKE_MODEL = 'us.amazon.nova-2-lite-v1:0'
 $env:ASSET_SHEPHERD_MODEL_ID = 'us.amazon.nova-2-lite-v1:0'
 $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'

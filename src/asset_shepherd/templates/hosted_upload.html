@@ -11,6 +11,19 @@
         <span>One GLB · up to 50 MB</span>
         <span class="drop-zone-error" data-file-error aria-live="polite"></span>
       </label>
+      {% if agent_model_choices %}
+        <details class="agent-model-choice" data-agent-model-choice>
+          <summary>Agent model: <span data-agent-model-label>{{ selected_agent_model.display_name }}</span></summary>
+          <div class="agent-model-options" role="radiogroup" aria-label="Agent model">
+            {% for model in agent_model_choices %}
+              <label class="agent-model-option">
+                <input type="radio" name="agent_model" value="{{ model.model_id }}" data-agent-model-name="{{ model.display_name }}"{% if model.model_id == selected_agent_model.model_id %} checked{% endif %}>
+                <span><strong>{{ model.display_name }}{% if model.recommended %} · Recommended{% endif %}</strong><small>{{ model.hint }}</small></span>
+              </label>
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}
       <button class="primary-button" type="submit" data-submit-button>Continue <span aria-hidden="true">→</span></button>
     </form>
     <details class="upload-format-note">

@@ -53,6 +53,17 @@ for (const fileInput of document.querySelectorAll("[data-file-input]")) {
   });
 }
 
+for (const chooser of document.querySelectorAll("[data-agent-model-choice]")) {
+  const label = chooser.querySelector("[data-agent-model-label]");
+  for (const input of chooser.querySelectorAll('input[name="agent_model"]')) {
+    input.addEventListener("change", () => {
+      if (input.checked && label) {
+        label.textContent = input.dataset.agentModelName;
+      }
+    });
+  }
+}
+
 const policyProposal = document.querySelector("[data-policy-proposal]");
 const profileMode = document.querySelector("[data-profile-mode]");
 const customToggle = document.querySelector("[data-custom-toggle]");

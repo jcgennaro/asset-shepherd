@@ -24,7 +24,7 @@ else {
     $env:ASSET_SHEPHERD_MODEL_PROVIDER.ToLowerInvariant()
 }
 
-if ($modelProvider -in @('bedrock', 'bedrock-nova')) {
+if ($modelProvider -in @('bedrock', 'bedrock-converse', 'bedrock-nova')) {
     if ([string]::IsNullOrWhiteSpace($env:ASSET_SHEPHERD_MODEL_ID)) {
         throw 'Bedrock mode requires ASSET_SHEPHERD_MODEL_ID.'
     }

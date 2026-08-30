@@ -58,6 +58,50 @@ def test_preflight_measures_source_without_policy_findings_or_plan(tmp_path: Pat
     assert not (workspace.root / "intent.json").exists()
 
 
+def test_workspace_persists_its_allowlisted_model_authority(tmp_path: Path) -> None:
+    """Resume and refinement cannot silently switch the model selected for one asset."""
+    root = tmp_path / "hosted"
+    store = HostedWorkspaceStore(root, _family())
+    workspace = store.create(
+        DESCRIPTION,
+        BROKEN_PATH.name,
+        BytesIO(BROKEN_PATH.read_bytes()),
+        model_provider="bedrock-converse",
+        model_id="moonshotai.kimi-k2.5",
+    )
+
+    assert workspace.record.model_provider == "bedrock-converse"
+    assert workspace.record.model_id == "moonshotai.kimi-k2.5"
+    restarted = HostedWorkspaceStore(root, _family()).get(workspace.record.workspace_id)
+    assert restarted is not None
+    assert restarted.record.model_provider == "bedrock-converse"
+    assert restarted.record.model_id == "moonshotai.kimi-k2.5"
+
+
+def test_workspace_never_falls_back_when_its_persisted_model_is_unavailable(
+    tmp_path: Path,
+) -> None:
+    """A restart without the selected provider stops instead of changing model authority."""
+    root = tmp_path / "hosted"
+    workspace = HostedWorkspaceStore(root, _family()).create(
+        DESCRIPTION,
+        BROKEN_PATH.name,
+        BytesIO(BROKEN_PATH.read_bytes()),
+        model_provider="bedrock-converse",
+        model_id="moonshotai.kimi-k2.5",
+    )
+    restarted_store = HostedWorkspaceStore(root, _family())
+    restarted = restarted_store.get(workspace.record.workspace_id)
+    assert restarted is not None
+
+    with pytest.raises(HostedWorkspaceError, match="selected agent model is unavailable"):
+        restarted_store.confirm_target(
+            restarted,
+            accept_supported_goal=False,
+            command_id="f" * 32,
+        )
+
+
 def test_source_route_resolves_the_selected_immutable_iteration(tmp_path: Path) -> None:
     """A Refine viewport never falls back to the workspace's original upload."""
     store = HostedWorkspaceStore(tmp_path / "hosted", _family())

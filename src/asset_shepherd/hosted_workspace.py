@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from hashlib import sha256
+from os import environ
 from pathlib import Path
 from threading import RLock
 from typing import BinaryIO, Literal, Self, cast
@@ -28,6 +29,7 @@ from asset_shepherd.inspector import preflight_asset
 from asset_shepherd.intake_analyzer import (
     DeterministicTargetIntakeAnalyzer,
     TargetIntakeAnalyzer,
+    build_target_intake_analyzer,
 )
 from asset_shepherd.intent import (
     build_asset_intent,
@@ -151,6 +153,8 @@ class HostedWorkspaceRecord(ContractModel):
     processed_commands: dict[str, str] = Field(default_factory=dict)
     events: tuple[WorkspaceEvent, ...] = ()
     last_answer: EvidenceAnswer | None = None
+    model_provider: str | None = Field(default=None, min_length=2, max_length=40)
+    model_id: str | None = Field(default=None, min_length=2, max_length=120)
     max_turns: int = Field(default=5, ge=1, le=50)
     accepted: bool = False
 
@@ -248,6 +252,7 @@ class HostedWorkspaceStore:
         intake_analyzer: TargetIntakeAnalyzer | None = None,
         max_agent_turns: int = 5,
         verification_function: VerificationFunction = verify_repair,
+        model_values_factory: Callable[[str], Mapping[str, str]] | None = None,
     ) -> None:
         """Bind durable workspaces to one trusted parameterized policy family."""
         self.work_root = work_root.resolve(strict=False)
@@ -257,7 +262,25 @@ class HostedWorkspaceStore:
             raise ValueError("Agent turn limit must be between 1 and 50")
         self.max_agent_turns = max_agent_turns
         self.verification_function = verification_function
+        self.model_values_factory = model_values_factory
         self._lock = RLock()
+
+    def _model_values(self, record: HostedWorkspaceRecord) -> Mapping[str, str]:
+        """Resolve the persisted model through deployment-owned credentials and region."""
+        if record.model_id is not None:
+            if self.model_values_factory is None:
+                raise HostedWorkspaceError(
+                    "This asset's selected agent model is unavailable in the current server "
+                    "configuration. Restart with its Bedrock Converse configuration."
+                )
+            return self.model_values_factory(record.model_id)
+        return environ
+
+    def _intake_analyzer_for(self, record: HostedWorkspaceRecord) -> TargetIntakeAnalyzer:
+        """Reconstruct semantic intake with the same model selected for this workspace."""
+        if record.model_id is None:
+            return self.intake_analyzer
+        return build_target_intake_analyzer(self._model_values(record))
 
     def _record_path(self, workspace_id: str) -> Path:
         if _WORKSPACE_ID.fullmatch(workspace_id) is None:
@@ -466,6 +489,8 @@ class HostedWorkspaceStore:
         *,
         replace_workspace_id: str | None = None,
         target_draft: TargetIntakeContract | None = None,
+        model_provider: str | None = None,
+        model_id: str | None = None,
     ) -> HostedWorkspace:
         """Create a workspace and run only profile-free objective preflight."""
         normalized = normalize_intent_description(description)
@@ -475,6 +500,8 @@ class HostedWorkspaceStore:
             target_draft = self.intake_analyzer.analyze(normalized)
         elif target_draft.description != normalized:
             raise HostedWorkspaceError("The intake draft does not match this description.")
+        if (model_provider is None) != (model_id is None):
+            raise HostedWorkspaceError("The workspace model selection is incomplete.")
         with self._lock:
             records = self._all_records()
             replacement_root: Path | None = None
@@ -514,6 +541,8 @@ class HostedWorkspaceStore:
                     private_description=normalized,
                     preflight=preflight,
                     target_draft=target_draft,
+                    model_provider=model_provider,
+                    model_id=model_id,
                     error=(
                         (
                             preflight.parse_error
@@ -766,7 +795,7 @@ class HostedWorkspaceStore:
             raise HostedWorkspaceError("The target-adjustment command identifier is invalid.")
         try:
             normalized = normalize_intent_description(description)
-            target_draft = self.intake_analyzer.analyze(normalized)
+            target_draft = self._intake_analyzer_for(workspace.record).analyze(normalized)
         except ValueError as error:
             raise HostedWorkspaceError(str(error)) from error
         with self._lock:
@@ -949,7 +978,8 @@ class HostedWorkspaceStore:
             )
             self._persist(workspace)
             self._reset_activity(workspace, "Choosing the next check")
-            agent_mode = workflow_model_available()
+            model_values = self._model_values(workspace.record)
+            agent_mode = workflow_model_available(model_values)
             runtime_job = AgentJob(
                 workspace.source_path,
                 workspace.root / "profile.json",
@@ -966,6 +996,7 @@ class HostedWorkspaceStore:
                     session_id=workspace.record.workspace_id,
                     session_root=workspace.root / "strands_state",
                     activity_sink=self._activity_sink(workspace.root),
+                    values=model_values,
                 )
                 if agent_mode
                 else build_scripted_agent(
@@ -1003,7 +1034,8 @@ class HostedWorkspaceStore:
         if runtime_state_path.is_file():
             runtime_state = json.loads(runtime_state_path.read_text(encoding="utf-8"))
             persisted_agent_mode = bool(runtime_state.get("agent_orchestrated", False))
-        if persisted_agent_mode and not workflow_model_available():
+        model_values = self._model_values(record)
+        if persisted_agent_mode and not workflow_model_available(model_values):
             raise HostedWorkspaceError(
                 "This workspace requires its configured workflow model to resume."
             )
@@ -1023,6 +1055,7 @@ class HostedWorkspaceStore:
                 session_id=record.workspace_id,
                 session_root=workspace.root / "strands_state",
                 activity_sink=self._activity_sink(workspace.root),
+                values=model_values,
             )
             if persisted_agent_mode
             else build_scripted_agent(

@@ -6,6 +6,7 @@ from asyncio import run
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from zipfile import ZipFile
 
 import pytest
@@ -16,6 +17,7 @@ from strands.types.content import Messages
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
 from asset_shepherd.agent_runtime import (
+    AssetShepherdBedrockConverseModel,
     CompleteResponseBedrockModel,
     CompleteResponseOpenAIModel,
     WorkflowActivityCallback,
@@ -479,8 +481,97 @@ def test_environment_model_builds_bedrock_responses_not_converse() -> None:
     assert configuration.model_id == "us.openai.gpt-5.6-luna"
 
 
-def test_environment_model_builds_nova_converse_as_separate_provider() -> None:
-    """The Nova trial uses Strands Converse without replacing the Luna Responses path."""
+def test_environment_model_builds_model_neutral_converse_for_kimi() -> None:
+    """Kimi uses the shared Converse transport without inheriting Nova request fields."""
+    model, configuration = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-converse",
+            "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+            "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+        }
+    )
+
+    assert isinstance(model, AssetShepherdBedrockConverseModel)
+    assert configuration.provider == "bedrock-converse"
+    assert configuration.model_id == "moonshotai.kimi-k2.5"
+    assert model.get_config().get("max_tokens") == 16_384
+    assert model.get_config().get("additional_request_fields") is None
+    assert model.hoist_tool_result_images
+
+
+def test_kimi_adapter_hoists_images_without_mutating_the_tool_result_history() -> None:
+    """Third-party visual models receive tool evidence through their accepted block layout."""
+    model, _ = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-converse",
+            "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+            "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+        }
+    )
+    history = cast(
+        Messages,
+        cast(
+            object,
+            [
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "toolUse": {
+                                "toolUseId": "render-call",
+                                "name": "render_source_views_for_job",
+                                "input": {},
+                            }
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "toolResult": {
+                                "toolUseId": "render-call",
+                                "status": "success",
+                                "content": [
+                                    {"text": "front.png"},
+                                    {
+                                        "image": {
+                                            "format": "png",
+                                            "source": {"bytes": b"evidence"},
+                                        }
+                                    },
+                                ],
+                            }
+                        }
+                    ],
+                },
+            ],
+        ),
+    )
+
+    converse_model = cast(AssetShepherdBedrockConverseModel, model)
+    request = converse_model.format_request(history)
+    request_messages = cast(list[object], request["messages"])
+    user_message = cast(dict[str, object], request_messages[1])
+    user_content = cast(list[object], user_message["content"])
+    tool_result_block = cast(dict[str, object], user_content[0])
+    tool_result = cast(dict[str, object], tool_result_block["toolResult"])
+    history_user = cast(dict[str, object], cast(object, history[1]))
+    history_blocks = cast(list[object], history_user["content"])
+    history_block = cast(dict[str, object], history_blocks[0])
+    history_result = cast(dict[str, object], history_block["toolResult"])
+    history_content = cast(list[object], history_result["content"])
+
+    assert [set(cast(dict[str, object], block)) for block in user_content] == [
+        {"toolResult"},
+        {"image"},
+    ]
+    assert tool_result["content"] == [{"text": "front.png"}]
+    assert "image" in cast(dict[str, object], history_content[1])
+
+
+def test_environment_model_keeps_nova_alias_on_shared_converse_adapter() -> None:
+    """The old Nova provider name remains compatible with the shared implementation."""
     model, configuration = build_environment_model(
         {
             "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-nova",
@@ -500,13 +591,26 @@ def test_environment_model_builds_nova_converse_as_separate_provider() -> None:
 
 def test_nova_rejects_unbounded_or_responses_only_reasoning_efforts() -> None:
     """The bounded Nova trial must not silently reinterpret Luna xhigh."""
-    with pytest.raises(AgentWorkflowError, match="Nova reasoning effort"):
+    with pytest.raises(AgentWorkflowError, match="Nova 2 Lite reasoning effort"):
         build_environment_model(
             {
                 "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-nova",
                 "ASSET_SHEPHERD_MODEL_ID": "us.amazon.nova-2-lite-v1:0",
                 "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
                 "ASSET_SHEPHERD_WORKFLOW_REASONING": "high",
+            }
+        )
+
+
+def test_kimi_rejects_provider_specific_reasoning_fields() -> None:
+    """A model choice never receives another provider's proprietary reasoning control."""
+    with pytest.raises(AgentWorkflowError, match="does not expose configurable reasoning"):
+        build_environment_model(
+            {
+                "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-converse",
+                "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+                "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+                "ASSET_SHEPHERD_WORKFLOW_REASONING": "medium",
             }
         )
 

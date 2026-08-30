@@ -6,6 +6,7 @@ from typing import cast
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
+import pytest
 from fastapi.testclient import TestClient
 
 from asset_shepherd.agent_job import VerificationFunction
@@ -63,6 +64,62 @@ def test_upload_rejects_pathological_world_bounds_before_description(tmp_path: P
     assert "too disproportionate to shepherd" in response.text
     assert "limit 10,000x" in response.text
     assert "/describe" not in response.url.path
+
+
+def test_bedrock_upload_offers_only_hinted_models_and_persists_the_choice(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Model selection is compact, allowlisted, and durable across the upload boundary."""
+    monkeypatch.setenv("ASSET_SHEPHERD_MODEL_PROVIDER", "bedrock-converse")
+    monkeypatch.setenv("ASSET_SHEPHERD_INTAKE_PROVIDER", "bedrock-converse")
+    monkeypatch.setenv("ASSET_SHEPHERD_MODEL_ID", "moonshotai.kimi-k2.5")
+    monkeypatch.setenv("ASSET_SHEPHERD_AWS_REGION", "us-east-1")
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+
+    upload = client.get("/workspace/new/upload")
+
+    assert upload.status_code == 200
+    assert "Agent model: <span" in upload.text
+    assert upload.text.count("Recommended") == 1
+    assert "Kimi K2.5" in upload.text
+    assert "Mistral Large 3" in upload.text
+    assert "Qwen3 VL 235B" in upload.text
+    assert "Nova 2 Lite" in upload.text
+    assert "try when visual evidence is the main uncertainty" in upload.text
+    assert "Lower-cost diagnostic" in upload.text
+
+    uploaded = client.post(
+        "/workspace/new/upload",
+        data={"agent_model": "mistral.mistral-large-3-675b-instruct"},
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+
+    assert uploaded.status_code == 303
+    draft_id = urlparse(uploaded.headers["location"]).path.split("/")[-2]
+    draft = (work_root / "hosted-start" / draft_id / "draft.json").read_text(encoding="utf-8")
+    assert '"model_id": "mistral.mistral-large-3-675b-instruct"' in draft
+
+
+def test_bedrock_upload_rejects_a_model_outside_the_allowlist(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A posted arbitrary Bedrock model ID cannot bypass the visible selector."""
+    monkeypatch.setenv("ASSET_SHEPHERD_MODEL_PROVIDER", "bedrock-converse")
+    monkeypatch.setenv("ASSET_SHEPHERD_MODEL_ID", "moonshotai.kimi-k2.5")
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs"))
+
+    response = client.post(
+        "/workspace/new/upload",
+        data={"agent_model": "some-provider.unreviewed-model"},
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+    )
+
+    assert response.status_code == 400
+    assert "Choose an available Asset Shepherd model." in response.text
 
 
 def _hidden(html: str, name: str) -> str:

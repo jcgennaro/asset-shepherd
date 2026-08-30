@@ -41,7 +41,7 @@ def test_launcher_bedrock_mode_never_requires_or_exposes_an_openai_key() -> None
     """An explicit Bedrock launch uses AWS configuration and removes inherited OpenAI secrets."""
     script = START_SCRIPT.read_text(encoding="utf-8")
 
-    assert "$modelProvider -in @('bedrock', 'bedrock-nova')" in script
+    assert "$modelProvider -in @('bedrock', 'bedrock-converse', 'bedrock-nova')" in script
     assert "Bedrock mode requires ASSET_SHEPHERD_MODEL_ID" in script
     assert "Bedrock mode requires ASSET_SHEPHERD_AWS_REGION or AWS_REGION" in script
     assert "$env:ASSET_SHEPHERD_INTAKE_PROVIDER = $modelProvider" in script

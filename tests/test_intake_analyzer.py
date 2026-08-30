@@ -11,10 +11,10 @@ from asset_shepherd.intake_analyzer import (
     BEDROCK_INTAKE_TOOL,
     INTAKE_REFUSAL_MESSAGE,
     OPENAI_INTAKE_MODEL,
+    BedrockConverseTargetIntakeAnalyzer,
+    BedrockConverseTargetIntakeConfiguration,
     BedrockTargetIntakeAnalyzer,
     BedrockTargetIntakeConfiguration,
-    NovaTargetIntakeAnalyzer,
-    NovaTargetIntakeConfiguration,
     OpenAITargetIntakeAnalyzer,
     OpenAITargetIntakeConfiguration,
     TargetDimensionsInference,
@@ -23,6 +23,7 @@ from asset_shepherd.intake_analyzer import (
     TargetIntakeInference,
     build_target_intake_analyzer,
     contract_from_inference,
+    load_bedrock_converse_target_intake_configuration,
     load_bedrock_target_intake_configuration,
     load_nova_target_intake_configuration,
 )
@@ -482,11 +483,11 @@ def test_bedrock_access_denial_has_actionable_bounded_copy() -> None:
     assert "private provider detail" not in str(caught.value)
 
 
-def test_nova_intake_forces_one_tool_and_preserves_server_validation() -> None:
-    """Nova uses its supported tool schema subset while Pydantic remains authoritative."""
+def test_converse_intake_forces_one_tool_and_preserves_server_validation() -> None:
+    """Every allowlisted model uses a portable schema while Pydantic remains authoritative."""
     captured: dict[str, object] = {}
 
-    class FakeNovaClient:
+    class FakeConverseClient:
         def converse(self, **kwargs: object) -> dict[str, object]:
             captured.update(kwargs)
             return {
@@ -529,16 +530,16 @@ def test_nova_intake_forces_one_tool_and_preserves_server_validation() -> None:
                 }
             }
 
-    analyzer = NovaTargetIntakeAnalyzer(
-        NovaTargetIntakeConfiguration(
-            model_id="us.amazon.nova-2-lite-v1:0",
+    analyzer = BedrockConverseTargetIntakeAnalyzer(
+        BedrockConverseTargetIntakeConfiguration(
+            model_id="moonshotai.kimi-k2.5",
             region="us-east-1",
         ),
-        client=FakeNovaClient(),
+        client=FakeConverseClient(),
     )
     contract = analyzer.analyze("One computer chip for Unreal, approximately 7 x 1.2 x 6.23 cm.")
 
-    assert contract.analyzer_provider == "bedrock-nova"
+    assert contract.analyzer_provider == "bedrock-converse"
     assert contract.ready_for_confirmation
     assert contract.endpoint is AssetEndpoint.UNREAL
     tool_config = captured["toolConfig"]
@@ -553,9 +554,26 @@ def test_nova_intake_forces_one_tool_and_preserves_server_validation() -> None:
     assert set(schema) == {"type", "properties", "required"}
     assert "$ref" not in json.dumps(schema)
     assert captured["inferenceConfig"] == {"maxTokens": 4096, "temperature": 0.0}
-    assert captured["additionalModelRequestFields"] == {
-        "reasoningConfig": {"type": "enabled", "maxReasoningEffort": "medium"}
+    assert "additionalModelRequestFields" not in captured
+
+
+def test_converse_configuration_selects_kimi_without_reasoning_translation() -> None:
+    """The canonical provider accepts an allowlisted model and rejects foreign controls."""
+    values = {
+        "ASSET_SHEPHERD_INTAKE_PROVIDER": "bedrock-converse",
+        "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+        "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
     }
+    configuration = load_bedrock_converse_target_intake_configuration(values)
+    analyzer = build_target_intake_analyzer(values)
+
+    assert configuration.model_id == "moonshotai.kimi-k2.5"
+    assert configuration.reasoning_effort is None
+    assert analyzer.provider == "bedrock-converse"
+    with pytest.raises(TargetIntakeAnalysisError, match="does not expose configurable reasoning"):
+        load_bedrock_converse_target_intake_configuration(
+            {**values, "ASSET_SHEPHERD_INTAKE_REASONING": "medium"}
+        )
 
 
 def test_nova_configuration_is_explicit_and_provider_selected() -> None:
@@ -571,14 +589,14 @@ def test_nova_configuration_is_explicit_and_provider_selected() -> None:
 
     assert configuration.model_id == "us.amazon.nova-2-lite-v1:0"
     assert analyzer.provider == "bedrock-nova"
-    with pytest.raises(TargetIntakeAnalysisError, match="inference profile"):
+    with pytest.raises(TargetIntakeAnalysisError, match="registered model capability"):
         load_nova_target_intake_configuration(
             {
                 "ASSET_SHEPHERD_MODEL_ID": "amazon.nova-2-lite-v1:0",
                 "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
             }
         )
-    with pytest.raises(TargetIntakeAnalysisError, match="low or medium"):
+    with pytest.raises(TargetIntakeAnalysisError, match="low, medium"):
         load_nova_target_intake_configuration(
             {
                 **values,

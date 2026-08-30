@@ -34,6 +34,11 @@ from asset_shepherd.agent_runtime import (
     build_scripted_agent,
     workflow_model_available,
 )
+from asset_shepherd.bedrock_converse import (
+    BedrockConverseModel,
+    resolve_bedrock_converse_model,
+    supported_bedrock_converse_models,
+)
 from asset_shepherd.glb import iter_world_matrices, load_glb, world_bounds
 from asset_shepherd.hosted_workspace import (
     MAX_HOSTED_WORKSPACES,
@@ -49,6 +54,7 @@ from asset_shepherd.intake_analyzer import (
     DeterministicTargetIntakeAnalyzer,
     TargetIntakeAnalyzer,
     TargetIntakeContentRefusal,
+    build_target_intake_analyzer,
 )
 from asset_shepherd.intent import (
     ENDPOINT_LABELS,
@@ -271,6 +277,7 @@ class HostedStartDraft:
     original_filename: str
     source_path: Path
     replace_workspace_id: str | None
+    model_id: str | None = None
     initial_description: str = ""
 
     @property
@@ -2869,6 +2876,37 @@ def create_app(
     """Create a local Asset Shepherd web application and isolated job store."""
     family = discover_policy_family(project_root.resolve(strict=True))
     analyzer = intake_analyzer or DeterministicTargetIntakeAnalyzer()
+    configured_provider = os.environ.get("ASSET_SHEPHERD_MODEL_PROVIDER")
+    agent_model_choices: tuple[BedrockConverseModel, ...] = (
+        supported_bedrock_converse_models() if configured_provider == "bedrock-converse" else ()
+    )
+    default_agent_model = next(
+        (model for model in agent_model_choices if model.recommended),
+        agent_model_choices[0] if agent_model_choices else None,
+    )
+    configured_model_id = os.environ.get("ASSET_SHEPHERD_MODEL_ID")
+    if configured_model_id and agent_model_choices:
+        try:
+            configured_model = resolve_bedrock_converse_model(configured_model_id)
+        except ValueError:
+            configured_model = None
+        if configured_model in agent_model_choices:
+            default_agent_model = configured_model
+
+    def model_values(model_id: str) -> Mapping[str, str]:
+        """Bind one allowlisted workspace model to deployment-owned AWS settings."""
+        capability = resolve_bedrock_converse_model(model_id)
+        if capability not in agent_model_choices:
+            raise ValueError("Choose an available Asset Shepherd model.")
+        values = dict(os.environ)
+        values["ASSET_SHEPHERD_MODEL_PROVIDER"] = "bedrock-converse"
+        values["ASSET_SHEPHERD_INTAKE_PROVIDER"] = "bedrock-converse"
+        values["ASSET_SHEPHERD_MODEL_ID"] = capability.model_id
+        values["ASSET_SHEPHERD_INTAKE_MODEL"] = capability.model_id
+        values.pop("ASSET_SHEPHERD_WORKFLOW_REASONING", None)
+        values.pop("ASSET_SHEPHERD_INTAKE_REASONING", None)
+        return values
+
     configured_turns = max_agent_turns
     if configured_turns is None:
         try:
@@ -2882,6 +2920,7 @@ def create_app(
         analyzer,
         configured_turns,
         verification_function,
+        model_values if agent_model_choices else None,
     )
     hosted_start_drafts: dict[str, HostedStartDraft] = {}
     hosted_start_lock = RLock()
@@ -2908,6 +2947,7 @@ def create_app(
             "original_filename": draft.original_filename,
             "replace_workspace_id": draft.replace_workspace_id,
             "initial_description": draft.initial_description,
+            "model_id": draft.model_id,
         }
         temporary.write_text(
             f"{json.dumps(payload, indent=2, sort_keys=True)}\n",
@@ -2935,6 +2975,7 @@ def create_app(
                 source_path=source_path,
                 replace_workspace_id=payload.get("replace_workspace_id"),
                 initial_description=str(payload.get("initial_description", "")),
+                model_id=(str(payload["model_id"]) if payload.get("model_id") else None),
             )
         except (OSError, ValueError, KeyError, TypeError):
             return None
@@ -3013,6 +3054,8 @@ def create_app(
                 "active_mode": "conversation",
                 "active_style": "Gallery",
                 "hosted_step": "gallery",
+                "agent_model_choices": agent_model_choices,
+                "default_agent_model": default_agent_model,
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -3067,6 +3110,8 @@ def create_app(
                 "active_mode": "conversation",
                 "active_style": "Upload",
                 "hosted_step": "upload",
+                "agent_model_choices": agent_model_choices,
+                "selected_agent_model": default_agent_model,
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
@@ -3872,6 +3917,7 @@ def create_app(
         request: Request,
         asset: Annotated[UploadFile, File()],
         replace_workspace_id: Annotated[str | None, Form()] = None,
+        agent_model: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Validate and stage one GLB, then advance to description."""
         valid, error = _validate_hosted_replacement(replace_workspace_id)
@@ -3887,6 +3933,23 @@ def create_app(
                 status_code=400,
                 replace_workspace_id=replace_workspace_id,
             )
+        selected_model_id: str | None = None
+        if agent_model_choices:
+            selected_model_id = agent_model or (
+                default_agent_model.model_id if default_agent_model is not None else None
+            )
+            try:
+                selected_capability = resolve_bedrock_converse_model(selected_model_id or "")
+                if selected_capability not in agent_model_choices:
+                    raise ValueError
+            except ValueError:
+                asset.file.close()
+                return render_hosted_upload(
+                    request,
+                    "Choose an available Asset Shepherd model.",
+                    status_code=400,
+                    replace_workspace_id=replace_workspace_id,
+                )
         draft_id = uuid4().hex
         draft_root = hosted_staging_root / draft_id
         source_path = draft_root / "source.glb"
@@ -3906,6 +3969,7 @@ def create_app(
                 original_filename=Path(filename).name,
                 source_path=source_path,
                 replace_workspace_id=replace_workspace_id,
+                model_id=selected_model_id,
             )
             persist_hosted_start_draft(draft)
             with hosted_start_lock:
@@ -3939,7 +4003,12 @@ def create_app(
             return render_hosted_upload(request, str(draft_error), status_code=404)
         try:
             normalized = normalize_intent_description(description)
-            target_draft = hosted_store.intake_analyzer.analyze(normalized)
+            target_analyzer = (
+                build_target_intake_analyzer(model_values(draft.model_id))
+                if draft.model_id is not None
+                else hosted_store.intake_analyzer
+            )
+            target_draft = target_analyzer.analyze(normalized)
         except TargetIntakeContentRefusal as error:
             discard_hosted_start_draft(draft)
             return render_hosted_describe(
@@ -3965,6 +4034,8 @@ def create_app(
                     stream,
                     replace_workspace_id=draft.replace_workspace_id,
                     target_draft=target_draft,
+                    model_provider=("bedrock-converse" if draft.model_id is not None else None),
+                    model_id=draft.model_id,
                 )
         except (HostedWorkspaceError, ValueError, OSError) as error:
             return render_hosted_describe(
@@ -4028,6 +4099,7 @@ def create_app(
                 source_path=source_path,
                 replace_workspace_id=workspace_id,
                 initial_description=workspace.record.private_description,
+                model_id=workspace.record.model_id,
             )
             persist_hosted_start_draft(draft)
             with hosted_start_lock:

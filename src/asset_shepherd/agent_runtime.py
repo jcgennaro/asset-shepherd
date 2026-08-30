@@ -36,6 +36,11 @@ from asset_shepherd.agent_prompt import (
     build_agent_start_prompt,
 )
 from asset_shepherd.agent_tools import AssetShepherdTools
+from asset_shepherd.bedrock_converse import (
+    bedrock_converse_reasoning_fields,
+    resolve_bedrock_converse_model,
+    resolve_bedrock_converse_reasoning,
+)
 from asset_shepherd.bedrock_responses import (
     BedrockTokenProvider,
     bedrock_responses_base_url,
@@ -134,13 +139,13 @@ def load_model_configuration(
     if not model_id:
         raise AgentWorkflowError("Missing live model configuration: ASSET_SHEPHERD_MODEL_ID")
     region = values.get("ASSET_SHEPHERD_AWS_REGION") or values.get("AWS_REGION")
-    if provider in {"bedrock", "bedrock-nova"} and not region:
+    if provider in {"bedrock", "bedrock-converse", "bedrock-nova"} and not region:
         raise AgentWorkflowError(
             "Missing live model configuration: ASSET_SHEPHERD_AWS_REGION or AWS_REGION"
         )
     if provider == "openai" and not values.get("OPENAI_API_KEY"):
         raise AgentWorkflowError("Missing live model configuration: OPENAI_API_KEY")
-    if provider not in {"bedrock", "bedrock-nova", "openai"}:
+    if provider not in {"bedrock", "bedrock-converse", "bedrock-nova", "openai"}:
         raise AgentWorkflowError(f"Unsupported live model provider: {provider}")
     return ModelConfiguration(
         provider=provider,
@@ -282,48 +287,144 @@ class CompleteResponseBedrockModel(CompleteResponseOpenAIModel):
         return client_args
 
 
+class AssetShepherdBedrockConverseModel(BedrockModel):
+    """Normalize proven model differences while preserving one Converse tool protocol."""
+
+    def __init__(
+        self,
+        *,
+        hoist_tool_result_images: bool,
+        **model_config: Any,
+    ) -> None:
+        """Bind the selected capability's tool-result image transport behavior."""
+        self.hoist_tool_result_images = hoist_tool_result_images
+        super().__init__(**model_config)
+
+    def format_request(
+        self,
+        messages: Messages,
+        tool_specs: list[ToolSpec] | None = None,
+        system_prompt_content: list[SystemContentBlock] | None = None,
+        tool_choice: ToolChoice | None = None,
+        dynamic_trailing_blocks: int = 0,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Hoist image blocks for models that reject images nested in a tool result."""
+        request = super().format_request(
+            messages,
+            tool_specs,
+            system_prompt_content,
+            tool_choice,
+            dynamic_trailing_blocks,
+            **kwargs,
+        )
+        if not self.hoist_tool_result_images:
+            return request
+        request_messages = request.get("messages")
+        if not isinstance(request_messages, list):
+            return request
+        normalized_messages: list[object] = []
+        for raw_message in cast(list[object], request_messages):
+            if not isinstance(raw_message, dict):
+                normalized_messages.append(raw_message)
+                continue
+            message = cast(dict[str, object], raw_message)
+            if message.get("role") != "user":
+                normalized_messages.append(message)
+                continue
+            raw_content = message.get("content")
+            if not isinstance(raw_content, list):
+                normalized_messages.append(message)
+                continue
+            normalized_content: list[object] = []
+            for raw_block in cast(list[object], raw_content):
+                if not isinstance(raw_block, dict):
+                    normalized_content.append(raw_block)
+                    continue
+                block = cast(dict[str, object], raw_block)
+                raw_tool_result = block.get("toolResult")
+                if not isinstance(raw_tool_result, dict):
+                    normalized_content.append(block)
+                    continue
+                tool_result = cast(dict[str, object], raw_tool_result)
+                tool_content = tool_result.get("content")
+                if not isinstance(tool_content, list):
+                    normalized_content.append(block)
+                    continue
+                images: list[object] = []
+                non_images: list[object] = []
+                for content_block in cast(list[object], tool_content):
+                    if isinstance(content_block, dict):
+                        content = cast(dict[str, object], content_block)
+                        if "image" in content:
+                            images.append(content)
+                            continue
+                        non_images.append(content)
+                    else:
+                        non_images.append(content_block)
+                if not images:
+                    normalized_content.append(block)
+                    continue
+                if not non_images:
+                    non_images = [{"text": "Rendered tool evidence follows."}]
+                normalized_tool_result: dict[str, object] = {
+                    **tool_result,
+                    "content": non_images,
+                }
+                normalized_block: dict[str, object] = {
+                    **block,
+                    "toolResult": normalized_tool_result,
+                }
+                normalized_content.append(normalized_block)
+                normalized_content.extend(images)
+            normalized_messages.append({**message, "content": normalized_content})
+        request["messages"] = normalized_messages
+        return request
+
+
 def build_environment_model(
     values: Mapping[str, str] = environ,
 ) -> tuple[Model, ModelConfiguration]:
     """Construct the configured provider; invocation remains caller-controlled and opt-in."""
     configuration = load_model_configuration(values)
-    default_effort = "medium" if configuration.provider == "bedrock-nova" else "xhigh"
-    effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", default_effort)
-    allowed_efforts = (
-        {"low", "medium"}
-        if configuration.provider == "bedrock-nova"
-        else {"low", "medium", "high", "xhigh", "max"}
-    )
-    if effort not in allowed_efforts:
-        raise AgentWorkflowError(
-            "Nova reasoning effort must be low or medium while output remains bounded"
-            if configuration.provider == "bedrock-nova"
-            else "Unsupported workflow reasoning effort"
-        )
-    model_parameters = {
-        "reasoning": {"effort": effort, "context": "all_turns"},
-        "max_output_tokens": 8192,
-        "parallel_tool_calls": False,
-        "text": {"verbosity": "low"},
-    }
-    if configuration.provider == "openai":
-        model = CompleteResponseOpenAIModel(
-            client_args={"api_key": values["OPENAI_API_KEY"]},
-            model_id=configuration.model_id,
-            stateful=True,
-            params=model_parameters,
-        )
-    elif configuration.provider == "bedrock":
-        try:
-            model = CompleteResponseBedrockModel(
+    if configuration.provider in {"openai", "bedrock"}:
+        effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
+        if effort not in {"low", "medium", "high", "xhigh", "max"}:
+            raise AgentWorkflowError("Unsupported workflow reasoning effort")
+        model_parameters = {
+            "reasoning": {"effort": effort, "context": "all_turns"},
+            "max_output_tokens": 8192,
+            "parallel_tool_calls": False,
+            "text": {"verbosity": "low"},
+        }
+        if configuration.provider == "openai":
+            model = CompleteResponseOpenAIModel(
+                client_args={"api_key": values["OPENAI_API_KEY"]},
                 model_id=configuration.model_id,
-                region=cast(str, configuration.region),
                 stateful=True,
                 params=model_parameters,
             )
+        else:
+            try:
+                model = CompleteResponseBedrockModel(
+                    model_id=configuration.model_id,
+                    region=cast(str, configuration.region),
+                    stateful=True,
+                    params=model_parameters,
+                )
+            except ValueError as error:
+                raise AgentWorkflowError(str(error)) from error
+    else:
+        try:
+            capability = resolve_bedrock_converse_model(configuration.model_id)
+            if configuration.provider == "bedrock-nova" and capability.key != "nova-2-lite":
+                raise ValueError("The legacy bedrock-nova alias requires Nova 2 Lite.")
+            reasoning_effort = resolve_bedrock_converse_reasoning(
+                capability,
+                values.get("ASSET_SHEPHERD_WORKFLOW_REASONING"),
+            )
         except ValueError as error:
             raise AgentWorkflowError(str(error)) from error
-    else:
         if configuration.aws_profile:
             session = boto3.Session(
                 profile_name=configuration.aws_profile,
@@ -331,18 +432,22 @@ def build_environment_model(
             )
         else:
             session = boto3.Session(region_name=cast(str, configuration.region))
-        model = BedrockModel(
+        converse_config: dict[str, Any] = {
+            "model_id": configuration.model_id,
+            "max_tokens": capability.workflow_max_tokens,
+            "temperature": 0.0,
+            "streaming": True,
+        }
+        additional_fields = bedrock_converse_reasoning_fields(
+            capability,
+            reasoning_effort,
+        )
+        if additional_fields:
+            converse_config["additional_request_fields"] = additional_fields
+        model = AssetShepherdBedrockConverseModel(
+            hoist_tool_result_images=capability.requires_tool_result_image_hoisting,
             boto_session=session,
-            model_id=configuration.model_id,
-            max_tokens=8192,
-            temperature=0.0,
-            streaming=True,
-            additional_request_fields={
-                "reasoningConfig": {
-                    "type": "enabled",
-                    "maxReasoningEffort": effort,
-                }
-            },
+            **converse_config,
         )
     return model, configuration
 
@@ -860,11 +965,12 @@ def build_live_agent(
     session_id: str | None = None,
     session_root: Path | None = None,
     activity_sink: ActivitySink | None = None,
+    values: Mapping[str, str] = environ,
 ) -> AssetShepherdAgent:
     """Build a live environment-configured agent with optional durable session state."""
     if not job.agent_orchestrated:
         raise AgentWorkflowError("Live workflow jobs must enable agent-orchestrated planning")
-    model, configuration = build_environment_model()
+    model, configuration = build_environment_model(values)
     return AssetShepherdAgent(
         job,
         model,

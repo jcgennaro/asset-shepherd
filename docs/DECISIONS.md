@@ -4,6 +4,65 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D077 — Use one allowlisted Converse adapter with Kimi recommended per asset
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED; Kimi live workflow passed, remaining models are bounded alternatives
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+Maintaining independent local-offline, Nova-Converse, and Luna-Responses implementations would
+multiply intake, image, tool-schema, persistence, and UI behavior. The user instead selected a
+small allowlist with guidance about when each model is useful. Model choice must not become another
+workflow step or let a posted arbitrary model ID bypass tested request contracts. Each asset also
+needs a stable model identity across resume and Refine.
+
+Bounded live probes in `us-east-1` showed that Kimi K2.5, Mistral Large 3, Qwen3 VL 235B, and Nova 2
+Lite all accept typed client tools and ordinary image input. The three third-party models reject an
+image nested inside a Converse tool-result block even though they accept the same image as an
+adjacent user content block; Nova accepts both layouts. This is a transport-layout capability, not
+a reason to change the model-visible evidence or duplicate the workflow.
+
+**Decision**
+
+Use `bedrock-converse` as the canonical model-neutral provider. Keep a fail-closed capability
+registry for exactly Kimi K2.5, Mistral Large 3, Qwen3 VL 235B, and Nova 2 Lite. Kimi is the
+recommended choice. Mark Mistral and Qwen as experimental choices for especially long/complex and
+visually ambiguous work; present Nova as a lower-cost diagnostic that may need more user correction.
+The existing Luna Responses adapter remains a pending specialist/compatibility path outside this
+Converse UI allowlist, and the legacy `bedrock-nova` name remains read-compatible only.
+
+Normalize only proven transport differences. For Kimi, Mistral, and Qwen, move unchanged image
+blocks beside their originating tool result in the outgoing Converse user message while retaining
+text, image bytes, order, tool ID, and durable Strands history. Keep Nova's reasoning field and
+nested-image layout only for Nova. Never translate reasoning controls between providers.
+
+Put one compact **Agent model** disclosure on Upload, not in the numbered workflow. Reject any
+submitted ID outside the server allowlist. Persist provider and model ID in the staged upload and
+durable workspace, and rebuild both intake and workflow agents from that frozen model selection.
+
+**Evidence and consequences**
+
+Kimi produced a valid Unreal computer-chip intake and completed the real Strands robot workflow in
+66.71 seconds through inspection, four-view rendering, typed repair proposal, native approval,
+execution, candidate rendering, model reassessment, independent verification, and packaging. The
+verified run recorded prompt v13, one interrupt, seven successful semantic/proof tool calls, a
+project-ready candidate with one remaining material warning, and explicit `bedrock-converse` /
+`moonshotai.kimi-k2.5` provenance. A direct control proved that the image-hoisting normalization
+removes the Bedrock validation failure without altering stored tool history.
+
+Browser acceptance confirmed the compact four-model allowlist, single recommendation, hints,
+default Kimi selection, and preservation across Upload. The subsequent hosted intake was blocked
+only because the bootstrap AWS login token expired; the independent live intake and full workflow
+had already passed. The least-privilege runtime role still needs exact Kimi/Mistral/Qwen invoke
+resources before those models are used outside the administrator smoke gate. Full browser cases,
+cloud-portable state, AgentCore, and remote hosting remain open.
+
 ### D076 — Do not add a Grok provider path until account invocation succeeds
 
 **Date:** 2026-08-29

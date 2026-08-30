@@ -3698,6 +3698,57 @@ model-viewer {
   justify-self: end;
 }
 
+.agent-model-choice {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.agent-model-choice > summary {
+  padding: 14px 16px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.agent-model-options {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.agent-model-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.agent-model-option:has(input:checked) {
+  border-color: var(--accent-cool);
+  background: color-mix(in srgb, var(--accent-cool) 10%, transparent);
+}
+
+.agent-model-option input {
+  margin-top: 4px;
+  accent-color: var(--accent-cool);
+}
+
+.agent-model-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.agent-model-option small {
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.4;
+}
+
 .describe-step {
   width: min(1360px, 100%);
   grid-template-columns: minmax(360px, 0.82fr) minmax(440px, 1.18fr);

@@ -45,20 +45,24 @@ distributable real-world demo input. Generated GLBs and ZIPs remain reproducible
 uv sync
 ```
 
-For the Bedrock production-parity path, authenticate the `asset-shepherd` AWS profile and set the
-explicit environment shown in `.env.example`. The launcher derives a short-term Bedrock bearer
-token from that AWS session; it does not require or send an OpenAI API key:
+For the current Bedrock path, authenticate the `asset-shepherd` AWS profile and set the explicit
+environment shown in `.env.example`. It uses AWS session credentials and does not require or send
+an OpenAI API key:
 
 ```powershell
 $env:AWS_PROFILE = 'asset-shepherd'
-$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock'
-$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock'
-$env:ASSET_SHEPHERD_MODEL_ID = 'us.openai.gpt-5.6-luna'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_ID = 'moonshotai.kimi-k2.5'
 $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
-$env:ASSET_SHEPHERD_INTAKE_REASONING = 'xhigh'
-$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'xhigh'
 .\scripts\Start-AssetShepherd.ps1
 ```
+
+The upload screen keeps model choice out of the numbered workflow. Its compact **Agent model**
+disclosure offers only the reviewed Bedrock Converse allowlist and explains when to try each model:
+Kimi K2.5 is recommended; Mistral Large 3 and Qwen3 VL are experimental long-context and visual
+alternatives; Nova 2 Lite is a lower-cost diagnostic. The selected model is stored with that asset,
+so resume and Refine never silently change it. Arbitrary posted model IDs fail closed.
 
 The optional direct-OpenAI development adapter remains available. Save its key once, then start
 without setting `ASSET_SHEPHERD_MODEL_PROVIDER=bedrock`:
@@ -68,13 +72,12 @@ without setting `ASSET_SHEPHERD_MODEL_PROVIDER=bedrock`:
 .\scripts\Start-AssetShepherd.ps1
 ```
 
-If the Luna agreement is still pending, the reversible Nova 2 Lite diagnostic uses native Bedrock
-Converse and the same Strands/tool contracts without an OpenAI key:
+Nova 2 Lite can still be selected explicitly through the shared Converse adapter:
 
 ```powershell
 $env:AWS_PROFILE = 'asset-shepherd'
-$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-nova'
-$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-nova'
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-converse'
 $env:ASSET_SHEPHERD_INTAKE_MODEL = 'us.amazon.nova-2-lite-v1:0'
 $env:ASSET_SHEPHERD_MODEL_ID = 'us.amazon.nova-2-lite-v1:0'
 $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
@@ -83,9 +86,9 @@ $env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'medium'
 .\scripts\Start-AssetShepherd.ps1
 ```
 
-Nova is an availability diagnostic, not a silent replacement for the Luna/xhigh parity baseline.
 Asset Shepherd rejects Nova `high`/`xhigh` in this bounded configuration because the live API does
-not accept an output-token limit with high reasoning.
+not accept an output-token limit with high reasoning. The legacy `bedrock-nova` provider name
+remains loadable for saved configuration, but new configuration should use `bedrock-converse`.
 
 Open `http://127.0.0.1:8010`. **Gallery** starts a new asset or resumes one of seven isolated,
 persisted workspaces. The numbered workflow is **1 Upload → 2 Describe → 3 Shepherd → 4 Refine**.
@@ -94,9 +97,8 @@ approximate dimensions. Shepherd lets the Strands agent choose sensing tools, as
 propose typed repairs. The user reviews consequential changes; the selected input or candidate can
 then enter as many numbered Refine iterations as needed before download.
 
-The production-parity provider uses OpenAI `gpt-5.6-luna` with `xhigh` reasoning through Amazon
-Bedrock's OpenAI-compatible Responses API for semantic intake and workflow decisions. The GLB stays
-local; the provider receives
+The recommended provider uses Kimi K2.5 through Amazon Bedrock Converse for semantic intake and
+workflow decisions. The GLB stays local; the provider receives
 the description, structured measurements, and standardized rendered evidence needed for the turn.
 Each workspace owns its own durable Strands session and frozen job state, so refresh and restart
 resume the same asset without sharing conversation state or repeating mutation. Use
@@ -106,7 +108,7 @@ providers remain available for zero-network tests.
 The Windows launch scripts keep an optional direct-OpenAI development key under the current user's
 local app data, outside the repository. In OpenAI mode, the launcher exposes it only to the running
 server process and removes it when that command ends. In Bedrock mode, the launcher removes any
-inherited OpenAI key and uses only the short-term IAM-derived Bedrock credential. The direct OpenAI
+inherited OpenAI key and uses only the active AWS session credentials. The direct OpenAI
 API remains a development adapter, not a production fallback.
 
 The agent decides which checks and bounded actions are appropriate. Deterministic tools remain

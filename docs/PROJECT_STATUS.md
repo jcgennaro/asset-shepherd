@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-29
-**Current commit:** AWS web-hosting plan and Bedrock provider diagnostics (this file is included)
+**Current commit:** Model-neutral Bedrock Converse allowlist and Kimi live gate (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova Converse diagnostic; D075 App Runner web topology |  | Nova proves the Bedrock/Strands/tool path; Luna parity awaits its one-time model agreement and the browser matrix; remote resources are not deployed |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D075 App Runner web topology; D077 model-neutral Converse allowlist and Kimi live gate |  | Kimi is the recommended Bedrock model and passes intake plus the full Strands workflow; full browser matrix and remote deployment remain open |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -51,6 +51,21 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D077 model-neutral Converse provider: Upload now exposes one compact, server-side allowlist with
+  Kimi K2.5 recommended, experimental Mistral Large 3 and Qwen3 VL alternatives, and Nova 2 Lite as
+  a lower-cost diagnostic. The selected provider/model is persisted through staged upload, durable
+  workspace, restart, and Refine; arbitrary model IDs fail closed. One capability registry owns
+  output limits, Nova-only reasoning controls, user hints, and the proven Bedrock layout difference
+  that requires Kimi/Mistral/Qwen render images to sit beside rather than inside tool results.
+  Kimi passed the live typed-intake test and complete Strands approval-through-package workflow in
+  66.71 seconds with image evidence, seven successful workflow tools, one native interrupt, prompt
+  v13, and a verified candidate. Browser inspection confirmed the four choices and hints and carried
+  Kimi from Upload into Describe; the hosted intake retry then encountered an expired bootstrap AWS
+  login token, not a model or application validation error. Runtime-role grants and the remaining
+  browser matrix are still open. The common gate passes with 201 tests, two opt-in live skips,
+  lock validation, Ruff, formatting, PowerShell parsing, and zero Pyright findings; both Kimi live
+  tests pass when explicitly enabled.
 
 - D076 Grok 4.6 access diagnostic: AWS's model-access API reports `xai.grok-4.6` agreement,
   authorization, entitlement, and region availability as available/authorized, and both the US and
@@ -840,20 +855,20 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 ## Blockers
 
 The remaining D036 local acceptance work is unblocked. RW2 requires untouched Debug Beetle and
-Cloudforge Workbench exports. The least-privilege `asset-shepherd` AWS runtime profile, selected
-`us-east-1`/`us.openai.gpt-5.6-luna`/`xhigh` path, budget alert, and short-term-token path are
-confirmed. Luna authorization, entitlement, and region checks pass, but its one-time model
-agreement remains unavailable; Nova confirms that the account, role, Bedrock Runtime, Strands,
-and typed tools otherwise work. The submission also remains blocked on the public-repository, free judge-access,
+Cloudforge Workbench exports. The least-privilege `asset-shepherd` AWS runtime profile,
+`us-east-1`, budget alert, and Nova invoke path are confirmed. Kimi passes the complete workflow
+under the bootstrap administrator, but the runtime role still needs exact Kimi/Mistral/Qwen invoke
+resources and a renewed login before the hosted browser matrix. Luna remains unavailable behind
+its one-time agreement but no longer blocks the recommended Kimi path. The submission also remains blocked on the public-repository, free judge-access,
 architecture, video, disclosure, release-scan, and entrant-attestation gates in
 `docs/CONTEST_COMPLIANCE_PLAN.md`. A human-cleaned reference and manual-time record remain required
 for the full RW4 comparison gate.
 
 ## Next action
 
-Have an administrator review and accept the Luna model agreement, retry the two opt-in D073 Luna
-smoke tests, then run the Step 2 browser parity matrix. Nova may continue as the explicit diagnostic
-provider but does not replace the Luna decision. Before closing the full Step 2 Bedrock gate, close the remaining D036
+Renew AWS authentication, grant the least-privilege runtime role exact allowlisted model resources,
+and run the Step 2 browser matrix with Kimi as the recommended selection. Luna can be reevaluated
+later as a Responses alternative rather than blocking this path. Before closing the full Step 2 Bedrock gate, close the remaining D036
 changed-goal and ambiguous-orientation behavior cases and
 exercise a consequential continuation turn whose fresh assessment requests a new action and
 approval. Preserve the current mutation scope, exact authorization, durability, and invariant
