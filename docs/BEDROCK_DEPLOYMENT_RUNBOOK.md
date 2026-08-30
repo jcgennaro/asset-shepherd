@@ -251,6 +251,13 @@ Nova 2 Lite is the current independent diagnostic because it reports every avail
 available. It uses `us.amazon.nova-2-lite-v1:0` through Converse. Passing Nova does not waive the
 Luna agreement or establish Luna/xhigh parity.
 
+Grok 4.6 is a deferred Responses candidate, not a working fallback. On 2026-08-29 the model-access
+API reported every Grok availability field as available and both `us.xai.grok-4.6` and
+`global.xai.grok-4.6` as active, but bounded Responses and Converse calls under the administrator
+profile both returned `AccessDeniedException` stating that the model is unavailable for the
+account. Treat a successful invocation—not catalog metadata—as its access gate. Do not add Grok to
+the maintained provider surface until that gate passes.
+
 ### 1.4 Cost checkpoint
 
 Create or confirm an AWS Budget/billing alert before the first paid call. Set conservative

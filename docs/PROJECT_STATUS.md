@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-29
-**Current commit:** AWS web-hosting plan and Nova browser diagnostic (this file is included)
+**Current commit:** AWS web-hosting plan and Bedrock provider diagnostics (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,16 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D076 Grok 4.6 access diagnostic: AWS's model-access API reports `xai.grok-4.6` agreement,
+  authorization, entitlement, and region availability as available/authorized, and both the US and
+  global inference profiles are active. Nevertheless, bounded calls through both the documented
+  Bedrock Responses endpoint and native Converse return `AccessDeniedException` stating that Grok
+  4.6 is unavailable for this account. The same result occurs with the administrator profile, which
+  has `AdministratorAccess`, so ordinary IAM expansion, profile choice, API choice, and inference
+  profile choice are ruled out. No inference executed. Asset Shepherd will not add a fourth
+  maintained provider path until AWS accepts a direct smoke call; the existing generic Responses
+  bridge would then need only a narrow xAI profile-validation change before behavioral testing.
 
 - D075 remote web topology: the first public deployment will run the existing FastAPI/Jinja product
   as a stateless Linux container on AWS App Runner, while a separate private AgentCore Runtime owns

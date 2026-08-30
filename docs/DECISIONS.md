@@ -4,6 +4,52 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D076 — Do not add a Grok provider path until account invocation succeeds
+
+**Date:** 2026-08-29
+
+**Status:** ACCEPTED; blocked by external account/model access
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+Grok 4.6 is a strong candidate for a non-Anthropic Bedrock comparison because AWS documents image
+input, client-side tool calling, the Responses API, and configurable reasoning through `xhigh`.
+Asset Shepherd's existing Bedrock Responses bridge is technically close to reusable, except that
+its fail-closed inference-profile validator currently permits only the selected OpenAI family.
+Adding another maintained model path before proving account access would recreate the provider
+maintenance burden the evaluation is intended to reduce.
+
+AWS's model-access API reports `xai.grok-4.6` as agreement-available, authorized, entitled, and
+region-available, and reports both `us.xai.grok-4.6` and `global.xai.grok-4.6` as active. A bounded
+Responses request still returned HTTP 403, and independent Converse requests against both profiles
+returned the same `AccessDeniedException`: Grok 4.6 is unavailable for this account. The test used
+the administrator profile with the AWS-managed `AdministratorAccess` policy, so the failure is not
+explained by the application's least-privilege role or a missing ordinary `bedrock:InvokeModel`
+grant.
+
+**Decision**
+
+Keep Grok as an evaluation candidate, but do not modify the product provider surface until a direct
+smoke request succeeds. Treat the live invocation result as authoritative over the optimistic
+catalog fields. Do not broaden IAM, create a Grok-specific fourth provider, or claim Grok behavior
+from catalog metadata alone. Recheck after AWS resolves the account/model-access restriction.
+
+When access succeeds, extend the existing generic Bedrock Responses profile validator narrowly to
+the documented xAI geographic/global IDs, add zero-network acceptance tests, and then run the same
+robot browser case used for Nova. Compare first-turn repair completeness, image-evidence use,
+sequential tool calls, approval/resume, verification, latency, token usage, and cost before changing
+the selected production-parity model.
+
+**Evidence and consequences**
+
+Both documented invocation APIs reached Amazon Bedrock and failed before inference. No Grok model
+output or behavioral evidence exists, and no provider code changed. Luna remains the parity target;
+Nova remains the only completed Bedrock diagnostic.
+
 ### D075 — Host the first remote web product on App Runner beside private AgentCore
 
 **Date:** 2026-08-29
