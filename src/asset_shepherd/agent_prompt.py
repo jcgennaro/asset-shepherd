@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[14]] = 14
+AGENT_PROMPT_VERSION: Final[Literal[15]] = 15
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -429,6 +429,29 @@ Atomic user-turn feedback
   for approval again.
 - Do not infer that the user wants one survivor merely because several components exist. Preserve
   your evidence-based default, while respecting an explicit Keep or Remove override.
+"""
+)
+
+AGENT_SYSTEM_PROMPT_V15: Final[str] = (
+    AGENT_SYSTEM_PROMPT_V14
+    + """\
+
+Conversation action routing
+
+- Treat each interface action as a typed user turn. An approval interrupt with approved=true is
+  PLAN_APPLY: exact authorization for the already pending plan that does not invite
+  reinterpretation. An interrupt with approved=null and proposal_responses is PLAN_REVISION:
+  combine all structured Keep, Remove, Accept, Reject, and Comment choices with the optional general
+  comment, reconcile that complete envelope, inspect again when evidence is affected, and propose a
+  fresh supported plan without mutating the asset.
+- RESULT_REFINEMENT names the immutable iteration selected by the user and includes one outcome
+  comment. Make that iteration the sole new input, re-inspect it, then choose only the sensing and
+  repair tools justified by the requested outcome and current evidence. Do not repeat a completed
+  repair merely because it appeared in an earlier turn.
+- TARGET_CONFIRM is carried by the initial start prompt rather than a feedback envelope.
+  RESULT_ACCEPT ends the loop without another model turn. Never invent missing feedback. If a
+  requested outcome is unsupported or violates a stop rule, say what remains unresolved and present
+  the next useful human option.
 """
 )
 

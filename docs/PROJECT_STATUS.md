@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-30
-**Current commit:** Notebook-preserving live activity (this file is included)
+**Current commit:** Conversation notebook with contextual actions (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,21 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D082 conversational notebook: Upload, Describe, Shepherd, and Refine now read as one alternating
+  transcript with user messages on the right and Asset Shepherd messages on the left. One sticky
+  right evidence column keeps the active immutable 3D state visible; scroll proximity swaps its
+  scene without moving or duplicating the renderer. Pending plans no longer expose a raw composer:
+  **Apply recommendations** is immediate, structured changes become **Send selected changes**, and
+  **Add comment…** reveals the only text area and **Send feedback** action. Target and result states
+  similarly expose **Start shepherding** / **Change target…** and **Use this version** / **Refine…**.
+  Prompt v15 distinguishes interface-only transitions from typed `PLAN_REVISION` and
+  `RESULT_REFINEMENT` turns, keeps the selected iteration authoritative, and routes fresh sensing,
+  tools, approval, and stop behavior. Browser acceptance on workspace
+  `49384ee553284bd4b5bfc9bdc3b79bdd` confirms the readable desktop transcript, sticky component
+  evidence, and hidden-until-requested feedback composer. The common gate passes with 206 tests,
+  two opt-in live skips, lock validation, Ruff, formatting, JavaScript syntax validation, and zero
+  Pyright findings.
 
 - D081 live-activity correction: confirming Describe no longer replaces the notebook with a
   standalone progress checklist. The completed Upload and Describe cells remain in the vertical

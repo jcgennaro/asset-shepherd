@@ -9,8 +9,8 @@
       <div class="alert danger" role="alert"><strong>Stopped</strong><span>{{ record.error }}</span></div>
     {% endif %}
 
-    <div class="hosted-columns">
-      <main class="conversation-pane" aria-label="Asset conversation" data-scene-notebook>
+    <div class="hosted-columns" data-scene-notebook>
+      <main class="conversation-pane" aria-label="Asset conversation">
         <article class="workflow-cell complete" id="notebook-upload">
           <header class="workflow-cell-header"><span>1</span><strong>Upload</strong>
             <details class="notebook-cell-edit"><summary>Edit</summary>
@@ -28,12 +28,7 @@
           <blockquote class="history-user-message"><strong>You</strong><p>Uploaded {{ record.original_filename }}.</p></blockquote>
           <p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ upload_summary }}</span></p>
           {% if record.phase.value == 'TARGET_CONFIRMATION' and comparison_scene %}
-            <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="upload" aria-label="Uploaded 3D state">
-              <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="upload">
-                {% set comparison_source_url = url_for('hosted_original_source_asset', workspace_id=record.workspace_id) %}
-                {% include "_model_comparison.html" %}
-              </div>
-            </div>
+            <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="upload" aria-label="Uploaded 3D state"></div>
           {% else %}
             <div class="notebook-scene-slot" data-notebook-scene-slot data-scene-key="upload" data-scene-url="{{ url_for('hosted_source_scene', workspace_id=record.workspace_id) }}" aria-label="Uploaded 3D state"></div>
           {% endif %}
@@ -161,11 +156,15 @@
             <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
             {% if job.agent_orchestrated %}
-              <label class="visually-hidden" for="hosted-turn-comment">Tell Asset Shepherd anything else</label>
-              <textarea id="hosted-turn-comment" class="turn-composer" name="turn_comment" maxlength="1000" rows="4" placeholder="Tell Asset Shepherd anything else…" data-turn-comment></textarea>
-              <div class="turn-actions">
+              <div class="context-feedback-panel" data-plan-comment-panel hidden>
+                <label for="hosted-turn-comment">What should Asset Shepherd change?</label>
+                <textarea id="hosted-turn-comment" class="turn-composer" name="turn_comment" maxlength="1000" rows="4" placeholder="Describe the outcome you want or explain which recommendation should change." data-turn-comment></textarea>
+                <button type="button" class="text-button" data-plan-comment-cancel>Cancel comment</button>
+              </div>
+              <div class="turn-actions context-actions">
                 <button type="submit" name="decision" value="approve" class="primary-button" data-submit-button data-plan-response-submit>Apply recommendations <span aria-hidden="true">→</span></button>
-                <a class="secondary-button" href="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" download="{{ record.asset_name|lower|replace(' ', '-') }}-current.glb">Download this version</a>
+                <button type="button" class="secondary-button" aria-expanded="false" aria-controls="hosted-plan-comment" data-plan-comment-toggle>Add comment…</button>
+                <a class="secondary-button" href="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" download="{{ record.asset_name|lower|replace(' ', '-') }}-current.glb">Download current</a>
               </div>
             {% else %}
               <button type="submit" name="decision" value="reject" class="secondary-button" data-submit-button>Reject</button>
@@ -191,26 +190,7 @@
         {% endif %}
 
         {% if record.phase.value != 'TARGET_CONFIRMATION' and (comparison_scene or (job and job.result)) %}
-          <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="current-{{ refine_iteration }}" aria-label="Current 3D state">
-            <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="current-{{ refine_iteration }}">
-              {% if comparison_scene %}
-                {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
-                {% if not comparison_source_only %}
-                  {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}{% else %}{% set comparison_after_url = url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) %}{% endif %}
-                {% endif %}
-                {% include "_model_comparison.html" %}
-              {% else %}
-                <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
-                  <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
-                    <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
-                  </article>
-                  {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
-                    <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
-                  </article>{% endif %}
-                </div>
-              {% endif %}
-            </div>
-          </div>
+          <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="current-{{ refine_iteration }}" aria-label="Current 3D state"></div>
         {% endif %}
 
         {% if job and job.result and cannot_repair %}
@@ -233,11 +213,9 @@
               </div>
             </div>
           </section>
-        {% elif job and job.result %}
-          <section class="result-review" aria-labelledby="{% if record.accepted %}hosted-result-accepted-title{% else %}hosted-result-review-title{% endif %}" data-result-review>
-            {% if not record.accepted %}
-              <div class="result-review-question" data-result-question>
-              <p class="decision-question" id="hosted-result-review-title" data-result-title>Did we get it right?</p>
+        {% elif job and job.result and not record.accepted %}
+          <section class="result-review" aria-label="Choose the next step" data-result-review>
+            <div class="result-review-question" data-result-question>
               <div class="result-review-actions">
                 {% if comparison_scene and not workspace.ready_candidate %}
                   <a class="secondary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download title="Automated verification rejected this candidate; download it for human review">Download candidate</a>
@@ -245,11 +223,11 @@
                 <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-result-accept>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
                   <input type="hidden" name="decision" value="accept">
-                  <button type="submit" class="primary-button">Yes</button>
+                  <button type="submit" class="primary-button">Use this version</button>
                 </form>
                 {% if can_continue %}
                   <details>
-                    <summary class="secondary-button">No</summary>
+                    <summary class="secondary-button">Refine…</summary>
                     <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
                       <input type="hidden" name="command_id" value="{{ command_id }}">
                       <input type="hidden" name="decision" value="continue">
@@ -258,17 +236,16 @@
                         {% if has_candidate %}<option value="candidate">Candidate</option>{% endif %}
                         <option value="input">Current iteration</option>
                       </select>
-                      <label for="hosted-repair-feedback">What still needs attention?</label>
-                      <textarea id="hosted-repair-feedback" name="feedback" maxlength="1000" required></textarea>
-                      <button type="submit" class="secondary-button" data-submit-button>Start refinement</button>
+                      <label for="hosted-repair-feedback">What should Asset Shepherd change?</label>
+                      <textarea id="hosted-repair-feedback" name="feedback" maxlength="1000" placeholder="Describe the outcome you want from the next iteration." required></textarea>
+                      <button type="submit" class="primary-button" data-submit-button>Start refining</button>
                     </form>
                   </details>
                 {% elif job.agent_orchestrated and turns_remaining <= 0 %}
                   <span class="limit-note">Turn limit reached</span>
                 {% endif %}
               </div>
-              </div>
-            {% endif %}
+            </div>
           </section>
         {% endif %}
 
@@ -295,6 +272,29 @@
         {% endif %}
 
       </main>
+      <aside class="evidence-sidebar" aria-label="Current 3D model" data-notebook-scene-host>
+        <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="{% if record.phase.value == 'TARGET_CONFIRMATION' %}upload{% else %}current-{{ refine_iteration }}{% endif %}">
+          {% if record.phase.value == 'TARGET_CONFIRMATION' and comparison_scene %}
+            {% set comparison_source_url = url_for('hosted_original_source_asset', workspace_id=record.workspace_id) %}
+            {% include "_model_comparison.html" %}
+          {% elif record.phase.value != 'TARGET_CONFIRMATION' and comparison_scene %}
+            {% set comparison_source_url = url_for('hosted_source_asset', workspace_id=record.workspace_id) %}
+            {% if not comparison_source_only %}
+              {% if comparison_candidate_ready %}{% set comparison_after_url = url_for('hosted_repaired_asset', workspace_id=record.workspace_id) %}{% else %}{% set comparison_after_url = url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) %}{% endif %}
+            {% endif %}
+            {% include "_model_comparison.html" %}
+          {% elif record.phase.value != 'TARGET_CONFIRMATION' and job and job.result %}
+            <div class="preview-grid{% if not workspace.ready_candidate %} single{% endif %}">
+              <article class="preview-card"><div class="preview-label"><strong>Uploaded model</strong><span>Input</span></div>
+                <model-viewer src="{{ url_for('hosted_source_asset', workspace_id=record.workspace_id) }}" alt="Uploaded model" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+              </article>
+              {% if workspace.ready_candidate %}<article class="preview-card after-card"><div class="preview-label"><strong>Candidate</strong><span>Verified</span></div>
+                <model-viewer src="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" alt="Verified candidate asset" camera-controls auto-rotate environment-image="neutral"></model-viewer>
+              </article>{% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </aside>
     </div>
 
     <dialog class="job-contract-dialog" data-job-contract-dialog aria-labelledby="contract-heading">

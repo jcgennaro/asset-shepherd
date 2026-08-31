@@ -34,20 +34,19 @@
 {%- endmacro %}
 
 {% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="", activity_step="", activity_label="") -%}
-  <section class="confirmation-question" aria-labelledby="{{ question_id }}" data-confirmation-decision>
-    <p class="decision-question" id="{{ question_id }}">Did I get it right?</p>
+  <section class="confirmation-question" aria-label="Choose the next step" data-confirmation-decision>
     <div class="confirmation-actions">
       <form action="{{ confirm_url }}" method="post" data-busy-form{% if activity_url %} data-activity-url="{{ activity_url }}"{% endif %}{% if activity_step %} data-activity-step="{{ activity_step }}"{% endif %}{% if activity_label %} data-activity-label="{{ activity_label }}"{% endif %}>
         {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
         {% if accept_supported_goal %}<input type="hidden" name="accept_supported_goal" value="true">{% endif %}
-        <button class="primary-button" type="submit" data-submit-button>Yes</button>
+        <button class="primary-button" type="submit" data-submit-button>Start shepherding</button>
       </form>
       <details class="intent-adjust">
-        <summary>No</summary>
+        <summary>Change target…</summary>
         <form action="{{ revise_url }}" method="post" class="intent-form" data-busy-form>
           {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
           {{ asset_description(description) }}
-          <button class="secondary-button" type="submit" data-submit-button>Try again</button>
+          <button class="primary-button" type="submit" data-submit-button>Update target</button>
         </form>
       </details>
     </div>

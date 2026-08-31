@@ -298,22 +298,31 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
 for (const form of document.querySelectorAll("[data-plan-response-form]")) {
   const submit = form.querySelector("[data-plan-response-submit]");
   const turnComment = form.querySelector("[data-turn-comment]");
+  const commentToggle = form.querySelector("[data-plan-comment-toggle]");
+  const commentCancel = form.querySelector("[data-plan-comment-cancel]");
+  const commentPanel = form.querySelector("[data-plan-comment-panel]");
   const dispositions = Array.from(
     document.querySelectorAll(`[form="${form.id}"][data-proposal-disposition]`),
   );
+  let commentOpen = false;
   const sync = () => {
-    let requestsRevision = false;
+    let hasStructuredRevision = false;
     for (const disposition of dispositions) {
-      requestsRevision ||= disposition.value !== "accept";
+      hasStructuredRevision ||= disposition.value !== "accept";
     }
-    if (turnComment instanceof HTMLTextAreaElement && turnComment.value.trim()) {
-      requestsRevision = true;
-    }
+    const hasComment =
+      turnComment instanceof HTMLTextAreaElement && Boolean(turnComment.value.trim());
+    const requestsRevision = hasStructuredRevision || hasComment || commentOpen;
     if (submit instanceof HTMLButtonElement) {
       submit.value = requestsRevision ? "revise" : "approve";
+      submit.disabled = commentOpen && !hasStructuredRevision && !hasComment;
       const label = submit.firstChild;
       if (label) {
-        label.textContent = requestsRevision ? "Send revision " : "Apply recommendations ";
+        label.textContent = commentOpen
+          ? "Send feedback "
+          : requestsRevision
+            ? "Send selected changes "
+            : "Apply recommendations ";
       }
     }
   };
@@ -322,6 +331,33 @@ for (const form of document.querySelectorAll("[data-plan-response-form]")) {
   }
   if (turnComment instanceof HTMLTextAreaElement) {
     turnComment.addEventListener("input", sync);
+  }
+  if (commentToggle instanceof HTMLButtonElement && commentPanel instanceof HTMLElement) {
+    commentToggle.addEventListener("click", () => {
+      commentOpen = true;
+      commentPanel.hidden = false;
+      commentToggle.hidden = true;
+      commentToggle.setAttribute("aria-expanded", "true");
+      turnComment?.focus();
+      sync();
+    });
+  }
+  if (
+    commentCancel instanceof HTMLButtonElement &&
+    commentToggle instanceof HTMLButtonElement &&
+    commentPanel instanceof HTMLElement
+  ) {
+    commentCancel.addEventListener("click", () => {
+      if (turnComment instanceof HTMLTextAreaElement) {
+        turnComment.value = "";
+      }
+      commentOpen = false;
+      commentPanel.hidden = true;
+      commentToggle.hidden = false;
+      commentToggle.setAttribute("aria-expanded", "false");
+      sync();
+      commentToggle.focus();
+    });
   }
   sync();
 }
@@ -1115,8 +1151,9 @@ initializeRenderedScene(document);
 
 function initializeSceneNotebook(notebook) {
   const sharedScene = notebook.querySelector("[data-notebook-shared-scene]");
+  const sceneHost = notebook.querySelector("[data-notebook-scene-host]");
   const slots = [...notebook.querySelectorAll("[data-notebook-scene-slot]")];
-  if (!sharedScene || slots.length < 2) {
+  if (!sharedScene || !sceneHost || !slots.length) {
     return;
   }
 
@@ -1133,7 +1170,8 @@ function initializeSceneNotebook(notebook) {
     sharedScene.innerHTML = html;
     sharedScene.dataset.sceneKey = key;
     sharedScene.removeAttribute("aria-busy");
-    sharedScene.closest("[data-notebook-scene-slot]")?.classList.remove("loading");
+    sceneHost.classList.remove("loading");
+    slots.find((slot) => slot.dataset.sceneKey === key)?.classList.remove("loading");
     initializeRenderedScene(sharedScene);
   }
 
@@ -1149,6 +1187,7 @@ function initializeSceneNotebook(notebook) {
     }
     const sequence = ++requestSequence;
     sharedScene.setAttribute("aria-busy", "true");
+    sceneHost.classList.add("loading");
     slot.classList.add("loading");
     try {
       const response = await fetch(sceneUrl, {
@@ -1167,6 +1206,7 @@ function initializeSceneNotebook(notebook) {
         return;
       }
       sharedScene.removeAttribute("aria-busy");
+      sceneHost.classList.remove("loading");
       slot.classList.remove("loading");
       sharedScene.innerHTML =
         '<p class="notebook-scene-error" role="alert">This saved 3D state could not be loaded.</p>';
@@ -1178,8 +1218,7 @@ function initializeSceneNotebook(notebook) {
     if (!key || key === activeKey) {
       return;
     }
-    const previousSlot = sharedScene.closest("[data-notebook-scene-slot]");
-    const targetTop = slot.getBoundingClientRect().top;
+    const previousSlot = slots.find((candidate) => candidate.classList.contains("active"));
     if (activeKey && !sceneCache.has(activeKey)) {
       sceneCache.set(activeKey, sharedScene.innerHTML);
     }
@@ -1187,14 +1226,9 @@ function initializeSceneNotebook(notebook) {
     previousSlot?.removeAttribute("aria-current");
     slot.classList.add("active");
     slot.setAttribute("aria-current", "true");
-    slot.append(sharedScene);
     activeKey = key;
     for (const link of sceneLinks) {
       link.closest("li")?.classList.toggle("scene-current", link.dataset.notebookSceneLink === key);
-    }
-    const movedTop = slot.getBoundingClientRect().top;
-    if (Math.abs(movedTop - targetTop) > 1) {
-      window.scrollBy({ top: movedTop - targetTop, behavior: "auto" });
     }
     loadScene(slot, key);
   }
@@ -1205,7 +1239,7 @@ function initializeSceneNotebook(notebook) {
     let nearest = slots[0];
     let nearestDistance = Number.POSITIVE_INFINITY;
     for (const slot of slots) {
-      const bounds = slot.getBoundingClientRect();
+      const bounds = (slot.closest(".workflow-cell") || slot).getBoundingClientRect();
       const distance = Math.abs(bounds.top + bounds.height / 2 - viewportCenter);
       if (distance < nearestDistance) {
         nearest = slot;
@@ -1221,7 +1255,8 @@ function initializeSceneNotebook(notebook) {
     }
   }
 
-  const initialSlot = sharedScene.closest("[data-notebook-scene-slot]");
+  const initialSlot = slots.find((slot) => slot.dataset.sceneKey === activeKey) || slots[0];
+  initialSlot.classList.add("active");
   initialSlot?.setAttribute("aria-current", "true");
   for (const link of sceneLinks) {
     link

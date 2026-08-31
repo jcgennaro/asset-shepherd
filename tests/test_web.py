@@ -439,9 +439,8 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     assert "source content preserved" not in review.text.lower()
     assert 'name="target_use"' not in review.text
     assert 'name="target_height_m"' not in review.text
-    assert "Did I get it right?" in review.text
-    assert ">Yes</button>" in review.text
-    assert "<summary>No</summary>" in review.text
+    assert "Start shepherding" in review.text
+    assert "<summary>Change target…</summary>" in review.text
     assert "Yes, inspect this asset" not in review.text
     assert "No, edit and try again" not in review.text
     assert 'textarea class="asset-description-input"' in review.text
@@ -646,7 +645,7 @@ def test_semantic_intake_proposes_and_allows_adjustment_without_duplicate_questi
     assert "Static game asset" in proposal.text
     assert "600 x 800 x 500 m" in proposal.text
     assert "quick answer" not in proposal.text
-    assert "<summary>No</summary>" in proposal.text
+    assert "<summary>Change target…</summary>" in proposal.text
     assert "Show inference evidence" not in proposal.text
     assert "A mountain is an environmental feature." in proposal.text
     assert "1 expected semantic piece" in proposal.text
@@ -1199,7 +1198,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'notebook.querySelector("[data-notebook-shared-scene]")' in script.text
     assert 'window.addEventListener("scroll", scheduleSelection' in script.text
     assert "const viewportCenter = window.innerHeight / 2" in script.text
-    assert "slot.append(sharedScene)" in script.text
+    assert 'notebook.querySelector("[data-notebook-scene-host]")' in script.text
+    assert "slot.append(sharedScene)" not in script.text
+    assert 'sceneHost.classList.add("loading")' in script.text
 
     comparison_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"
@@ -1225,6 +1226,12 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "notebook-intake-message" in workspace_template
     assert "data-notebook-shared-scene" in workspace_template
     assert "hosted_turn_scene" in workspace_template
+    assert "Apply recommendations" in workspace_template
+    assert "Add comment…" in workspace_template
+    assert "Download current" in workspace_template
+    assert "data-plan-comment-panel hidden" in workspace_template
+    assert "Use this version" in workspace_template
+    assert ">Refine…</summary>" in workspace_template
 
     checklist_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"

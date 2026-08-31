@@ -145,9 +145,21 @@ user's structured/freeform decision, the agent outcome, the resulting model stat
 continuation request. Acceptance appends a Download outcome cell. New information is appended below
 prior information; completing a phase never replaces its input or proposal. Editing Upload or
 Describe stages a replacement and restarts dependent work from that boundary only after the edited
-input validates. The workflow rail scrolls to notebook entries. Only the scene nearest the viewport
-center owns the one live 3D viewer, so history remains inspectable without running several renderers
-at once.
+input validates. The workflow rail scrolls to notebook entries. User messages align right and Asset
+Shepherd messages align left. The one live 3D viewer remains in a sticky evidence column; the
+notebook entry nearest the viewport center selects which immutable iteration it displays. This keeps
+history and the relevant model visible together without running or moving several renderers.
+
+The interface exposes typed next actions rather than a universal composer. Immediate transitions do
+not create an invented freeform feedback turn: target confirmation starts the initial workflow from
+the confirmed contract, while accepting the current version invokes no model. A target correction
+reveals its description field; a plan may be applied unchanged, altered through
+structured choices, or supplemented by one revealed comment; and Refine reveals one outcome comment
+plus the immutable input/candidate choice. The server serializes those responses as typed turn
+envelopes. `PLAN_REVISION` is a non-mutating request for a fresh supported proposal.
+`RESULT_REFINEMENT` makes the selected iteration the sole new input, requires fresh sensing, and
+requires fresh approval for every consequential action. The agent must not infer an absent comment,
+repeat an already completed repair, or call tools for interface-only transitions.
 
 World bounds are calculated from positions actually referenced by surviving primitive indices, not
 from every tuple stored in a POSITION accessor. Therefore exact component deletion immediately

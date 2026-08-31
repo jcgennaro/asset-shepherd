@@ -12,6 +12,7 @@ from asset_shepherd.agent_prompt import (
     AGENT_SYSTEM_PROMPT_V12,
     AGENT_SYSTEM_PROMPT_V13,
     AGENT_SYSTEM_PROMPT_V14,
+    AGENT_SYSTEM_PROMPT_V15,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -54,7 +55,7 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
 
 def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 14
+    assert AGENT_PROMPT_VERSION == 15
     assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V12
     assert "source +Y" in AGENT_SYSTEM_PROMPT_V9
     assert "Do not request no-op" in AGENT_SYSTEM_PROMPT_V9
@@ -99,6 +100,15 @@ def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
     assert "remain user-selectable" in AGENT_SYSTEM_PROMPT_V14
     assert "request for a fresh supported removal proposal" in AGENT_SYSTEM_PROMPT_V14
     assert CONTENT_REFUSAL_MESSAGE in AGENT_SYSTEM_PROMPT_V14
+
+
+def test_v15_routes_typed_conversation_actions() -> None:
+    """The active prompt distinguishes no-input transitions from feedback turns."""
+    assert "PLAN_REVISION" in AGENT_SYSTEM_PROMPT_V15
+    assert "RESULT_REFINEMENT" in AGENT_SYSTEM_PROMPT_V15
+    assert "sole new input" in AGENT_SYSTEM_PROMPT_V15
+    assert "approved=true" in AGENT_SYSTEM_PROMPT_V15
+    assert "initial start prompt" in AGENT_SYSTEM_PROMPT_V15
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

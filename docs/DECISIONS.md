@@ -4,6 +4,54 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D082 — Present the notebook as a typed conversation with contextual actions
+
+**Date:** 2026-08-30
+
+**Status:** ACCEPTED; conversation layout, evidence sidebar, and action routing implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The full-lifecycle notebook preserved history, but its wide cells still read like stacked forms.
+The 3D scene occupied whichever notebook cell was active, the approval composer was always visible,
+and generic Yes/No or submit controls forced the user to translate the current workflow state into
+the right kind of response. This obscured the distinction between an immediate transition and a
+turn that actually needs new user context.
+
+**Decision**
+
+Render the notebook as a conversation: user messages align right, Asset Shepherd messages align
+left, and inspection results remain attached to the relevant Shepherd turn. Keep one live 3D scene
+in a sticky right evidence column; scrolling changes the immutable iteration displayed there but
+never moves or duplicates the renderer. Collapse the evidence column above the transcript when the
+available width cannot support both readable regions.
+
+Expose only context-dependent next actions. Target confirmation offers **Start shepherding** or
+**Change target…**. A pending plan offers **Apply recommendations**, structured Keep/Remove choices,
+**Add comment…**, and **Download current**; the comment area is absent until requested. A completed
+iteration offers **Use this version**, **Refine…**, and the relevant download. Immediate transitions
+do not invent a freeform feedback turn: target confirmation starts the initial agent workflow from
+the confirmed contract, while accepting or downloading invokes no model. Feedback actions produce
+typed `PLAN_REVISION` or `RESULT_REFINEMENT` envelopes; prompt v15 tells the agent how to reconcile
+each envelope, select tools, preserve the chosen immutable input, request fresh approval, or stop
+honestly when unsupported.
+
+**Evidence and consequences**
+
+Browser acceptance on saved workspace `49384ee553284bd4b5bfc9bdc3b79bdd` shows Upload, Describe, and
+Shepherd as alternating left/right messages with one sticky labeled-component scene. The inspection
+attachment uses a readable stacked lane layout at narrower desktop widths. **Add comment…** reveals
+one multi-row composer and changes the primary action to **Send feedback**; unchanged structured
+defaults remain one-click **Apply recommendations**. Focused prompt, hosted-route, script, and visual
+contract tests pass. The common gate passes with 206 tests, two opt-in live skips, lock validation,
+Ruff, formatting, JavaScript syntax validation, and zero Pyright findings. This supersedes D079's
+always-visible wide composer and movable scene host without changing its atomic feedback,
+authorization, or immutable-history rules.
+
 ### D081 — Make the entire asset lifecycle one editable, append-only notebook
 
 **Date:** 2026-08-30

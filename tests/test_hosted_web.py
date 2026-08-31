@@ -262,6 +262,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "<h3" not in describe.text
     assert 'class="model-comparison source-only"' in describe.text
     assert describe.text.count("<model-viewer") == 1
+    assert 'class="evidence-sidebar"' in describe.text
+    assert "data-notebook-scene-host" in describe.text
     assert f"{describe_path.rsplit('/describe', 1)[0]}/source.glb" in describe.text
     assert describe.text.count('data-comparison-target="before"') == 1
     assert 'data-comparison-target="after"' not in describe.text
@@ -290,12 +292,13 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert measured.status_code == 200
     assert "shepherd this for Unspecified endpoint within 1.8 x 1.8 x 1.8 m." in measured.text
     assert measured.text.count('class="expectation-group"') == 3
-    assert "Did I get it right?" in measured.text
-    assert "<summary>No</summary>" in measured.text
-    assert ">Yes</button>" in measured.text
+    assert "Start shepherding" in measured.text
+    assert "<summary>Change target…</summary>" in measured.text
     assert 'textarea class="asset-description-input"' in measured.text
     assert 'class="asset-description-field"' in measured.text
     assert "data-confirmation-decision" in measured.text
+    assert 'class="evidence-sidebar"' in measured.text
+    assert "data-notebook-scene-host" in measured.text
     assert "&amp;amp;" not in measured.text
     assert "Job details" in measured.text
     assert 'class="model-comparison source-only"' in measured.text
@@ -386,7 +389,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert completed.text.count("!→✓") == 2
     assert "Addressed —" in completed.text
     assert "Applied —" in completed.text
-    assert "Did we get it right?" in completed.text
+    assert "Use this version" in completed.text
     assert "data-result-accepted hidden" in completed.text
     assert 'id="notebook-download"' in completed.text
     assert "Download fixed model" in completed.text
@@ -417,7 +420,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     )
     assert accepted.status_code == 204
     accepted_page = restarted.get(workspace_path)
-    assert "Did we get it right?" not in accepted_page.text
+    assert "Use this version" not in accepted_page.text
     assert "data-result-accepted hidden" not in accepted_page.text
     assert "The current version is ready to download." in accepted_page.text
     assert accepted_page.text.index("data-current-workflow-cell") < accepted_page.text.index(
@@ -476,7 +479,7 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     assert answered.status_code == 303
     proposal = client.get(workspace_path)
     assert "within 0.8 x 1.8 x 0.6 m." in proposal.text
-    assert "<summary>No</summary>" in proposal.text
+    assert "<summary>Change target…</summary>" in proposal.text
     assert proposal.text.count('class="expectation-group"') == 3
     assert "1 expected semantic piece" in proposal.text
     assert "valid GLB required" not in proposal.text
@@ -637,7 +640,7 @@ def test_workspace_gallery_names_and_resumes_isolated_asset_state(tmp_path: Path
     resumed_first = client.get(created_paths[0])
     resumed_second = client.get(created_paths[1])
     assert "Approve" in resumed_first.text
-    assert "Did I get it right?" in resumed_second.text
+    assert "Start shepherding" in resumed_second.text
     assert ">Gallery</a>" in resumed_first.text
 
 
@@ -797,7 +800,7 @@ def test_rejected_candidate_remains_downloadable_before_human_acceptance(
     assert "Action taken" in result.text
     assert "Attempted — verification did not confirm" in result.text
     assert "!→✓" not in result.text
-    assert "Did we get it right?" in result.text
+    assert "Use this version" in result.text
     assert "Download candidate" in result.text
     assert "data-result-accepted hidden" in result.text
     candidate = client.get(f"{workspace_path}/candidate-preview.glb")
