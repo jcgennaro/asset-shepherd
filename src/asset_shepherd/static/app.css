@@ -3689,6 +3689,117 @@ model-viewer {
   margin: 0 auto;
 }
 
+.workflow-notebook,
+.single-step.workflow-notebook,
+.describe-step.workflow-notebook {
+  display: grid;
+  width: min(1120px, 100%);
+  min-height: auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  align-content: start;
+  gap: 30px;
+  padding: clamp(8px, 2vw, 24px) 0 64px;
+}
+
+.workflow-cell {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  padding: 0 0 30px;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+
+.workflow-cell:last-child {
+  border-bottom: 0;
+}
+
+.workflow-cell-header {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.workflow-cell-header > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.86rem;
+}
+
+.workflow-cell.current > .workflow-cell-header {
+  color: var(--text);
+}
+
+.workflow-cell.current > .workflow-cell-header > span {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.notebook-cell-edit,
+.workflow-cell-header > form {
+  margin-left: auto;
+}
+
+.notebook-cell-edit > summary,
+.notebook-edit-button {
+  padding: 4px 0;
+  border: 0;
+  color: var(--accent-cool);
+  background: transparent;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.notebook-cell-edit[open] {
+  width: min(520px, 100%);
+}
+
+.notebook-cell-edit[open] > summary {
+  margin-bottom: 10px;
+  text-align: right;
+}
+
+.notebook-cell-edit form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.compact-file-replacement {
+  display: flex;
+  min-width: min(280px, 100%);
+  flex: 1;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.compact-file-replacement input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
 .single-step-form {
   display: grid;
   gap: 18px;

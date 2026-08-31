@@ -138,12 +138,16 @@ and optional metric axes or banana reference. During tool work, that context rem
 orbits slowly unless reduced motion is requested. Download remains an outcome rather than a fifth
 step.
 
-The workspace itself is an append-only conversation notebook. It retains the intake description and
-then, for every pass, the agent proposal, the user's structured/freeform decision, the agent outcome,
-the resulting model state, and any continuation request. New information is appended below prior
-information; completing a pass never replaces its proposal. The workflow rail scrolls to notebook
-entries. Only the scene nearest the viewport center owns the one live 3D viewer, so history remains
-inspectable without running several renderers at once.
+The workspace itself is an editable, append-only conversation notebook spanning the entire asset
+lifecycle. It retains the Upload cell and its objective parse result; the user's Describe cell,
+agent-authored target, and confirmation; and, for every Shepherd or Refine pass, the proposal, the
+user's structured/freeform decision, the agent outcome, the resulting model state, and any
+continuation request. Acceptance appends a Download outcome cell. New information is appended below
+prior information; completing a phase never replaces its input or proposal. Editing Upload or
+Describe stages a replacement and restarts dependent work from that boundary only after the edited
+input validates. The workflow rail scrolls to notebook entries. Only the scene nearest the viewport
+center owns the one live 3D viewer, so history remains inspectable without running several renderers
+at once.
 
 World bounds are calculated from positions actually referenced by surviving primitive indices, not
 from every tuple stored in a POSITION accessor. Therefore exact component deletion immediately

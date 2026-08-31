@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-30
-**Current commit:** Append-only shared-scene notebook and provider-end completion recovery (this file is included)
+**Current commit:** Full-lifecycle editable notebook (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,15 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D081 full-lifecycle notebook: Upload and its parse result, Describe and confirmed target,
+  Shepherd, every Refine iteration, and Download now render as one chronological workspace instead
+  of page-replacement steps. Upload and Describe expose scoped edits; invalid replacement uploads
+  preserve the prior staged asset, while a valid replacement restarts dependent work from Describe.
+  The exact saved workspace `4bb293f48f86476a9ae08fdadee4fb1b` reconstructs Upload, Describe,
+  Shepherd, and Refine 4.1 in order with three lazy scene slots and exactly one live 3D viewer.
+  Acceptance reveals a separate appended Download cell without a page reload. The full gate passes
+  with 205 tests, two opt-in live skips, lock validation, Ruff, formatting, and zero Pyright findings.
 
 - D080 append-only notebook and bounded completion recovery: the exact successful Kimi riding-crop
   run `91b21e479f914f80888c266d473b06d4` ended after recording a positive candidate reassessment but

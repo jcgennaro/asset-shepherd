@@ -19,8 +19,8 @@
         </div>
         {% if workflow_active %}
           <ol class="hosted-flow" aria-label="Workflow steps">
-            <li class="{% if hosted_step == 'upload' or active_mode == 'intake' %}active{% endif %}"><span>1</span><strong>Upload</strong></li>
-            <li class="{% if hosted_step == 'describe' or active_mode in ['describe', 'confirm'] %}active{% endif %}"><span>2</span><strong>Describe</strong></li>
+            <li class="{% if hosted_step == 'upload' or active_mode == 'intake' %}active{% endif %}">{% if hosted_step in ['upload', 'describe', 'shepherd', 'refine'] %}<a class="workflow-anchor" href="#notebook-upload">{% endif %}<span>1</span><strong>Upload</strong>{% if hosted_step in ['upload', 'describe', 'shepherd', 'refine'] %}</a>{% endif %}</li>
+            <li class="{% if hosted_step == 'describe' or active_mode in ['describe', 'confirm'] %}active{% endif %}">{% if hosted_step in ['describe', 'shepherd', 'refine'] %}<a class="workflow-anchor" href="#notebook-describe">{% endif %}<span>2</span><strong>Describe</strong>{% if hosted_step in ['describe', 'shepherd', 'refine'] %}</a>{% endif %}</li>
             <li class="{% if hosted_step == 'shepherd' or active_mode in ['inspect', 'decide', 'download'] %}active{% endif %}">{% if hosted_step in ['shepherd', 'refine'] %}<a class="workflow-anchor" href="{% if refine_iteration|default(0) > 0 %}#turn-1{% else %}#current-turn{% endif %}" data-notebook-scene-link="{% if refine_iteration|default(0) > 0 %}turn-0{% else %}current-0{% endif %}">{% endif %}<span>3</span><strong>Shepherd</strong>{% if hosted_step in ['shepherd', 'refine'] %}</a>{% endif %}</li>
             <li class="refine-step{% if hosted_step == 'refine' %} active{% endif %}"><span>4</span><strong>Refine</strong>
               {% if refine_iteration|default(0) > 0 %}

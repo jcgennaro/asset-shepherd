@@ -1058,6 +1058,34 @@ def _display_dimensions_m(dimensions_m: tuple[float, float, float]) -> str:
     return f"{values[0]:.3g} x {values[1]:.3g} x {values[2]:.3g} {unit}"
 
 
+def _uploaded_asset_summary(
+    dimensions_m: tuple[float, float, float] | None,
+    triangle_count: int | None = None,
+) -> str:
+    """Describe the objective upload result as one notebook sentence."""
+    if dimensions_m is None:
+        return "The GLB parsed successfully."
+    summary = f"The GLB parsed successfully at {_display_dimensions_m(dimensions_m)}"
+    if triangle_count is not None:
+        summary += f" with {triangle_count:,} triangles"
+    return summary + "."
+
+
+def _target_notebook_sentence(target: TargetIntakeContract | None) -> str | None:
+    """Return the agent's persisted target proposal without regenerating it."""
+    if target is None or not target.ready_for_confirmation:
+        return None
+    assert target.endpoint is not None
+    assert target.target_dimensions_cm is not None
+    endpoint = (
+        target.endpoint_detail
+        if target.endpoint is AssetEndpoint.OTHER
+        else ENDPOINT_LABELS[target.endpoint]
+    )
+    bounds = _display_target_bounds(target.target_dimensions_cm)
+    return f"I\u2019d shepherd this for {endpoint} within {bounds}."
+
+
 UNIVERSAL_EXPECTATIONS: tuple[tuple[str, str], ...] = (
     (
         "Readable structure",
@@ -3260,6 +3288,7 @@ def create_app(
         refusal: bool = False,
     ) -> Response:
         """Render the description step after one GLB has passed objective preflight."""
+        source_scene = _source_scene(draft.source_path) if draft else None
         return templates.TemplateResponse(
             request=request,
             name="hosted_describe.html",
@@ -3268,7 +3297,12 @@ def create_app(
                 "refusal": refusal,
                 "description": description or (draft.initial_description if draft else ""),
                 "draft": draft,
-                "comparison_scene": _source_scene(draft.source_path) if draft else None,
+                "comparison_scene": source_scene,
+                "upload_summary": (
+                    _uploaded_asset_summary(source_scene.before.dimensions_m)
+                    if source_scene is not None
+                    else None
+                ),
                 "comparison_source_url": (
                     request.url_for("hosted_draft_source_asset", draft_id=draft.draft_id)
                     if draft
@@ -3373,6 +3407,7 @@ def create_app(
             and runtime_job.agent_assessment is not None
             and runtime_job.agent_assessment.disposition is AgentDisposition.RETURN_TO_CREATION_TOOL
         )
+        preflight_geometry = workspace.record.preflight.geometry
         return templates.TemplateResponse(
             request=request,
             name="hosted_workspace.html",
@@ -3410,6 +3445,11 @@ def create_app(
                 "finding_groups": tuple(finding_groups),
                 "policy_rules": policy_rules,
                 "target_draft": workspace.record.target_draft,
+                "upload_summary": _uploaded_asset_summary(
+                    preflight_geometry.bounds.dimensions_m if preflight_geometry else None,
+                    preflight_geometry.triangle_count if preflight_geometry else None,
+                ),
+                "target_notebook_sentence": _target_notebook_sentence(target_draft),
                 "expectation_groups": expectation_groups,
                 "basis_labels": BASIS_LABELS,
                 "target_use_label": (
@@ -4089,9 +4129,20 @@ def create_app(
         request: Request,
         asset: Annotated[UploadFile, File()],
         replace_workspace_id: Annotated[str | None, Form()] = None,
+        replace_draft_id: Annotated[str | None, Form()] = None,
         agent_model: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Validate and stage one GLB, then advance to description."""
+        replaced_draft: HostedStartDraft | None = None
+        if replace_draft_id:
+            try:
+                replaced_draft = require_hosted_start_draft(replace_draft_id)
+            except HostedWorkspaceError as draft_error:
+                asset.file.close()
+                return render_hosted_upload(request, str(draft_error), status_code=404)
+            replace_workspace_id = replaced_draft.replace_workspace_id
+            if agent_model is None:
+                agent_model = replaced_draft.model_id
         valid, error = _validate_hosted_replacement(replace_workspace_id)
         if not valid:
             asset.file.close()
@@ -4146,6 +4197,8 @@ def create_app(
             persist_hosted_start_draft(draft)
             with hosted_start_lock:
                 hosted_start_drafts[draft_id] = draft
+            if replaced_draft is not None:
+                discard_hosted_start_draft(replaced_draft)
         except (HostedWorkspaceError, ValueError, OSError) as upload_error:
             source_path.unlink(missing_ok=True)
             if draft_root.is_dir():
@@ -4658,6 +4711,43 @@ def create_app(
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
+    def hosted_original_source_asset(workspace_id: str) -> Response:
+        """Serve the immutable R0 upload for its historical notebook cell."""
+        source_path = hosted_store.original_source_path(workspace_id)
+        if source_path is None:
+            return Response(status_code=404)
+        return FileResponse(
+            source_path,
+            media_type="model/gltf-binary",
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        )
+
+    def hosted_source_scene(request: Request, workspace_id: str) -> Response:
+        """Render the uploaded notebook state only when that earlier cell becomes active."""
+        source_path = hosted_store.original_source_path(workspace_id)
+        if source_path is None:
+            return Response(status_code=404)
+        try:
+            scene = _source_scene(source_path)
+        except (OSError, ValueError):
+            return Response(status_code=404)
+        return templates.TemplateResponse(
+            request=request,
+            name="_model_comparison.html",
+            context={
+                "comparison_scene": scene,
+                "comparison_candidate_ready": False,
+                "comparison_source_only": True,
+                "comparison_before_label": "Uploaded model",
+                "comparison_after_label": "",
+                "comparison_source_url": request.url_for(
+                    "hosted_original_source_asset",
+                    workspace_id=workspace_id,
+                ),
+            },
+            headers={"Cache-Control": "private, no-store"},
+        )
+
     def hosted_turn_asset(workspace_id: str, turn_index: int) -> Response:
         """Serve the immutable hash-bound output of one completed notebook turn."""
         source_path = hosted_store.archived_turn_output_path(workspace_id, turn_index)
@@ -4984,6 +5074,19 @@ def create_app(
         hosted_source_asset,
         methods=["GET"],
         name="hosted_source_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/uploaded.glb",
+        hosted_original_source_asset,
+        methods=["GET"],
+        name="hosted_original_source_asset",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/source-scene",
+        hosted_source_scene,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="hosted_source_scene",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/turns/{turn_index}/model.glb",

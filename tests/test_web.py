@@ -1211,6 +1211,11 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "hosted_workspace.html"
     ).read_text(encoding="utf-8")
     assert "data-scene-notebook" in workspace_template
+    assert 'id="notebook-upload"' in workspace_template
+    assert 'id="notebook-describe"' in workspace_template
+    assert "target_notebook_sentence" in workspace_template
+    assert "hosted_source_scene" in workspace_template
+    assert "data-current-workflow-cell" in workspace_template
     assert "data-notebook-scene-slot" in workspace_template
     assert "view.proposal_summary" in workspace_template
     assert "view.decision_summary" in workspace_template

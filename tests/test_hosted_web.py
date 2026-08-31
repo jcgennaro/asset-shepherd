@@ -126,6 +126,50 @@ def test_bedrock_upload_rejects_a_model_outside_the_allowlist(
     assert "Choose an available Asset Shepherd model." in response.text
 
 
+def test_describe_notebook_can_replace_its_uploaded_cell_without_losing_a_valid_draft(
+    tmp_path: Path,
+) -> None:
+    """Editing Upload validates the replacement before retiring the prior staged source."""
+    work_root = tmp_path / "jobs"
+    client = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+    uploaded = client.post(
+        "/workspace/new/upload",
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+    old_draft_id = urlparse(uploaded.headers["location"]).path.split("/")[-2]
+    replacement_path = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
+
+    invalid = client.post(
+        "/workspace/new/upload",
+        data={"replace_draft_id": old_draft_id},
+        files={"asset": ("broken.glb", b"not a GLB", "application/octet-stream")},
+    )
+    assert invalid.status_code == 400
+    assert (work_root / "hosted-start" / old_draft_id / "source.glb").is_file()
+
+    replaced = client.post(
+        "/workspace/new/upload",
+        data={"replace_draft_id": old_draft_id},
+        files={
+            "asset": (
+                replacement_path.name,
+                replacement_path.read_bytes(),
+                "model/gltf-binary",
+            )
+        },
+        follow_redirects=False,
+    )
+
+    assert replaced.status_code == 303
+    new_draft_id = urlparse(replaced.headers["location"]).path.split("/")[-2]
+    assert new_draft_id != old_draft_id
+    assert not (work_root / "hosted-start" / old_draft_id).exists()
+    assert (work_root / "hosted-start" / new_draft_id / "source.glb").read_bytes() == (
+        replacement_path.read_bytes()
+    )
+
+
 def _hidden(html: str, name: str) -> str:
     match = re.search(rf'name="{name}" value="([^"]+)"', html)
     assert match is not None
@@ -224,6 +268,14 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert describe.text.count('data-comparison-origin="before"') == 1
     assert 'slot="hotspot-before-origin" data-position="0m 0m 0m"' in describe.text
     assert 'rotation-per-second="4deg"' in describe.text
+    assert 'id="notebook-upload"' in describe.text
+    assert 'id="notebook-describe"' in describe.text
+    assert describe.text.index('id="notebook-upload"') < describe.text.index(
+        'id="notebook-describe"'
+    )
+    assert f"Uploaded {BROKEN_PATH.name}." in describe.text
+    assert "The GLB parsed successfully at" in describe.text
+    assert 'name="replace_draft_id"' in describe.text
 
     created = client.post(
         describe_path,
@@ -251,6 +303,11 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "data-job-contract-dialog" in measured.text
     assert "Rules are derived only after target confirmation." in measured.text
     assert not (work_root / "hosted" / workspace_id / "output").exists()
+    assert measured.text.index('id="notebook-upload"') < measured.text.index(
+        'id="notebook-describe"'
+    )
+    assert f"Uploaded {BROKEN_PATH.name}." in measured.text
+    assert f"{workspace_path}/redo" in measured.text
     command_id = _hidden(measured.text, "command_id")
 
     confirmed = client.post(
@@ -273,6 +330,17 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Approval required" in pending.text
     assert "Display names" in pending.text
     assert "Repair plan" not in pending.text
+    assert "Confirmed the proposed target." in pending.text
+    assert pending.text.index('id="notebook-upload"') < pending.text.index('id="notebook-describe"')
+    assert pending.text.index('id="notebook-describe"') < pending.text.index(
+        "data-current-workflow-cell"
+    )
+    assert f"{workspace_path}/source-scene" in pending.text
+    source_scene = client.get(f"{workspace_path}/source-scene")
+    assert source_scene.status_code == 200
+    assert source_scene.text.count("<model-viewer") == 1
+    assert f"{workspace_path}/uploaded.glb" in source_scene.text
+    assert client.get(f"{workspace_path}/uploaded.glb").content == BROKEN_PATH.read_bytes()
     assert pending.text.count('data-tooltip="') == 5
     assert "The original file remains untouched." not in pending.text
     assert "Ask from recorded evidence" not in pending.text
@@ -318,6 +386,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Applied —" in completed.text
     assert "Did we get it right?" in completed.text
     assert "data-result-accepted hidden" in completed.text
+    assert 'id="notebook-download"' in completed.text
     assert "Download fixed model" in completed.text
     assert "Evidence package" in completed.text
     assert "data-model-comparison" in completed.text
@@ -326,6 +395,13 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert len(offsets) == 2
     assert all("m" not in offset for offset in offsets)
     assert "normal-size 20 cm banana" in completed.text
+    assert "Confirmed the proposed target." in completed.text
+    assert completed.text.index('id="notebook-upload"') < completed.text.index(
+        'id="notebook-describe"'
+    )
+    assert completed.text.index('id="notebook-describe"') < completed.text.index(
+        "data-current-workflow-cell"
+    )
     completed_activity = restarted.get(f"{workspace_path}/activity").json()
     assert completed_activity["state"] == "COMPLETE"
     assert completed_activity["items"][-1]["label"] == "Verifying and packaging the result"
@@ -341,7 +417,10 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     accepted_page = restarted.get(workspace_path)
     assert "Did we get it right?" not in accepted_page.text
     assert "data-result-accepted hidden" not in accepted_page.text
-    assert "Ready to download." in accepted_page.text
+    assert "The current version is ready to download." in accepted_page.text
+    assert accepted_page.text.index("data-current-workflow-cell") < accepted_page.text.index(
+        'id="notebook-download"'
+    )
     assert ">Gallery</a>" in accepted_page.text
 
     archive_response = restarted.get(f"{workspace_path}/download")

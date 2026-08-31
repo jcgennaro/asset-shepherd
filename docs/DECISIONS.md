@@ -4,6 +4,43 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D081 — Make the entire asset lifecycle one editable, append-only notebook
+
+**Date:** 2026-08-30
+
+**Status:** ACCEPTED; full-lifecycle notebook implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The shared-scene notebook originally began at Shepherd. Moving from Upload to Describe replaced the
+upload screen, and confirming the target replaced Describe with Shepherd. This still made the
+workflow feel like a page wizard and hid the evidence and choices that produced the current model.
+
+**Decision**
+
+Represent one asset's complete lifecycle as one chronological notebook: Upload, Describe and target
+confirmation, Shepherd, every Refine iteration, and the final Download outcome. Persisted state is
+reconstructed as cells in that order; advancing appends below instead of replacing earlier cells.
+Upload and Describe remain editable. Editing an earlier cell stages replacement input while keeping
+the saved workspace intact until the replacement validates, then starts the dependent work again
+from that point. Later results are never silently reused after an upstream edit.
+
+Keep the existing workflow outline as navigation into the notebook, not as a second copy of its
+content. Preserve one live 3D renderer: the scene nearest the viewport center owns it and the other
+cells retain lazy placeholders. Acceptance appends a Download cell without reloading the page.
+
+**Evidence and consequences**
+
+The saved multi-turn workspace `4bb293f48f86476a9ae08fdadee4fb1b` renders Upload, Describe,
+Shepherd, and Refine 4.1 in order with the confirmed target and prior decisions retained, three scene
+slots, and exactly one live `<model-viewer>`. Route tests cover Upload-to-Describe persistence,
+chronological ordering through completion, a separate Download cell, invalid replacement rollback,
+valid replacement promotion, and the lazy source-scene route.
+
 ### D080 — Preserve the whole notebook and finish invariant-only work after provider end-turn
 
 **Date:** 2026-08-30

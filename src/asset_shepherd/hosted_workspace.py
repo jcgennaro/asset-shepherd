@@ -331,6 +331,16 @@ class HostedWorkspaceStore:
                 return None
         return path if path.is_file() else None
 
+    def original_source_path(self, workspace_id: str) -> Path | None:
+        """Resolve the immutable R0 upload without selecting a later iteration."""
+        try:
+            root = self._record_path(workspace_id).parent.resolve(strict=True)
+            path = (root / "source.glb").resolve(strict=True)
+            path.relative_to(root)
+        except (HostedWorkspaceError, OSError, ValueError):
+            return None
+        return path if path.is_file() else None
+
     def archived_turn_output_path(self, workspace_id: str, turn_index: int) -> Path | None:
         """Resolve one completed turn's exact hash-bound GLB inside its workspace."""
         if turn_index < 0:

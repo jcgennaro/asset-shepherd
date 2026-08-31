@@ -1,22 +1,46 @@
 {% extends "base.html" %}
 {% from "_workflow_components.html" import asset_description %}
 {% block content %}
-  <section class="single-step describe-step" data-focus-area="asset description" aria-label="Describe the asset">
-    <div class="describe-step-copy">
-    {% if refusal %}
-      <p class="conversation-prompt agent-message" data-agent-message role="status"><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>{{ error }}</p>
-      <a class="primary-button inline-button" href="{{ url_for('hosted_home') }}">Gallery</a>
-    {% else %}
-    <p class="conversation-prompt agent-message" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>Describe the model you’re working on.</p>
-    {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
-    <form action="{{ url_for('save_hosted_description', draft_id=draft.draft_id) }}" method="post" class="single-step-form" data-busy-form>
-      {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true, show_examples=true) }}
-      <button class="primary-button" type="submit" data-submit-button>Shepherd this asset <span aria-hidden="true">→</span></button>
-    </form>
+  <section class="single-step describe-step workflow-notebook" data-scene-notebook data-focus-area="asset description" aria-label="Asset workflow notebook">
+    {% if draft %}
+      <article class="workflow-cell complete" id="notebook-upload">
+        <header class="workflow-cell-header"><span>1</span><strong>Upload</strong>
+          <details class="notebook-cell-edit"><summary>Edit</summary>
+            <form action="{{ url_for('upload_hosted_asset') }}" method="post" enctype="multipart/form-data" data-busy-form>
+              <input type="hidden" name="replace_draft_id" value="{{ draft.draft_id }}">
+              {% if draft.model_id %}<input type="hidden" name="agent_model" value="{{ draft.model_id }}">{% endif %}
+              <label class="compact-file-replacement" for="replacement-asset">
+                <input id="replacement-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
+                <span data-file-label>Choose replacement GLB</span>
+              </label>
+              <button class="secondary-button" type="submit" data-submit-button>Replace upload</button>
+            </form>
+          </details>
+        </header>
+        <blockquote class="history-user-message"><strong>You</strong><p>Uploaded {{ draft.original_filename }}.</p></blockquote>
+        <p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ upload_summary }}</span></p>
+        {% if comparison_scene %}
+          <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="upload" aria-label="Uploaded 3D state">
+            <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="upload">
+              {% include "_model_comparison.html" %}
+            </div>
+          </div>
+        {% endif %}
+      </article>
     {% endif %}
-    </div>
-    {% if comparison_scene %}
-      {% include "_model_comparison.html" %}
-    {% endif %}
+    <article class="workflow-cell current" id="notebook-describe">
+      <header class="workflow-cell-header"><span>2</span><strong>Describe</strong></header>
+      {% if refusal %}
+        <p class="conversation-prompt agent-message" data-agent-message role="status"><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>{{ error }}</p>
+        <a class="primary-button inline-button" href="{{ url_for('hosted_home') }}">Gallery</a>
+      {% else %}
+        <p class="conversation-prompt agent-message" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>Describe the model you’re working on.</p>
+        {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
+        <form action="{{ url_for('save_hosted_description', draft_id=draft.draft_id) }}" method="post" class="single-step-form" data-busy-form>
+          {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true, show_examples=true) }}
+          <button class="primary-button" type="submit" data-submit-button>Shepherd this asset <span aria-hidden="true">→</span></button>
+        </form>
+      {% endif %}
+    </article>
   </section>
 {% endblock %}

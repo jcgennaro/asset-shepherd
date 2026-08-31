@@ -303,7 +303,7 @@ for (const form of document.querySelectorAll("[data-result-accept]")) {
     event.preventDefault();
     const review = form.closest("[data-result-review]");
     const question = review?.querySelector("[data-result-question]");
-    const accepted = review?.querySelector("[data-result-accepted]");
+    const accepted = document.querySelector("[data-result-accepted]");
     const button = form.querySelector("button[type='submit']");
     if (!review || !accepted || !button) {
       form.submit();
@@ -326,9 +326,6 @@ for (const form of document.querySelectorAll("[data-result-accept]")) {
       }
       accepted.hidden = false;
       const heading = accepted.querySelector("[data-result-title]");
-      if (heading?.id) {
-        review.setAttribute("aria-labelledby", heading.id);
-      }
       heading?.focus();
     } catch (_error) {
       let message = review.querySelector("[data-result-error]");

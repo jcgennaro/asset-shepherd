@@ -11,12 +11,50 @@
 
     <div class="hosted-columns">
       <main class="conversation-pane" aria-label="Asset conversation" data-scene-notebook>
-        <blockquote class="history-user-message notebook-intake-message" id="notebook-intake"><strong>You</strong><p>{{ record.private_description }}</p></blockquote>
+        <article class="workflow-cell complete" id="notebook-upload">
+          <header class="workflow-cell-header"><span>1</span><strong>Upload</strong>
+            <details class="notebook-cell-edit"><summary>Edit</summary>
+              <form action="{{ url_for('upload_hosted_asset') }}" method="post" enctype="multipart/form-data" data-busy-form>
+                <input type="hidden" name="replace_workspace_id" value="{{ record.workspace_id }}">
+                {% if record.model_id %}<input type="hidden" name="agent_model" value="{{ record.model_id }}">{% endif %}
+                <label class="compact-file-replacement" for="replacement-asset">
+                  <input id="replacement-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
+                  <span data-file-label>Choose replacement GLB</span>
+                </label>
+                <button class="secondary-button" type="submit" data-submit-button>Replace upload</button>
+              </form>
+            </details>
+          </header>
+          <blockquote class="history-user-message"><strong>You</strong><p>Uploaded {{ record.original_filename }}.</p></blockquote>
+          <p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ upload_summary }}</span></p>
+          {% if record.phase.value == 'TARGET_CONFIRMATION' and comparison_scene %}
+            <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="upload" aria-label="Uploaded 3D state">
+              <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="upload">
+                {% set comparison_source_url = url_for('hosted_original_source_asset', workspace_id=record.workspace_id) %}
+                {% include "_model_comparison.html" %}
+              </div>
+            </div>
+          {% else %}
+            <div class="notebook-scene-slot" data-notebook-scene-slot data-scene-key="upload" data-scene-url="{{ url_for('hosted_source_scene', workspace_id=record.workspace_id) }}" aria-label="Uploaded 3D state"></div>
+          {% endif %}
+        </article>
+
+        <article class="workflow-cell{% if record.phase.value == 'TARGET_CONFIRMATION' %} current{% else %} complete{% endif %}" id="notebook-describe">
+          <header class="workflow-cell-header"><span>2</span><strong>Describe</strong>
+            <form action="{{ url_for('redo_hosted_workspace', workspace_id=record.workspace_id) }}" method="post"><button class="notebook-edit-button" type="submit">Edit</button></form>
+          </header>
+          <blockquote class="history-user-message notebook-intake-message" id="notebook-intake"><strong>You</strong><p>{{ record.private_description }}</p></blockquote>
+          {% if record.phase.value != 'TARGET_CONFIRMATION' %}
+            {% if target_notebook_sentence %}<p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ target_notebook_sentence }}</span></p>{% endif %}
+            <blockquote class="history-user-message"><strong>You</strong><p>Confirmed the proposed target.</p></blockquote>
+          </article>
+        {% endif %}
         {% if prior_turn_views %}
           <section class="conversation-history" aria-label="Earlier turns">
             {% for view in prior_turn_views %}
               {% set turn = view.turn %}
-              <article class="conversation-turn-record" id="turn-{{ turn.turn_index + 1 }}">
+              <article class="conversation-turn-record workflow-cell complete" id="turn-{{ turn.turn_index + 1 }}">
+                <header class="workflow-cell-header"><span>{% if turn.turn_index == 0 %}3{% else %}4.{{ turn.turn_index }}{% endif %}</span><strong>{% if turn.turn_index == 0 %}Shepherd{% else %}Refine{% endif %}</strong></header>
                 <p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ view.proposal_summary }}</span></p>
                 {% if view.decision_summary %}<blockquote class="history-user-message"><strong>You</strong><p>{{ view.decision_summary }}</p></blockquote>{% endif %}
                 <p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ view.outcome_summary }}</span></p>
@@ -31,6 +69,10 @@
               </article>
             {% endfor %}
           </section>
+        {% endif %}
+        {% if record.phase.value != 'TARGET_CONFIRMATION' %}
+          <article class="workflow-cell current" data-current-workflow-cell>
+            <header class="workflow-cell-header"><span>{% if refine_iteration %}4.{{ refine_iteration }}{% else %}3{% endif %}</span><strong>{% if refine_iteration %}Refine{% else %}Shepherd{% endif %}</strong></header>
         {% endif %}
           {% set has_appended_current_result = current_turn_decision_summary or current_turn_outcome_summary %}
           <p{% if not has_appended_current_result %} id="current-turn"{% endif %} class="conversation-prompt agent-message{% if record.phase.value != 'TARGET_CONFIRMATION' %} completion-prompt{% endif %}{% if cannot_repair %} blocked{% endif %}" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>
@@ -135,6 +177,10 @@
           </form>
         {% endif %}
 
+        {% if record.phase.value == 'TARGET_CONFIRMATION' %}
+          </article>
+        {% endif %}
+
         {% if current_turn_decision_summary %}
           <blockquote id="current-turn" class="history-user-message current-turn-message"><strong>You</strong><p>{{ current_turn_decision_summary }}</p></blockquote>
         {% endif %}
@@ -142,7 +188,7 @@
           <p{% if not current_turn_decision_summary %} id="current-turn"{% endif %} class="history-agent-message current-turn-message"><strong>Asset Shepherd</strong><span>{{ current_turn_outcome_summary }}</span></p>
         {% endif %}
 
-        {% if comparison_scene or (job and job.result) %}
+        {% if record.phase.value != 'TARGET_CONFIRMATION' and (comparison_scene or (job and job.result)) %}
           <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="current-{{ refine_iteration }}" aria-label="Current 3D state">
             <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="current-{{ refine_iteration }}">
               {% if comparison_scene %}
@@ -221,21 +267,29 @@
               </div>
               </div>
             {% endif %}
-            <div class="result-accepted-prompt" data-result-accepted{% if not record.accepted %} hidden{% endif %}>
-              <p class="decision-question" id="hosted-result-accepted-title" tabindex="-1" data-result-title>Ready to download.</p>
-              <div class="result-download-actions">
-                {% if workspace.ready_candidate %}
-                  <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
-                  <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Evidence package</a>
-                {% elif comparison_scene %}
-                  <a class="primary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download>Download candidate <span aria-hidden="true">↓</span></a>
-                  <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Diagnostics</a>
-                {% else %}
-                  <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
-                {% endif %}
-              </div>
-            </div>
           </section>
+        {% endif %}
+
+        {% if record.phase.value != 'TARGET_CONFIRMATION' %}
+          </article>
+        {% endif %}
+
+        {% if job and job.result and not cannot_repair %}
+          <article class="workflow-cell download-workflow-cell{% if record.accepted %} current{% endif %}" id="notebook-download" data-result-accepted{% if not record.accepted %} hidden{% endif %}>
+            <header class="workflow-cell-header"><span aria-hidden="true">↓</span><strong>Download</strong></header>
+            <p class="history-agent-message decision-question" id="hosted-result-accepted-title" tabindex="-1" data-result-title><strong>Asset Shepherd</strong><span>The current version is ready to download.</span></p>
+            <div class="result-download-actions">
+              {% if workspace.ready_candidate %}
+                <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
+                <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Evidence package</a>
+              {% elif comparison_scene %}
+                <a class="primary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download>Download candidate <span aria-hidden="true">↓</span></a>
+                <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Diagnostics</a>
+              {% else %}
+                <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
+              {% endif %}
+            </div>
+          </article>
         {% endif %}
 
       </main>
