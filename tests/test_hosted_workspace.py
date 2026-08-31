@@ -16,6 +16,7 @@ from asset_shepherd.hosted_workspace import (
     WorkspacePhase,
 )
 from asset_shepherd.models import AssetTargetUse, ProjectProfile
+from asset_shepherd.web import _hosted_workspace_scene  # pyright: ignore[reportPrivateUsage]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
@@ -250,6 +251,12 @@ def test_pending_interrupt_survives_restart_and_duplicate_resume_is_exactly_once
     assert restarted_again is not None
     assert restarted_again.record.phase is WorkspacePhase.COMPLETE
     assert restarted_again.ready_candidate
+    assert restarted_again.runtime is not None
+    restarted_again.runtime.job.outcome = None
+    scene, candidate_ready, source_only, _, _ = _hosted_workspace_scene(restarted_again)
+    assert scene is not None
+    assert candidate_ready
+    assert not source_only
 
 
 def test_unsupported_intent_requires_narrow_goal_and_clean_control_needs_no_approval(

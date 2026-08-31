@@ -7,7 +7,8 @@
         {% if draft %}
           <article class="workflow-cell complete" id="notebook-upload">
             <header class="workflow-cell-header"><span>1</span><strong>Upload</strong>
-              <details class="notebook-cell-edit"><summary>Edit</summary>
+              <details class="notebook-cell-edit notebook-rewind"><summary>Rewind…</summary>
+                <p>Start a new path from Upload. This staged version remains available until the replacement validates.</p>
                 <form action="{{ url_for('upload_hosted_asset') }}" method="post" enctype="multipart/form-data" data-busy-form>
                   <input type="hidden" name="replace_draft_id" value="{{ draft.draft_id }}">
                   {% if draft.model_id %}<input type="hidden" name="agent_model" value="{{ draft.model_id }}">{% endif %}
@@ -15,7 +16,7 @@
                     <input id="replacement-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
                     <span data-file-label>Choose replacement GLB</span>
                   </label>
-                  <button class="secondary-button" type="submit" data-submit-button>Replace upload</button>
+                  <button class="secondary-button" type="submit" data-submit-button>Rewind to Upload</button>
                 </form>
               </details>
             </header>

@@ -4,6 +4,55 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D083 — Make notebook history read-only and require explicit path-dependent rewind
+
+**Date:** 2026-08-30
+
+**Status:** ACCEPTED; active-turn lock, upstream rewind, and durable comparison implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+An append-only notebook made prior context visible, but its earlier Upload and Describe controls
+still looked like ordinary active inputs while a later agent turn was running. That allowed
+out-of-turn interaction without explaining that changing an upstream input invalidates every
+dependent target and repair decision. A completed repaired model could also lose its combined
+before/after viewport after runtime reconstruction because the comparison was gated on transient
+in-memory execution state.
+
+**Decision**
+
+Exactly one notebook turn is active. Completed cells are readable history and expose no ordinary
+input. Upload and Describe instead expose a deliberate **Rewind…** disclosure which explains the
+dependency consequence before staging a replacement. The saved workspace remains intact until the
+replacement validates; a valid upstream revision starts a new target and repair path rather than
+editing downstream history in place. Historical Shepherd and Refine turns remain immutable model
+states; the active result's **Refine…** action is the supported way to promote its input or candidate
+into a new iteration.
+
+As soon as an active command is submitted, every prior notebook cell becomes inert and its action
+surface disappears while the appended working cell owns the turn. Scrolling remains available for
+context, but no prior form, link, disclosure, or button can race the in-flight command. An accepted
+Shepherd/Refine cell becomes complete and the appended Download cell becomes the sole current cell.
+
+Build completed before/after scenes from the durable packaged candidate whenever one exists, even
+when the reconstructed runtime no longer contains its transient execution outcome. A route arriving
+at `#current-turn` preserves that server-rendered comparison until the user actually scrolls; scroll
+proximity may then select an earlier immutable scene.
+
+**Evidence and consequences**
+
+The saved Bipedal Woman workspace `147bb61536204af0aa852aa460e9412d` reconstructs after a clean
+server restart with **Uploaded model and Candidate**, source plus repaired GLB URLs, two explicit
+**Rewind…** boundaries, and exactly one current Download cell. Focused hosted/runtime and web visual
+contract tests cover a ready candidate whose transient outcome is absent, the rewind labels, the
+inert active-turn lock, and current-scene bootstrap behavior. The common gate passes with 206 tests,
+two opt-in live skips, lock validation, Ruff, formatting, JavaScript syntax validation, and zero
+Pyright findings.
+
 ### D082 — Present the notebook as a typed conversation with contextual actions
 
 **Date:** 2026-08-30

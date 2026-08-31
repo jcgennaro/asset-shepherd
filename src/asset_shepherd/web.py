@@ -2835,19 +2835,22 @@ def _hosted_workspace_scene(
     comparison_scene: ComparisonSceneView | SourceSceneView | None = None
     comparison_candidate_ready = False
     comparison_source_only = True
-    if (
+    if workspace.ready_candidate and runtime_job is not None:
+        # A verified packaged candidate is durable; the in-memory execution outcome is not.
+        # Build the comparison from the artifact after a server restart as well as immediately
+        # after the repair turn.
+        comparison_candidate_path = workspace.output_dir / "repaired.glb"
+        comparison_scene = _comparison_scene(runtime_job.source, comparison_candidate_path)
+        comparison_candidate_ready = True
+        comparison_source_only = False
+    elif (
         runtime_job is not None
         and runtime_job.outcome is not None
         and runtime_job.outcome.executed_action_ids
     ):
-        comparison_candidate_path = (
-            workspace.output_dir / "repaired.glb"
-            if workspace.ready_candidate
-            else _failed_candidate_path(runtime_job)
-        )
+        comparison_candidate_path = _failed_candidate_path(runtime_job)
         if comparison_candidate_path is not None:
             comparison_scene = _comparison_scene(runtime_job.source, comparison_candidate_path)
-            comparison_candidate_ready = workspace.ready_candidate
             comparison_source_only = False
     current_source_path = runtime_job.source if runtime_job is not None else workspace.source_path
     if comparison_scene is None and current_source_path.is_file():

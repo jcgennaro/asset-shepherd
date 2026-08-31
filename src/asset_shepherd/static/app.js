@@ -284,14 +284,21 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
       submitter.setAttribute("aria-busy", "true");
       submitter.style.pointerEvents = "none";
     }
-    if (form.dataset.activityUrl) {
-      const scope = form.closest(".conversation-pane");
-      if (scope) {
-        scope.classList.add("is-working");
-        scope.setAttribute("aria-busy", "true");
-      }
+    const scope = form.closest(".conversation-pane");
+    if (scope) {
+      scope.classList.add("is-working");
+      scope.setAttribute("aria-busy", "true");
     }
     showWorkflowActivity(form);
+    if (scope) {
+      const workingCell = scope.querySelector("[data-workflow-activity-cell]");
+      for (const cell of scope.querySelectorAll(".workflow-cell")) {
+        if (cell !== workingCell) {
+          cell.inert = true;
+          cell.classList.add("notebook-locked");
+        }
+      }
+    }
   });
 }
 
@@ -1265,7 +1272,13 @@ function initializeSceneNotebook(notebook) {
   }
   window.addEventListener("scroll", scheduleSelection, { passive: true });
   window.addEventListener("resize", scheduleSelection);
-  scheduleSelection();
+  window.addEventListener("hashchange", scheduleSelection);
+  // Workspace routes deliberately arrive at #current-turn. Preserve the server-rendered
+  // current comparison until the user actually scrolls; an eager selection can otherwise
+  // replace it with the upload-only scene before anchor positioning settles.
+  if (window.location.hash && window.location.hash !== "#current-turn") {
+    scheduleSelection();
+  }
 }
 
 for (const notebook of document.querySelectorAll("[data-scene-notebook]")) {

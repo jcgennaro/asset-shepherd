@@ -312,7 +312,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert 'data-activity-step="3"' in measured.text
     assert 'data-activity-label="Shepherd"' in measured.text
     assert f"Uploaded {BROKEN_PATH.name}." in measured.text
-    assert f"{workspace_path}/redo" in measured.text
+    assert f"{workspace_path}/redo" not in measured.text
     command_id = _hidden(measured.text, "command_id")
 
     confirmed = client.post(
@@ -394,6 +394,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert 'id="notebook-download"' in completed.text
     assert "Download fixed model" in completed.text
     assert "Evidence package" in completed.text
+    assert f"{workspace_path}/redo" in completed.text
+    assert completed.text.count("<summary>Rewind…</summary>") == 2
     assert "data-model-comparison" in completed.text
     assert completed.text.count("<model-viewer") == 1
     offsets = re.findall(r'<extra-model[^>]+offset="([^"]+)"', completed.text)
@@ -423,9 +425,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Use this version" not in accepted_page.text
     assert "data-result-accepted hidden" not in accepted_page.text
     assert "The current version is ready to download." in accepted_page.text
-    assert accepted_page.text.index("data-current-workflow-cell") < accepted_page.text.index(
-        'id="notebook-download"'
-    )
+    assert "data-current-workflow-cell" not in accepted_page.text
+    assert 'class="workflow-cell download-workflow-cell current"' in accepted_page.text
     assert ">Gallery</a>" in accepted_page.text
 
     archive_response = restarted.get(f"{workspace_path}/download")

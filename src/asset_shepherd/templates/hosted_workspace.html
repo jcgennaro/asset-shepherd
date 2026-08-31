@@ -13,7 +13,8 @@
       <main class="conversation-pane" aria-label="Asset conversation">
         <article class="workflow-cell complete" id="notebook-upload">
           <header class="workflow-cell-header"><span>1</span><strong>Upload</strong>
-            <details class="notebook-cell-edit"><summary>Edit</summary>
+            <details class="notebook-cell-edit notebook-rewind"><summary>Rewind…</summary>
+              <p>Start a new path from Upload. This saved version remains intact until the replacement validates.</p>
               <form action="{{ url_for('upload_hosted_asset') }}" method="post" enctype="multipart/form-data" data-busy-form>
                 <input type="hidden" name="replace_workspace_id" value="{{ record.workspace_id }}">
                 {% if record.model_id %}<input type="hidden" name="agent_model" value="{{ record.model_id }}">{% endif %}
@@ -21,7 +22,7 @@
                   <input id="replacement-asset" name="asset" type="file" accept=".glb,model/gltf-binary" required data-file-input>
                   <span data-file-label>Choose replacement GLB</span>
                 </label>
-                <button class="secondary-button" type="submit" data-submit-button>Replace upload</button>
+                <button class="secondary-button" type="submit" data-submit-button>Rewind to Upload</button>
               </form>
             </details>
           </header>
@@ -36,7 +37,12 @@
 
         <article class="workflow-cell{% if record.phase.value == 'TARGET_CONFIRMATION' %} current{% else %} complete{% endif %}" id="notebook-describe">
           <header class="workflow-cell-header"><span>2</span><strong>Describe</strong>
-            <form action="{{ url_for('redo_hosted_workspace', workspace_id=record.workspace_id) }}" method="post"><button class="notebook-edit-button" type="submit">Edit</button></form>
+            {% if record.phase.value != 'TARGET_CONFIRMATION' %}
+              <details class="notebook-cell-edit notebook-rewind"><summary>Rewind…</summary>
+                <p>Revise the description and recalculate every dependent target and repair turn. This saved version remains intact until the revision validates.</p>
+                <form action="{{ url_for('redo_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" data-busy-form><button class="secondary-button" type="submit" data-submit-button>Rewind to Describe</button></form>
+              </details>
+            {% endif %}
           </header>
           <blockquote class="history-user-message notebook-intake-message" id="notebook-intake"><strong>You</strong><p>{{ record.private_description }}</p></blockquote>
           {% if record.phase.value != 'TARGET_CONFIRMATION' %}
@@ -66,7 +72,7 @@
           </section>
         {% endif %}
         {% if record.phase.value != 'TARGET_CONFIRMATION' %}
-          <article class="workflow-cell current" data-current-workflow-cell>
+          <article class="workflow-cell{% if record.accepted %} complete{% else %} current{% endif %}"{% if not record.accepted %} data-current-workflow-cell{% endif %}>
             <header class="workflow-cell-header"><span>{% if refine_iteration %}4.{{ refine_iteration }}{% else %}3{% endif %}</span><strong>{% if refine_iteration %}Refine{% else %}Shepherd{% endif %}</strong></header>
         {% endif %}
           {% set has_appended_current_result = current_turn_decision_summary or current_turn_outcome_summary %}

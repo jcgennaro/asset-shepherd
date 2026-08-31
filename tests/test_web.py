@@ -1232,6 +1232,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "data-plan-comment-panel hidden" in workspace_template
     assert "Use this version" in workspace_template
     assert ">Refine…</summary>" in workspace_template
+    assert workspace_template.count("<summary>Rewind…</summary>") == 2
+    assert "Rewind to Upload" in workspace_template
+    assert "Rewind to Describe" in workspace_template
 
     checklist_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"
@@ -1242,6 +1245,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert stylesheet.status_code == 200
     assert ".conversation-pane.is-working > :not" not in stylesheet.text
     assert ".workflow-working-cell" in stylesheet.text
+    assert ".notebook-locked :is(" in stylesheet.text
+    assert "cell.inert = true" in script.text
+    assert 'window.location.hash !== "#current-turn"' in script.text
     assert "form.dataset.activityStep" in script.text
     assert "sourceCell.after(workingCell)" in script.text
     assert 'data-activity-step="{{ activity_step }}"' in (

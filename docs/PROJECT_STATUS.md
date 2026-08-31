@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-30
-**Current commit:** Conversation notebook with contextual actions (this file is included)
+**Current commit:** Active-turn notebook with explicit rewind and durable comparison (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,19 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D083 active-turn timeline: completed notebook cells are now read-only except for an explicit
+  **Rewind…** boundary on Upload and Describe. Each disclosure explains that valid upstream edits
+  recalculate dependent target and repair work while the saved version remains intact until
+  validation. Submitting any active command makes every prior cell inert and removes its action
+  surface; only the appended working cell owns the turn. Accepted repair cells become complete and
+  Download becomes the sole current cell. The exact completed Bipedal Woman workspace
+  `147bb61536204af0aa852aa460e9412d` reconstructs after a clean server restart with a combined
+  **Uploaded model and Candidate** viewport even after transient execution outcome state is absent.
+  Current-turn bootstrap no longer eagerly swaps that comparison for the upload-only scene before
+  anchor positioning settles. Focused hosted/runtime and web acceptance pass; the common gate passes
+  with 206 tests, two opt-in live skips, lock validation, Ruff, formatting, JavaScript syntax
+  validation, and zero Pyright findings.
 
 - D082 conversational notebook: Upload, Describe, Shepherd, and Refine now read as one alternating
   transcript with user messages on the right and Asset Shepherd messages on the left. One sticky

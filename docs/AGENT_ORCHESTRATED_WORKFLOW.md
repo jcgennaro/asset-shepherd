@@ -143,12 +143,17 @@ lifecycle. It retains the Upload cell and its objective parse result; the user's
 agent-authored target, and confirmation; and, for every Shepherd or Refine pass, the proposal, the
 user's structured/freeform decision, the agent outcome, the resulting model state, and any
 continuation request. Acceptance appends a Download outcome cell. New information is appended below
-prior information; completing a phase never replaces its input or proposal. Editing Upload or
-Describe stages a replacement and restarts dependent work from that boundary only after the edited
-input validates. The workflow rail scrolls to notebook entries. User messages align right and Asset
-Shepherd messages align left. The one live 3D viewer remains in a sticky evidence column; the
+prior information; completing a phase never replaces its input or proposal. Completed entries are
+read-only. **Rewind…** on Upload or Describe is the explicit path-dependent operation: it stages a
+replacement and restarts dependent work from that boundary only after the edited input validates,
+while preserving the saved path if validation fails. Submitting the active turn makes every earlier
+cell inert until the new turn completes, so scrolling can reveal context without exposing
+out-of-turn input. The workflow rail scrolls to notebook entries. User messages align right and
+Asset Shepherd messages align left. The one live 3D viewer remains in a sticky evidence column; the
 notebook entry nearest the viewport center selects which immutable iteration it displays. This keeps
-history and the relevant model visible together without running or moving several renderers.
+history and the relevant model visible together without running or moving several renderers. A
+packaged candidate always reconstructs a shared-scale before/after scene from its durable GLB, and
+the current-turn anchor retains that scene until the user deliberately scrolls to an earlier entry.
 
 The interface exposes typed next actions rather than a universal composer. Immediate transitions do
 not create an invented freeform feedback turn: target confirmation starts the initial workflow from

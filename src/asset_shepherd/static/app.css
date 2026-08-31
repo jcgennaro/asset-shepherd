@@ -3779,6 +3779,19 @@ model-viewer {
   gap: 10px;
 }
 
+.notebook-rewind {
+  color: var(--muted);
+}
+
+.notebook-rewind > p {
+  max-width: 520px;
+  margin: 0 0 12px auto;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
 .compact-file-replacement {
   display: flex;
   min-width: min(280px, 100%);
@@ -4943,6 +4956,17 @@ textarea.asset-description-input:focus {
 .conversation-pane.is-working {
   align-content: start;
   min-height: 260px;
+}
+
+.conversation-pane.is-working .notebook-locked :is(
+  .confirmation-question,
+  .decision-actions,
+  .result-review,
+  .single-step-form,
+  .notebook-cell-edit,
+  form.target-card
+) {
+  display: none;
 }
 
 .workflow-working-cell {
