@@ -2,6 +2,240 @@ if (!window.location.hash) {
   window.scrollTo(0, 0);
 }
 
+function readStoredPreference(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function writeStoredPreference(key, value) {
+  try {
+    if (value === null) {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, value);
+    }
+  } catch (_error) {
+    // Storage can be disabled without making either layout control unavailable.
+  }
+}
+
+const appShell = document.querySelector(".app-shell");
+const modeRail = document.querySelector("[data-mode-rail]");
+const railCollapse = document.querySelector("[data-rail-collapse]");
+const railReveal = document.querySelector("[data-rail-reveal]");
+
+if (appShell && modeRail && railCollapse && railReveal) {
+  const storageKey = "asset-shepherd:navigation-collapsed";
+  const hoverPointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+  let collapsed = readStoredPreference(storageKey) === "true";
+  let peeking = false;
+  let hideTimer = 0;
+
+  function updateRailControls() {
+    const visible = !collapsed || peeking;
+    appShell.classList.toggle("nav-collapsed", collapsed);
+    appShell.classList.toggle("nav-peeking", collapsed && peeking);
+    modeRail.inert = !visible;
+    railCollapse.setAttribute("aria-expanded", String(visible));
+    railReveal.setAttribute("aria-expanded", String(peeking));
+    const collapseLabel = collapsed ? "Keep navigation open" : "Hide navigation";
+    railCollapse.title = collapseLabel;
+    const hiddenLabel = railCollapse.querySelector(".visually-hidden");
+    if (hiddenLabel) {
+      hiddenLabel.textContent = collapseLabel;
+    }
+  }
+
+  function setPeeking(value) {
+    peeking = collapsed && value;
+    updateRailControls();
+  }
+
+  function setCollapsed(value, persist = true) {
+    collapsed = value;
+    peeking = false;
+    window.clearTimeout(hideTimer);
+    if (persist) {
+      writeStoredPreference(storageKey, String(collapsed));
+    }
+    updateRailControls();
+  }
+
+  function cancelScheduledHide() {
+    window.clearTimeout(hideTimer);
+  }
+
+  function scheduleHide() {
+    cancelScheduledHide();
+    hideTimer = window.setTimeout(() => {
+      if (collapsed && !modeRail.matches(":hover") && !modeRail.contains(document.activeElement)) {
+        setPeeking(false);
+      }
+    }, 180);
+  }
+
+  railCollapse.addEventListener("click", () => {
+    setCollapsed(!collapsed);
+    if (collapsed) {
+      railReveal.focus();
+    }
+  });
+  railReveal.addEventListener("click", () => setCollapsed(false));
+  railReveal.addEventListener("pointerenter", () => {
+    if (hoverPointer.matches) {
+      cancelScheduledHide();
+      setPeeking(true);
+    }
+  });
+  railReveal.addEventListener("pointerleave", scheduleHide);
+  modeRail.addEventListener("pointerenter", cancelScheduledHide);
+  modeRail.addEventListener("pointerleave", scheduleHide);
+  modeRail.addEventListener("focusin", cancelScheduledHide);
+  modeRail.addEventListener("focusout", scheduleHide);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && collapsed && peeking) {
+      setPeeking(false);
+      railReveal.focus();
+    }
+  });
+  updateRailControls();
+}
+
+function initializeEvidenceResizer(notebook) {
+  const handle = notebook.querySelector("[data-evidence-resizer]");
+  const evidence = notebook.querySelector("[data-notebook-scene-host]");
+  const desktopColumns = window.matchMedia("(min-width: 1151px)");
+  if (!handle || !evidence) {
+    return;
+  }
+
+  const storageKey = "asset-shepherd:evidence-column-width";
+  const minimumEvidenceWidth = 300;
+  const minimumConversationWidth = 500;
+  const maximumEvidenceWidth = 880;
+  let dragStartX = 0;
+  let dragStartWidth = 0;
+  let dragging = false;
+
+  function widthLimits() {
+    const styles = window.getComputedStyle(notebook);
+    const gap = Number.parseFloat(styles.columnGap) || 0;
+    const available =
+      notebook.clientWidth - minimumConversationWidth - handle.offsetWidth - gap * 2;
+    return {
+      minimum: minimumEvidenceWidth,
+      maximum: Math.max(
+        minimumEvidenceWidth,
+        Math.min(maximumEvidenceWidth, Math.floor(available)),
+      ),
+    };
+  }
+
+  function updateResizeValue() {
+    const limits = widthLimits();
+    const width = Math.round(evidence.getBoundingClientRect().width);
+    handle.setAttribute("aria-valuemin", String(limits.minimum));
+    handle.setAttribute("aria-valuemax", String(limits.maximum));
+    handle.setAttribute("aria-valuenow", String(width));
+    handle.setAttribute("aria-valuetext", `${width} pixels wide`);
+  }
+
+  function applyWidth(value, persist = false) {
+    if (!desktopColumns.matches) {
+      return;
+    }
+    const limits = widthLimits();
+    const width = Math.min(limits.maximum, Math.max(limits.minimum, Math.round(value)));
+    notebook.style.setProperty("--evidence-column-width", `${width}px`);
+    updateResizeValue();
+    if (persist) {
+      writeStoredPreference(storageKey, String(width));
+    }
+  }
+
+  function finishDrag(event) {
+    if (!dragging) {
+      return;
+    }
+    dragging = false;
+    handle.classList.remove("dragging");
+    document.body.classList.remove("resizing-evidence");
+    if (event?.pointerId !== undefined && handle.hasPointerCapture(event.pointerId)) {
+      handle.releasePointerCapture(event.pointerId);
+    }
+    applyWidth(evidence.getBoundingClientRect().width, true);
+  }
+
+  handle.addEventListener("pointerdown", (event) => {
+    if (!desktopColumns.matches || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    dragging = true;
+    dragStartX = event.clientX;
+    dragStartWidth = evidence.getBoundingClientRect().width;
+    handle.setPointerCapture(event.pointerId);
+    handle.classList.add("dragging");
+    document.body.classList.add("resizing-evidence");
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (dragging) {
+      applyWidth(dragStartWidth + dragStartX - event.clientX);
+    }
+  });
+  handle.addEventListener("pointerup", finishDrag);
+  handle.addEventListener("pointercancel", finishDrag);
+  handle.addEventListener("keydown", (event) => {
+    if (!desktopColumns.matches) {
+      return;
+    }
+    const step = event.shiftKey ? 64 : 24;
+    const currentWidth = evidence.getBoundingClientRect().width;
+    const limits = widthLimits();
+    let nextWidth = null;
+    if (event.key === "ArrowLeft") {
+      nextWidth = currentWidth + step;
+    } else if (event.key === "ArrowRight") {
+      nextWidth = currentWidth - step;
+    } else if (event.key === "Home") {
+      nextWidth = limits.minimum;
+    } else if (event.key === "End") {
+      nextWidth = limits.maximum;
+    }
+    if (nextWidth !== null) {
+      event.preventDefault();
+      applyWidth(nextWidth, true);
+    }
+  });
+  handle.addEventListener("dblclick", () => {
+    notebook.style.removeProperty("--evidence-column-width");
+    writeStoredPreference(storageKey, null);
+    updateResizeValue();
+  });
+  window.addEventListener("resize", () => {
+    const storedWidth = Number.parseFloat(readStoredPreference(storageKey));
+    if (desktopColumns.matches && Number.isFinite(storedWidth)) {
+      applyWidth(storedWidth);
+    } else {
+      updateResizeValue();
+    }
+  });
+
+  const storedWidth = Number.parseFloat(readStoredPreference(storageKey));
+  if (desktopColumns.matches && Number.isFinite(storedWidth)) {
+    applyWidth(storedWidth);
+  } else {
+    updateResizeValue();
+  }
+}
+
+for (const notebook of document.querySelectorAll("[data-scene-notebook]")) {
+  initializeEvidenceResizer(notebook);
+}
+
 for (const fileInput of document.querySelectorAll("[data-file-input]")) {
   const dropZone = fileInput.closest("[data-drop-zone]");
   const fileLabel = dropZone?.querySelector("[data-file-label]");

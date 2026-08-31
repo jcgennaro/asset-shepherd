@@ -1,4 +1,8 @@
-<aside class="mode-rail" aria-label="Asset Shepherd navigation">
+<aside id="asset-shepherd-navigation" class="mode-rail" aria-label="Asset Shepherd navigation" data-mode-rail>
+  <button class="rail-collapse-toggle" type="button" aria-controls="asset-shepherd-navigation" aria-expanded="true" title="Hide navigation" data-rail-collapse>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+    <span class="visually-hidden">Hide navigation</span>
+  </button>
   <a class="rail-logo" href="/workspace" aria-label="Asset Shepherd gallery">
     <span>LOGO</span>
   </a>
@@ -48,3 +52,7 @@
     </div>
   </nav>
 </aside>
+<button class="rail-edge-reveal" type="button" aria-controls="asset-shepherd-navigation" aria-expanded="false" aria-label="Show navigation" title="Show navigation" data-rail-reveal>
+  <span class="rail-edge-indicator" aria-hidden="true"><i></i><i></i></span>
+  <svg class="rail-touch-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg>
+</button>

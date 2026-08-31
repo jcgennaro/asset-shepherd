@@ -1201,6 +1201,15 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'notebook.querySelector("[data-notebook-scene-host]")' in script.text
     assert "slot.append(sharedScene)" not in script.text
     assert 'sceneHost.classList.add("loading")' in script.text
+    assert "function initializeEvidenceResizer(notebook)" in script.text
+    assert "const minimumConversationWidth = 500" in script.text
+    assert "const minimumEvidenceWidth = 300" in script.text
+    assert "handle.setPointerCapture(event.pointerId)" in script.text
+    assert 'event.key === "ArrowLeft"' in script.text
+    assert '"asset-shepherd:evidence-column-width"' in script.text
+    assert '"asset-shepherd:navigation-collapsed"' in script.text
+    assert 'appShell.classList.toggle("nav-collapsed", collapsed)' in script.text
+    assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in script.text
 
     comparison_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"
@@ -1235,6 +1244,20 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert workspace_template.count("<summary>Rewind…</summary>") == 2
     assert "Rewind to Upload" in workspace_template
     assert "Rewind to Describe" in workspace_template
+    assert "data-evidence-resizer" in workspace_template
+
+    describe_template = (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "hosted_describe.html"
+    ).read_text(encoding="utf-8")
+    assert "data-evidence-resizer" in describe_template
+
+    mode_rail_template = (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_mode_rail.html"
+    ).read_text(encoding="utf-8")
+    assert "data-rail-collapse" in mode_rail_template
+    assert "data-rail-reveal" in mode_rail_template
+    assert "rail-edge-indicator" in mode_rail_template
+    assert "rail-touch-arrow" in mode_rail_template
 
     checklist_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"
@@ -1259,6 +1282,10 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert ".component-proposal.active" in stylesheet.text
     assert ".notebook-scene-slot.active" in stylesheet.text
     assert ".intent-rail li.scene-current" in stylesheet.text
+    assert ".workspace-column-resizer" in stylesheet.text
+    assert ".app-shell.nav-collapsed" in stylesheet.text
+    assert ".rail-edge-indicator" in stylesheet.text
+    assert "@media (hover: none), (pointer: coarse)" in stylesheet.text
 
 
 def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:

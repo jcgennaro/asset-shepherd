@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-30
-**Current commit:** Active-turn notebook with explicit rewind and durable comparison (this file is included)
+**Last updated:** 2026-08-31
+**Current commit:** Adjustable workspace chrome (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,16 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D084 adjustable workspace chrome: the desktop evidence column now has a persisted drag and
+  keyboard separator that grows the 3D scene without allowing the conversation below 500 px. The
+  workflow rail collapses persistently, peeks from a double-line edge target on fine pointers, and
+  restores from an explicit arrow control on touch devices. Responsive one-column layouts retain a
+  full-width scene and hide the inapplicable separator. Browser acceptance on the completed Giant
+  Aria workspace confirms collapse, reclaimed notebook width, temporary edge-peek, and pinned
+  restoration. The user also reports that the same live run correctly normalized the character from
+  roughly 100 m to roughly 1.5 m; this is useful real-world evidence but remains separate from the
+  layout acceptance. Focused web acceptance and the common quality gate pass.
 
 - D083 active-turn timeline: completed notebook cells are now read-only except for an explicit
   **Rewind…** boundary on Upload and Describe. Each disclosure explains that valid upstream edits

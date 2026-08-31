@@ -154,6 +154,11 @@ notebook entry nearest the viewport center selects which immutable iteration it 
 history and the relevant model visible together without running or moving several renderers. A
 packaged candidate always reconstructs a shared-scale before/after scene from its durable GLB, and
 the current-turn anchor retains that scene until the user deliberately scrolls to an earlier entry.
+On a side-by-side desktop layout, the user may resize that evidence column while the conversation
+retains a 500 px readable minimum; the persisted browser-local width is clamped again as available
+space changes. The navigation rail can be collapsed without changing notebook state. Fine-pointer
+devices reveal it temporarily from a double-line left-edge target and allow it to be pinned open;
+touch devices use an explicit arrow control instead of relying on hover.
 
 The interface exposes typed next actions rather than a universal composer. Immediate transitions do
 not create an invented freeform feedback turn: target confirmation starts the initial workflow from

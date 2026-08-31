@@ -278,6 +278,7 @@
         {% endif %}
 
       </main>
+      <button class="workspace-column-resizer" type="button" role="separator" aria-label="Resize 3D viewport" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="880" aria-valuenow="420" title="Drag to resize the 3D viewport; use arrow keys for precise adjustment" data-evidence-resizer><span aria-hidden="true"></span></button>
       <aside class="evidence-sidebar" aria-label="Current 3D model" data-notebook-scene-host>
         <div class="notebook-shared-scene" data-notebook-shared-scene data-scene-key="{% if record.phase.value == 'TARGET_CONFIRMATION' %}upload{% else %}current-{{ refine_iteration }}{% endif %}">
           {% if record.phase.value == 'TARGET_CONFIRMATION' and comparison_scene %}

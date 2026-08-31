@@ -4,6 +4,47 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D084 — Make workspace chrome adjustable without sacrificing the conversation
+
+**Date:** 2026-08-31
+
+**Status:** ACCEPTED; resizable evidence column and collapsible navigation implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The conversation notebook and its single sticky 3D scene serve different reading tasks. Some assets
+need a larger viewport for visual inspection, while long agent reports need more text width. The
+persistent workflow rail also consumed useful space after it had supplied enough orientation.
+Neither region should have one permanently fixed desktop width, and a hover-only recovery control
+would make a collapsed rail inaccessible on touch devices.
+
+**Decision**
+
+On the side-by-side desktop layout, place a narrow draggable separator between the conversation and
+the 3D evidence. The evidence region may grow from 300 px to the lesser of 880 px or the width that
+still leaves 500 px for the conversation. Persist the chosen width locally, clamp it again when the
+window changes, support Left/Right/Home/End keyboard operation, and reset to the responsive default
+on double-click. At narrower breakpoints the scene remains a full-width notebook region and the
+separator disappears.
+
+Let the user collapse the left navigation persistently. A fine-pointer desktop exposes a small
+double-line edge target and temporarily peeks the rail while the pointer is near the left edge;
+clicking pins it open. A coarse-pointer/touch device replaces that hover affordance with an explicit
+right-arrow control that can be tapped. Keep prior notebook navigation and active-turn rules
+unchanged: resizing or hiding chrome never changes workflow state.
+
+**Evidence and consequences**
+
+The static web contract covers both templates, both persisted preferences, drag and keyboard
+handling, the desktop edge indicator, and the touch restore control. Browser acceptance covers the
+live Giant Aria workspace's collapse, expanded notebook width, edge-peek, and pinned restore. The
+layout preference remains browser-local presentation state and never enters the workspace or agent
+prompt.
+
 ### D083 — Make notebook history read-only and require explicit path-dependent rewind
 
 **Date:** 2026-08-30
