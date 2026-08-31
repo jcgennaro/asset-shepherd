@@ -150,7 +150,9 @@
                 question_id="hosted-confirmation-question-title",
                 command_id=command_id,
                 accept_supported_goal=true,
-                activity_url=url_for('hosted_workspace_activity', workspace_id=record.workspace_id)
+                activity_url=url_for('hosted_workspace_activity', workspace_id=record.workspace_id),
+                activity_step="3",
+                activity_label="Shepherd"
               ) }}
             </div>
           {% endif %}

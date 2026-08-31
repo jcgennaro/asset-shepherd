@@ -4917,49 +4917,23 @@ textarea.asset-description-input:focus {
   list-style: none;
 }
 
-.conversation-pane.is-working > :not([data-workflow-activity]):not([data-model-comparison]) {
-  display: none !important;
-}
-
 .conversation-pane.is-working {
   align-content: start;
-  grid-template-columns: minmax(240px, 0.55fr) minmax(420px, 1.45fr);
-  gap: clamp(20px, 3vw, 40px);
   min-height: 260px;
 }
 
-.conversation-pane.is-working .workflow-activity {
-  grid-column: 1;
-  grid-row: 1;
-  margin-top: 6px;
+.workflow-working-cell {
+  min-height: 190px;
+  align-content: start;
 }
 
-.conversation-pane.is-working [data-model-comparison] {
-  grid-column: 2;
-  grid-row: 1;
-  margin: 0;
-}
-
-.conversation-pane.is-working .model-comparison.source-only .comparison-viewer {
-  height: clamp(420px, 64vh, 680px);
+.workflow-working-cell .workflow-activity {
+  margin-top: 4px;
 }
 
 @media (max-width: 900px) {
-  .conversation-pane.is-working {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .conversation-pane.is-working .workflow-activity,
-  .conversation-pane.is-working [data-model-comparison] {
-    grid-column: 1;
-  }
-
-  .conversation-pane.is-working .workflow-activity {
-    grid-row: 1;
-  }
-
-  .conversation-pane.is-working [data-model-comparison] {
-    grid-row: 2;
+  .workflow-working-cell {
+    min-height: 150px;
   }
 }
 

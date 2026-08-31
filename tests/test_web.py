@@ -1233,7 +1233,14 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
 
     stylesheet = client.get("/static/app.css")
     assert stylesheet.status_code == 200
-    assert ":not([data-workflow-activity]):not([data-model-comparison])" in stylesheet.text
+    assert ".conversation-pane.is-working > :not" not in stylesheet.text
+    assert ".workflow-working-cell" in stylesheet.text
+    assert "form.dataset.activityStep" in script.text
+    assert "sourceCell.after(workingCell)" in script.text
+    assert 'data-activity-step="{{ activity_step }}"' in (
+        PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_workflow_components.html"
+    ).read_text(encoding="utf-8")
+    assert 'activity_step="3"' in workspace_template
     assert ".component-color-0" in stylesheet.text
     assert ".component-color-5" in stylesheet.text
     assert ".component-proposal.active" in stylesheet.text

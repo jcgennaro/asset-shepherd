@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-08-30
-**Current commit:** Full-lifecycle editable notebook (this file is included)
+**Current commit:** Notebook-preserving live activity (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,14 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D081 live-activity correction: confirming Describe no longer replaces the notebook with a
+  standalone progress checklist. The completed Upload and Describe cells remain in the vertical
+  conversation, while the bounded tool trace is appended as the current **3 Shepherd** cell. Other
+  long-running turns keep their trace inside the current notebook cell rather than hiding prior
+  history. Focused hosted/web acceptance passes with 51 tests; the full gate passes with 205 tests,
+  two opt-in live skips, lock validation, Ruff, formatting, and zero Pyright findings. The main
+  local Luna server has been restarted on port 8010 with the corrected assets.
 
 - D081 full-lifecycle notebook: Upload and its parse result, Describe and confirmed target,
   Shepherd, every Refine iteration, and Download now render as one chronological workspace instead

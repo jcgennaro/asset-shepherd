@@ -306,6 +306,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert measured.text.index('id="notebook-upload"') < measured.text.index(
         'id="notebook-describe"'
     )
+    assert 'data-activity-step="3"' in measured.text
+    assert 'data-activity-label="Shepherd"' in measured.text
     assert f"Uploaded {BROKEN_PATH.name}." in measured.text
     assert f"{workspace_path}/redo" in measured.text
     command_id = _hidden(measured.text, "command_id")

@@ -195,6 +195,34 @@ function showWorkflowActivity(form) {
   if (!host) {
     return;
   }
+
+  const sourceCell = form.closest(".workflow-cell");
+  const activityStep = form.dataset.activityStep;
+  const activityLabel = form.dataset.activityLabel;
+  let activityHost = sourceCell || host;
+
+  if (sourceCell && activityStep && activityLabel) {
+    sourceCell.classList.remove("current");
+    sourceCell.classList.add("complete");
+    let workingCell = host.querySelector("[data-workflow-activity-cell]");
+    if (!workingCell) {
+      workingCell = document.createElement("article");
+      workingCell.className = "workflow-cell current workflow-working-cell";
+      workingCell.dataset.workflowActivityCell = "";
+
+      const header = document.createElement("header");
+      const step = document.createElement("span");
+      const label = document.createElement("strong");
+      header.className = "workflow-cell-header";
+      step.textContent = activityStep;
+      label.textContent = activityLabel;
+      header.append(step, label);
+      workingCell.append(header);
+      sourceCell.after(workingCell);
+    }
+    activityHost = workingCell;
+  }
+
   let trace = host.querySelector("[data-workflow-activity]");
   if (!trace) {
     trace = document.createElement("ol");
@@ -202,7 +230,7 @@ function showWorkflowActivity(form) {
     trace.dataset.workflowActivity = "";
     trace.setAttribute("role", "status");
     trace.setAttribute("aria-live", "polite");
-    host.append(trace);
+    activityHost.append(trace);
   }
 
   const render = (payload) => {
