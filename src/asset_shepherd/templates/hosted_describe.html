@@ -33,7 +33,7 @@
           {% else %}
             <p class="conversation-prompt agent-message" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>Describe the model you’re working on.</p>
             {% if error %}<div class="alert danger" role="alert">{{ error }}</div>{% endif %}
-            <form action="{{ url_for('save_hosted_description', draft_id=draft.draft_id) }}" method="post" class="single-step-form" data-busy-form>
+            <form action="{{ url_for('save_hosted_description', draft_id=draft.draft_id) }}" method="post" class="single-step-form" data-busy-form data-busy-message="Reading your description and drafting a target…">
               {{ asset_description(description, placeholder="A stylized lantern for a game level, about waist-high, with warm emissive panels.", autofocus=true, show_examples=true) }}
               <button class="primary-button" type="submit" data-submit-button>Shepherd this asset <span aria-hidden="true">→</span></button>
             </form>

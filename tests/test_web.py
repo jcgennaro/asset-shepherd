@@ -1210,6 +1210,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert '"asset-shepherd:navigation-collapsed"' in script.text
     assert 'appShell.classList.toggle("nav-collapsed", collapsed)' in script.text
     assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in script.text
+    assert "const busyMessage = form.dataset.busyMessage" in script.text
+    assert "workflow-thinking-message" in script.text
+    assert 'status.classList.add("shepherd-sprite", "shepherd-sprite-thinking")' in script.text
 
     comparison_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"
@@ -1258,6 +1261,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "data-rail-reveal" in mode_rail_template
     assert "rail-edge-indicator" in mode_rail_template
     assert "rail-touch-arrow" in mode_rail_template
+    assert "shepherd-sprite shepherd-sprite-idle" in mode_rail_template
+    assert "rail-pin-label" in mode_rail_template
+    assert "Stay open" in mode_rail_template
 
     checklist_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"
@@ -1286,6 +1292,11 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert ".app-shell.nav-collapsed" in stylesheet.text
     assert ".rail-edge-indicator" in stylesheet.text
     assert "@media (hover: none), (pointer: coarse)" in stylesheet.text
+    assert 'background-image: url("/static/asset-shepherd-thinking.png")' in stylesheet.text
+    assert ".shepherd-sprite-thinking" in stylesheet.text
+    assert ".workflow-thinking-message" in stylesheet.text
+    assert ".nav-peeking .rail-pin-label" in stylesheet.text
+    assert "activity-spin" not in stylesheet.text
 
 
 def test_old_role_routes_redirect_to_the_intent_entry_point(tmp_path: Path) -> None:

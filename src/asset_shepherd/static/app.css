@@ -135,6 +135,19 @@ a {
   stroke-width: 1.8;
 }
 
+.rail-pin-icon,
+.rail-pin-label {
+  display: none;
+}
+
+.rail-pin-label {
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+
 .rail-edge-reveal {
   position: fixed;
   z-index: 45;
@@ -196,6 +209,24 @@ a {
   transform: translateX(0);
 }
 
+.app-shell.nav-collapsed.nav-peeking .rail-collapse-toggle {
+  right: 12px;
+  width: auto;
+  min-width: 108px;
+  grid-template-columns: 18px auto;
+  gap: 7px;
+  padding: 0 13px;
+}
+
+.app-shell.nav-collapsed.nav-peeking .rail-hide-icon {
+  display: none;
+}
+
+.app-shell.nav-collapsed.nav-peeking .rail-pin-icon,
+.app-shell.nav-collapsed.nav-peeking .rail-pin-label {
+  display: block;
+}
+
 .app-shell.nav-collapsed.nav-peeking .rail-edge-reveal {
   opacity: 0;
   pointer-events: none;
@@ -247,13 +278,46 @@ a {
   text-decoration: none;
 }
 
-.rail-logo span {
+.rail-logo-mark {
   display: grid;
-  width: 74px;
-  height: 42px;
+  width: 64px;
+  height: 64px;
   place-items: center;
-  border: 1px dashed var(--line-strong);
-  border-radius: 8px;
+}
+
+.shepherd-sprite {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  background-image: url("/static/asset-shepherd-thinking.png");
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 200% 200%;
+  image-rendering: pixelated;
+}
+
+.shepherd-sprite-thinking {
+  animation: shepherd-thinking 880ms step-end infinite;
+}
+
+.shepherd-sprite-idle {
+  animation: shepherd-idle 4.8s step-end infinite;
+}
+
+@keyframes shepherd-thinking {
+  0%, 24.99% { background-position: 0 0; }
+  25%, 49.99% { background-position: 100% 0; }
+  50%, 74.99% { background-position: 0 100%; }
+  75%, 100% { background-position: 100% 100%; }
+}
+
+@keyframes shepherd-idle {
+  0%, 64.99% { background-position: 0 0; }
+  65%, 72.99% { background-position: 100% 0; }
+  73%, 80.99% { background-position: 0 100%; }
+  81%, 88.99% { background-position: 100% 100%; }
+  89%, 100% { background-position: 0 0; }
 }
 
 .mode-nav {
@@ -3278,10 +3342,9 @@ model-viewer {
     min-height: 72px;
   }
 
-  .rail-logo span {
-    width: 46px;
-    height: 30px;
-    font-size: 0.56rem;
+  .rail-logo-mark {
+    width: 52px;
+    height: 52px;
   }
 
   .mode-nav {
@@ -5169,6 +5232,25 @@ textarea.asset-description-input:focus {
   margin-top: 4px;
 }
 
+.workflow-working-message {
+  min-height: 160px;
+}
+
+.workflow-thinking-message {
+  width: min(560px, 92%);
+}
+
+.workflow-thinking-body {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.workflow-thinking-body > .shepherd-sprite {
+  width: 48px;
+}
+
 @media (max-width: 900px) {
   .workflow-working-cell {
     min-height: 150px;
@@ -5201,21 +5283,18 @@ textarea.asset-description-input:focus {
 }
 
 .workflow-activity-item.active .workflow-activity-status {
-  color: var(--accent);
-  border-style: dashed;
-  animation: activity-spin 900ms linear infinite;
+  width: 34px;
+  height: 34px;
+  border: 0;
 }
 
 .workflow-activity-item.error .workflow-activity-status {
   color: var(--danger);
 }
 
-@keyframes activity-spin {
-  to { transform: rotate(360deg); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .workflow-activity-item.active .workflow-activity-status { animation: none; }
+  .shepherd-sprite-thinking,
+  .shepherd-sprite-idle { animation: none; }
 }
 
 .result-review .decision-question,

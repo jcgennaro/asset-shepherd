@@ -41,7 +41,7 @@ if (appShell && modeRail && railCollapse && railReveal) {
     modeRail.inert = !visible;
     railCollapse.setAttribute("aria-expanded", String(visible));
     railReveal.setAttribute("aria-expanded", String(peeking));
-    const collapseLabel = collapsed ? "Keep navigation open" : "Hide navigation";
+    const collapseLabel = collapsed ? "Stay open" : "Hide navigation";
     railCollapse.title = collapseLabel;
     const hiddenLabel = railCollapse.querySelector(".visually-hidden");
     if (hiddenLabel) {
@@ -422,7 +422,8 @@ for (const textarea of document.querySelectorAll("textarea")) {
 
 function showWorkflowActivity(form) {
   const activityUrl = form.dataset.activityUrl;
-  if (!activityUrl) {
+  const busyMessage = form.dataset.busyMessage;
+  if (!activityUrl && !busyMessage) {
     return;
   }
   const host = form.closest(".conversation-pane") || form.parentElement;
@@ -455,6 +456,42 @@ function showWorkflowActivity(form) {
       sourceCell.after(workingCell);
     }
     activityHost = workingCell;
+  } else if (sourceCell && busyMessage) {
+    sourceCell.classList.remove("current");
+    sourceCell.classList.add("complete");
+    let workingCell = host.querySelector("[data-workflow-activity-cell]");
+    if (!workingCell) {
+      workingCell = document.createElement("article");
+      workingCell.className =
+        "workflow-cell current workflow-working-cell workflow-working-message";
+      workingCell.dataset.workflowActivityCell = "";
+
+      const message = document.createElement("p");
+      const speaker = document.createElement("strong");
+      const body = document.createElement("span");
+      const mascot = document.createElement("span");
+      const copy = document.createElement("span");
+      message.className = "history-agent-message workflow-thinking-message";
+      message.setAttribute("role", "status");
+      message.setAttribute("aria-live", "polite");
+      speaker.textContent = "Asset Shepherd";
+      body.className = "workflow-thinking-body";
+      mascot.className = "shepherd-sprite shepherd-sprite-thinking";
+      mascot.setAttribute("aria-hidden", "true");
+      copy.textContent = busyMessage;
+      body.append(mascot, copy);
+      message.append(speaker, body);
+      workingCell.append(message);
+      sourceCell.after(workingCell);
+      window.requestAnimationFrame(() =>
+        workingCell.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      );
+    }
+    activityHost = workingCell;
+  }
+
+  if (!activityUrl) {
+    return;
   }
 
   let trace = host.querySelector("[data-workflow-activity]");
@@ -478,7 +515,11 @@ function showWorkflowActivity(form) {
       row.className = `workflow-activity-item ${itemStatus.toLowerCase()}`;
       status.className = "workflow-activity-status";
       status.setAttribute("aria-hidden", "true");
-      status.textContent = itemStatus === "COMPLETE" ? "✓" : itemStatus === "ERROR" ? "!" : "";
+      if (itemStatus === "ACTIVE") {
+        status.classList.add("shepherd-sprite", "shepherd-sprite-thinking");
+      } else {
+        status.textContent = itemStatus === "COMPLETE" ? "✓" : "!";
+      }
       label.textContent = typeof item?.label === "string" ? item.label : "Running a bounded check";
       row.append(status, label);
       trace.append(row);

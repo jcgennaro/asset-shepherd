@@ -4,6 +4,52 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D085 — Acknowledge synchronous model work with the original Patchling mascot
+
+**Date:** 2026-08-31
+
+**Status:** ACCEPTED; immediate Describe feedback and shared branded animation implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+Submitting the Describe form performs a synchronous model-backed target proposal. The browser
+disabled and hid the form while waiting, but because that route has no separately pollable activity
+ledger, it appended no working state. A healthy request therefore looked hung until the response
+page arrived. Other agent turns used a rotating dashed circle that conveyed activity but no Asset
+Shepherd identity, while the navigation still displayed a literal `LOGO` placeholder. The
+temporarily peeked navigation also kept showing its hide chevron even though moving the pointer away
+would already hide it.
+
+**Decision**
+
+Every busy form that can wait without an activity endpoint may supply a concise explanation of the
+pause. Describe immediately appends an Asset Shepherd message saying that it is reading the
+description and drafting a target, locks the completed input cell, and leaves the resulting working
+message as the sole active cell until navigation completes. Pollable Shepherd and Refine work keep
+their bounded tool labels.
+
+Replace the generic active dashed circle with an original four-frame Patchling thinking sprite and
+use a slower version of the same sprite as the navigation brand mark. The sprite is a locally served
+transparent PNG with no third-party marks; CSS selects frames so there is no animation runtime or
+remote dependency. Respect reduced-motion preferences by holding the first frame. Completed and
+failed activity states retain their explicit check and exclamation symbols.
+
+When the collapsed navigation is only being previewed from the desktop edge, replace its hide
+chevron with an explicit **Stay open** pin control. Clicking it makes the rail persistent again; only
+the persistent state displays the compact hide control.
+
+**Evidence and consequences**
+
+Static-route acceptance verifies the sprite payload, Describe busy explanation, working-message
+construction, shared active-state treatment, logo markup, pin-state markup, and
+reduced-motion-compatible CSS. Browser acceptance verifies the rendered mascot, edge-preview pinning,
+and ordinary collapse after pinning; route/script acceptance verifies that synchronous Describe
+submission constructs the transient message before navigation.
+
 ### D084 — Make workspace chrome adjustable without sacrificing the conversation
 
 **Date:** 2026-08-31

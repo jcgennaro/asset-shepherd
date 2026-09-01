@@ -216,7 +216,12 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
 
     entry = client.get("/workspace")
     assert entry.status_code == 200
+    thinking_sprite = client.get("/static/asset-shepherd-thinking.png")
+    assert thinking_sprite.status_code == 200
+    assert thinking_sprite.headers["content-type"] == "image/png"
+    assert thinking_sprite.content.startswith(b"\x89PNG\r\n\x1a\n")
     assert "Asset Shepherd -- Gallery" in entry.text
+    assert "shepherd-sprite shepherd-sprite-idle" in entry.text
     assert "New asset" in entry.text
     assert "Model description" not in entry.text
     assert "Choose or drop your GLB" not in entry.text
@@ -257,6 +262,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "data-description-examples-dialog" in describe.text
     assert '<details class="description-help">' not in describe.text
     assert "Shepherd this asset" in describe.text
+    assert 'data-busy-message="Reading your description and drafting a target…"' in describe.text
     assert describe.text.count("<h1") == 1
     assert "<h2" not in describe.text
     assert "<h3" not in describe.text

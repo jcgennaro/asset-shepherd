@@ -160,6 +160,14 @@ space changes. The navigation rail can be collapsed without changing notebook st
 devices reveal it temporarily from a double-line left-edge target and allow it to be pinned open;
 touch devices use an explicit arrow control instead of relying on hover.
 
+A model-backed form must acknowledge submission before its response is available. Pollable agent
+turns show the bounded tool labels as they are called. A synchronous turn such as Describe instead
+appends one transient Asset Shepherd message that names the work in progress. Both use the original
+Patchling thinking sprite; the navigation uses the same local sprite at a slower idle cadence.
+Reduced-motion preference freezes it without removing the textual status. When collapsed
+navigation is merely peeking from the desktop edge, its control says **Stay open** and pins the rail;
+the hide control returns only after the rail is persistent.
+
 The interface exposes typed next actions rather than a universal composer. Immediate transitions do
 not create an invented freeform feedback turn: target confirmation starts the initial workflow from
 the confirmed contract, while accepting the current version invokes no model. A target correction
