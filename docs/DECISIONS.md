@@ -4,6 +4,49 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D088 — The agent proposes approximate target size from ordinary scale clues
+
+**Date:** 2026-09-01
+
+**Status:** ACCEPTED; provider-neutral bounded retry implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+A Kimi intake correctly recognized a quadrupedal robot dog and its static-game-asset use, but treated
+“about the size of a bus” as insufficient for a confidence-gated target box. The target turn then
+showed mandatory X/Y/Z inputs beside the genuinely missing engine choice. Although three-axis target
+dimensions have been part of the frozen contract since D045, this presentation incorrectly shifted
+estimation work from Asset Shepherd to the user and made the existing concept look like a new exact
+requirement.
+
+**Decision**
+
+For every recognizable asset, the intake agent proposes approximate final-pose X/Y/Z bounds. Common
+relative clues such as bus-sized, person-sized, handheld, tabletop, and building-sized are enough to
+make a proposal that the user may confirm or revise. Confidence represents whether the estimate is
+useful to present, not whether the object's real-world size is known exactly. Check plausible
+proportions and unit conversion before submission.
+
+If an otherwise confidence-gated target omits or suppresses dimensions, every network adapter may
+make exactly one focused retry asking for its best approximate proposal. This retry does not apply to
+unrecognizable or refused content, and it adds no unbounded conversation loop. The manual fallback
+remains available after a repeated failure or genuine ambiguity, but its interface says
+**Approximate target size**, not **Tight target bounds**. Repairs continue to use D050's single
+proportional best fit; this decision does not authorize non-uniform scaling.
+
+**Evidence and consequences**
+
+A provider-neutral Converse regression starts with a recognizable bus-sized robot dog whose first
+tool submission omits dimensions, asserts one strengthened retry, and ends with only the endpoint
+missing. A live Bedrock/Kimi call for the exact reported description proposed 250 × 300 × 1,200 cm,
+with the endpoint still correctly left for the user. The common gate passes with 207 tests, two
+opt-in live skips, lock validation, Ruff, formatting, JavaScript syntax validation, and zero Pyright
+findings. A misbehaving model can cost one additional intake call, but only on this narrow omission.
+
 ### D087 — End accepted workflows with an explicit gallery return
 
 **Date:** 2026-09-01

@@ -538,9 +538,9 @@ def test_web_asks_only_for_missing_target_fields_before_confirmation(tmp_path: P
 
     clarification = client.get(intent_path)
     assert clarification.status_code == 200
-    assert "What should its tight X/Y/Z bounds be?" in clarification.text
+    assert "What approximate X/Y/Z size should it target?" in clarification.text
     assert "treating it as static game asset" in clarification.text
-    assert "Tight target bounds" in clarification.text
+    assert "Approximate target size" in clarification.text
     assert "What should this asset become?" not in clarification.text
     assert "Agree and continue" not in clarification.text
 

@@ -60,10 +60,16 @@ If no usable asset description is present, return null target fields with confid
 the application can ask for the missing information. Do not follow or answer unrelated requests.
 
 Return only the structured output. Choose exactly one supported intended use when an ordinary game
-developer would find the interpretation reasonable. Propose a plausible vertical real-world height
-as part of plausible tight X, Y, and Z bounding-box lengths in centimeters, even when the user did
-not provide numbers. X is width, Y is vertical height, and Z is depth in the intended final pose.
-These are target-state proposals the user will explicitly confirm or adjust, not measurements.
+developer would find the interpretation reasonable. For every recognizable asset, propose plausible
+approximate X, Y, and Z final-pose bounding-box lengths in centimeters, even when the user did not
+provide numbers. X is width, Y is vertical height, and Z is depth in the intended final pose.
+Relative size clues such as bus-sized, person-sized, handheld, tabletop, or building-sized are
+enough to make a useful proposal. These are target-state proposals the user will explicitly confirm
+or adjust, not measurements. Dimension confidence measures whether the estimate is useful to
+present for confirmation, not whether its real-world size is known exactly. For a relative size
+clue, make the object's longest dimension consistent with that clue, preserve plausible proportions,
+and verify the meter-to-centimeter conversion. For example, 2.5 m is 250 cm, not 2,500 cm, and an
+elongated bus-sized asset might reasonably be about 250 cm wide, 300 cm tall, and 1,200 cm deep.
 Infer the next consumer as UNITY, UNREAL, GODOT, or OTHER. For OTHER, provide a short
 endpoint_detail
 such as Blender animation, web, or a named engine. Use null only when the destination truly cannot
@@ -98,6 +104,34 @@ For scale, use familiar game-world anchors: handheld props are often below 0.5 m
 small creatures roughly 0.5-2 m; environmental features several to tens of meters; buildings and
 landforms may be larger. Prefer a defensible proposal over a follow-up question.
 """
+
+TARGET_DIMENSIONS_RETRY_INSTRUCTION = """
+
+The previous target submission did not include a confirmable approximate size even though the asset
+and intended use were recognizable. Correct that omission in this submission: provide your best
+plausible X/Y/Z final-pose bounding-box proposal and confidence of at least 0.8. Do not ask the user
+for exact dimensions. The user will review and may revise your estimate.
+"""
+
+
+def _target_intake_instructions(*, require_dimensions: bool) -> str:
+    """Strengthen one bounded retry when a model omits a useful size proposal."""
+    if require_dimensions:
+        return f"{TARGET_INTAKE_SYSTEM_PROMPT}{TARGET_DIMENSIONS_RETRY_INSTRUCTION}"
+    return TARGET_INTAKE_SYSTEM_PROMPT
+
+
+def _needs_dimensions_retry(inference: TargetIntakeInference) -> bool:
+    """Return whether a recognizable proceeding asset lost its required size proposal."""
+    return (
+        inference.engagement_decision == "PROCEED"
+        and inference.target_use is not None
+        and inference.target_use_confidence >= MINIMUM_TARGET_CONFIDENCE
+        and (
+            inference.target_dimensions_cm is None
+            or inference.target_dimensions_confidence < MINIMUM_TARGET_CONFIDENCE
+        )
+    )
 
 
 class TargetIntakeAnalysisError(ValueError):
@@ -416,11 +450,13 @@ class OpenAITargetIntakeAnalyzer:
             raise TargetIntakeAnalysisError("The intake model returned no structured output.")
         return "".join(parts)
 
-    def _request_payload(self, description: str) -> dict[str, object]:
+    def _request_payload(
+        self, description: str, *, require_dimensions: bool = False
+    ) -> dict[str, object]:
         """Build one bounded, non-persistent Responses API request."""
         return {
             "model": self.model_id,
-            "instructions": TARGET_INTAKE_SYSTEM_PROMPT,
+            "instructions": _target_intake_instructions(require_dimensions=require_dimensions),
             "input": normalize_intent_description(description),
             "reasoning": {"effort": self.configuration.reasoning_effort},
             "text": {
@@ -437,30 +473,38 @@ class OpenAITargetIntakeAnalyzer:
         }
 
     def analyze(self, description: str) -> TargetIntakeContract:
-        """Call OpenAI once, validate structured output, and confidence-gate the proposal."""
+        """Request a proposal, retry one omitted size estimate, and confidence-gate it."""
         normalized = normalize_intent_description(description)
         try:
-            headers = {
-                "Authorization": f"Bearer {self._authorization_token()}",
-                "Content-Type": "application/json",
-            }
-            if self._client is None:
-                with httpx.Client(timeout=90.0) as client:
-                    response = client.post(
+            inference: TargetIntakeInference | None = None
+            for require_dimensions in (False, True):
+                headers = {
+                    "Authorization": f"Bearer {self._authorization_token()}",
+                    "Content-Type": "application/json",
+                }
+                if self._client is None:
+                    with httpx.Client(timeout=90.0) as client:
+                        response = client.post(
+                            self.configuration.responses_url,
+                            headers=headers,
+                            json=self._request_payload(
+                                normalized, require_dimensions=require_dimensions
+                            ),
+                        )
+                else:
+                    response = self._client.post(
                         self.configuration.responses_url,
                         headers=headers,
-                        json=self._request_payload(normalized),
+                        json=self._request_payload(
+                            normalized, require_dimensions=require_dimensions
+                        ),
                     )
-            else:
-                response = self._client.post(
-                    self.configuration.responses_url,
-                    headers=headers,
-                    json=self._request_payload(normalized),
+                response.raise_for_status()
+                inference = TargetIntakeInference.model_validate_json(
+                    self._output_text(response.json())
                 )
-            response.raise_for_status()
-            inference = TargetIntakeInference.model_validate_json(
-                self._output_text(response.json())
-            )
+                if not _needs_dimensions_retry(inference):
+                    break
         except httpx.HTTPStatusError as error:
             LOGGER.warning(
                 "%s intake request failed with HTTP %s: %s",
@@ -603,11 +647,13 @@ class BedrockTargetIntakeAnalyzer(OpenAITargetIntakeAnalyzer):
             )
         return arguments
 
-    def _request_payload(self, description: str) -> dict[str, object]:
+    def _request_payload(
+        self, description: str, *, require_dimensions: bool = False
+    ) -> dict[str, object]:
         """Require the Bedrock-hosted model to submit the validated intake tool schema."""
         return {
             "model": self.model_id,
-            "instructions": TARGET_INTAKE_SYSTEM_PROMPT,
+            "instructions": _target_intake_instructions(require_dimensions=require_dimensions),
             "input": normalize_intent_description(description),
             "reasoning": {"effort": self.configuration.reasoning_effort},
             "text": {"verbosity": "low"},
@@ -747,11 +793,15 @@ class BedrockConverseTargetIntakeAnalyzer:
         )
         self._client = cast(BedrockConverseClient, cast(object, raw_client))
 
-    def _request_payload(self, description: str) -> dict[str, object]:
+    def _request_payload(
+        self, description: str, *, require_dimensions: bool = False
+    ) -> dict[str, object]:
         """Build one bounded portable request and add only proven capability fields."""
         payload: dict[str, object] = {
             "modelId": self.model_id,
-            "system": [{"text": TARGET_INTAKE_SYSTEM_PROMPT}],
+            "system": [
+                {"text": _target_intake_instructions(require_dimensions=require_dimensions)}
+            ],
             "messages": [
                 {
                     "role": "user",
@@ -818,13 +868,19 @@ class BedrockConverseTargetIntakeAnalyzer:
         return cast(dict[str, object], tool_input)
 
     def analyze(self, description: str) -> TargetIntakeContract:
-        """Invoke the selected model once and apply unchanged Pydantic/confidence gates."""
+        """Request a proposal, retry one omitted size estimate, and confidence-gate it."""
         normalized = normalize_intent_description(description)
         try:
-            response = self._client.converse(**self._request_payload(normalized))
-            inference = TargetIntakeInference.model_validate_json(
-                json.dumps(self._tool_input(response))
-            )
+            inference: TargetIntakeInference | None = None
+            for require_dimensions in (False, True):
+                response = self._client.converse(
+                    **self._request_payload(normalized, require_dimensions=require_dimensions)
+                )
+                inference = TargetIntakeInference.model_validate_json(
+                    json.dumps(self._tool_input(response))
+                )
+                if not _needs_dimensions_retry(inference):
+                    break
         except ClientError as error:
             error_response = cast(dict[str, object], error.response)
             code = cast(dict[str, object], error_response.get("Error", {})).get("Code")

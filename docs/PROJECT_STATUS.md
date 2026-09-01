@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-01
-**Current commit:** Explicit animated Return-to-gallery terminus (this file is included)
+**Current commit:** Agent-proposed approximate target sizing (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,18 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D088 agent-proposed approximate sizing: recognizable assets no longer fall through to mandatory
+  X/Y/Z entry merely because a model treats an ordinary scale analogy as uncertain. Intake now
+  defines relative clues such as bus-sized, person-sized, handheld, and building-sized as sufficient
+  for a confirmable approximate proposal, makes dimension confidence about usefulness rather than
+  exact knowledge, and performs at most one focused retry when an otherwise valid proposal omits or
+  confidence-gates its size. The fallback label is **Approximate target size**, not **Tight target
+  bounds**. A live Bedrock Converse/Kimi check of `a quadrupedal robot dog, about the size of a bus`
+  proposed 250 × 300 × 1,200 cm and left only the genuinely missing endpoint unresolved. Regression
+  coverage reproduces a first-pass omission and successful retry. The common gate passes with 207
+  tests, two opt-in live skips, lock validation, Ruff, formatting, JavaScript syntax validation, and
+  zero Pyright findings.
 
 - D087 terminal gallery return: an accepted Download cell now ends with one explicit **Return to
   gallery** action, a carriage-return mark, and an original local four-frame Patchling sprite that

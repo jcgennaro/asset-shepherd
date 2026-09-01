@@ -385,7 +385,7 @@ def clarify_target_intake(
             legacy_height_cm = target_height_cm_from_meters(target_height_m)
             target_dimensions_cm = (legacy_height_cm, legacy_height_cm, legacy_height_cm)
         else:
-            raise ValueError("Provide the intended tight X, Y, and Z bounds.")
+            raise ValueError("Provide approximate X, Y, and Z target dimensions.")
         target_height_cm = target_dimensions_cm[1]
         evidence.append(
             TargetFieldEvidence(
@@ -446,7 +446,7 @@ def revise_target_intake(
         legacy_height_cm = target_height_cm_from_meters(target_height_m)
         target_dimensions_cm = (legacy_height_cm, legacy_height_cm, legacy_height_cm)
     else:
-        raise ValueError("Provide the intended tight X, Y, and Z bounds.")
+        raise ValueError("Provide approximate X, Y, and Z target dimensions.")
     target_height_cm = target_dimensions_cm[1]
     evidence = (
         TargetFieldEvidence(

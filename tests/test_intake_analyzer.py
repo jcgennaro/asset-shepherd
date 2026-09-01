@@ -557,6 +557,76 @@ def test_converse_intake_forces_one_tool_and_preserves_server_validation() -> No
     assert "additionalModelRequestFields" not in captured
 
 
+def test_converse_retries_when_a_recognizable_asset_loses_its_size_proposal() -> None:
+    """A relative scale clue yields agent-proposed bounds instead of mandatory raw inputs."""
+    captured: list[dict[str, object]] = []
+
+    class FakeConverseClient:
+        def converse(self, **kwargs: object) -> dict[str, object]:
+            captured.append(kwargs)
+            dimensions = (
+                None if len(captured) == 1 else {"x_cm": 1200.0, "y_cm": 180.0, "z_cm": 450.0}
+            )
+            return {
+                "output": {
+                    "message": {
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "toolUse": {
+                                    "toolUseId": f"tool-{len(captured)}",
+                                    "name": BEDROCK_INTAKE_TOOL,
+                                    "input": {
+                                        "engagement_decision": "PROCEED",
+                                        "asset_name": "Quadrupedal Robot Dog",
+                                        "target_use": "STATIC_GAME_ASSET",
+                                        "target_use_confidence": 0.9,
+                                        "target_use_evidence": (
+                                            "The description identifies a robot-dog game asset."
+                                        ),
+                                        "endpoint": None,
+                                        "endpoint_detail": None,
+                                        "endpoint_confidence": 0.3,
+                                        "endpoint_evidence": None,
+                                        "target_dimensions_cm": dimensions,
+                                        "target_dimensions_confidence": (
+                                            0.3 if dimensions is None else 0.85
+                                        ),
+                                        "target_dimensions_evidence": (
+                                            None
+                                            if dimensions is None
+                                            else "A bus-sized quadruped supports this proposal."
+                                        ),
+                                        "expected_piece_count": 1,
+                                        "expected_piece_count_evidence": (
+                                            "The description identifies one robot dog."
+                                        ),
+                                    },
+                                }
+                            }
+                        ],
+                    }
+                }
+            }
+
+    analyzer = BedrockConverseTargetIntakeAnalyzer(
+        BedrockConverseTargetIntakeConfiguration(
+            model_id="moonshotai.kimi-k2.5",
+            region="us-east-1",
+        ),
+        client=FakeConverseClient(),
+    )
+
+    contract = analyzer.analyze("A quadrupedal robot dog, about the size of a bus.")
+
+    assert contract.target_dimensions_cm == (1200.0, 180.0, 450.0)
+    assert contract.missing_fields == ("endpoint",)
+    assert len(captured) == 2
+    retry_system = cast(list[dict[str, str]], captured[1]["system"])[0]["text"]
+    assert "Do not ask the user" in retry_system
+    assert "for exact dimensions" in retry_system
+
+
 def test_converse_configuration_selects_kimi_without_reasoning_translation() -> None:
     """The canonical provider accepts an allowlisted model and rejects foreign controls."""
     values = {
