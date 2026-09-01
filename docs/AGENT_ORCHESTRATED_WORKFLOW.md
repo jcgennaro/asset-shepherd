@@ -168,6 +168,11 @@ idle cadence. Reduced-motion preference freezes it without removing the textual 
 collapsed navigation is merely peeking from the desktop edge, its compact chevron points right and
 pins the rail; the left-pointing hide chevron returns only after the rail is persistent.
 
+If intake cannot confidently infer the destination, the target-engine turn includes contextual help
+that explains the operational effect of Unity, Unreal, Godot, and Other. It makes clear that the
+selection changes the consumer-frame assessment and handoff advice while the deliverable remains a
+GLB and the authorized repair surface remains unchanged.
+
 The interface exposes typed next actions rather than a universal composer. Immediate transitions do
 not create an invented freeform feedback turn: target confirmation starts the initial workflow from
 the confirmed contract, while accepting the current version invokes no model. A target correction

@@ -52,6 +52,12 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
 
+- D086 target-engine help: the focused Unity/Unreal/Godot/Other clarification now places a compact
+  question-mark control beside the agent's prompt. Its modal explains that the result remains GLB,
+  identifies the consumer frames and target-specific handoff emphasis, covers a described custom
+  destination, and explicitly avoids implying new rigging, animation, retopology, or proprietary
+  conversion capabilities. Hosted-route, browser, and common-gate acceptance pass.
+
 - D085 immediate model-working feedback: submitting Describe now appends a live Asset Shepherd
   message that explains it is reading the description and drafting a target, instead of hiding the
   form and appearing hung during the synchronous model call. Pollable Shepherd/Refine activity keeps

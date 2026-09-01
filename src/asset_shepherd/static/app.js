@@ -746,6 +746,20 @@ if (descriptionExamplesDialog instanceof HTMLDialogElement && descriptionExample
   });
 }
 
+const endpointHelpDialog = document.querySelector("[data-endpoint-help-dialog]");
+const endpointHelpOpen = document.querySelector("[data-endpoint-help-open]");
+const endpointHelpClose = document.querySelector("[data-endpoint-help-close]");
+
+if (endpointHelpDialog instanceof HTMLDialogElement && endpointHelpOpen) {
+  endpointHelpOpen.addEventListener("click", () => endpointHelpDialog.showModal());
+  endpointHelpClose?.addEventListener("click", () => endpointHelpDialog.close());
+  endpointHelpDialog.addEventListener("click", (event) => {
+    if (event.target === endpointHelpDialog) {
+      endpointHelpDialog.close();
+    }
+  });
+}
+
 function bindViewerError(viewer) {
   if (viewer.dataset.errorBound === "true") {
     return;

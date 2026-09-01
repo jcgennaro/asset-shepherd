@@ -79,13 +79,32 @@
           <p{% if not has_appended_current_result %} id="current-turn"{% endif %} class="conversation-prompt agent-message{% if record.phase.value != 'TARGET_CONFIRMATION' %} completion-prompt{% endif %}{% if cannot_repair %} blocked{% endif %}" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d shepherd this for {{ endpoint_label }} within {{ target_bounds_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
-            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}Select target engine.
+            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}<span class="endpoint-help-prompt"><span>Select target engine.</span><button class="endpoint-help-button" type="button" aria-label="Explain target engines" title="What does the target change?" data-endpoint-help-open>?</button></span>
             {% elif record.phase.value == 'TARGET_CONFIRMATION' %}Enter the approximate target size.
             {% elif record.phase.value == 'APPROVAL' and agent_assessment_sentence %}{{ agent_assessment_sentence }}
             {% elif agent_assessment_sentence %}{{ agent_assessment_sentence }}
             {% elif current_turn_outcome_summary %}{{ current_turn_outcome_summary }}
             {% else %}The workflow stopped.{% endif %}
           </p>
+
+        {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}
+          <dialog class="description-examples-dialog endpoint-help-dialog" data-endpoint-help-dialog aria-labelledby="endpoint-help-title">
+            <div class="description-examples-content">
+              <header>
+                <p class="description-examples-title" id="endpoint-help-title">What the target changes</p>
+                <button class="compact-button" type="button" data-endpoint-help-close>Close</button>
+              </header>
+              <p>Asset Shepherd still returns a GLB. Your choice tells the agent which consumer coordinate frame and import conventions to use when judging orientation, scale, grounding, pivot placement, names, and handoff risks.</p>
+              <ol>
+                <li><strong>Unity</strong><span>Judge the asset in a Y-up, +Z-forward consumer frame and tailor handoff advice to Unity.</span></li>
+                <li><strong>Unreal Engine</strong><span>Judge it in a Z-up, +X-forward consumer frame and tailor static-mesh scale, grounding, pivot, and naming advice to Unreal.</span></li>
+                <li><strong>Godot Engine</strong><span>Judge it in a Y-up, +Z-forward consumer frame and tailor scene and import advice to Godot.</span></li>
+                <li><strong>Other</strong><span>Name Blender animation, a web viewer, a custom engine, or another destination so the agent uses that context instead of guessing.</span></li>
+              </ol>
+              <p>This choice does not add unsupported rigging, animation, retopology, or proprietary-format conversion. It changes the target-aware assessment and recommendations.</p>
+            </div>
+          </dialog>
+        {% endif %}
 
         {% if inspection %}
           {% set proposal_response_form_id = 'hosted-plan-response' if approval_card and record.pending_interrupt_id and job.agent_orchestrated else '' %}

@@ -552,6 +552,10 @@ def test_hosted_endpoint_clarification_is_one_focused_linked_choice(tmp_path: Pa
 
     assert "Select target engine." in page.text
     assert "I need one" not in page.text
+    assert 'aria-label="Explain target engines"' in page.text
+    assert "What the target changes" in page.text
+    assert "Asset Shepherd still returns a GLB." in page.text
+    assert "proprietary-format conversion" in page.text
     assert page.text.count('class="endpoint-option"') == 4
     assert 'href="https://unity.com/"' in page.text
     assert 'href="https://www.unrealengine.com/"' in page.text

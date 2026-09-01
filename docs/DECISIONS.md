@@ -4,6 +4,37 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D086 — Explain target engines in terms of operational consequences
+
+**Date:** 2026-08-31
+
+**Status:** ACCEPTED; contextual target help implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+When intake could not infer an endpoint, the target-selection turn offered Unity, Unreal, Godot, and
+Other with terse axis tooltips. It did not explain why Asset Shepherd asks or what the choice changes,
+so a user could reasonably mistake the choice for a proprietary-format conversion request.
+
+**Decision**
+
+Place a compact question-mark control beside **Select target engine.** It opens a modal that leads
+with the shared operational effect: output remains GLB, while the chosen consumer frame and import
+conventions guide judgments about orientation, scale, grounding, pivot placement, naming, and
+handoff risks. Explain the Unity, Unreal, Godot, and described-Other paths individually. Explicitly
+state that selecting an endpoint does not expand Asset Shepherd into rigging, animation, retopology,
+or proprietary-format conversion.
+
+**Evidence and consequences**
+
+Hosted-route acceptance verifies the control, dialog, operational copy, all four choices, and scope
+boundary. Browser acceptance verifies modal layout, close behavior, and preservation of the target
+radio controls beneath it.
+
 ### D085 — Acknowledge synchronous model work with the original Patchling mascot
 
 **Date:** 2026-08-31

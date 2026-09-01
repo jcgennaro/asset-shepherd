@@ -1213,6 +1213,7 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "const busyMessage = form.dataset.busyMessage" in script.text
     assert "workflow-thinking-message" in script.text
     assert 'status.classList.add("shepherd-sprite", "shepherd-sprite-thinking")' in script.text
+    assert 'document.querySelector("[data-endpoint-help-dialog]")' in script.text
 
     comparison_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"
@@ -1301,6 +1302,7 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'background-image: url("/static/asset-shepherd-thinking.png")' in stylesheet.text
     assert ".shepherd-sprite-thinking" in stylesheet.text
     assert ".workflow-thinking-message" in stylesheet.text
+    assert ".endpoint-help-button" in stylesheet.text
     assert ".nav-peeking .rail-show-icon" in stylesheet.text
     assert ".workspace-logo" in stylesheet.text
     assert "activity-spin" not in stylesheet.text

@@ -5032,6 +5032,40 @@ textarea.asset-description-input {
   color: var(--muted);
 }
 
+.endpoint-help-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.endpoint-help-button {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--success) 62%, var(--line));
+  border-radius: 50%;
+  color: var(--success);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.endpoint-help-button:hover,
+.endpoint-help-button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+.endpoint-help-dialog .description-examples-content > p:last-child {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
 .endpoint-choice,
 .target-bounds {
   display: grid;
