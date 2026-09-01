@@ -64,7 +64,7 @@ message as the sole active cell until navigation completes. Pollable Shepherd an
 their bounded tool labels.
 
 Replace the generic active dashed circle with an original four-frame Patchling thinking sprite and
-use a slower version of the same sprite as the persistent workspace-header brand mark, immediately
+use a still first frame from the same sheet as the persistent workspace-header brand mark, immediately
 left of the page title. It does not move with the collapsible navigation. The sprite is a locally
 served transparent PNG with no third-party marks; CSS selects frames so there is no animation runtime
 or remote dependency. Respect reduced-motion preferences by holding the first frame. Completed and

@@ -163,8 +163,8 @@ touch devices use an explicit arrow control instead of relying on hover.
 A model-backed form must acknowledge submission before its response is available. Pollable agent
 turns show the bounded tool labels as they are called. A synchronous turn such as Describe instead
 appends one transient Asset Shepherd message that names the work in progress. Both use the original
-Patchling thinking sprite; the persistent workspace header uses the same local sprite at a slower
-idle cadence. Reduced-motion preference freezes it without removing the textual status. When
+Patchling thinking sprite; the persistent workspace header uses a still first frame from the same
+local sprite sheet. Reduced-motion preference freezes working animation without removing the textual status. When
 collapsed navigation is merely peeking from the desktop edge, its compact chevron points right and
 pins the rail; the left-pointing hide chevron returns only after the rail is persistent.
 

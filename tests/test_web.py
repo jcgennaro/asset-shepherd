@@ -1270,7 +1270,8 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
         encoding="utf-8"
     )
     assert 'class="workspace-logo"' in base_template
-    assert "shepherd-sprite shepherd-sprite-idle" in base_template
+    assert '<span class="shepherd-sprite" aria-hidden="true"></span>' in base_template
+    assert "shepherd-sprite-idle" not in base_template
 
     checklist_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"
@@ -1301,6 +1302,7 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "@media (hover: none), (pointer: coarse)" in stylesheet.text
     assert 'background-image: url("/static/asset-shepherd-thinking.png")' in stylesheet.text
     assert ".shepherd-sprite-thinking" in stylesheet.text
+    assert "shepherd-sprite-idle" not in stylesheet.text
     assert ".workflow-thinking-message" in stylesheet.text
     assert ".endpoint-help-button" in stylesheet.text
     assert ".nav-peeking .rail-show-icon" in stylesheet.text
