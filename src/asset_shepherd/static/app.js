@@ -41,7 +41,7 @@ if (appShell && modeRail && railCollapse && railReveal) {
     modeRail.inert = !visible;
     railCollapse.setAttribute("aria-expanded", String(visible));
     railReveal.setAttribute("aria-expanded", String(peeking));
-    const collapseLabel = collapsed ? "Stay open" : "Hide navigation";
+    const collapseLabel = collapsed ? "Pin navigation" : "Hide navigation";
     railCollapse.title = collapseLabel;
     const hiddenLabel = railCollapse.querySelector(".visually-hidden");
     if (hiddenLabel) {

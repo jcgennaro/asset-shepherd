@@ -222,6 +222,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert thinking_sprite.content.startswith(b"\x89PNG\r\n\x1a\n")
     assert "Asset Shepherd -- Gallery" in entry.text
     assert "shepherd-sprite shepherd-sprite-idle" in entry.text
+    assert 'class="workspace-logo"' in entry.text
+    assert 'class="rail-logo"' not in entry.text
     assert "New asset" in entry.text
     assert "Model description" not in entry.text
     assert "Choose or drop your GLB" not in entry.text

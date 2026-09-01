@@ -1261,9 +1261,15 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "data-rail-reveal" in mode_rail_template
     assert "rail-edge-indicator" in mode_rail_template
     assert "rail-touch-arrow" in mode_rail_template
-    assert "shepherd-sprite shepherd-sprite-idle" in mode_rail_template
-    assert "rail-pin-label" in mode_rail_template
-    assert "Stay open" in mode_rail_template
+    assert "rail-show-icon" in mode_rail_template
+    assert 'd="m10 6 6 6-6 6"' in mode_rail_template
+    assert "rail-pin-label" not in mode_rail_template
+
+    base_template = (PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "base.html").read_text(
+        encoding="utf-8"
+    )
+    assert 'class="workspace-logo"' in base_template
+    assert "shepherd-sprite shepherd-sprite-idle" in base_template
 
     checklist_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_inspection_checklist.html"
@@ -1295,7 +1301,8 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'background-image: url("/static/asset-shepherd-thinking.png")' in stylesheet.text
     assert ".shepherd-sprite-thinking" in stylesheet.text
     assert ".workflow-thinking-message" in stylesheet.text
-    assert ".nav-peeking .rail-pin-label" in stylesheet.text
+    assert ".nav-peeking .rail-show-icon" in stylesheet.text
+    assert ".workspace-logo" in stylesheet.text
     assert "activity-spin" not in stylesheet.text
 
 

@@ -288,7 +288,7 @@ not change.
   sentence. Eyebrows, step counters, section headings, card headings, subtitles, and duplicate state
   summaries are forbidden when they restate the same screen. Accessible dialog titles, concise
   control labels, and factual row labels are the only exceptions.
-- The two-column shell retains the placeholder `LOGO` cell, persistent left navigation, current-step
+- The two-column shell retains persistent left navigation, a Patchling brand mark beside the page title, current-step
   title, and full workspace.
 - Primary questions and actions use large type and available whitespace.
 - Target confirmation uses a wider canvas, human-readable metric units, and exactly three collapsed

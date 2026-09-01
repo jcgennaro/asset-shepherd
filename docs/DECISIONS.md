@@ -33,14 +33,15 @@ message as the sole active cell until navigation completes. Pollable Shepherd an
 their bounded tool labels.
 
 Replace the generic active dashed circle with an original four-frame Patchling thinking sprite and
-use a slower version of the same sprite as the navigation brand mark. The sprite is a locally served
-transparent PNG with no third-party marks; CSS selects frames so there is no animation runtime or
-remote dependency. Respect reduced-motion preferences by holding the first frame. Completed and
+use a slower version of the same sprite as the persistent workspace-header brand mark, immediately
+left of the page title. It does not move with the collapsible navigation. The sprite is a locally
+served transparent PNG with no third-party marks; CSS selects frames so there is no animation runtime
+or remote dependency. Respect reduced-motion preferences by holding the first frame. Completed and
 failed activity states retain their explicit check and exclamation symbols.
 
-When the collapsed navigation is only being previewed from the desktop edge, replace its hide
-chevron with an explicit **Stay open** pin control. Clicking it makes the rail persistent again; only
-the persistent state displays the compact hide control.
+When the collapsed navigation is only being previewed from the desktop edge, replace its left-pointing
+hide chevron with the same compact control pointing right. Clicking it makes the rail persistent
+again; the persistent state returns to the left-pointing hide chevron. No text label is displayed.
 
 **Evidence and consequences**
 

@@ -56,10 +56,11 @@ enforcement, exact-mutation, invariant-verification, and packaging layer.
   message that explains it is reading the description and drafting a target, instead of hiding the
   form and appearing hung during the synchronous model call. Pollable Shepherd/Refine activity keeps
   its bounded tool labels but replaces the generic dashed spinner with an original four-frame
-  Patchling sprite. The same locally served transparent sprite replaces the top-left `LOGO`
-  placeholder at a slower idle cadence, and reduced-motion holds a still frame while retaining all
-  status text. A desktop rail preview now visibly offers **Stay open** and pins itself when selected;
-  a persistent rail shows the hide control. Static-route, browser, and common-gate acceptance pass.
+  Patchling sprite. The same locally served transparent sprite sits in the persistent workspace
+  header immediately left of the page title at a slower idle cadence, and reduced-motion holds a
+  still frame while retaining all status text. A desktop rail preview uses a right-pointing chevron
+  to pin itself; a persistent rail uses the matching left-pointing hide chevron. Static-route,
+  browser, and common-gate acceptance pass.
 
 - D084 adjustable workspace chrome: the desktop evidence column now has a persisted drag and
   keyboard separator that grows the 3D scene without allowing the conversation below 500 px. The

@@ -14,7 +14,10 @@
       {% include "_mode_rail.html" %}
       <section class="workspace-shell">
         <header class="workspace-header">
-          <h1>Asset Shepherd -- {{ active_style }}</h1>
+          <div class="workspace-title">
+            <a class="workspace-logo" href="{{ url_for('hosted_home') }}" aria-label="Asset Shepherd gallery"><span class="shepherd-sprite shepherd-sprite-idle" aria-hidden="true"></span></a>
+            <h1>Asset Shepherd -- {{ active_style }}</h1>
+          </div>
           <div class="workspace-header-actions">
             {% if active_mode == 'conversation' and hosted_step != 'gallery' %}<a class="secondary-button compact-button" href="{{ url_for('hosted_home') }}">Gallery</a>{% endif %}
             {% block header_actions %}{% endblock %}
