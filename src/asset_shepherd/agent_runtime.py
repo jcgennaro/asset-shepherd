@@ -615,15 +615,150 @@ class AssetShepherdAgent:
         self._invocation_duration_seconds = 0.0
         self._interrupt_count = 1 if job.pending_interrupt_id is not None else 0
         self._latest_result: AgentResult | None = None
+        self._metrics_agent_identity: int | None = None
+        self._usage_baseline = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        self._tool_baseline: dict[str, dict[str, int | float]] = {}
 
-    def _invoke(self, prompt: AgentInput) -> AgentResult:
+    @property
+    def _invocation_ledger_path(self) -> Path:
+        """Return the per-turn provider-call ledger archived with every result."""
+        return self.job.output_dir / "agent_invocations.json"
+
+    @staticmethod
+    def _result_metrics(result: AgentResult) -> tuple[dict[str, int], list[dict[str, Any]]]:
+        """Extract provider usage and tool totals from one Strands invocation."""
+        summary = result.metrics.get_summary()
+        usage_value = cast(dict[str, Any], summary.get("accumulated_usage", {}))
+        usage = {
+            "input_tokens": int(usage_value.get("inputTokens", 0)),
+            "output_tokens": int(usage_value.get("outputTokens", 0)),
+            "total_tokens": int(usage_value.get("totalTokens", 0)),
+        }
+        tool_usage = cast(dict[str, dict[str, Any]], summary.get("tool_usage", {}))
+        tools: list[dict[str, Any]] = []
+        for name, values in sorted(tool_usage.items()):
+            execution = cast(dict[str, Any], values.get("execution_stats", {}))
+            tools.append(
+                {
+                    "name": name,
+                    "call_count": int(execution.get("call_count", 0)),
+                    "success_count": int(execution.get("success_count", 0)),
+                    "error_count": int(execution.get("error_count", 0)),
+                    "duration_seconds": float(execution.get("total_time", 0.0)),
+                }
+            )
+        return usage, tools
+
+    def _read_invocation_ledger(self) -> list[dict[str, Any]]:
+        path = self._invocation_ledger_path
+        if not path.is_file():
+            return []
+        try:
+            value = cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+            raw_invocations = value.get("invocations")
+            if not isinstance(raw_invocations, list):
+                return []
+            return [
+                cast(dict[str, Any], item)
+                for item in cast(list[Any], raw_invocations)
+                if isinstance(item, dict)
+            ]
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            logger.warning("Could not read the provider invocation ledger at %s", path)
+            return []
+
+    def _record_invocation(
+        self,
+        result: AgentResult,
+        duration_seconds: float,
+        *,
+        agent_identity: int,
+    ) -> None:
+        """Persist one completed provider call before an interrupt can reload the runtime."""
+        cumulative_usage, cumulative_tools = self._result_metrics(result)
+        if self._metrics_agent_identity != agent_identity:
+            self._metrics_agent_identity = agent_identity
+            self._usage_baseline = {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+            }
+            self._tool_baseline = {}
+        usage = {
+            key: max(0, cumulative_usage[key] - self._usage_baseline[key])
+            for key in cumulative_usage
+        }
+        tools: list[dict[str, Any]] = []
+        next_tool_baseline: dict[str, dict[str, int | float]] = {}
+        for tool in cumulative_tools:
+            name = cast(str, tool["name"])
+            baseline = self._tool_baseline.get(name, {})
+            row = {
+                "name": name,
+                "call_count": max(0, int(tool["call_count"]) - int(baseline.get("call_count", 0))),
+                "success_count": max(
+                    0,
+                    int(tool["success_count"]) - int(baseline.get("success_count", 0)),
+                ),
+                "error_count": max(
+                    0, int(tool["error_count"]) - int(baseline.get("error_count", 0))
+                ),
+                "duration_seconds": max(
+                    0.0,
+                    float(tool["duration_seconds"]) - float(baseline.get("duration_seconds", 0.0)),
+                ),
+            }
+            tools.append(row)
+            next_tool_baseline[name] = {
+                "call_count": int(tool["call_count"]),
+                "success_count": int(tool["success_count"]),
+                "error_count": int(tool["error_count"]),
+                "duration_seconds": float(tool["duration_seconds"]),
+            }
+        self._usage_baseline = cumulative_usage
+        self._tool_baseline = next_tool_baseline
+        invocations = self._read_invocation_ledger()
+        invocations.append(
+            {
+                "invocation_index": len(invocations),
+                "turn_index": self.job.turn_index,
+                "duration_seconds": duration_seconds,
+                "stop_reason": str(result.stop_reason),
+                "token_usage": usage,
+                "tool_calls": tools,
+            }
+        )
+        path = self._invocation_ledger_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".json.tmp")
+        payload = {"schema_version": 1, "invocations": invocations}
+        temporary.write_text(
+            f"{json.dumps(payload, indent=2, sort_keys=True)}\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        temporary.replace(path)
+
+    def _invoke_agent(
+        self,
+        agent: Agent,
+        prompt: AgentInput,
+        *,
+        turn_limit: int,
+    ) -> AgentResult:
+        """Invoke one agent and durably retain its billable usage and elapsed time."""
         started = perf_counter()
         try:
-            result = self.agent(prompt, limits={"turns": 12})
+            result = agent(prompt, limits={"turns": turn_limit})
         finally:
-            self._invocation_duration_seconds += perf_counter() - started
+            duration_seconds = perf_counter() - started
+            self._invocation_duration_seconds += duration_seconds
+        self._record_invocation(result, duration_seconds, agent_identity=id(agent))
         self._latest_result = result
         return result
+
+    def _invoke(self, prompt: AgentInput) -> AgentResult:
+        return self._invoke_agent(self.agent, prompt, turn_limit=12)
 
     def _capture_interrupt(self, result: AgentResult) -> None:
         interrupts = tuple(result.interrupts or ())
@@ -810,13 +945,7 @@ class AssetShepherdAgent:
                 f"<recovery_context>\n{json.dumps(recovery_context, sort_keys=True)}\n"
                 "</recovery_context>"
             )
-            started = perf_counter()
-            try:
-                stage_result = recovery_agent(prompt, limits={"turns": 8})
-            finally:
-                self._invocation_duration_seconds += perf_counter() - started
-            self._latest_result = stage_result
-            return stage_result
+            return self._invoke_agent(recovery_agent, prompt, turn_limit=8)
 
         if requires_reassessment and self.job.candidate_reassessment is None:
             evidence_result = invoke_recovery(
@@ -882,12 +1011,7 @@ class AssetShepherdAgent:
             "Retry this saved Shepherd iteration from its persisted deterministic inspection. "
             "Do not invent a prior action or approval."
         )
-        started = perf_counter()
-        try:
-            result = recovery_agent(prompt, limits={"turns": 12})
-        finally:
-            self._invocation_duration_seconds += perf_counter() - started
-        self._latest_result = result
+        result = self._invoke_agent(recovery_agent, prompt, turn_limit=12)
         if result.stop_reason == "interrupt":
             self._capture_interrupt(result)
         return result
@@ -914,28 +1038,75 @@ class AssetShepherdAgent:
             raise AgentWorkflowError(
                 "The agent ended before deterministic verification and packaging"
             )
-        summary = current.metrics.get_summary()
-        usage_value = cast(dict[str, Any], summary.get("accumulated_usage", {}))
+        invocations = self._read_invocation_ledger()
+        if not invocations:
+            usage, tool_rows = self._result_metrics(current)
+            invocations: list[dict[str, Any]] = [
+                {
+                    "duration_seconds": self._invocation_duration_seconds,
+                    "token_usage": usage,
+                    "tool_calls": tool_rows,
+                }
+            ]
+        input_tokens = 0
+        output_tokens = 0
+        total_tokens = 0
+        invocation_duration_seconds = 0.0
+        tool_totals: dict[str, dict[str, Any]] = {}
+        for invocation in invocations:
+            invocation_duration_seconds += float(invocation.get("duration_seconds", 0.0))
+            raw_usage = invocation.get("token_usage")
+            if isinstance(raw_usage, dict):
+                usage_value = cast(dict[str, Any], raw_usage)
+                input_tokens += int(usage_value.get("input_tokens", 0))
+                output_tokens += int(usage_value.get("output_tokens", 0))
+                total_tokens += int(usage_value.get("total_tokens", 0))
+            raw_tools = invocation.get("tool_calls")
+            if not isinstance(raw_tools, list):
+                continue
+            for raw_tool in cast(list[Any], raw_tools):
+                if not isinstance(raw_tool, dict):
+                    continue
+                tool = cast(dict[str, Any], raw_tool)
+                name = tool.get("name")
+                if not isinstance(name, str):
+                    continue
+                total = tool_totals.setdefault(
+                    name,
+                    {
+                        "call_count": 0,
+                        "success_count": 0,
+                        "error_count": 0,
+                        "duration_seconds": 0.0,
+                    },
+                )
+                total["call_count"] = int(total["call_count"]) + int(tool.get("call_count", 0))
+                total["success_count"] = int(total["success_count"]) + int(
+                    tool.get("success_count", 0)
+                )
+                total["error_count"] = int(total["error_count"]) + int(tool.get("error_count", 0))
+                total["duration_seconds"] = float(total["duration_seconds"]) + float(
+                    tool.get("duration_seconds", 0.0)
+                )
         token_usage = AgentTokenUsage(
-            input_tokens=int(usage_value.get("inputTokens", 0)),
-            output_tokens=int(usage_value.get("outputTokens", 0)),
-            total_tokens=int(usage_value.get("totalTokens", 0)),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
         )
-        tool_usage = cast(dict[str, dict[str, Any]], summary.get("tool_usage", {}))
         tool_metrics = tuple(
             AgentToolMetric(
                 name=name,
-                call_count=int(values["execution_stats"]["call_count"]),
-                success_count=int(values["execution_stats"]["success_count"]),
-                error_count=int(values["execution_stats"]["error_count"]),
-                duration_seconds=float(values["execution_stats"]["total_time"]),
+                call_count=int(values["call_count"]),
+                success_count=int(values["success_count"]),
+                error_count=int(values["error_count"]),
+                duration_seconds=float(values["duration_seconds"]),
             )
-            for name, values in sorted(tool_usage.items())
+            for name, values in sorted(tool_totals.items())
         )
         metrics = AgentMetrics(
             provider=self.provider,
             model_id=self.model_id,
-            invocation_duration_seconds=self._invocation_duration_seconds,
+            invocation_duration_seconds=invocation_duration_seconds,
             token_usage=token_usage,
             tool_calls=tool_metrics,
             interrupt_count=self._interrupt_count,

@@ -1,0 +1,44 @@
+{
+  "agent_model": "gpt-5.6-luna",
+  "agent_provider": "openai",
+  "asset_sha256": "30ca4838a7f63886456e8e97c5afb09e33d5c74b3c924efcea0fa7b24750ec48",
+  "final_candidate_sha256": "3040bebc0c601a34a3289c0dc92329e6cb7ce2bd24889e2331d17cf32b104f31",
+  "final_dimensions_cm": [
+    11.844303,
+    3.886365,
+    11.731150
+  ],
+  "final_triangle_count": 783571,
+  "final_verification": "PASSED_WITH_REMAINING_WARNINGS",
+  "intake_description": "a decorative necklace for a human with a heart charm on the front and a buckle on the back; target size approximately 15 x 3 x 12 cm",
+  "notes": [
+    "Luna's first intake proposal for the description without explicit dimensions was 16 x 18 x 2 cm, so the target was restated explicitly before confirmation.",
+    "Luna recognized all 65 exact components but treated the single near-contact group and visual evidence as one coherent necklace assembly.",
+    "It preserved all components, refused an unsafe weld, and proposed uniform best-fit scaling, Y grounding, and display-name cleanup in one repair turn.",
+    "The one-turn candidate passed deterministic verification and visually matched the successful final Kimi scale."
+  ],
+  "recorded_token_usage": {
+    "input_tokens": 407476,
+    "output_tokens": 5453,
+    "scope": "Exact for both Shepherd invocations; semantic intake calls are not included.",
+    "total_tokens": 412929
+  },
+  "shepherd_invocation_seconds": 161.7435333,
+  "source_dimensions_m": [
+    1.898266,
+    0.622861,
+    1.880131
+  ],
+  "target_dimensions_cm": [
+    15.0,
+    3.0,
+    12.0
+  ],
+  "topology_observation": {
+    "exact_components_presented_to_agent": 65,
+    "exact_components_preserved": 65,
+    "initial_triangle_count": 783571,
+    "near_contact_group_count": 1
+  },
+  "workspace_id": "a7433c98cc1647c4ae24a9ca794bf000"
+}

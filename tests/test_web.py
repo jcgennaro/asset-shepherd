@@ -1212,6 +1212,8 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in script.text
     assert "const busyMessage = form.dataset.busyMessage" in script.text
     assert "workflow-thinking-message" in script.text
+    assert "function appendPendingUserTurn(form, submitter)" in script.text
+    assert "pending-user-message" in script.text
     assert 'status.classList.add("shepherd-sprite", "shepherd-sprite-thinking")' in script.text
     assert 'document.querySelector("[data-endpoint-help-dialog]")' in script.text
 
@@ -1243,6 +1245,8 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "Add comment…" in workspace_template
     assert "Download current" in workspace_template
     assert "data-plan-comment-panel hidden" in workspace_template
+    assert workspace_template.count("data-pending-user-turn") == 3
+    assert 'data-user-turn-field="feedback"' in workspace_template
     assert "Use this version" in workspace_template
     assert ">Refine…</summary>" in workspace_template
     assert workspace_template.count("<summary>Rewind…</summary>") == 2

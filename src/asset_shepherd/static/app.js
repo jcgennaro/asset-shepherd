@@ -545,6 +545,42 @@ function showWorkflowActivity(form) {
   window.setTimeout(poll, 250);
 }
 
+function appendPendingUserTurn(form, submitter) {
+  if (!form.hasAttribute("data-pending-user-turn")) {
+    return;
+  }
+  const scope = form.closest(".conversation-pane");
+  const sourceCell = form.closest(".workflow-cell");
+  if (!scope || !sourceCell || sourceCell.querySelector("[data-pending-user-message]")) {
+    return;
+  }
+  const fieldName = form.dataset.userTurnField;
+  const field = fieldName ? form.elements.namedItem(fieldName) : null;
+  let message = field instanceof HTMLTextAreaElement ? field.value.trim() : "";
+  if (!message && submitter instanceof HTMLButtonElement) {
+    if (submitter.value === "approve") {
+      message = "Approved the proposed repair.";
+    } else if (submitter.value === "revise") {
+      message = "Requested changes to the proposed repair.";
+    }
+  }
+  if (!message) {
+    return;
+  }
+  const turn = document.createElement("blockquote");
+  const speaker = document.createElement("strong");
+  const body = document.createElement("p");
+  turn.className = "history-user-message current-turn-message pending-user-message";
+  turn.dataset.pendingUserMessage = "";
+  speaker.textContent = "You";
+  body.textContent = message;
+  turn.append(speaker, body);
+  sourceCell.append(turn);
+  window.requestAnimationFrame(() =>
+    turn.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+  );
+}
+
 for (const form of document.querySelectorAll("[data-busy-form]")) {
   form.addEventListener("submit", (event) => {
     const submitter = event.submitter;
@@ -564,6 +600,7 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
       scope.classList.add("is-working");
       scope.setAttribute("aria-busy", "true");
     }
+    appendPendingUserTurn(form, submitter);
     showWorkflowActivity(form);
     if (scope) {
       const workingCell = scope.querySelector("[data-workflow-activity-cell]");

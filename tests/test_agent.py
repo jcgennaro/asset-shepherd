@@ -193,6 +193,11 @@ def test_strands_approve_interrupt_resume_verifies_and_packages(tmp_path: Path) 
     assert completed.metrics.provider == "scripted"
     assert completed.metrics.token_usage is not None
     assert completed.metrics.token_usage.total_tokens > 0
+    invocation_ledger = json.loads((output / "agent_invocations.json").read_text(encoding="utf-8"))
+    assert len(invocation_ledger["invocations"]) == 2
+    assert completed.metrics.token_usage.total_tokens == sum(
+        invocation["token_usage"]["total_tokens"] for invocation in invocation_ledger["invocations"]
+    )
     tool_metrics = {metric.name: metric for metric in completed.metrics.tool_calls}
     assert tool_metrics["execute_selected_repairs"].call_count == 2
     assert tool_metrics["execute_selected_repairs"].success_count == 1

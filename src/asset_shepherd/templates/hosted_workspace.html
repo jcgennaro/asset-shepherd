@@ -177,7 +177,7 @@
             </div>
           {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}
-          <form id="hosted-plan-response" action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}"{% if job.agent_orchestrated %} data-plan-response-form{% endif %}>
+          <form id="hosted-plan-response" action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="turn_comment"{% if job.agent_orchestrated %} data-plan-response-form{% endif %}>
             <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
             {% if job.agent_orchestrated %}
@@ -223,7 +223,7 @@
             <div class="blocked-result-controls{% if can_continue %} has-refinement{% endif %}"{% if can_continue %} data-blocked-refinement{% endif %}>
               {% if can_continue %}
                 <button type="button" class="primary-button blocked-refinement-trigger" aria-expanded="false" aria-controls="hosted-blocked-refinement-form" data-blocked-refinement-trigger>Refine…</button>
-                <form id="hosted-blocked-refinement-form" class="blocked-refinement-form" action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" hidden>
+                <form id="hosted-blocked-refinement-form" class="blocked-refinement-form" action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback" hidden>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
                   <input type="hidden" name="decision" value="continue">
                   <input type="hidden" name="continue_from" value="input">
@@ -253,7 +253,7 @@
                 {% if can_continue %}
                   <details>
                     <summary class="secondary-button">Refine…</summary>
-                    <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
+                    <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback">
                       <input type="hidden" name="command_id" value="{{ command_id }}">
                       <input type="hidden" name="decision" value="continue">
                       <label for="hosted-refine-source">Continue with</label>

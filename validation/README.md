@@ -29,3 +29,13 @@ uv run python -m asset_shepherd.validation.report `
 
 Raw and generated binary evidence is ignored until rights and repository-size handling are known.
 Tracked prompts, schemas, manifests, scripts, and reports keep the process reproducible.
+
+## Provider-comparison benchmarks
+
+Provider comparisons that do not yet satisfy the canonical Tripo corpus provenance contract live
+under `benchmarks/`. Their hashes, targets, observations, and compact run summaries are tracked;
+raw models and visual evidence remain ignored until public-use rights are confirmed.
+
+- [Shattered-heart collar](benchmarks/shattered-heart-collar/README.md) — extreme scale correction,
+  65 exact disconnected components, Kimi K2.5 versus GPT-5.6 Luna xhigh, and interrupt-safe usage
+  telemetry.

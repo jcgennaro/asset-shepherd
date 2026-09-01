@@ -1,0 +1,45 @@
+{
+  "agent_model": "moonshotai.kimi-k2.5",
+  "agent_provider": "bedrock-converse",
+  "asset_sha256": "30ca4838a7f63886456e8e97c5afb09e33d5c74b3c924efcea0fa7b24750ec48",
+  "final_candidate_sha256": "53673062af35ea4669c2326b32912dced0f90f81115ce14efce8c0f79517038f",
+  "final_dimensions_cm": [
+    11.844303,
+    3.886365,
+    11.731150
+  ],
+  "final_triangle_count": 762941,
+  "final_verification": "PASSED_WITH_REMAINING_WARNINGS",
+  "intake_description": "a decorative necklace for a human with a heart charm on the front and a buckle on the back",
+  "known_active_invocation_seconds": 167.2501463,
+  "notes": [
+    "Kimi inferred the intended 15 x 3 x 12 cm target from the ordinary-language description.",
+    "The first turn selected the dominant body and proposed removing 64 tiny exact components, but fresh verification found 12 exact bodies rather than the expected one.",
+    "The first turn did not normalize scale, so the user requested: please shrink to the target size of 15 x 3 x 12 cm.",
+    "The second turn uniformly scaled and grounded the retained candidate and passed deterministic verification.",
+    "User assessment: slow but effective after refinement."
+  ],
+  "recorded_token_usage": {
+    "input_tokens": 255713,
+    "output_tokens": 2285,
+    "scope": "Lower bound: only the two post-approval/resumed invocations were retained by the pre-ledger runtime.",
+    "total_tokens": 257998
+  },
+  "source_dimensions_m": [
+    1.898266,
+    0.622861,
+    1.880131
+  ],
+  "target_dimensions_cm": [
+    15.0,
+    3.0,
+    12.0
+  ],
+  "topology_observation": {
+    "exact_components_presented_to_agent": 65,
+    "exact_components_remaining_after_first_turn": 12,
+    "initial_triangle_count": 783571,
+    "near_contact_group_count": 1
+  },
+  "workspace_id": "6f46596710c341e8ae7f582318ed00d0"
+}

@@ -4,6 +4,63 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D090 — Preserve every Shepherd invocation and benchmark ambiguous component cleanup
+
+**Date:** 2026-09-01
+
+**Status:** ACCEPTED; Kimi and direct-Luna comparison complete
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation / M10 evaluation
+
+**Context**
+
+The 30.2 MB Meshy shattered-heart collar is visually coherent but measures approximately
+1.90 × 0.62 × 1.88 m instead of the confirmed 15 × 3 × 12 cm target. Its one indexed primitive
+contains 783,571 triangles and presents 65 exact disconnected components, while all 65 belong to one
+scale-relative near-contact group. Kimi K2.5 classified 64 tiny components as removable debris. The
+approved mutation removed 20,630 triangles, but fresh verification found 12 exact bodies rather
+than the planned one and correctly reported **Attempted — verification did not confirm**. The user
+then requested the missing scale correction; the second turn succeeded. Before this checkpoint,
+Strands metrics were written only when a whole interrupted workflow completed, so the saved Kimi
+artifacts retained the two resumed invocations but lost both pre-approval calls. The refinement text
+also did not appear in the notebook until the synchronous model turn returned.
+
+**Decision**
+
+Use this exact hash as a provider-comparison benchmark, separate from the rights-confirmed canonical
+Tripo corpus. Track its metadata, target, chronology, model outcomes, and metric scope. Keep the raw
+GLB and screenshots locally under ignored directories until public-use rights are explicitly
+confirmed.
+
+After each completed Shepherd provider call, atomically write `output/agent_invocations.json` before
+an approval interrupt or server reconstruction can discard duration, token usage, or tool totals.
+Treat Strands metrics as cumulative within one agent instance and record invocation deltas. Aggregate
+the durable ledger into the final `agent_result.json`. This ledger covers Shepherd calls; semantic
+target-intake usage remains a separately acknowledged gap.
+
+When an active approval or refinement form submits, immediately append the user's selected decision
+or exact feedback as a pending right-side conversation turn before showing the working cell. The
+server response remains authoritative and replaces this optimistic DOM-only copy on reload.
+
+**Evidence and consequences**
+
+The original Kimi run was slow but effective after refinement: its retained 257,998 tokens are only
+a lower bound, and its two retained resumed calls took 167.25 seconds. Direct OpenAI Luna xhigh
+preserved the visually coherent 65-part near-contact assembly, declined welding 81,091 protected UV
+seams, and produced a verified proportional fit in one repair turn. Its two exactly recorded
+Shepherd calls took 161.74 seconds and used 412,929 tokens; intake is excluded. Both final candidates
+measure 11.84 × 3.89 × 11.73 cm and are grounded at Y=0. Luna is faster and more conservative here,
+but it required the dimensions to be stated explicitly after an incorrect first intake estimate.
+These are case results, not a general provider ranking.
+
+Regression coverage verifies a two-invocation ledger whose aggregate equals final metrics and the
+three conversation forms that append pending user turns. The benchmark runbook records the partial
+Kimi verification, delayed-feedback observation, successful refinement, Luna comparison, and honest
+token scopes. The common gate passes with 211 tests, two opt-in live skips, lock validation, Ruff,
+formatting, JavaScript syntax validation, valid benchmark JSON, and zero Pyright findings.
+
 ### D089 — Bound model-facing render evidence and consume executed approvals
 
 **Date:** 2026-09-01

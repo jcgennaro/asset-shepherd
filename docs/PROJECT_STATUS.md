@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-01
-**Current commit:** Bounded visual evidence and consumed-approval recovery (this file is included)
+**Current commit:** Collar benchmark, interrupt-safe usage ledger, and immediate user turns (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,23 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D090 shattered-heart collar benchmark and conversation observability: the exact 30,204,480-byte
+  Meshy GLB (`30ca4838…`) measures 1.898 × 0.623 × 1.880 m, contains 783,571 triangles, and presents
+  65 exact disconnected components in one near-contact group. Kimi K2.5 inferred the intended
+  15 × 3 × 12 cm target, proposed removing 64 tiny fragments, and produced a partial candidate whose
+  independent check still found 12 bodies. After the user's explicit scale refinement, its second
+  turn passed at 11.84 × 3.89 × 11.73 cm. Direct OpenAI Luna xhigh preserved the coherent 65-part
+  assembly and reached the same grounded proportional fit in one repair turn. Luna's complete
+  Shepherd ledger records 161.74 seconds and 412,929 tokens; the old Kimi artifacts retain a
+  257,998-token lower bound and 167.25 seconds from only their resumed calls, so no exact cost ranking
+  is claimed. Every future completed Shepherd call is now atomically recorded in
+  `agent_invocations.json` and aggregated after interrupt/resume. Approval and refinement submissions
+  immediately append the user's exact pending message before synchronous work begins. The tracked
+  benchmark runbook records both outcomes while its raw GLB and screenshots remain local and ignored
+  pending explicit public-use confirmation. The common gate passes with 211 tests, two opt-in live
+  skips, lock validation, Ruff, formatting, JavaScript syntax validation, valid benchmark JSON, and
+  zero Pyright findings.
 
 - D089 bounded visual evidence and interruption recovery: the robot-dog workspace
   `5919c759657048248bfd8db56968c5b4` executed its approved uniform resize and name cleanup, then

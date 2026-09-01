@@ -1,0 +1,10 @@
+{
+  "asset_id": "shattered-heart-collar",
+  "byte_size": 30204480,
+  "original_filename": "Meshy_AI_Violet_Shattered_Hear_0901050012_texture.glb",
+  "public_use_confirmed": false,
+  "public_use_note": "The raw GLB and screenshots remain ignored until the user explicitly confirms public-repository rights.",
+  "sha256": "30ca4838a7f63886456e8e97c5afb09e33d5c74b3c924efcea0fa7b24750ec48",
+  "source_service": "Meshy AI, inferred from the filename and user description",
+  "test_role": "Provider-comparison benchmark for extreme scale and ambiguous disconnected geometry"
+}
