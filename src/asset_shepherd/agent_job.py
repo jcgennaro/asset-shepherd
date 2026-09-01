@@ -347,6 +347,17 @@ class AgentJob:
             )
         if result_path.is_file():
             self.result = JobResult.model_validate_json(result_path.read_text(encoding="utf-8"))
+        if (
+            self.outcome is not None
+            and self.pending_interrupt_id is not None
+            and self.candidate_reassessment is None
+            and self.last_verification is None
+        ):
+            # The approved action was durably executed, but the provider stopped before its
+            # post-action assessment. That approval is consumed; expose bounded recovery instead
+            # of restoring the stale button and executing the same repair again.
+            self.pending_interrupt_id = None
+            self._persist_runtime_state()
 
     def set_pending_interrupt(self, interrupt_id: str | None) -> None:
         """Persist the exact native interrupt identity or its durable resolution."""

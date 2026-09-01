@@ -1,5 +1,7 @@
 """D036 tests for model-authored target-dependent action previews."""
 
+# pyright: reportPrivateUsage=false
+
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -31,6 +33,7 @@ from asset_shepherd.models import (
     Provenance,
 )
 from asset_shepherd.planner import plan_agent_repairs
+from asset_shepherd.web import _inspection_checks
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = PROJECT_ROOT / "profiles" / "unreal_indie_robot.json"
@@ -256,6 +259,46 @@ def test_plan_feedback_archives_without_executing_and_reopens_agent_planning(
     assert archived_plan["plan_id"] == plan.plan_id
     assert revision_request["responses"][0]["lane"] == "SIZE_AND_POSE"
     assert revision_request["responses"][0]["disposition"] == "COMMENT"
+
+
+def test_executed_action_without_verification_is_presented_as_interrupted(
+    tmp_path: Path,
+) -> None:
+    """The after-action table distinguishes an interrupted check from a failed check."""
+    output = tmp_path / "output"
+    job = AgentJob(
+        BROKEN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(height_cm=360.0),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+    job.register_agent_plan(
+        initiating_tool_call_id="interrupted-verification-plan",
+        disposition="REPAIR",
+        summary="Uniformly resize the asset and clean its display names.",
+        evidence=["The source evidence supports a proportional uniform resize."],
+        confidence=0.95,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=True,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=True,
+        source_views_used=["front.png", "right.png", "back.png"],
+    )
+    job.set_pending_interrupt("interrupted-verification-approval")
+    job.execute(approved=True, interrupt_id="interrupted-verification-approval")
+
+    size_and_pose = _inspection_checks(job)[1]
+    display_names = _inspection_checks(job)[4]
+
+    assert size_and_pose.status_label == "Verification interrupted"
+    assert size_and_pose.action.startswith("Applied — verification has not completed")
+    assert display_names.status_label == "Verification interrupted"
+    assert display_names.action.startswith("Applied — verification has not completed")
 
 
 def test_approximate_target_box_uses_one_robust_uniform_scale() -> None:

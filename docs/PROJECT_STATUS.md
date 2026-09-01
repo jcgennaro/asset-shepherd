@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-01
-**Current commit:** Agent-proposed approximate target sizing (this file is included)
+**Current commit:** Bounded visual evidence and consumed-approval recovery (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,19 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D089 bounded visual evidence and interruption recovery: the robot-dog workspace
+  `5919c759657048248bfd8db56968c5b4` executed its approved uniform resize and name cleanup, then
+  Kimi rejected the next request because the accumulated twelve full-resolution PNG evidence blocks
+  exceeded its documented 3 MB image-payload limit. Model-facing evidence is now three compact
+  768 × 256 JPEG contact sheets—source, candidate, and shared-scale—while every original PNG remains
+  unchanged for the UI and evidence package. A provider error after durable execution consumes the
+  old approval, restart migrates the equivalent pre-fix state, and the UI distinguishes **Applied —
+  verification has not completed** from an actual failed verification. The exact saved run resumed
+  without another mutation, passed Kimi visual reassessment and every deterministic check, and now
+  offers its verified 3.50781 × 3.44959 × 7.43772 m candidate. Five intentional disconnected forms
+  remain an explicit warning. The common gate passes with 211 tests, two opt-in live skips, lock
+  validation, Ruff, formatting, JavaScript syntax validation, and zero Pyright findings.
 
 - D088 agent-proposed approximate sizing: recognizable assets no longer fall through to mandatory
   X/Y/Z entry merely because a model treats an ordinary scale analogy as uncertain. Intake now

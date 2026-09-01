@@ -1686,6 +1686,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             VerificationState.PASSED_WITH_REMAINING_WARNINGS,
         }
     )
+    verification_incomplete = after_action and core.last_verification is None
 
     def check_passed(code: str) -> bool:
         return verification_checks.get(code) is CheckStatus.PASS
@@ -1957,6 +1958,12 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 size_status = "repaired"
                 size_label = "Addressed"
                 normalization_action = f"Applied — {normalized_detail}"
+            elif verification_incomplete:
+                size_status = "attention"
+                size_label = "Verification interrupted"
+                normalization_action = (
+                    f"Applied — verification has not completed; {normalized_detail}"
+                )
             else:
                 size_status = "attention"
                 size_label = "Needs review"
@@ -1976,6 +1983,10 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 topology_status = "repaired"
                 topology_label = "Addressed"
                 topology_action = f"Applied — {weld_detail}"
+            elif verification_incomplete:
+                topology_status = "attention"
+                topology_label = "Verification interrupted"
+                topology_action = f"Applied — verification has not completed; {weld_detail}"
             else:
                 topology_status = "attention"
                 topology_label = "Needs review"
@@ -1986,6 +1997,10 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 topology_status = "repaired"
                 topology_label = "Addressed"
                 topology_action = f"Applied — {cleanup_detail}"
+            elif verification_incomplete:
+                topology_status = "attention"
+                topology_label = "Verification interrupted"
+                topology_action = f"Applied — verification has not completed; {cleanup_detail}"
             else:
                 topology_status = "attention"
                 topology_label = "Needs review"
@@ -2000,6 +2015,12 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 topology_status = "repaired"
                 topology_label = "Addressed"
                 topology_action = f"Applied — {component_detail}"
+            elif verification_incomplete:
+                topology_status = "attention"
+                topology_label = "Verification interrupted"
+                topology_action = (
+                    "Applied — verification has not completed for the component selection."
+                )
             else:
                 topology_status = "attention"
                 topology_label = "Needs review"
@@ -2022,6 +2043,10 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 name_status = "repaired"
                 name_label = "Addressed"
                 name_action = f"Applied — {name_detail}"
+            elif verification_incomplete:
+                name_status = "attention"
+                name_label = "Verification interrupted"
+                name_action = f"Applied — verification has not completed; {name_detail}"
             else:
                 name_status = "attention"
                 name_label = "Needs review"

@@ -4,8 +4,12 @@
 # pyright: reportUnknownVariableType=false
 
 import json
+from collections.abc import Sequence
+from io import BytesIO
+from pathlib import Path
 from typing import Any, Literal
 
+from PIL import Image
 from strands import tool
 from strands.types.tools import ToolContext
 
@@ -18,6 +22,46 @@ from asset_shepherd.models import ApprovalResponse, VerificationState
 from asset_shepherd.repair import RepairOutcome
 
 APPROVAL_INTERRUPT_NAME = "asset-shepherd-normalization-approval-v1"
+MODEL_EVIDENCE_JPEG_QUALITY = 88
+MODEL_EVIDENCE_TILE_SIZE = 256
+MODEL_EVIDENCE_VIEW_COUNT = 3
+
+
+def _model_evidence_contact_sheet(paths: Sequence[Path]) -> dict[str, object]:
+    """Return one compact model-facing sheet while preserving full evidence PNGs on disk."""
+    selected = tuple(paths[:MODEL_EVIDENCE_VIEW_COUNT])
+    if not selected:
+        raise AgentWorkflowError("Model evidence requires at least one rendered view")
+    sheet = Image.new(
+        "RGB",
+        (MODEL_EVIDENCE_TILE_SIZE * len(selected), MODEL_EVIDENCE_TILE_SIZE),
+        "#08110e",
+    )
+    for index, path in enumerate(selected):
+        with Image.open(path) as source:
+            tile = source.convert("RGB")
+        tile.thumbnail(
+            (MODEL_EVIDENCE_TILE_SIZE, MODEL_EVIDENCE_TILE_SIZE),
+            Image.Resampling.LANCZOS,
+        )
+        offset = (
+            index * MODEL_EVIDENCE_TILE_SIZE + (MODEL_EVIDENCE_TILE_SIZE - tile.width) // 2,
+            (MODEL_EVIDENCE_TILE_SIZE - tile.height) // 2,
+        )
+        sheet.paste(tile, offset)
+    buffer = BytesIO()
+    sheet.save(
+        buffer,
+        format="JPEG",
+        quality=MODEL_EVIDENCE_JPEG_QUALITY,
+        optimize=True,
+    )
+    return {
+        "image": {
+            "format": "jpeg",
+            "source": {"bytes": buffer.getvalue()},
+        }
+    }
 
 
 def _outcome_json(outcome: RepairOutcome) -> dict[str, Any]:
@@ -74,16 +118,14 @@ class AssetShepherdTools:
         view_labels = GLTF_SOURCE_VIEW_CONTRACT["views"]
         if not isinstance(view_labels, dict):
             raise AgentWorkflowError("The source-view coordinate contract is invalid")
-        for path in paths:
-            content.append({"text": f"VIEW {path.name}: {view_labels[path.name]}"})
-            content.append(
-                {
-                    "image": {
-                        "format": "png",
-                        "source": {"bytes": path.read_bytes()},
-                    }
-                }
-            )
+        selected_paths = paths[:MODEL_EVIDENCE_VIEW_COUNT]
+        content.append(
+            {
+                "text": "MODEL EVIDENCE CONTACT SHEET, left to right: "
+                + "; ".join(f"{path.name}: {view_labels[path.name]}" for path in selected_paths)
+            }
+        )
+        content.append(_model_evidence_contact_sheet(paths))
         return {
             "status": "success",
             "coordinate_contract": GLTF_SOURCE_VIEW_CONTRACT,
@@ -131,16 +173,14 @@ class AssetShepherdTools:
         view_labels = GLTF_SOURCE_VIEW_CONTRACT["views"]
         if not isinstance(view_labels, dict):
             raise AgentWorkflowError("The source-view coordinate contract is invalid")
-        for path in paths:
-            content.append({"text": f"CANDIDATE VIEW {path.name}: {view_labels[path.name]}"})
-            content.append(
-                {
-                    "image": {
-                        "format": "png",
-                        "source": {"bytes": path.read_bytes()},
-                    }
-                }
-            )
+        selected_paths = paths[:MODEL_EVIDENCE_VIEW_COUNT]
+        content.append(
+            {
+                "text": "CANDIDATE CONTACT SHEET, left to right: "
+                + "; ".join(f"{path.name}: {view_labels[path.name]}" for path in selected_paths)
+            }
+        )
+        content.append(_model_evidence_contact_sheet(paths))
         content.append(
             {
                 "text": (
@@ -150,16 +190,16 @@ class AssetShepherdTools:
                 )
             }
         )
-        for path in comparison_paths:
-            content.append({"text": f"SHARED-SCALE VIEW {path.name}: {view_labels[path.name]}"})
-            content.append(
-                {
-                    "image": {
-                        "format": "png",
-                        "source": {"bytes": path.read_bytes()},
-                    }
-                }
-            )
+        selected_comparisons = comparison_paths[:MODEL_EVIDENCE_VIEW_COUNT]
+        content.append(
+            {
+                "text": "SHARED-SCALE CONTACT SHEET, left to right: "
+                + "; ".join(
+                    f"{path.name}: {view_labels[path.name]}" for path in selected_comparisons
+                )
+            }
+        )
+        content.append(_model_evidence_contact_sheet(comparison_paths))
         return {
             "status": "success",
             "coordinate_contract": GLTF_SOURCE_VIEW_CONTRACT,

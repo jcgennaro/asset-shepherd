@@ -683,16 +683,24 @@ class AssetShepherdAgent:
         response_payload = response.model_dump(mode="json")
         if not proposal_responses:
             response_payload.pop("proposal_responses", None)
-        result = self._invoke(
-            [
-                {
-                    "interruptResponse": {
-                        "interruptId": interrupt_id,
-                        "response": response_payload,
+        try:
+            result = self._invoke(
+                [
+                    {
+                        "interruptResponse": {
+                            "interruptId": interrupt_id,
+                            "response": response_payload,
+                        }
                     }
-                }
-            ]
-        )
+                ]
+            )
+        except Exception:
+            # A tool may have durably executed the approved action before the provider rejects a
+            # later visual-reassessment request. The approval has then been consumed and must not
+            # remain clickable; deterministic recovery resumes after execution instead.
+            if self.job.outcome is not None:
+                self.job.set_pending_interrupt(None)
+            raise
         if result.stop_reason == "interrupt":
             self._capture_interrupt(result)
         else:

@@ -4,6 +4,56 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D089 — Bound model-facing render evidence and consume executed approvals
+
+**Date:** 2026-09-01
+
+**Status:** ACCEPTED; exact interrupted Kimi workspace recovered
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The bus-sized robot-dog workspace `5919c759657048248bfd8db56968c5b4` accepted its proposed
+uniform resize and deterministic name cleanup. The candidate was written correctly, but the resumed
+Kimi K2.5 turn stopped after rendering candidate evidence and before recording visual reassessment
+or calling verification. The request history contained four source views, four isolated candidate
+views, and four shared-scale views as separate full-resolution PNG image blocks. Kimi K2.5's
+[Bedrock model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-moonshot-ai-kimi-k2-5.html)
+documents a 3 MB maximum image payload; the twelve PNGs exceeded that provider boundary. The UI
+then described the executed repair as an unsuccessful attempt and kept the already-consumed approval
+clickable, so pressing it again appeared to loop.
+
+**Decision**
+
+Continue rendering and retaining every full-resolution PNG as local audit evidence, UI evidence,
+and package evidence. For model input only, combine the first three coordinate-labeled views of each
+stage into one left-to-right contact sheet: source, isolated candidate, and shared-scale comparison.
+Each sheet uses 256-pixel tiles and JPEG quality 88. A complete action cycle therefore contributes
+three compact image blocks rather than twelve full-resolution PNG blocks. This transport reduction
+is provider-neutral and does not weaken the immutable evidence record.
+
+Once a resume call has durably produced a repair outcome, any later provider exception consumes the
+pending approval. On restart, an older executed job with no candidate reassessment or verification
+is migrated to the same bounded recovery boundary. The page must say **Applied — verification has
+not completed**, remove **Apply recommendations**, and offer **Finish this iteration**. Recovery may
+render and assess the existing candidate and then run deterministic verification/package; it may
+not execute the repair again.
+
+**Evidence and consequences**
+
+Regression coverage verifies a 768 × 256 three-view JPEG sheet without modifying its four source
+PNGs, a provider failure immediately after durable execution, stale pre-fix restart migration, and
+distinct interrupted-versus-failed after-action presentation. The exact robot-dog workspace restored
+with its stale interrupt cleared, completed its Kimi visual reassessment using the bounded evidence,
+and passed deterministic verification with zero failed checks. Its candidate is ready at
+3.50781 × 3.44959 × 7.43772 m, the approved proportional uniform fit to the approximate
+2.5 × 3 × 12 m box. Names are verified; the only remaining warning records five intentional
+disconnected forms. The common gate passes with 211 tests, two opt-in live skips, lock validation,
+Ruff, formatting, JavaScript syntax validation, and zero Pyright findings.
+
 ### D088 — The agent proposes approximate target size from ordinary scale clues
 
 **Date:** 2026-09-01

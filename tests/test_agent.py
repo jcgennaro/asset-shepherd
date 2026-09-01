@@ -1,9 +1,12 @@
 """M7 acceptance tests for the local Strands agent and native interrupt flow."""
 
+# pyright: reportPrivateUsage=false
+
 import json
 import os
 from asyncio import run
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -11,6 +14,7 @@ from zipfile import ZipFile
 
 import pytest
 from jsonschema.validators import validator_for
+from PIL import Image
 from strands.agent import AgentResult
 from strands.models.bedrock import BedrockModel
 from strands.types.content import Messages
@@ -25,6 +29,11 @@ from asset_shepherd.agent_runtime import (
     build_live_agent,
     build_scripted_agent,
     load_model_configuration,
+)
+from asset_shepherd.agent_tools import (
+    MODEL_EVIDENCE_TILE_SIZE,
+    MODEL_EVIDENCE_VIEW_COUNT,
+    _model_evidence_contact_sheet,
 )
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
@@ -90,6 +99,31 @@ def test_activity_callback_reports_tools_without_streaming_model_reasoning() -> 
     )
 
     assert labels == ["Measuring the GLB"]
+
+
+def test_model_evidence_is_one_downscaled_contact_sheet(tmp_path: Path) -> None:
+    """Full PNG evidence stays on disk while the model receives one bounded JPEG block."""
+    paths: list[Path] = []
+    for index, color in enumerate(((220, 40, 40), (40, 220, 40), (40, 40, 220), (220, 220, 40))):
+        path = tmp_path / f"view-{index}.png"
+        Image.new("RGB", (512, 512), color).save(path, format="PNG")
+        paths.append(path)
+    original_bytes = tuple(path.read_bytes() for path in paths)
+
+    block = _model_evidence_contact_sheet(paths)
+    image_block = cast(dict[str, object], block["image"])
+    source = cast(dict[str, object], image_block["source"])
+    payload = cast(bytes, source["bytes"])
+    with Image.open(BytesIO(payload)) as sheet:
+        assert sheet.format == "JPEG"
+        assert sheet.size == (
+            MODEL_EVIDENCE_TILE_SIZE * MODEL_EVIDENCE_VIEW_COUNT,
+            MODEL_EVIDENCE_TILE_SIZE,
+        )
+
+    assert image_block["format"] == "jpeg"
+    assert len(payload) < sum(len(value) for value in original_bytes)
+    assert tuple(path.read_bytes() for path in paths) == original_bytes
 
 
 def _fixed_clock() -> datetime:
@@ -238,6 +272,51 @@ def test_agent_rejects_wrong_interrupt_id_and_unapproved_direct_execution(
     with pytest.raises(AgentWorkflowError, match="no interrupt-bound decision"):
         direct_job.execute(approved=None, interrupt_id=None)
     assert not direct_job.candidate_path.exists()
+
+
+def test_provider_failure_after_execution_consumes_the_stale_approval(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A provider error after durable mutation exposes recovery, not duplicate execution."""
+    output = tmp_path / "provider-error"
+    job = _job(output)
+    runtime = build_scripted_agent(job)
+    interrupted = runtime.start()
+    interrupt_id, _ = _approval_card(interrupted)
+
+    def execute_then_fail(_: object) -> AgentResult:
+        job.execute(approved=True, interrupt_id=interrupt_id)
+        raise RuntimeError("provider rejected the post-action visual request")
+
+    monkeypatch.setattr(runtime, "_invoke", execute_then_fail)
+    with pytest.raises(RuntimeError, match="post-action visual request"):
+        runtime.resume(interrupt_id, approved=True)
+
+    assert job.outcome is not None
+    assert job.pending_interrupt_id is None
+    restored = _job(output)
+    assert restored.outcome is not None
+    assert restored.pending_interrupt_id is None
+
+
+def test_restart_migrates_executed_legacy_job_away_from_stale_approval(
+    tmp_path: Path,
+) -> None:
+    """A pre-fix executed job with no reassessment restores at the recovery boundary."""
+    output = tmp_path / "legacy-provider-error"
+    job = _job(output)
+    interrupted = build_scripted_agent(job).start()
+    interrupt_id, _ = _approval_card(interrupted)
+    job.execute(approved=True, interrupt_id=interrupt_id)
+    assert job.pending_interrupt_id == interrupt_id
+
+    restored = _job(output)
+
+    assert restored.outcome is not None
+    assert restored.candidate_reassessment is None
+    assert restored.last_verification is None
+    assert restored.pending_interrupt_id is None
 
 
 class _FailOnceVerifier:
