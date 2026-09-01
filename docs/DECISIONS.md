@@ -4,6 +4,43 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D087 — End accepted workflows with an explicit gallery return
+
+**Date:** 2026-09-01
+
+**Status:** ACCEPTED; terminal gallery action and original animation implemented
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The accepted Download cell provided the model and evidence downloads but no local closing action.
+Gallery remained available in persistent chrome, yet completing the chronological notebook did not
+visually explain how to leave that asset and choose another one.
+
+**Decision**
+
+End every accepted Download cell with one explicit **Return to gallery** link. Pair the label with a
+carriage-return mark and a new local four-frame Patchling sprite that runs right into a cream/mint
+dust cloud. Animate only on hover or keyboard focus so the terminal cell remains calm while reading;
+hold its first frame for reduced-motion preference. Navigation must not modify, rewind, or duplicate
+the already durable accepted workspace. Reconstruct an accepted terminal result from deterministic
+artifacts without loading its historical live-model session: viewing and downloading finished work
+must not depend on the currently configured provider or the continued validity of an old Strands
+snapshot.
+
+**Evidence and consequences**
+
+Hosted-route acceptance verifies the terminal label, carriage-return mark, sprite markup, gallery
+destination, PNG payload, provider-neutral accepted-workspace reload, model download, and evidence
+package. Static CSS acceptance verifies the local sheet, four frame positions, and reduced-motion
+override. Browser acceptance on the completed Rugged Tablet workspace verifies the layout, active
+hover frame, carriage-return mark, and successful gallery navigation. The generated project-bound
+asset is `asset-shepherd-run-away.png`; the original image-generation prompt used the existing
+thinking sprite solely as the mascot/style reference.
+
 ### D086 — Explain target engines in terms of operational consequences
 
 **Date:** 2026-08-31

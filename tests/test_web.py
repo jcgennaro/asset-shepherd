@@ -1303,6 +1303,12 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'background-image: url("/static/asset-shepherd-thinking.png")' in stylesheet.text
     assert ".shepherd-sprite-thinking" in stylesheet.text
     assert "shepherd-sprite-idle" not in stylesheet.text
+    assert ".gallery-return-sprite" in stylesheet.text
+    assert "asset-shepherd-run-away.png" in stylesheet.text
+    assert "@keyframes shepherd-run-away" in stylesheet.text
+    assert stylesheet.text.rindex("prefers-reduced-motion") > stylesheet.text.index(
+        "@keyframes shepherd-run-away"
+    )
     assert ".workflow-thinking-message" in stylesheet.text
     assert ".endpoint-help-button" in stylesheet.text
     assert ".nav-peeking .rail-show-icon" in stylesheet.text

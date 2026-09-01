@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-08-31
-**Current commit:** Branded immediate model-working feedback (this file is included)
+**Last updated:** 2026-09-01
+**Current commit:** Explicit animated Return-to-gallery terminus (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,17 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D087 terminal gallery return: an accepted Download cell now ends with one explicit **Return to
+  gallery** action, a carriage-return mark, and an original local four-frame Patchling sprite that
+  runs into a cream/mint dust cloud on hover or keyboard focus. Reduced-motion preference keeps the
+  first frame still. Accepted terminal workspaces now reopen from deterministic artifacts without
+  loading an obsolete live-model snapshot; this makes an older direct-OpenAI result readable and
+  downloadable while the current server uses Bedrock. Route acceptance verifies the link, PNG,
+  provider-neutral terminal reload, model download, and evidence package. Browser acceptance on the
+  completed Rugged Tablet workspace covers final placement, hover animation, and gallery navigation
+  without changing the accepted workspace. The common gate passes with 206 tests, two opt-in live
+  skips, lock validation, Ruff, formatting, JavaScript syntax validation, and zero Pyright findings.
 
 - D086 target-engine help: the focused Unity/Unreal/Godot/Other clarification now places a compact
   question-mark control beside the agent's prompt. Its modal explains that the result remains GLB,

@@ -293,6 +293,11 @@
                 <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
               {% endif %}
             </div>
+            <a class="gallery-return-button" href="{{ url_for('hosted_home') }}">
+              <span class="gallery-return-sprite" aria-hidden="true"></span>
+              <strong>Return to gallery</strong>
+              <span class="gallery-return-icon" aria-hidden="true">↵</span>
+            </a>
           </article>
         {% endif %}
 

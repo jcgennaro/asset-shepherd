@@ -1091,8 +1091,16 @@ class HostedWorkspaceStore:
         if runtime_state_path.is_file():
             runtime_state = json.loads(runtime_state_path.read_text(encoding="utf-8"))
             persisted_agent_mode = bool(runtime_state.get("agent_orchestrated", False))
+        terminal_workspace = record.accepted and record.phase in {
+            WorkspacePhase.COMPLETE,
+            WorkspacePhase.BLOCKED,
+        }
         model_values = self._model_values(record)
-        if persisted_agent_mode and not workflow_model_available(model_values):
+        if (
+            persisted_agent_mode
+            and not terminal_workspace
+            and not workflow_model_available(model_values)
+        ):
             raise HostedWorkspaceError(
                 "This workspace requires its configured workflow model to resume."
             )
@@ -1106,22 +1114,31 @@ class HostedWorkspaceStore:
             max_turns=record.max_turns,
             verification_function=self.verification_function,
         )
-        workspace.runtime = (
-            build_live_agent(
+        if terminal_workspace:
+            # Accepted work is fully described by durable deterministic artifacts. Reopening it
+            # must not depend on the original provider, credentials, or a historical Strands
+            # snapshot merely to render downloads and evidence.
+            workspace.runtime = build_scripted_agent(
                 runtime_job,
-                session_id=record.workspace_id,
-                session_root=workspace.root / "strands_state",
-                activity_sink=self._activity_sink(workspace.root),
-                values=model_values,
-            )
-            if persisted_agent_mode
-            else build_scripted_agent(
-                runtime_job,
-                session_id=record.workspace_id,
-                session_root=workspace.root / "strands_state",
                 activity_sink=self._activity_sink(workspace.root),
             )
-        )
+        else:
+            workspace.runtime = (
+                build_live_agent(
+                    runtime_job,
+                    session_id=record.workspace_id,
+                    session_root=workspace.root / "strands_state",
+                    activity_sink=self._activity_sink(workspace.root),
+                    values=model_values,
+                )
+                if persisted_agent_mode
+                else build_scripted_agent(
+                    runtime_job,
+                    session_id=record.workspace_id,
+                    session_root=workspace.root / "strands_state",
+                    activity_sink=self._activity_sink(workspace.root),
+                )
+            )
         if runtime_job.deterministic_completion_available:
             # Complete a persisted turn whose provider stopped immediately after its final
             # required assessment. This performs only fresh verification and packaging; it does

@@ -168,6 +168,14 @@ local sprite sheet. Reduced-motion preference freezes working animation without 
 collapsed navigation is merely peeking from the desktop edge, its compact chevron points right and
 pins the rail; the left-pointing hide chevron returns only after the rail is persistent.
 
+Once a version is accepted, Download is the terminal notebook cell. Alongside the model and evidence
+downloads it exposes an explicit **Return to gallery** action with a carriage-return mark. Its local
+Patchling sprite runs into a dust cloud on hover or keyboard focus; reduced-motion preference keeps
+the first frame still. Returning changes no asset state because acceptance and packaging are already
+durable. Reopening an accepted terminal workspace reconstructs its result only from those durable
+deterministic artifacts; it does not require the original model provider, credentials, or historical
+Strands snapshot.
+
 If intake cannot confidently infer the destination, the target-engine turn includes contextual help
 that explains the operational effect of Unity, Unreal, Godot, and Other. It makes clear that the
 selection changes the consumer-frame assessment and handoff advice while the deliverable remains a

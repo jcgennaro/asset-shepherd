@@ -5,6 +5,7 @@ from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 from typing import cast
+from unittest.mock import patch
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
@@ -220,6 +221,10 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert thinking_sprite.status_code == 200
     assert thinking_sprite.headers["content-type"] == "image/png"
     assert thinking_sprite.content.startswith(b"\x89PNG\r\n\x1a\n")
+    running_sprite = client.get("/static/asset-shepherd-run-away.png")
+    assert running_sprite.status_code == 200
+    assert running_sprite.headers["content-type"] == "image/png"
+    assert running_sprite.content.startswith(b"\x89PNG\r\n\x1a\n")
     assert "Asset Shepherd -- Gallery" in entry.text
     assert '<span class="shepherd-sprite" aria-hidden="true"></span>' in entry.text
     assert "shepherd-sprite-idle" not in entry.text
@@ -436,7 +441,21 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "The current version is ready to download." in accepted_page.text
     assert "data-current-workflow-cell" not in accepted_page.text
     assert 'class="workflow-cell download-workflow-cell current"' in accepted_page.text
-    assert ">Gallery</a>" in accepted_page.text
+    assert "Return to gallery" in accepted_page.text
+    assert 'class="gallery-return-sprite"' in accepted_page.text
+    assert 'class="gallery-return-icon" aria-hidden="true">↵</span>' in accepted_page.text
+
+    with patch(
+        "asset_shepherd.hosted_workspace.build_live_agent",
+        side_effect=AssertionError("accepted workspace attempted a live-model restore"),
+    ):
+        terminal_restart = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
+        reopened_terminal = terminal_restart.get(workspace_path)
+    assert reopened_terminal.status_code == 200
+    assert "Return to gallery" in reopened_terminal.text
+    assert "Download fixed model" in reopened_terminal.text
+    assert terminal_restart.get(f"{workspace_path}/repaired.glb").status_code == 200
+    assert terminal_restart.get(f"{workspace_path}/download").status_code == 200
 
     archive_response = restarted.get(f"{workspace_path}/download")
     assert archive_response.status_code == 200
