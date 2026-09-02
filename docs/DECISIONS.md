@@ -4,6 +4,65 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D092 — Ask about viewing use and offer one controlled mesh optimization
+
+**Date:** 2026-09-02
+
+**Status:** ACCEPTED; deterministic, direct-Luna, and Bedrock-Kimi gates complete
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation / M10 evaluation
+
+**Context**
+
+The 30.2 MB shattered-heart collar contains 783,571 triangles. File size alone is not a safe proxy
+for mesh complexity because embedded textures may dominate, and ordinary users should not need to
+choose a decimation percentage. The previously suggested 200k/75k/25k budgets were also too high
+for the intended game-asset workflow. Any lossy operation must remain explicit, reversible, and
+independently verified rather than becoming an eager import optimization.
+
+**Decision**
+
+Ask one global product question at target confirmation: how closely the asset will normally be
+viewed. Close-up/showcase maps to a 50,000-triangle soft cap, normal gameplay defaults to 15,000,
+and small/distant/repeated maps to 2,500. Do not expose these counts as input choices. When measured
+geometry exceeds the frozen cap and a supported layout is proven, the agent normally proposes one
+separate `SIMPLIFY_MESH` action. The user may reject it and retain the original detail.
+
+Use pinned local `meshoptimizer` simplification separately on each exact source component. Preserve
+complete source attribute tuples, material assignment, UVs, normals, named nodes, and every
+component below 1,000 triangles. Refuse skinning, morph targets, compression, sparse/shared/extended
+accessor layouts, malformed indices, or pending degenerate cleanup. Allow at most two-percent bounds
+drift, preserve the bounded near-contact component grouping, reload and validate independently, and
+require fresh visual comparison. Report actual output triangles and bytes. Stop above the soft cap
+when preservation constraints bind rather than degrading blindly.
+
+**Evidence and consequences**
+
+The deterministic synthetic sphere gate reduces a 20,480-triangle source toward the 15,000 normal-
+gameplay cap, preserves its immutable source and required resources, and passes independent
+verification. Rejecting the same proposal returns the exact source bytes. On the real 783,571-
+triangle collar, the conservative normal-gameplay pass reaches 56,885 triangles and reduces
+30,204,480 bytes to 7,709,808 while retaining 3,611 triangles across 63 small protected components.
+It honestly remains above 15,000 because attribute and component-preservation limits bind. The full
+offline suite passes with 218 tests and two intentional live-provider skips.
+
+Direct OpenAI Luna xhigh then evaluated the isolated feature on the already normalized collar. It
+correctly preserved the intentional component assembly, proposed only `simplify-mesh-v1`, and after
+approval produced a verified 56,885-triangle, 7,710,004-byte candidate from the 30,204,752-byte
+normalized input. Its complete ledger records 376,106 tokens and 123.75 seconds, including bounded
+recovery after an early provider end-turn. That recovery exposed a shared-scale renderer bug: two
+similarly sized models could hit opposite frame edges because `<model-viewer>` clamped the requested
+orbit against only its primary model. Comparison rendering now expands the orbit limit after load,
+adds comparison-specific framing headroom, and has a real-browser non-clipping regression test.
+After interactive AWS reauthentication, Bedrock Converse/Kimi K2.5 independently proposed the same
+single simplification while preserving the intentional construction. It produced the byte-identical
+candidate in 94.96 seconds using 159,666 recorded tokens, with no post-approval recovery. That is
+23% less observed time and 58% fewer recorded tokens than this Luna run, but it is not a controlled
+general model ranking because Luna's total includes the recovery path. The provider-neutral action
+contract and deterministic mutation therefore pass on both requested live providers.
+
 ### D091 — Use the existing web GLB stack for model-visible evidence
 
 **Date:** 2026-09-01

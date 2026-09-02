@@ -76,7 +76,7 @@ def _application_commit() -> str:
 
 
 def _library_versions() -> dict[str, str]:
-    distributions = ("numpy", "Pillow", "pydantic", "pygltflib", "trimesh")
+    distributions = ("meshoptimizer", "numpy", "Pillow", "pydantic", "pygltflib", "trimesh")
     versions: dict[str, str] = {}
     for distribution in distributions:
         try:

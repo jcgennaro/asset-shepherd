@@ -33,12 +33,25 @@
   </div>
 {%- endmacro %}
 
-{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="", activity_step="", activity_label="") -%}
+{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="", activity_step="", activity_label="", viewing_use_value="NORMAL_GAMEPLAY") -%}
   <section class="confirmation-question" aria-label="Choose the next step" data-confirmation-decision>
     <div class="confirmation-actions">
       <form action="{{ confirm_url }}" method="post" data-busy-form{% if activity_url %} data-activity-url="{{ activity_url }}"{% endif %}{% if activity_step %} data-activity-step="{{ activity_step }}"{% endif %}{% if activity_label %} data-activity-label="{{ activity_label }}"{% endif %}>
         {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
         {% if accept_supported_goal %}<input type="hidden" name="accept_supported_goal" value="true">{% endif %}
+        <fieldset class="viewing-use-choice target-review-use" aria-label="Typical viewing use">
+          <legend>How closely will this asset normally be viewed?</legend>
+          {% for value, name, hint in (
+            ('CLOSE_UP_SHOWCASE', 'Close-up / showcase', 'Players may inspect it closely.'),
+            ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
+            ('SMALL_DISTANT_REPEATED', 'Small, distant, or repeated', 'Usually small on screen or many copies appear.')) %}
+            <label class="viewing-use-option">
+              <input type="radio" name="viewing_use" value="{{ value }}" required{% if value == viewing_use_value %} checked{% endif %}>
+              <span><strong>{{ name }}</strong><small>{{ hint }}</small></span>
+            </label>
+          {% endfor %}
+          <p>Choose by use case. Asset Shepherd turns this into a technical recommendation later, and you can decline it.</p>
+        </fieldset>
         <button class="primary-button" type="submit" data-submit-button>Start shepherding</button>
       </form>
       <details class="intent-adjust">

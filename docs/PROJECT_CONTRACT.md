@@ -5,7 +5,7 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 2.2
+**Document version:** 2.3
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
 D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
@@ -13,7 +13,8 @@ sensing and disposition, D042 upload-first two-text UX, D047 seam-aware duplicat
 handling, D048 attribute-seam presentation, D049 subtitle-free task screens and tolerant provider
 normalization, D050 proportional target-box fitting and weld disclosure, D053 bounded
 agent-selected pivot placement, D064 source-bound measured pivot anchors, D065 agent-message
-identity, and D077 per-asset model-neutral Bedrock allowlist, through 2026-08-29
+identity, D077 per-asset model-neutral Bedrock allowlist, and D092 use-case-driven controlled mesh
+simplification, through 2026-09-02
 
 ---
 
@@ -291,8 +292,8 @@ measured source facts with no agreed target. It must not create a target-depende
 proposed action, approval interrupt, mutation, or readiness result.
 
 Before offering target confirmation, the agent must satisfy the versioned minimum target-intake
-contract. It requires a normalized asset description, one supported intended-use value, and a
-positive intended real-world target height. Every populated target field must retain concise source
+contract. It requires a normalized asset description, one supported intended-use value, positive
+intended real-world target dimensions, and one ordinary-language viewing-use choice. Every populated target field must retain concise source
 evidence and confidence of at least 0.8; a missing, ambiguous, conflicting, or lower-confidence
 required field remains explicitly missing. The agent should infer a useful target proposal from the
 user's ordinary words, including semantic object scale when no number is supplied, and ask only
@@ -577,11 +578,29 @@ visible to the existing diagnostic and may be compacted only in a separate appro
 Independent verification must reproduce the retained component count and exact authorized triangle
 delta. Ambiguous or unsupported layouts remain report-only or return to the creation tool.
 
+The fourth consequential capability is controlled mesh simplification. At target confirmation the
+user chooses one nontechnical viewing use: close-up/showcase, normal gameplay, or
+small/distant/repeated. The frozen policy maps those choices to soft caps of 50,000, 15,000, and
+2,500 triangles respectively. The agent may propose one lossy simplification only when the asset is
+over that cap and inspection proves a supported layout. The UI must explain the measured count,
+use-case recommendation, original preservation, and the option to reject and keep full detail; it
+must not ask ordinary users for a reduction percentage or polygon budget.
+
+Simplification runs separately for each original exact component, preserves complete source vertex
+tuples and their normals, UVs, material assignments, and named nodes, and copies every component
+below 1,000 triangles unchanged. It is restricted to dense dedicated accessors on indexed
+`TRIANGLES` primitives with no skin, morph target, compression, malformed indices, or pending
+degenerate cleanup. It must preserve the bounded near-contact component grouping, keep bounds
+within two percent, retain a nonempty mesh, and reload independently. It may stop above the soft cap
+when those safeguards bind. Fresh visual comparison and measured post-export triangle and byte
+counts are mandatory; predicted file-size savings are prohibited.
+
 ### 9.4 `REPORT_ONLY` findings
 
 The MVP reports but does not repair:
 
-- Triangle budget violations.
+- Triangle budget violations for layouts where controlled simplification is unavailable, declined,
+  or unable to reach the soft cap safely.
 - Material count violations.
 - Texture count and dimension violations.
 - Negative or non-uniform transforms that are not part of the approved normalization operation.
@@ -595,7 +614,8 @@ The MVP must refuse:
 - Skin or skeletal changes.
 - Animation changes.
 - Morph-target changes.
-- Topology repair or remeshing beyond the exact approved degenerate-geometry cleanup in 9.3.
+- Topology repair or remeshing beyond the exact approved degenerate cleanup, component selection,
+  and controlled simplification capabilities in 9.3.
 - UV generation or modification.
 - LOD generation.
 - Collision generation.
@@ -1592,7 +1612,7 @@ Do not add before the hackathon deadline:
 - Skeletal repair or retargeting.
 - Animation editing.
 - Morph-target editing.
-- Mesh reconstruction or decimation.
+- Mesh reconstruction or decimation beyond the bounded, use-case-driven simplification in 9.3.
 - UV generation.
 - Collision generation.
 - LOD generation.

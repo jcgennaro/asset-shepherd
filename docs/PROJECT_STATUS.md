@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-09-01
-**Current commit:** Portable Chromium/model-viewer evidence renderer (this file is included)
+**Last updated:** 2026-09-02
+**Current commit:** Use-case-driven controlled mesh simplification (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,32 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D092 use-case-driven controlled mesh simplification: target confirmation now asks whether the
+  asset will normally be seen close-up/showcase, at ordinary gameplay distance, or
+  small/distant/repeated. Those ordinary-language choices freeze soft caps of 50,000, 15,000, and
+  2,500 triangles; normal gameplay is the explicit default, and the user may reject any later
+  optimization proposal. A typed approval-required `SIMPLIFY_MESH` action processes each exact
+  source component separately through pinned local meshoptimizer, copies components below 1,000
+  triangles exactly, retains only complete source attribute tuples, and preserves materials, UVs,
+  normals, named nodes, bounded near-contact grouping, and bounds within two percent. Unsupported
+  layouts fail closed. Independent verification reloads the result, proves protected components and
+  untouched payload, and reports actual triangle and byte changes. A synthetic 20,480-triangle
+  sphere reduces toward the 15,000 cap and passes; rejection preserves exact bytes. The real
+  783,571-triangle shattered-heart collar reaches 56,885 triangles and 7,709,808 bytes while
+  protecting 3,611 triangles across 63 small components; it correctly reports that preservation
+  constraints prevented reaching 15,000. Direct OpenAI Luna xhigh independently chose the isolated
+  simplification, preserved the intentional component assembly, and produced a ready 56,885-
+  triangle, 7,710,004-byte candidate from the normalized 30,204,752-byte input. Its ledger records
+  376,106 tokens and 123.75 seconds including bounded recovery. The live run also revealed and fixed
+  shared-scale comparison clipping caused by `<model-viewer>` clamping orbit distance against only
+  its primary model; comparison-specific headroom, an expanded post-load orbit limit, and a real-
+  browser two-model framing test now cover it. The common offline suite passes with 218 tests and
+  two intentional live-provider skips. After interactive AWS reauthentication, Bedrock Converse/
+  Kimi K2.5 independently selected the same action and produced the byte-identical candidate in
+  94.96 seconds using 159,666 tokens, without post-approval recovery. This was 23% less observed
+  time and 58% fewer recorded tokens than the Luna run, although Luna's total includes recovery and
+  the result is evidence for provider parity on this case rather than a general model ranking.
 
 - D091 portable model-visible rendering: agent-required evidence now uses the vendored
   `<model-viewer>` 4.3.1 runtime through headless Chromium, not a locally installed Blender process.

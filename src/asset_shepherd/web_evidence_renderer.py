@@ -241,7 +241,11 @@ def _renderer_page(
 ) -> bytes:
     radius = math.sqrt(sum(dimension * dimension for dimension in bounds.dimensions)) / 2.0
     field_of_view_degrees = 24.0
-    camera_distance = radius / math.sin(math.radians(field_of_view_degrees / 2.0)) * 1.25
+    # `<extra-model>` comparison staging needs a little more framing headroom than an isolated
+    # model. In particular, two similarly sized assets can otherwise touch opposite image edges
+    # even though the deterministic combined bounds are correct.
+    framing_margin = 1.5 if candidate_offset is not None else 1.25
+    camera_distance = radius / math.sin(math.radians(field_of_view_degrees / 2.0)) * framing_margin
     camera_distance = max(camera_distance, bounds.longest * 1.5, 1e-9)
     config = {
         "views": _CAMERA_THETA_DEGREES,
@@ -295,6 +299,8 @@ def _renderer_page(
       const target = config.center.map((value) => `${{value}}m`).join(' ');
       viewer.setAttribute('camera-target', target);
       viewer.setAttribute('field-of-view', `${{config.fieldOfView}}deg`);
+      viewer.setAttribute('max-camera-orbit',
+        `auto auto ${{Math.max(config.cameraDistance * 4, 1e-9)}}m`);
       for (const [name, theta] of Object.entries(config.views)) {{
         viewer.setAttribute('camera-orbit',
           `${{theta}}deg 75deg ${{config.cameraDistance}}m`);

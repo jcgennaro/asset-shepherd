@@ -309,7 +309,8 @@ preview tools for supported primitives such as:
 - node display-name change; and
 - mesh display-name change; and
 - exact zero-area triangle removal with complete unused-vertex-tuple compaction; and
-- exact approved disconnected-component filtering for a proven-safe primitive.
+- exact approved disconnected-component filtering for a proven-safe primitive; and
+- controlled per-component mesh simplification toward the frozen viewing-use cap.
 
 The agent chooses which primitives are needed and supplies their typed intent and parameters. The
 tool computes the exact matrix or edit, expected bounds, affected records, reversibility, and
@@ -333,6 +334,21 @@ views, pass exact inventory IDs, and retain at least one body. Near-contact grou
 hints only. The user may keep, remove, or comment on each body; a changed selection reopens planning
 without mutation. Execution filters only the approved index triples and does not compact vertices,
 weld gaps, merge shells, infer semantics, or apply keep-largest/remove-small heuristics.
+
+Mesh simplification is a separate consequential lane. The target stage asks how closely the asset
+will normally be viewed, not how many triangles the user wants. The confirmed choices map to soft
+caps of 50,000 for close-up/showcase, 15,000 for normal gameplay, and 2,500 for
+small/distant/repeated. When the source exceeds the selected cap and the sensor proves the primitive
+safe, the agent normally offers one typed simplification proposal. The user may reject it and keep
+the original detail. The reducer treats original exact components separately, protects components
+below 1,000 triangles, retains original complete attribute tuples, and may stop above the cap rather
+than cross a preservation limit. It never silently substitutes its own reduction ratio.
+
+After execution the agent must review fresh source, candidate, and shared-scale visual evidence.
+Independent verification reports actual triangles and exported bytes, checks a maximum two-percent
+bounds drift, proves protected small components remain exact, and confirms that the bounded
+near-contact component grouping did not change. The result must say when the soft cap remains
+unmet; an attempted action is not proof that the requested complexity was achieved.
 
 ### 7. Obtain the required decision
 

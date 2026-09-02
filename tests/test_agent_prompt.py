@@ -13,6 +13,7 @@ from asset_shepherd.agent_prompt import (
     AGENT_SYSTEM_PROMPT_V13,
     AGENT_SYSTEM_PROMPT_V14,
     AGENT_SYSTEM_PROMPT_V15,
+    AGENT_SYSTEM_PROMPT_V16,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -55,7 +56,7 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
 
 def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 15
+    assert AGENT_PROMPT_VERSION == 16
     assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V12
     assert "source +Y" in AGENT_SYSTEM_PROMPT_V9
     assert "Do not request no-op" in AGENT_SYSTEM_PROMPT_V9
@@ -109,6 +110,16 @@ def test_v15_routes_typed_conversation_actions() -> None:
     assert "sole new input" in AGENT_SYSTEM_PROMPT_V15
     assert "approved=true" in AGENT_SYSTEM_PROMPT_V15
     assert "initial start prompt" in AGENT_SYSTEM_PROMPT_V15
+
+
+def test_v16_routes_use_case_driven_mesh_optimization() -> None:
+    """The active prompt uses the confirmed use case and keeps lossy work optional."""
+    assert "CLOSE_UP_SHOWCASE maps to 50,000" in AGENT_SYSTEM_PROMPT_V16
+    assert "NORMAL_GAMEPLAY to 15,000" in AGENT_SYSTEM_PROMPT_V16
+    assert "SMALL_DISTANT_REPEATED to 2,500" in AGENT_SYSTEM_PROMPT_V16
+    assert "Do not ask the user for a triangle percentage" in AGENT_SYSTEM_PROMPT_V16
+    assert "The user may reject it" in AGENT_SYSTEM_PROMPT_V16
+    assert "may safely stop above the cap" in " ".join(AGENT_SYSTEM_PROMPT_V16.split())
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

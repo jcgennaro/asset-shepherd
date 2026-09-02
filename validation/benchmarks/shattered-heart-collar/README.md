@@ -16,6 +16,8 @@ that box, not an attempt to force every dimension independently.
 |---|---|---:|---|---:|---:|
 | Bedrock Converse / Kimi K2.5 | Removed 64 proposed fragments; verification found 12 bodies, then refinement scaled the survivor | 2 | Passed with warnings | 167.25 s known, plus unretained pre-approval time | 257,998 lower bound |
 | Direct OpenAI / GPT-5.6 Luna xhigh | Preserved the visually coherent near-contact assembly and scaled it immediately | 1 | Passed with warnings | 161.74 s | 412,929 exact for Shepherd |
+| Direct OpenAI / GPT-5.6 Luna xhigh / prompt v16 | Preserved all intentional parts and simplified normalized input from 783,571 to 56,885 triangles | 1 plus bounded recovery | Passed with warnings | 123.75 s | 376,106 |
+| Bedrock Converse / Kimi K2.5 / prompt v16 | Preserved all intentional parts and produced the identical deterministic 56,885-triangle candidate | 1 approval interrupt | Passed with warnings | 94.96 s | 159,666 |
 
 Kimi was slow but effective after explicit refinement. Luna reached the same final dimensions in one
 repair turn and was faster in wall-clock workflow time, but it needed the 15 × 3 × 12 cm dimensions
@@ -52,6 +54,36 @@ check and describe the retained candidate as partial progress.
 This is the safer topology decision for an automated MVP because visual coherence and near-contact
 evidence do not prove that tiny bodies are disposable. Kimi's reduced candidate remains useful as a
 user-approved alternative and as a test of partial component-removal verification.
+
+## Viewing-use simplification chronology
+
+The prompt-v16 feature comparison starts from Luna's already normalized 30,204,752-byte result so
+neither provider spends the test turn on scale, grounding, or names. The confirmed use is **normal
+gameplay**, which freezes a 15,000-triangle soft cap. The target story explicitly identifies the
+many disconnected decorative construction parts as intentional.
+
+Luna inspected and rendered the asset, preserved the coherent 65-body assembly, and proposed only
+the new approval-required mesh simplification. The deterministic reducer protected 63 components
+and 3,611 triangles face-for-face. The verified output contains 56,885 triangles and 52,917 vertex
+tuples and measures 7,710,004 bytes. It remains above the soft cap because the reducer stopped at
+its attribute and component-preservation constraints; the report says so rather than pretending an
+attempt reached the requested target. Materials, textures, UVs, normals, names, bounds, and source
+bytes passed independent checks.
+
+The approved run ended before packaging and its first recovery exposed clipped shared-scale views.
+The source and candidate were both present, but `<model-viewer>` had clamped camera distance from
+the primary model's orbit range. The renderer now expands that range after load and gives comparison
+captures additional framing headroom. A real Chromium regression puts two equal-size assets in the
+same scene and proves every object-mask edge has clear margin. The same saved Luna run then resumed,
+completed visual reassessment, and packaged without repeating the mutation.
+
+After interactive AWS reauthentication, Kimi K2.5 made the same isolated recommendation: preserve
+the intentional disconnected construction and apply only `simplify-mesh-v1`. It produced the exact
+same deterministic candidate as Luna (`0ac0c3d0…`): 56,885 triangles, 52,917 vertex tuples, and
+7,710,004 bytes. It completed in 94.96 seconds using 159,666 recorded tokens, with no post-approval
+recovery. That is 23% less observed time and 58% fewer recorded tokens than this Luna run. It is not
+a controlled general model ranking because Luna's ledger includes an early end-turn and renderer-
+failure recovery; it does show that both provider adapters reach the same safe mutation on this case.
 
 ## Conversation and observability findings
 

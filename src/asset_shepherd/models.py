@@ -78,6 +78,14 @@ class AssetEndpoint(StrEnum):
     OTHER = "OTHER"
 
 
+class AssetViewingUse(StrEnum):
+    """User-facing viewing context used to derive a mesh-complexity budget."""
+
+    CLOSE_UP_SHOWCASE = "CLOSE_UP_SHOWCASE"
+    NORMAL_GAMEPLAY = "NORMAL_GAMEPLAY"
+    SMALL_DISTANT_REPEATED = "SMALL_DISTANT_REPEATED"
+
+
 class RepairEligibility(StrEnum):
     """Whether inspection may proceed to structural repair."""
 
@@ -95,6 +103,7 @@ class RepairKind(StrEnum):
     WELD_IDENTICAL_VERTICES = "WELD_IDENTICAL_VERTICES"
     CLEAN_DEGENERATE_GEOMETRY = "CLEAN_DEGENERATE_GEOMETRY"
     REMOVE_DISCONNECTED_COMPONENTS = "REMOVE_DISCONNECTED_COMPONENTS"
+    SIMPLIFY_MESH = "SIMPLIFY_MESH"
 
 
 class AgentDisposition(StrEnum):
@@ -442,6 +451,8 @@ class PrimitiveAttributeDiagnostics(ContractModel):
     mesh_reference_count: NonNegativeInt = 0
     component_removal_safe: bool = False
     component_removal_block_reason: str | None = None
+    mesh_simplification_safe: bool = False
+    mesh_simplification_block_reason: str | None = None
     unused_position_count: NonNegativeInt = 0
     duplicate_position_count: NonNegativeInt = 0
     coincident_position_group_count: NonNegativeInt = 0
@@ -740,6 +751,48 @@ class ComponentRemovalPayload(ContractModel):
         return self
 
 
+class MeshSimplificationPrimitivePayload(ContractModel):
+    """Approved triangle target and protections for one simplifiable primitive."""
+
+    mesh_index: NonNegativeInt
+    primitive_index: NonNegativeInt
+    before_triangle_count: PositiveInt
+    target_triangle_count: PositiveInt
+    protected_component_count: NonNegativeInt
+    protected_triangle_count: NonNegativeInt
+
+    @model_validator(mode="after")
+    def target_is_a_reduction(self) -> "MeshSimplificationPrimitivePayload":
+        """Require an actual reduction while leaving room for protected components."""
+        if self.target_triangle_count >= self.before_triangle_count:
+            raise ValueError("Mesh simplification target must reduce the primitive")
+        if self.protected_triangle_count > self.before_triangle_count:
+            raise ValueError("Protected triangle count exceeds the primitive")
+        return self
+
+
+class MeshSimplificationPayload(ContractModel):
+    """Typed request for controlled, attribute-preserving mesh simplification."""
+
+    payload_type: Literal["simplify_mesh"] = "simplify_mesh"
+    source_triangle_count: PositiveInt
+    target_triangle_count: PositiveInt
+    protected_component_triangle_threshold: PositiveInt = 1000
+    maximum_bounds_drift_fraction: Annotated[float, Field(gt=0.0, le=0.02)] = 0.02
+    target_error: Annotated[float, Field(gt=0.0, le=0.1)]
+    primitives: tuple[MeshSimplificationPrimitivePayload, ...]
+    consequence_summary: str
+
+    @model_validator(mode="after")
+    def contains_a_bounded_reduction(self) -> "MeshSimplificationPayload":
+        """Bind the aggregate target to at least one primitive reduction."""
+        if self.target_triangle_count >= self.source_triangle_count:
+            raise ValueError("Mesh simplification target must reduce the asset")
+        if not self.primitives:
+            raise ValueError("Mesh simplification requires at least one eligible primitive")
+        return self
+
+
 class CandidateRepair(ContractModel):
     """A registered repair derived from one or more findings."""
 
@@ -753,7 +806,8 @@ class CandidateRepair(ContractModel):
         | NormalizationPayload
         | WeldPayload
         | DegenerateGeometryPayload
-        | ComponentRemovalPayload,
+        | ComponentRemovalPayload
+        | MeshSimplificationPayload,
         Field(discriminator="payload_type"),
     ]
 
@@ -772,6 +826,9 @@ class CandidateRepair(ContractModel):
         elif self.kind is RepairKind.REMOVE_DISCONNECTED_COMPONENTS:
             if not isinstance(self.payload, ComponentRemovalPayload):
                 raise ValueError("Disconnected-component repair requires a removal payload")
+        elif self.kind is RepairKind.SIMPLIFY_MESH:
+            if not isinstance(self.payload, MeshSimplificationPayload):
+                raise ValueError("Mesh simplification requires a simplification payload")
         elif not isinstance(self.payload, RenamePayload):
             raise ValueError("Rename repair requires a rename payload")
         return self
@@ -801,6 +858,7 @@ class AgentRepairAssessment(ContractModel):
     rename_invalid_display_names: bool = False
     weld_identical_vertices: bool = False
     clean_degenerate_geometry: bool = False
+    simplify_mesh: bool = False
     remove_component_ids: tuple[str, ...] = ()
     source_views_used: tuple[str, ...] = ()
 
@@ -816,6 +874,7 @@ class AgentRepairAssessment(ContractModel):
                 self.rename_invalid_display_names,
                 self.weld_identical_vertices,
                 self.clean_degenerate_geometry,
+                self.simplify_mesh,
                 bool(self.remove_component_ids),
             )
         )
@@ -842,6 +901,21 @@ class AgentRepairAssessment(ContractModel):
         if self.weld_identical_vertices and self.clean_degenerate_geometry:
             raise ValueError(
                 "Vertex-tuple welding and degenerate cleanup require separate repair turns"
+            )
+        if self.simplify_mesh and any(
+            (
+                self.weld_identical_vertices,
+                self.clean_degenerate_geometry,
+                bool(self.remove_component_ids),
+                self.scale_to_confirmed_height,
+                self.rotation_degrees != 0,
+                self.ground_to_y_zero,
+                self.pivot_target != "PRESERVE",
+            )
+        ):
+            raise ValueError(
+                "Mesh simplification requires its own repair turn so its visual and geometric "
+                "effects can be verified independently"
             )
         if len(self.remove_component_ids) != len(set(self.remove_component_ids)):
             raise ValueError("Disconnected component IDs must be unique")
@@ -1108,13 +1182,14 @@ class ProfilePolicyProvenance(ContractModel):
 class AssetIntentProvenance(ContractModel):
     """Immutable user-confirmed target story bound to one inspection job."""
 
-    intent_version: Literal[1, 2, 3] = 2
+    intent_version: Literal[1, 2, 3, 4] = 2
     intent_id: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
     original_description: Annotated[str, Field(min_length=12, max_length=600)]
     target_use: AssetTargetUse
     target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)]
     endpoint: AssetEndpoint | None = None
     endpoint_detail: Annotated[str, Field(min_length=2, max_length=80)] | None = None
+    viewing_use: AssetViewingUse | None = None
     target_dimensions_cm: (
         tuple[
             Annotated[float, Field(gt=0.0, le=100000.0)],
@@ -1148,6 +1223,8 @@ class AssetIntentProvenance(ContractModel):
                 raise ValueError("Other endpoint requires a short endpoint description")
             if self.endpoint is not AssetEndpoint.OTHER and self.endpoint_detail is not None:
                 raise ValueError("Canonical endpoints do not accept endpoint_detail")
+        if self.intent_version >= 4 and self.viewing_use is None:
+            raise ValueError("Version-4 intent requires a viewing-use choice")
         return self
 
 
@@ -1250,7 +1327,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] = 15
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] = 16
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

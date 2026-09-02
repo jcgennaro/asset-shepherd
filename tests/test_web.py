@@ -440,6 +440,11 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     assert 'name="target_use"' not in review.text
     assert 'name="target_height_m"' not in review.text
     assert "Start shepherding" in review.text
+    assert "How closely will this asset normally be viewed?" in review.text
+    assert "Close-up / showcase" in review.text
+    assert "Normal gameplay" in review.text
+    assert "Small, distant, or repeated" in review.text
+    assert 'name="viewing_use" value="NORMAL_GAMEPLAY" required checked' in review.text
     assert "<summary>Change target…</summary>" in review.text
     assert "Yes, inspect this asset" not in review.text
     assert "No, edit and try again" not in review.text
@@ -920,6 +925,7 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert provenance.profile_policy.base_preset_id == FAMILY_ID
     assert provenance.profile_policy.policy_family_id == FAMILY_ID
     assert provenance.profile_policy.explicit_overrides == {
+        "budgets.max_triangles": 15_000,
         "expected_height_cm.target": 180.0,
         "expected_height_cm.tolerance": 9.0,
         "orientation.ground_tolerance_cm": 0.9,
@@ -949,6 +955,7 @@ def test_intended_height_derives_a_frozen_profile_without_raw_transform_input(
     assert provenance.asset_intent.target_height_cm == 182.0
     assert provenance.profile_policy is not None
     assert provenance.profile_policy.explicit_overrides == {
+        "budgets.max_triangles": 15_000,
         "expected_height_cm.target": 182.0,
         "expected_height_cm.tolerance": 9.1,
         "orientation.ground_tolerance_cm": 0.91,

@@ -12,6 +12,32 @@
   "final_verification": "PASSED_WITH_REMAINING_WARNINGS",
   "intake_description": "a decorative necklace for a human with a heart charm on the front and a buckle on the back",
   "known_active_invocation_seconds": 167.2501463,
+  "mesh_simplification_run": {
+    "candidate_sha256": "0ac0c3d084246a0a2fa7a06bdd1259a1121f7be61de8dd1c3819a1f644ba91a1",
+    "final_byte_size": 7710004,
+    "final_triangle_count": 56885,
+    "initial_byte_size": 30204752,
+    "initial_triangle_count": 783571,
+    "input_sha256": "3040bebc0c601a34a3289c0dc92329e6cb7ce2bd24889e2331d17cf32b104f31",
+    "invocation_seconds": 94.96314000000712,
+    "model": "moonshotai.kimi-k2.5",
+    "notes": [
+      "The run starts from the previously normalized collar to isolate viewing-use simplification.",
+      "Kimi proposed only simplify-mesh-v1 and explicitly preserved the intentional disconnected construction parts.",
+      "The reducer stopped above the 15,000 soft cap because attribute and component-preservation constraints bound further reduction.",
+      "Independent verification passed with remaining topology, triangle-budget, and cache-locality warnings."
+    ],
+    "prompt_version": 16,
+    "provider": "bedrock-converse",
+    "protected_component_count": 63,
+    "protected_triangle_count": 3611,
+    "token_usage": {
+      "input_tokens": 157700,
+      "output_tokens": 1966,
+      "total_tokens": 159666
+    },
+    "verification": "PASSED_WITH_REMAINING_WARNINGS"
+  },
   "notes": [
     "Kimi inferred the intended 15 x 3 x 12 cm target from the ordinary-language description.",
     "The first turn selected the dominant body and proposed removing 64 tiny exact components, but fresh verification found 12 exact bodies rather than the expected one.",

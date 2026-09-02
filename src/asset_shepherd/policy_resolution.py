@@ -13,6 +13,7 @@ from pydantic import JsonValue, ValidationError
 
 from asset_shepherd.models import (
     AssetTargetUse,
+    AssetViewingUse,
     PolicyRuleSource,
     ProfilePolicyProvenance,
     ProjectProfile,
@@ -42,6 +43,18 @@ _GROUNDED_LANGUAGE = re.compile(
     r"\b(?:grounded|standing|stands on|resting on|placed on|sits on|floor[- ]standing)\b",
     re.IGNORECASE,
 )
+
+VIEWING_USE_TRIANGLE_CAPS: dict[AssetViewingUse, int] = {
+    AssetViewingUse.CLOSE_UP_SHOWCASE: 50_000,
+    AssetViewingUse.NORMAL_GAMEPLAY: 15_000,
+    AssetViewingUse.SMALL_DISTANT_REPEATED: 2_500,
+}
+
+VIEWING_USE_LABELS: dict[AssetViewingUse, str] = {
+    AssetViewingUse.CLOSE_UP_SHOWCASE: "close-up or showcase",
+    AssetViewingUse.NORMAL_GAMEPLAY: "normal gameplay",
+    AssetViewingUse.SMALL_DISTANT_REPEATED: "small, distant, or repeated",
+}
 
 
 @dataclass(frozen=True)
@@ -126,6 +139,7 @@ def resolve_policy_family(
     description: str,
     target_use: AssetTargetUse,
     target_height_cm: float,
+    viewing_use: AssetViewingUse = AssetViewingUse.NORMAL_GAMEPLAY,
     user_overrides: dict[str, JsonValue] | None = None,
 ) -> PolicyResolution:
     """Derive supported target rules, validate them, and freeze canonical provenance."""
@@ -149,6 +163,7 @@ def resolve_policy_family(
         "expected_height_cm.tolerance": _bounded_height_tolerance(target_height_cm),
         "orientation.require_ground_contact": require_ground_contact,
         "orientation.ground_tolerance_cm": _bounded_ground_tolerance(target_height_cm),
+        "budgets.max_triangles": VIEWING_USE_TRIANGLE_CAPS[viewing_use],
     }
     resolved_values.update(overrides)
 
@@ -199,7 +214,7 @@ def resolve_policy_family(
         "naming.pattern": "FAMILY_DEFAULT",
         "naming.require_unique_node_names": "FAMILY_DEFAULT",
         "naming.require_unique_mesh_names": "FAMILY_DEFAULT",
-        "budgets.max_triangles": "FAMILY_DEFAULT",
+        "budgets.max_triangles": "CONFIRMED_INTENT",
         "budgets.max_materials": "FAMILY_DEFAULT",
         "budgets.max_textures": "FAMILY_DEFAULT",
         "budgets.max_texture_dimension": "FAMILY_DEFAULT",
@@ -233,7 +248,8 @@ def resolve_policy_family(
         "naming.require_unique_node_names": "Safe node renaming requires unique display names.",
         "naming.require_unique_mesh_names": "Safe mesh renaming requires unique display names.",
         "budgets.max_triangles": (
-            "No project-specific triangle budget was supplied; use the family default."
+            f"The confirmed {VIEWING_USE_LABELS[viewing_use]} use case maps to the product's "
+            f"{VIEWING_USE_TRIANGLE_CAPS[viewing_use]:,}-triangle soft cap."
         ),
         "budgets.max_materials": (
             "No project-specific material budget was supplied; use the family default."

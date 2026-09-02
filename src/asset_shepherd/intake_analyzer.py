@@ -33,7 +33,7 @@ from asset_shepherd.conversation_policy import (
     CONTENT_REFUSAL_MESSAGE,
 )
 from asset_shepherd.intent import normalize_intent_description
-from asset_shepherd.models import AssetEndpoint, AssetTargetUse, ContractModel
+from asset_shepherd.models import AssetEndpoint, AssetTargetUse, AssetViewingUse, ContractModel
 from asset_shepherd.target_intake import (
     MINIMUM_TARGET_CONFIDENCE,
     TargetEvidenceSource,
@@ -348,8 +348,16 @@ def contract_from_inference(
                 evidence=inference.target_dimensions_evidence,
             )
         )
+    evidence.append(
+        TargetFieldEvidence(
+            field="viewing_use",
+            source=TargetEvidenceSource.DETERMINISTIC_FALLBACK,
+            confidence=MINIMUM_TARGET_CONFIDENCE,
+            evidence="Normal gameplay is preselected for explicit target-stage confirmation.",
+        )
+    )
     return TargetIntakeContract(
-        schema_version=5,
+        schema_version=6,
         description=normalized,
         asset_name=inference.asset_name or "Untitled asset",
         analyzer_provider=provider,
@@ -358,6 +366,7 @@ def contract_from_inference(
         target_height_cm=target_height_cm,
         endpoint=endpoint,
         endpoint_detail=inference.endpoint_detail if endpoint is AssetEndpoint.OTHER else None,
+        viewing_use=AssetViewingUse.NORMAL_GAMEPLAY,
         target_dimensions_cm=target_dimensions_cm,
         expected_piece_count=inference.expected_piece_count or 1,
         expected_piece_count_evidence=(

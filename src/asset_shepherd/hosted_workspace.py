@@ -40,6 +40,7 @@ from asset_shepherd.models import (
     AssetEndpoint,
     AssetIntentProvenance,
     AssetTargetUse,
+    AssetViewingUse,
     ContractModel,
     PreflightResult,
     ProfilePolicyProvenance,
@@ -52,6 +53,7 @@ from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_fa
 from asset_shepherd.target_intake import (
     TargetIntakeContract,
     clarify_target_intake,
+    confirm_target_viewing_use,
     fallback_asset_name,
     revise_target_intake,
 )
@@ -111,6 +113,7 @@ class TargetContract(ContractModel):
     target_height_cm: float = Field(gt=0.0, le=100000.0)
     endpoint: AssetEndpoint | None = None
     endpoint_detail: str | None = Field(default=None, min_length=2, max_length=80)
+    viewing_use: AssetViewingUse = AssetViewingUse.NORMAL_GAMEPLAY
     target_dimensions_cm: tuple[float, float, float] | None = None
     supported_job_goal: SupportedJobGoal
     support_status: SupportStatus
@@ -671,6 +674,7 @@ class HostedWorkspaceStore:
         description: str,
         target_use: AssetTargetUse,
         target_height_cm: float,
+        viewing_use: AssetViewingUse,
         custom_values: Mapping[str, str | None] | None = None,
     ) -> PolicyResolution:
         """Resolve confirmed intent through the one family plus supported user edits."""
@@ -730,6 +734,7 @@ class HostedWorkspaceStore:
                 description=description,
                 target_use=target_use,
                 target_height_cm=target_height_cm,
+                viewing_use=viewing_use,
                 user_overrides=overrides,
             )
         except ValueError as error:
@@ -742,6 +747,7 @@ class HostedWorkspaceStore:
         target_use_value: str | None,
         endpoint_value: str | None = None,
         endpoint_detail: str | None = None,
+        viewing_use_value: str | None = None,
         target_x_m: str | None = None,
         target_y_m: str | None = None,
         target_z_m: str | None = None,
@@ -765,6 +771,7 @@ class HostedWorkspaceStore:
                     target_use_value=target_use_value,
                     endpoint_value=endpoint_value,
                     endpoint_detail=endpoint_detail,
+                    viewing_use_value=viewing_use_value,
                     target_x_m=target_x_m,
                     target_y_m=target_y_m,
                     target_z_m=target_z_m,
@@ -795,6 +802,7 @@ class HostedWorkspaceStore:
         target_use_value: str,
         endpoint_value: str = AssetEndpoint.OTHER.value,
         endpoint_detail: str | None = None,
+        viewing_use_value: str = AssetViewingUse.NORMAL_GAMEPLAY.value,
         target_x_m: str | None = None,
         target_y_m: str | None = None,
         target_z_m: str | None = None,
@@ -817,6 +825,7 @@ class HostedWorkspaceStore:
                     target_use_value=target_use_value,
                     endpoint_value=endpoint_value,
                     endpoint_detail=endpoint_detail,
+                    viewing_use_value=viewing_use_value,
                     target_x_m=target_x_m,
                     target_y_m=target_y_m,
                     target_z_m=target_z_m,
@@ -831,7 +840,14 @@ class HostedWorkspaceStore:
             workspace.record = self._append_event(
                 workspace.record,
                 "TARGET_REVISED",
-                payload={"completed_fields": ["target_use", "endpoint", "target_dimensions_cm"]},
+                payload={
+                    "completed_fields": [
+                        "target_use",
+                        "endpoint",
+                        "target_dimensions_cm",
+                        "viewing_use",
+                    ]
+                },
             )
             _write_json_atomic(
                 workspace.root / "target_intake.json",
@@ -890,6 +906,7 @@ class HostedWorkspaceStore:
         endpoint: AssetEndpoint,
         endpoint_detail: str | None,
         target_dimensions_cm: tuple[float, float, float],
+        viewing_use: AssetViewingUse,
         accept_supported_goal: bool,
     ) -> TargetContract:
         if record.preflight.structural_eligibility is not RepairEligibility.ELIGIBLE_STATIC_MESH:
@@ -918,6 +935,7 @@ class HostedWorkspaceStore:
                 "endpoint": endpoint.value,
                 "endpoint_detail": endpoint_detail,
                 "target_dimensions_cm": list(target_dimensions_cm),
+                "viewing_use": viewing_use.value,
                 "supported_job_goal": goal.value,
                 "support_status": status.value,
                 "external_handoffs": list(handoffs),
@@ -929,6 +947,7 @@ class HostedWorkspaceStore:
             target_height_cm=target_height_cm,
             endpoint=endpoint,
             endpoint_detail=endpoint_detail,
+            viewing_use=viewing_use,
             target_dimensions_cm=target_dimensions_cm,
             supported_job_goal=goal,
             support_status=status,
@@ -943,6 +962,7 @@ class HostedWorkspaceStore:
         *,
         accept_supported_goal: bool,
         command_id: str,
+        viewing_use_value: str | None = None,
         custom_values: Mapping[str, str | None] | None = None,
     ) -> HostedWorkspace:
         """Freeze typed target/policy state and start the unchanged deterministic pipeline."""
@@ -958,10 +978,15 @@ class HostedWorkspaceStore:
                 raise HostedWorkspaceError(
                     "Answer the remaining target questions before confirming this job."
                 )
+            try:
+                target_draft = confirm_target_viewing_use(target_draft, viewing_use_value)
+            except ValueError as error:
+                raise HostedWorkspaceError(str(error)) from error
             target_use = target_draft.target_use
             target_height_cm = target_draft.target_height_cm
             endpoint = target_draft.endpoint
             target_dimensions_cm = target_draft.target_dimensions_cm
+            viewing_use = target_draft.viewing_use or AssetViewingUse.NORMAL_GAMEPLAY
             if (
                 target_use is None
                 or target_height_cm is None
@@ -976,12 +1001,14 @@ class HostedWorkspaceStore:
                 endpoint,
                 target_draft.endpoint_detail,
                 target_dimensions_cm,
+                viewing_use,
                 accept_supported_goal,
             )
             resolution = self._derive_profile(
                 workspace.record.private_description,
                 target_use,
                 target_height_cm,
+                viewing_use,
                 custom_values,
             )
             profile = resolution.profile
@@ -997,6 +1024,7 @@ class HostedWorkspaceStore:
                 endpoint=endpoint,
                 endpoint_detail=target_draft.endpoint_detail,
                 target_dimensions_cm=target_dimensions_cm,
+                viewing_use=viewing_use,
             )
             _write_json_atomic(workspace.root / "profile.json", profile.model_dump(mode="json"))
             _write_json_atomic(workspace.root / "intent.json", intent.model_dump(mode="json"))
@@ -1004,6 +1032,7 @@ class HostedWorkspaceStore:
             workspace.record = workspace.record.model_copy(
                 update={
                     "target": target,
+                    "target_draft": target_draft,
                     "intent": intent,
                     "profile_policy": policy,
                     "profile_name": profile_name,
@@ -1021,6 +1050,7 @@ class HostedWorkspaceStore:
                 "endpoint": endpoint.value,
                 "endpoint_detail": target.endpoint_detail,
                 "target_dimensions_cm": list(target_dimensions_cm),
+                "viewing_use": viewing_use.value,
                 "frozen_profile_id": policy.frozen_profile_id,
                 "base_preset_id": policy.base_preset_id,
                 "policy_family_id": policy.policy_family_id,

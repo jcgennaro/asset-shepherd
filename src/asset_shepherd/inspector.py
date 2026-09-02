@@ -656,6 +656,63 @@ def _primitive_diagnostics(
             except (GlbError, IndexError) as error:
                 component_block_reason = str(error)
 
+    simplification_block_reason: str | None = None
+    if mode != TRIANGLES or primitive.indices is None:
+        simplification_block_reason = "mesh simplification requires an indexed TRIANGLES primitive"
+    elif len(indices) % 3:
+        simplification_block_reason = "the index accessor contains an incomplete triangle"
+    elif primitive.targets or primitive.extensions:
+        simplification_block_reason = "morph targets or compressed primitive data are present"
+    elif mesh_is_skinned:
+        simplification_block_reason = "the mesh is referenced by a skinned node"
+    elif component_inventory.truncated:
+        simplification_block_reason = "the component inventory exceeds the bounded safety limit"
+    elif mismatches:
+        simplification_block_reason = "vertex attribute counts do not match POSITION"
+    elif np.any(out_of_range):
+        simplification_block_reason = "indices fall outside the POSITION accessor"
+    elif np.count_nonzero(degenerate):
+        simplification_block_reason = "degenerate triangles require a separate cleanup turn"
+    elif not any(component.triangle_count >= 1000 for component in component_inventory.components):
+        simplification_block_reason = (
+            "every component is below the 1,000-triangle protection threshold"
+        )
+    else:
+        accessor_indices = [*attribute_indices.values(), primitive.indices]
+        view_references: dict[int, int] = {}
+        for accessor in gltf.accessors:
+            if accessor.bufferView is not None:
+                view_references[accessor.bufferView] = (
+                    view_references.get(accessor.bufferView, 0) + 1
+                )
+        component_sizes = {5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4}
+        component_counts = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}
+        try:
+            for accessor_index in accessor_indices:
+                accessor = gltf.accessors[accessor_index]
+                if accessor.bufferView is None:
+                    raise GlbError("an accessor has no buffer view")
+                view = gltf.bufferViews[accessor.bufferView]
+                component_size = component_sizes.get(accessor.componentType)
+                component_count = component_counts.get(accessor.type)
+                if (
+                    accessor.sparse is not None
+                    or accessor.extensions
+                    or view.extensions
+                    or view.buffer != 0
+                    or accessor.byteOffset not in {None, 0}
+                    or view.byteStride not in {None, 0}
+                    or view_references.get(accessor.bufferView) != 1
+                    or component_size is None
+                    or component_count is None
+                    or view.byteLength != accessor.count * component_size * component_count
+                ):
+                    raise GlbError(
+                        "simplification requires dedicated, tightly packed, unextended accessors"
+                    )
+        except (GlbError, IndexError) as error:
+            simplification_block_reason = str(error)
+
     non_unit_normals = 0
     normal_accessor = gltf.accessors[normal_index] if normal_index is not None else None
     if (
@@ -725,6 +782,8 @@ def _primitive_diagnostics(
             component_inventory.exact_component_count > 1 and component_block_reason is None
         ),
         component_removal_block_reason=component_block_reason,
+        mesh_simplification_safe=simplification_block_reason is None,
+        mesh_simplification_block_reason=simplification_block_reason,
         unused_position_count=topology.unused_position_count,
         duplicate_position_count=topology.duplicate_position_count,
         coincident_position_group_count=(duplicate_positions.coincident_position_group_count),
@@ -1464,14 +1523,25 @@ def _inspection_findings(
 
     findings.extend(_naming_findings(naming, profile, policy))
     if geometry.triangle_count > profile.budgets.max_triangles:
+        simplification_available = any(
+            primitive.mesh_simplification_safe for primitive in diagnostics.primitives
+        )
         findings.append(
             _finding(
                 code="TRIANGLE_BUDGET_EXCEEDED",
                 domain="budgets",
                 title="Triangle budget exceeded",
-                description="Topology is reported for review and is not changed.",
+                description=(
+                    "Controlled simplification is available for explicit review."
+                    if simplification_available
+                    else "No safely simplifiable primitive layout was proven; report only."
+                ),
                 severity=Severity.WARNING,
-                action_class=ActionClass.REPORT_ONLY,
+                action_class=(
+                    ActionClass.APPROVAL_REQUIRED
+                    if simplification_available
+                    else ActionClass.REPORT_ONLY
+                ),
                 confidence=1.0,
                 affected=("geometry",),
                 evidence=(
@@ -1482,6 +1552,7 @@ def _inspection_findings(
                     ),
                 ),
                 profile_rule="budgets.max_triangles",
+                candidates=("simplify-mesh-v1",) if simplification_available else (),
                 profile=profile,
                 policy=policy,
             )

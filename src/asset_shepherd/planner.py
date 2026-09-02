@@ -18,6 +18,8 @@ from asset_shepherd.models import (
     DegenerateGeometryPrimitivePayload,
     InspectionResult,
     Matrix4,
+    MeshSimplificationPayload,
+    MeshSimplificationPrimitivePayload,
     NormalizationComponent,
     NormalizationPayload,
     ProjectProfile,
@@ -358,6 +360,99 @@ def _component_removal_candidate(
     )
 
 
+def _mesh_simplification_candidate(
+    inspection: InspectionResult,
+    profile: ProjectProfile,
+) -> CandidateRepair | None:
+    """Bind the viewing-use triangle cap to eligible primitive reductions."""
+    if inspection.geometry is None or inspection.diagnostics is None:
+        return None
+    source_triangles = inspection.geometry.triangle_count
+    target_triangles = profile.budgets.max_triangles
+    if source_triangles <= target_triangles:
+        return None
+    eligible = tuple(
+        primitive
+        for primitive in inspection.diagnostics.primitives
+        if primitive.mesh_simplification_safe and primitive.valid_triangle_count > 1
+    )
+    if not eligible:
+        return None
+    fixed_triangles = source_triangles - sum(item.valid_triangle_count for item in eligible)
+    eligible_target_total = max(len(eligible), target_triangles - fixed_triangles)
+    eligible_total = sum(item.valid_triangle_count for item in eligible)
+    exact_targets = [
+        eligible_target_total * item.valid_triangle_count / eligible_total for item in eligible
+    ]
+    allocated = [
+        max(1, min(item.valid_triangle_count - 1, int(exact)))
+        for item, exact in zip(eligible, exact_targets, strict=True)
+    ]
+    remainder = eligible_target_total - sum(allocated)
+    order = sorted(
+        range(len(eligible)),
+        key=lambda index: (
+            exact_targets[index] - int(exact_targets[index]),
+            eligible[index].valid_triangle_count,
+            -index,
+        ),
+        reverse=True,
+    )
+    while remainder > 0:
+        changed = False
+        for index in order:
+            if allocated[index] < eligible[index].valid_triangle_count - 1:
+                allocated[index] += 1
+                remainder -= 1
+                changed = True
+                if remainder == 0:
+                    break
+        if not changed:
+            break
+    primitives: list[MeshSimplificationPrimitivePayload] = []
+    for primitive, primitive_target in zip(eligible, allocated, strict=True):
+        protected = tuple(
+            component
+            for component in primitive.disconnected_components
+            if component.triangle_count < 1000
+        )
+        primitives.append(
+            MeshSimplificationPrimitivePayload(
+                mesh_index=primitive.mesh_index,
+                primitive_index=primitive.primitive_index,
+                before_triangle_count=primitive.valid_triangle_count,
+                target_triangle_count=primitive_target,
+                protected_component_count=len(protected),
+                protected_triangle_count=sum(item.triangle_count for item in protected),
+            )
+        )
+    target_error = 0.03 if target_triangles == 50_000 else 0.1
+    finding_ids = tuple(
+        finding.id for finding in inspection.findings if finding.code == "TRIANGLE_BUDGET_EXCEEDED"
+    )
+    return CandidateRepair(
+        id="simplify-mesh-v1",
+        kind=RepairKind.SIMPLIFY_MESH,
+        action_class=ActionClass.APPROVAL_REQUIRED,
+        finding_ids=finding_ids,
+        description=(
+            f"Optimize the mesh from {source_triangles:,} toward approximately "
+            f"{target_triangles:,} triangles for the confirmed viewing use."
+        ),
+        payload=MeshSimplificationPayload(
+            source_triangle_count=source_triangles,
+            target_triangle_count=target_triangles,
+            target_error=target_error,
+            primitives=tuple(primitives),
+            consequence_summary=(
+                "This lossy reduction keeps the source immutable, preserves original complete "
+                "vertex tuples, materials, UVs, normals, named nodes, and every exact component "
+                "below 1,000 triangles. It may stop above the cap when preservation limits bind."
+            ),
+        ),
+    )
+
+
 def plan_agent_repairs(
     inspection: InspectionResult,
     profile: ProjectProfile,
@@ -399,6 +494,14 @@ def plan_agent_repairs(
             candidates.append(
                 _component_removal_candidate(inspection, assessment.remove_component_ids)
             )
+        if assessment.simplify_mesh:
+            simplification_candidate = _mesh_simplification_candidate(inspection, profile)
+            if simplification_candidate is None:
+                raise ValueError(
+                    "The agent requested mesh simplification, but no over-budget primitive has "
+                    "a supported, safely simplifiable layout"
+                )
+            candidates.append(simplification_candidate)
 
         transform_requested = any(
             (

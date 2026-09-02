@@ -148,6 +148,7 @@ def test_full_approved_workflow_verifies_and_packages_every_artifact(tmp_path: P
     assert provenance.started_at == provenance.completed_at == FIXED_TIME
     assert provenance.commit_sha != "unknown"
     assert set(provenance.library_versions) == {
+        "meshoptimizer",
         "Pillow",
         "numpy",
         "pydantic",

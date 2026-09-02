@@ -12,7 +12,8 @@
       url_for('confirm_intent', intent_id=intent.intent_id),
       url_for('revise_intent', intent_id=intent.intent_id),
       intent.original_description,
-      url_for('feedback_page') ~ "?context=target-confirmation&reference_id=" ~ intent.intent_id ~ "&return_path=" ~ request.url.path
+      url_for('feedback_page') ~ "?context=target-confirmation&reference_id=" ~ intent.intent_id ~ "&return_path=" ~ request.url.path,
+      viewing_use_value=intent.target.viewing_use.value
     ) }}
   {% endcall %}
 {% endblock %}

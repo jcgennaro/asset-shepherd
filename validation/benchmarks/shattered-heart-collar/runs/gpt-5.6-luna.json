@@ -11,6 +11,32 @@
   "final_triangle_count": 783571,
   "final_verification": "PASSED_WITH_REMAINING_WARNINGS",
   "intake_description": "a decorative necklace for a human with a heart charm on the front and a buckle on the back; target size approximately 15 x 3 x 12 cm",
+  "mesh_simplification_run": {
+    "candidate_sha256": "0ac0c3d084246a0a2fa7a06bdd1259a1121f7be61de8dd1c3819a1f644ba91a1",
+    "final_byte_size": 7710004,
+    "final_triangle_count": 56885,
+    "initial_byte_size": 30204752,
+    "initial_triangle_count": 783571,
+    "input_sha256": "3040bebc0c601a34a3289c0dc92329e6cb7ce2bd24889e2331d17cf32b104f31",
+    "invocation_seconds": 123.75155679999443,
+    "model": "gpt-5.6-luna",
+    "notes": [
+      "The run starts from the previously normalized collar to isolate viewing-use simplification.",
+      "Luna proposed only simplify-mesh-v1 and explicitly preserved the intentional disconnected construction parts.",
+      "The reducer stopped above the 15,000 soft cap because attribute and component-preservation constraints bound further reduction.",
+      "Independent verification passed with remaining topology, triangle-budget, and cache-locality warnings."
+    ],
+    "prompt_version": 16,
+    "provider": "openai",
+    "protected_component_count": 63,
+    "protected_triangle_count": 3611,
+    "token_usage": {
+      "input_tokens": 370837,
+      "output_tokens": 5269,
+      "total_tokens": 376106
+    },
+    "verification": "PASSED_WITH_REMAINING_WARNINGS"
+  },
   "notes": [
     "Luna's first intake proposal for the description without explicit dimensions was 16 x 18 x 2 cm, so the target was restated explicitly before confirmation.",
     "Luna recognized all 65 exact components but treated the single near-contact group and visual evidence as one coherent necklace assembly.",

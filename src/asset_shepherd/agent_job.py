@@ -35,6 +35,7 @@ from asset_shepherd.models import (
     JobResult,
     JobState,
     Matrix4,
+    MeshSimplificationPayload,
     NormalizationPayload,
     PivotAnchorInventory,
     PlanSelection,
@@ -406,6 +407,7 @@ class AgentJob:
                 RepairKind.WELD_IDENTICAL_VERTICES,
                 RepairKind.CLEAN_DEGENERATE_GEOMETRY,
                 RepairKind.REMOVE_DISCONNECTED_COMPONENTS,
+                RepairKind.SIMPLIFY_MESH,
             }:
                 active_lanes.add(ProposalLane.TOPOLOGY)
             elif candidate.kind in {RepairKind.RENAME_MESH, RepairKind.RENAME_NODE}:
@@ -627,6 +629,7 @@ class AgentJob:
             RepairKind.WELD_IDENTICAL_VERTICES,
             RepairKind.CLEAN_DEGENERATE_GEOMETRY,
             RepairKind.REMOVE_DISCONNECTED_COMPONENTS,
+            RepairKind.SIMPLIFY_MESH,
         }
         visually_consequential_action_ids = {
             candidate.id
@@ -1132,6 +1135,7 @@ class AgentJob:
         source_views_used: list[str],
         weld_identical_vertices: bool = False,
         clean_degenerate_geometry: bool = False,
+        simplify_mesh: bool = False,
         remove_component_ids: list[str] | None = None,
         pivot_target: Literal[
             "PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM", "MEASURED_ANCHOR"
@@ -1159,7 +1163,9 @@ class AgentJob:
             )
         )
         requested_component_ids = remove_component_ids or []
-        visual_evidence_requested = physical_requested or bool(requested_component_ids)
+        visual_evidence_requested = (
+            physical_requested or bool(requested_component_ids) or simplify_mesh
+        )
         # Report-only and return-to-creation conclusions may still rely on rendered
         # evidence. Validate any cited views even when no mutation is requested.
         views_need_validation = visual_evidence_requested or bool(source_views_used)
@@ -1168,7 +1174,8 @@ class AgentJob:
         )
         if visual_evidence_requested and not source_views_used:
             raise AgentWorkflowError(
-                "Physical and component-selection actions require cited visual evidence"
+                "Physical, component-selection, and simplification actions require cited visual "
+                "evidence"
             )
         unknown_views = set(source_views_used) - available_views
         if unknown_views:
@@ -1244,6 +1251,7 @@ class AgentJob:
             "rename_invalid_display_names": rename_invalid_display_names,
             "weld_identical_vertices": weld_identical_vertices,
             "clean_degenerate_geometry": clean_degenerate_geometry,
+            "simplify_mesh": simplify_mesh,
             "remove_component_ids": requested_component_ids,
             "source_views_used": source_views_used,
         }
@@ -1269,6 +1277,7 @@ class AgentJob:
             rename_invalid_display_names=rename_invalid_display_names,
             weld_identical_vertices=weld_identical_vertices,
             clean_degenerate_geometry=clean_degenerate_geometry,
+            simplify_mesh=simplify_mesh,
             remove_component_ids=tuple(requested_component_ids),
             source_views_used=tuple(source_views_used),
         )
@@ -1400,6 +1409,17 @@ class AgentJob:
                 title=(
                     f"Remove {len(removed_ids)} labeled component"
                     f"{'s' if len(removed_ids) != 1 else ''}"
+                ),
+                consequence_summary=candidate.payload.consequence_summary,
+            )
+        if isinstance(candidate.payload, MeshSimplificationPayload):
+            return ApprovalCard(
+                plan_id=self.selected_plan.plan_id,
+                candidate_id=candidate.id,
+                finding_ids=candidate.finding_ids,
+                title=(
+                    f"Optimize {candidate.payload.source_triangle_count:,} triangles toward "
+                    f"{candidate.payload.target_triangle_count:,}"
                 ),
                 consequence_summary=candidate.payload.consequence_summary,
             )
@@ -1613,6 +1633,7 @@ class AgentJob:
             RepairKind.WELD_IDENTICAL_VERTICES,
             RepairKind.CLEAN_DEGENERATE_GEOMETRY,
             RepairKind.REMOVE_DISCONNECTED_COMPONENTS,
+            RepairKind.SIMPLIFY_MESH,
         }
         visually_consequential_action_ids = {
             candidate.id

@@ -198,6 +198,11 @@
       "default": null,
       "title": "Semantic Height Axis"
     },
+    "simplify_mesh": {
+      "default": false,
+      "title": "Simplify Mesh",
+      "type": "boolean"
+    },
     "source_views_used": {
       "default": [],
       "items": {

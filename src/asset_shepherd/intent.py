@@ -7,7 +7,12 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from uuid import uuid4
 
-from asset_shepherd.models import AssetEndpoint, AssetIntentProvenance, AssetTargetUse
+from asset_shepherd.models import (
+    AssetEndpoint,
+    AssetIntentProvenance,
+    AssetTargetUse,
+    AssetViewingUse,
+)
 
 TARGET_USE_LABELS = {
     AssetTargetUse.STATIC_GAME_ASSET: "static game asset",
@@ -20,6 +25,12 @@ ENDPOINT_LABELS = {
     AssetEndpoint.UNREAL: "Unreal",
     AssetEndpoint.GODOT: "Godot",
     AssetEndpoint.OTHER: "another tool",
+}
+
+VIEWING_USE_LABELS = {
+    AssetViewingUse.CLOSE_UP_SHOWCASE: "close-up or showcase viewing",
+    AssetViewingUse.NORMAL_GAMEPLAY: "normal gameplay viewing",
+    AssetViewingUse.SMALL_DISTANT_REPEATED: "small, distant, or repeated use",
 }
 
 
@@ -54,6 +65,7 @@ def craft_confirmed_story(
     endpoint: AssetEndpoint | None = None,
     endpoint_detail: str | None = None,
     target_dimensions_cm: tuple[float, float, float] | None = None,
+    viewing_use: AssetViewingUse | None = None,
 ) -> str:
     """Turn bounded structured intent into the exact story the user will confirm."""
     description_text = description.rstrip(".?!")
@@ -68,10 +80,14 @@ def craft_confirmed_story(
         endpoint_detail if endpoint is AssetEndpoint.OTHER else ENDPOINT_LABELS[endpoint]
     )
     bounds_m = tuple(value / 100.0 for value in target_dimensions_cm)
+    viewing_text = (
+        f", tuned for {VIEWING_USE_LABELS[viewing_use]}" if viewing_use is not None else ""
+    )
     return (
         f"Here is what I am trying to make: {description_text}. I need it prepared as a "
         f"{TARGET_USE_LABELS[target_use]} for {endpoint_label}, within tight X/Y/Z bounds of "
-        f"{bounds_m[0]:g} x {bounds_m[1]:g} x {bounds_m[2]:g} m, while surfacing any work "
+        f"{bounds_m[0]:g} x {bounds_m[1]:g} x {bounds_m[2]:g} m{viewing_text}, while "
+        "surfacing any work "
         "Asset Shepherd cannot perform."
     )
 
@@ -90,6 +106,7 @@ def _canonical_payload(
     endpoint: AssetEndpoint | None = None,
     endpoint_detail: str | None = None,
     target_dimensions_cm: tuple[float, float, float] | None = None,
+    viewing_use: AssetViewingUse | None = None,
 ) -> dict[str, object]:
     timestamp = confirmed_at.astimezone(UTC).isoformat().replace("+00:00", "Z")
     payload: dict[str, object] = {
@@ -108,6 +125,8 @@ def _canonical_payload(
         payload["endpoint"] = endpoint.value if endpoint is not None else None
         payload["endpoint_detail"] = endpoint_detail
         payload["target_dimensions_cm"] = list(target_dimensions_cm or ())
+    if intent_version >= 4:
+        payload["viewing_use"] = viewing_use.value if viewing_use is not None else None
     return payload
 
 
@@ -136,12 +155,19 @@ def build_asset_intent(
     endpoint: AssetEndpoint | None = None,
     endpoint_detail: str | None = None,
     target_dimensions_cm: tuple[float, float, float] | None = None,
+    viewing_use: AssetViewingUse | None = None,
 ) -> AssetIntentProvenance:
     """Build one immutable, canonically hashed target story."""
     normalized = normalize_intent_description(description)
     resolved_id = intent_id or uuid4().hex
     resolved_time = confirmed_at or datetime.now(UTC)
-    version = 3 if endpoint is not None and target_dimensions_cm is not None else 2
+    version = (
+        4
+        if endpoint is not None and target_dimensions_cm is not None and viewing_use is not None
+        else 3
+        if endpoint is not None and target_dimensions_cm is not None
+        else 2
+    )
     story = craft_confirmed_story(
         normalized,
         target_use,
@@ -149,6 +175,7 @@ def build_asset_intent(
         endpoint=endpoint,
         endpoint_detail=endpoint_detail,
         target_dimensions_cm=target_dimensions_cm,
+        viewing_use=viewing_use,
     )
     payload = _canonical_payload(
         intent_version=version,
@@ -163,6 +190,7 @@ def build_asset_intent(
         endpoint=endpoint,
         endpoint_detail=endpoint_detail,
         target_dimensions_cm=target_dimensions_cm,
+        viewing_use=viewing_use,
     )
     return AssetIntentProvenance(
         intent_version=version,
@@ -172,6 +200,7 @@ def build_asset_intent(
         target_height_cm=target_height_cm,
         endpoint=endpoint,
         endpoint_detail=endpoint_detail,
+        viewing_use=viewing_use,
         target_dimensions_cm=target_dimensions_cm,
         expected_piece_count=expected_piece_count,
         expected_piece_count_evidence=expected_piece_count_evidence,
@@ -196,6 +225,7 @@ def validate_asset_intent(intent: AssetIntentProvenance) -> None:
         endpoint=intent.endpoint,
         endpoint_detail=intent.endpoint_detail,
         target_dimensions_cm=intent.target_dimensions_cm,
+        viewing_use=intent.viewing_use,
     )
     if intent.canonical_sha256 != _canonical_sha256(payload):
         raise ValueError("Confirmed asset intent hash does not match its fields")

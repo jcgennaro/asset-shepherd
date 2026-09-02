@@ -327,6 +327,7 @@ def test_advanced_supported_rules_are_schema_validated_and_frozen(tmp_path: Path
     assert policy is not None
     assert policy.explicit_overrides == {
         "budgets.max_materials": 3,
+        "budgets.max_triangles": 15_000,
         "expected_height_cm.target": 182.0,
         "expected_height_cm.tolerance": 2.0,
         "orientation.ground_tolerance_cm": 0.91,

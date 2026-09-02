@@ -71,6 +71,7 @@ from asset_shepherd.models import (
     AssetEndpoint,
     AssetIntentProvenance,
     AssetTargetUse,
+    AssetViewingUse,
     CheckStatus,
     ComponentRemovalPayload,
     ConversationTurnRecord,
@@ -79,6 +80,7 @@ from asset_shepherd.models import (
     DegenerateGeometryPayload,
     Finding,
     InspectionResult,
+    MeshSimplificationPayload,
     NormalizationPayload,
     ProfilePolicyProvenance,
     ProjectProfile,
@@ -97,6 +99,7 @@ from asset_shepherd.target_intake import (
     TargetFieldEvidence,
     TargetIntakeContract,
     clarify_target_intake,
+    confirm_target_viewing_use,
 )
 from asset_shepherd.verification import verify_repair
 
@@ -846,12 +849,23 @@ class WebIntent:
         return self.target.target_height_cm
 
     @property
+    def viewing_use(self) -> AssetViewingUse:
+        """Return the complete user-facing viewing context."""
+        if self.target.viewing_use is None:
+            raise UploadValidationError("The typical viewing use still needs clarification.")
+        return self.target.viewing_use
+
+    @property
     def draft_story(self) -> str:
         """Build the reviewable story only from a complete minimum contract."""
         return craft_confirmed_story(
             self.original_description,
             self.target_use,
             self.target_height_cm,
+            endpoint=self.target.endpoint,
+            endpoint_detail=self.target.endpoint_detail,
+            target_dimensions_cm=self.target.target_dimensions_cm,
+            viewing_use=self.viewing_use,
         )
 
 
@@ -989,6 +1003,7 @@ def _policy_proposal(family: PolicyFamilyOption, intent: WebIntent) -> PolicyPro
         description=intent.original_description,
         target_use=intent.target_use,
         target_height_cm=intent.target_height_cm,
+        viewing_use=intent.target.viewing_use or AssetViewingUse.NORMAL_GAMEPLAY,
     )
     complete_summary = _profile_summary(resolution.profile)
     return PolicyProposalView(
@@ -1202,12 +1217,18 @@ def _target_expectations(
     policy_sources: Mapping[str, str],
 ) -> tuple[ExpectationView, ...]:
     """Expose every current target assumption separately from measured GLB facts."""
-    if target.target_use is None or target.target_dimensions_cm is None or target.endpoint is None:
+    if (
+        target.target_use is None
+        or target.target_dimensions_cm is None
+        or target.endpoint is None
+        or target.viewing_use is None
+    ):
         return ()
     evidence = {item.field: item for item in target.evidence}
     use_evidence = evidence.get("target_use")
     dimensions_evidence = evidence.get("target_dimensions_cm")
     endpoint_evidence = evidence.get("endpoint")
+    viewing_evidence = evidence.get("viewing_use")
     endpoint_label = (
         target.endpoint_detail
         if target.endpoint is AssetEndpoint.OTHER
@@ -1256,6 +1277,19 @@ def _target_expectations(
             ),
         ),
         ExpectationView(
+            label="Typical viewing",
+            value={
+                AssetViewingUse.CLOSE_UP_SHOWCASE: "Close-up / showcase",
+                AssetViewingUse.NORMAL_GAMEPLAY: "Normal gameplay",
+                AssetViewingUse.SMALL_DISTANT_REPEATED: "Small, distant, or repeated",
+            }[target.viewing_use],
+            source=_evidence_source_label(viewing_evidence),
+            detail=(
+                "Asset Shepherd uses this nontechnical choice when deciding whether mesh "
+                "simplification is worth proposing. You can decline that proposal."
+            ),
+        ),
+        ExpectationView(
             label="Tight X/Y/Z bounds",
             value=(f"{dimensions_m[0]:g} x {dimensions_m[1]:g} x {dimensions_m[2]:g} m"),
             source=_evidence_source_label(dimensions_evidence),
@@ -1292,7 +1326,7 @@ def _expectation_groups(
 ) -> tuple[ExpectationGroupView, ...]:
     """Compress the review into three conclusions with details on demand."""
     expectations = _target_expectations(target, profile, policy_sources)
-    if len(expectations) != 7:
+    if len(expectations) != 8:
         return ()
     assert target.target_dimensions_cm is not None
     placement = [
@@ -1305,17 +1339,17 @@ def _expectation_groups(
         ExpectationGroupView(
             label="Purpose",
             summary=f"{expectations[0].value} → {expectations[1].value}",
-            items=expectations[0:3],
+            items=expectations[0:4],
         ),
         ExpectationGroupView(
             label="Scale and pose",
             summary=" · ".join(placement),
-            items=expectations[3:6],
+            items=expectations[4:7],
         ),
         ExpectationGroupView(
             label="Structure",
             summary=f"{target.expected_piece_count} expected semantic {piece_label}",
-            items=(expectations[6],),
+            items=(expectations[7],),
         ),
     )
 
@@ -1365,6 +1399,7 @@ class WebJobStore:
         target_x_m: str | None = None,
         target_y_m: str | None = None,
         target_z_m: str | None = None,
+        viewing_use_value: str | None = None,
     ) -> WebIntent:
         """Fill only fields that the minimum target contract could not extract."""
         with self._lock:
@@ -1378,6 +1413,7 @@ class WebJobStore:
                     target_x_m=target_x_m,
                     target_y_m=target_y_m,
                     target_z_m=target_z_m,
+                    viewing_use_value=viewing_use_value,
                 )
             except ValueError as error:
                 raise UploadValidationError(str(error)) from error
@@ -1404,7 +1440,12 @@ class WebJobStore:
         with self._lock:
             return self._intents.get(intent_id)
 
-    def confirm_intent(self, intent: WebIntent) -> AssetIntentProvenance:
+    def confirm_intent(
+        self,
+        intent: WebIntent,
+        *,
+        viewing_use_value: str | None = None,
+    ) -> AssetIntentProvenance:
         """Freeze the exact reviewed story once; repeated confirmation is idempotent."""
         with self._lock:
             if not intent.ready_for_confirmation:
@@ -1412,6 +1453,10 @@ class WebJobStore:
                     "Answer the remaining target questions before confirming this story."
                 )
             if intent.confirmed is None:
+                try:
+                    intent.target = confirm_target_viewing_use(intent.target, viewing_use_value)
+                except ValueError as error:
+                    raise UploadValidationError(str(error)) from error
                 intent.confirmed = build_asset_intent(
                     intent.original_description,
                     intent.target_use,
@@ -1422,6 +1467,7 @@ class WebJobStore:
                     endpoint=intent.target.endpoint,
                     endpoint_detail=intent.target.endpoint_detail,
                     target_dimensions_cm=intent.target.target_dimensions_cm,
+                    viewing_use=(intent.target.viewing_use or AssetViewingUse.NORMAL_GAMEPLAY),
                 )
             return intent.confirmed
 
@@ -1465,6 +1511,7 @@ class WebJobStore:
                 description=intent.original_description,
                 target_use=intent.target_use,
                 target_height_cm=intent.target_height_cm,
+                viewing_use=intent.viewing_use or AssetViewingUse.NORMAL_GAMEPLAY,
                 user_overrides=user_overrides,
             )
         except ValueError as error:
@@ -1753,6 +1800,9 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     cleanup_ids: list[str] = []
     component_action = ""
     component_ids: list[str] = []
+    simplification_action = ""
+    simplification_ids: list[str] = []
+    simplification_source_triangles = 0
     if plan is not None:
         for candidate in plan.candidates:
             payload = candidate.payload
@@ -1829,6 +1879,15 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                     f"({removed_triangles:,} triangles)."
                 )
                 continue
+            if isinstance(payload, MeshSimplificationPayload):
+                simplification_ids.append(candidate.id)
+                simplification_source_triangles = payload.source_triangle_count
+                simplification_action = (
+                    f"Approval required — optimize {payload.source_triangle_count:,} toward "
+                    f"approximately {payload.target_triangle_count:,} triangles; protect small "
+                    "components and preserve the original."
+                )
+                continue
             before_name = payload.before_name or "(unnamed)"
             item = f"“{before_name}” → “{payload.after_name}”"
             if candidate.kind is RepairKind.RENAME_MESH:
@@ -1901,17 +1960,19 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     )
 
     topology_warning = has_attention(_TOPOLOGY_CODES) or bool(
-        weld_action or cleanup_action or component_action
+        weld_action or cleanup_action or component_action or simplification_action
     )
     topology_status = "attention" if topology_warning else "pass"
     topology_label = (
         "Needs approval"
-        if cleanup_action or component_action
+        if cleanup_action or component_action or simplification_action
         else "Automatic"
         if weld_action
         else ("Report only" if topology_warning else "Pass")
     )
-    if component_action:
+    if simplification_action:
+        topology_action = simplification_action
+    elif component_action:
         topology_action = component_action
     elif cleanup_action:
         topology_action = cleanup_action
@@ -2031,6 +2092,47 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             topology_status = "attention"
             topology_label = "Unresolved"
             topology_action = "Not applied — rejected."
+        elif simplification_ids and all(
+            candidate_id in executed_ids for candidate_id in simplification_ids
+        ):
+            if check_passed("MESH_SIMPLIFICATION_REDUCED_TRIANGLES"):
+                actual_triangles = (
+                    next(
+                        (
+                            check.actual
+                            for check in core.last_verification.checks
+                            if check.code == "MESH_SIMPLIFICATION_REDUCED_TRIANGLES"
+                        ),
+                        None,
+                    )
+                    if core.last_verification is not None
+                    else None
+                )
+                source_bytes = core.source.stat().st_size
+                candidate_bytes = core.candidate_path.stat().st_size
+                topology_status = "repaired"
+                topology_label = "Addressed"
+                verified_triangles = actual_triangles if isinstance(actual_triangles, int) else 0
+                topology_action = (
+                    f"Mesh optimized — {simplification_source_triangles:,} → "
+                    f"{verified_triangles:,} triangles; file size "
+                    f"{source_bytes / (1024 * 1024):.1f} MB → "
+                    f"{candidate_bytes / (1024 * 1024):.1f} MB. Original preserved."
+                )
+            elif verification_incomplete:
+                topology_status = "attention"
+                topology_label = "Verification interrupted"
+                topology_action = "Applied — mesh optimization verification has not completed."
+            else:
+                topology_status = "attention"
+                topology_label = "Needs review"
+                topology_action = "Attempted — verification did not confirm mesh optimization."
+        elif simplification_ids and any(
+            candidate_id in rejected_ids for candidate_id in simplification_ids
+        ):
+            topology_status = "attention"
+            topology_label = "Original preserved"
+            topology_action = "Not applied — the user chose to preserve original detail."
         elif topology_warning:
             topology_action = topology_action.replace("Report only —", "No change —", 1)
 
@@ -3421,6 +3523,7 @@ def create_app(
                     description=target_draft.description,
                     target_use=target_draft.target_use,
                     target_height_cm=target_draft.target_height_cm,
+                    viewing_use=(target_draft.viewing_use or AssetViewingUse.NORMAL_GAMEPLAY),
                 )
                 expectation_profile = expectation_resolution.profile
                 expectation_sources = expectation_resolution.provenance.rule_sources
@@ -3505,6 +3608,16 @@ def create_app(
                     else ENDPOINT_LABELS.get(workspace.record.target_draft.endpoint)
                     if workspace.record.target_draft is not None
                     and workspace.record.target_draft.endpoint is not None
+                    else None
+                ),
+                "viewing_use_label": (
+                    {
+                        AssetViewingUse.CLOSE_UP_SHOWCASE: "Close-up / showcase",
+                        AssetViewingUse.NORMAL_GAMEPLAY: "Normal gameplay",
+                        AssetViewingUse.SMALL_DISTANT_REPEATED: ("Small, distant, or repeated"),
+                    }[workspace.record.target_draft.viewing_use]
+                    if workspace.record.target_draft is not None
+                    and workspace.record.target_draft.viewing_use is not None
                     else None
                 ),
                 "command_id": uuid4().hex,
@@ -3810,6 +3923,7 @@ def create_app(
         target_x_m: Annotated[str | None, Form()] = None,
         target_y_m: Annotated[str | None, Form()] = None,
         target_z_m: Annotated[str | None, Form()] = None,
+        viewing_use: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Complete only missing minimum target fields and return to proposal review."""
         try:
@@ -3824,6 +3938,7 @@ def create_app(
                     target_x_m=target_x_m,
                     target_y_m=target_y_m,
                     target_z_m=target_z_m,
+                    viewing_use_value=viewing_use,
                 )
         except UploadValidationError as error:
             intent = store.get_intent(intent_id)
@@ -3854,11 +3969,15 @@ def create_app(
             status_code=303,
         )
 
-    def confirm_intent(request: Request, intent_id: str) -> Response:
+    def confirm_intent(
+        request: Request,
+        intent_id: str,
+        viewing_use: Annotated[str | None, Form()] = None,
+    ) -> Response:
         """Freeze the reviewed target story before exposing upload controls."""
         try:
             intent = require_intent(intent_id)
-            store.confirm_intent(intent)
+            store.confirm_intent(intent, viewing_use_value=viewing_use)
         except (UploadValidationError, ValueError) as error:
             intent = store.get_intent(intent_id)
             if intent is None:
@@ -4427,6 +4546,7 @@ def create_app(
         target_use: Annotated[str | None, Form()] = None,
         endpoint: Annotated[str | None, Form()] = None,
         endpoint_detail: Annotated[str | None, Form()] = None,
+        viewing_use: Annotated[str | None, Form()] = None,
         target_x_m: Annotated[str | None, Form()] = None,
         target_y_m: Annotated[str | None, Form()] = None,
         target_z_m: Annotated[str | None, Form()] = None,
@@ -4446,6 +4566,7 @@ def create_app(
                     target_use_value=target_use,
                     endpoint_value=endpoint,
                     endpoint_detail=endpoint_detail,
+                    viewing_use_value=viewing_use,
                     target_x_m=target_x_m,
                     target_y_m=target_y_m,
                     target_z_m=target_z_m,
@@ -4470,6 +4591,7 @@ def create_app(
         target_use: Annotated[str | None, Form()] = None,
         endpoint: Annotated[str | None, Form()] = None,
         endpoint_detail: Annotated[str | None, Form()] = None,
+        viewing_use: Annotated[str | None, Form()] = None,
         target_x_m: Annotated[str | None, Form()] = None,
         target_y_m: Annotated[str | None, Form()] = None,
         target_z_m: Annotated[str | None, Form()] = None,
@@ -4489,12 +4611,14 @@ def create_app(
                 and target_x_m is not None
                 and target_y_m is not None
                 and target_z_m is not None
+                and viewing_use is not None
             ):
                 hosted_store.revise_target(
                     workspace,
                     target_use_value=target_use,
                     endpoint_value=endpoint,
                     endpoint_detail=endpoint_detail,
+                    viewing_use_value=viewing_use,
                     target_x_m=target_x_m,
                     target_y_m=target_y_m,
                     target_z_m=target_z_m,
@@ -4517,6 +4641,7 @@ def create_app(
         request: Request,
         workspace_id: str,
         command_id: Annotated[str, Form()],
+        viewing_use: Annotated[str | None, Form()] = None,
         accept_supported_goal: Annotated[str | None, Form()] = None,
         custom_height_tolerance_cm: Annotated[str | None, Form()] = None,
         custom_require_y_up: Annotated[str | None, Form()] = None,
@@ -4535,6 +4660,7 @@ def create_app(
                 workspace,
                 accept_supported_goal=accept_supported_goal == "true",
                 command_id=command_id,
+                viewing_use_value=viewing_use,
                 custom_values={
                     "custom_height_tolerance_cm": custom_height_tolerance_cm,
                     "custom_require_y_up": custom_require_y_up,

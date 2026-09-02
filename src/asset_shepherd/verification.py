@@ -39,6 +39,7 @@ from asset_shepherd.models import (
     DecisionValue,
     DegenerateGeometryPayload,
     InspectionResult,
+    MeshSimplificationPayload,
     NormalizationPayload,
     ProjectProfile,
     Provenance,
@@ -191,6 +192,179 @@ def _executed_component_removal(
     )
 
 
+def _executed_simplification(
+    plan: RepairPlan, outcome: RepairOutcome
+) -> MeshSimplificationPayload | None:
+    """Return the exact executed mesh-simplification request, if any."""
+    return next(
+        (
+            candidate.payload
+            for candidate in plan.candidates
+            if candidate.id in outcome.executed_action_ids
+            and isinstance(candidate.payload, MeshSimplificationPayload)
+        ),
+        None,
+    )
+
+
+def _simplification_target_indices(
+    gltf: GLTF2,
+    payload: MeshSimplificationPayload,
+) -> tuple[set[int], set[int]]:
+    """Return accessor and buffer-view identities allowed to change for simplification."""
+    accessor_indices: set[int] = set()
+    for item in payload.primitives:
+        primitive = gltf.meshes[item.mesh_index].primitives[item.primitive_index]
+        accessor_indices.update(
+            accessor_index
+            for accessor_index in vars(primitive.attributes).values()
+            if isinstance(accessor_index, int)
+        )
+        if primitive.indices is not None:
+            accessor_indices.add(primitive.indices)
+    view_indices = {
+        cast(int, gltf.accessors[index].bufferView)
+        for index in accessor_indices
+        if gltf.accessors[index].bufferView is not None
+    }
+    return accessor_indices, view_indices
+
+
+def _simplification_tuple_subset(source_gltf: GLTF2, output_gltf: GLTF2) -> bool:
+    """Prove that every output complete vertex tuple existed byte-for-byte in the source."""
+    if len(source_gltf.meshes) != len(output_gltf.meshes):
+        return False
+    for mesh_index, source_mesh in enumerate(source_gltf.meshes):
+        output_mesh = output_gltf.meshes[mesh_index]
+        if len(source_mesh.primitives) != len(output_mesh.primitives):
+            return False
+        for primitive_index, source_primitive in enumerate(source_mesh.primitives):
+            output_primitive = output_mesh.primitives[primitive_index]
+            source_attributes = {
+                semantic: index
+                for semantic, index in vars(source_primitive.attributes).items()
+                if isinstance(index, int)
+            }
+            output_attributes = {
+                semantic: index
+                for semantic, index in vars(output_primitive.attributes).items()
+                if isinstance(index, int)
+            }
+            if set(source_attributes) != set(output_attributes):
+                return False
+            source_arrays = {
+                semantic: accessor_array(source_gltf, accessor_index)
+                for semantic, accessor_index in source_attributes.items()
+            }
+            output_arrays = {
+                semantic: accessor_array(output_gltf, accessor_index)
+                for semantic, accessor_index in output_attributes.items()
+            }
+            source_rows = {
+                b"".join(
+                    np.ascontiguousarray(source_arrays[semantic][i]).tobytes()
+                    for semantic in sorted(source_attributes)
+                )
+                for i in range(len(source_arrays["POSITION"]))
+            }
+            output_position_count = len(output_arrays["POSITION"])
+            for index in range(output_position_count):
+                row = b"".join(
+                    np.ascontiguousarray(output_arrays[semantic][index]).tobytes()
+                    for semantic in sorted(output_attributes)
+                )
+                if row not in source_rows:
+                    return False
+    return True
+
+
+def _protected_simplification_components_preserved(
+    source_gltf: GLTF2,
+    output_gltf: GLTF2,
+    payload: MeshSimplificationPayload,
+) -> tuple[bool, dict[str, int], dict[str, int]]:
+    """Prove every sub-threshold source-component face survives byte-for-byte."""
+    expected: dict[str, int] = {}
+    actual: dict[str, int] = {}
+    for request in payload.primitives:
+        source_primitive = source_gltf.meshes[request.mesh_index].primitives[
+            request.primitive_index
+        ]
+        output_primitive = output_gltf.meshes[request.mesh_index].primitives[
+            request.primitive_index
+        ]
+        if source_primitive.indices is None or output_primitive.indices is None:
+            return False, expected, actual
+        source_attributes = {
+            semantic: index
+            for semantic, index in vars(source_primitive.attributes).items()
+            if isinstance(index, int)
+        }
+        output_attributes = {
+            semantic: index
+            for semantic, index in vars(output_primitive.attributes).items()
+            if isinstance(index, int)
+        }
+        if set(source_attributes) != set(output_attributes):
+            return False, expected, actual
+        source_arrays = {
+            semantic: accessor_array(source_gltf, index)
+            for semantic, index in source_attributes.items()
+        }
+        output_arrays = {
+            semantic: accessor_array(output_gltf, index)
+            for semantic, index in output_attributes.items()
+        }
+        source_rows = tuple(
+            b"".join(
+                np.ascontiguousarray(source_arrays[semantic][row]).tobytes()
+                for semantic in sorted(source_attributes)
+            )
+            for row in range(len(source_arrays["POSITION"]))
+        )
+        output_rows = tuple(
+            b"".join(
+                np.ascontiguousarray(output_arrays[semantic][row]).tobytes()
+                for semantic in sorted(output_attributes)
+            )
+            for row in range(len(output_arrays["POSITION"]))
+        )
+        source_triangles = np.asarray(
+            accessor_array(source_gltf, source_primitive.indices), dtype=np.int64
+        ).reshape((-1, 3))
+        output_triangles = np.asarray(
+            accessor_array(output_gltf, output_primitive.indices), dtype=np.int64
+        ).reshape((-1, 3))
+        inventory = enumerate_connected_components(
+            source_arrays["POSITION"],
+            source_triangles,
+            mesh_index=request.mesh_index,
+            primitive_index=request.primitive_index,
+        )
+        protected_faces = tuple(
+            face
+            for component in inventory.components
+            if component.triangle_count < payload.protected_component_triangle_threshold
+            for face in component.face_indices
+        )
+
+        def face_key(rows: tuple[bytes, ...], triangle: np.ndarray) -> bytes:
+            return b"".join(
+                len(rows[int(index)]).to_bytes(4, "little") + rows[int(index)] for index in triangle
+            )
+
+        protected_keys = Counter(
+            face_key(source_rows, source_triangles[face]) for face in protected_faces
+        )
+        output_keys = Counter(face_key(output_rows, triangle) for triangle in output_triangles)
+        key = f"{request.mesh_index}:{request.primitive_index}"
+        expected[key] = len(protected_faces)
+        actual[key] = sum(
+            min(count, output_keys.get(face, 0)) for face, count in protected_keys.items()
+        )
+    return expected == actual, expected, actual
+
+
 def _executed_normalization(
     plan: RepairPlan, outcome: RepairOutcome
 ) -> NormalizationPayload | None:
@@ -301,8 +475,16 @@ def _preservation_checks(
     weld = _executed_weld(plan, outcome)
     cleanup = _executed_degenerate_cleanup(plan, outcome)
     component_removal = _executed_component_removal(plan, outcome)
+    simplification = _executed_simplification(plan, outcome)
     append_only_geometry = weld is not None or cleanup is not None or component_removal is not None
     normalization = _executed_normalization(plan, outcome)
+    simplified_accessor_indices: set[int] = set()
+    simplified_view_indices: set[int] = set()
+    mesh_preserved = False
+    if simplification is not None:
+        simplified_accessor_indices, simplified_view_indices = _simplification_target_indices(
+            source_gltf, simplification
+        )
 
     section_checks = (
         ("ACCESSOR_DEFINITIONS_PRESERVED", "accessors"),
@@ -319,7 +501,69 @@ def _preservation_checks(
     for code, section in section_checks:
         source_section = _document_section(source_document, section)
         output_section = _document_section(output_document, section)
-        if append_only_geometry and section in {"accessors", "bufferViews"}:
+        if simplification is not None and section == "accessors":
+            source_records = cast(list[dict[str, object]], source_section)
+            output_records = cast(list[dict[str, object]], output_section)
+            normalized_source: list[dict[str, object]] = []
+            normalized_output: list[dict[str, object]] = []
+            for index, (source_item, output_item) in enumerate(
+                zip(source_records, output_records, strict=False)
+            ):
+                source_copy = dict(source_item)
+                output_copy = dict(output_item)
+                if index in simplified_accessor_indices:
+                    for key in ("count", "min", "max", "componentType"):
+                        source_copy.pop(key, None)
+                        output_copy.pop(key, None)
+                normalized_source.append(source_copy)
+                normalized_output.append(output_copy)
+            preserved = (
+                len(source_records) == len(output_records)
+                and normalized_source == normalized_output
+            )
+            source_hash = _canonical_hash(normalized_source)
+            output_hash = _canonical_hash(normalized_output)
+        elif simplification is not None and section == "bufferViews":
+            source_records = cast(list[dict[str, object]], source_section)
+            output_records = cast(list[dict[str, object]], output_section)
+            normalized_source = []
+            normalized_output = []
+            for index, (source_item, output_item) in enumerate(
+                zip(source_records, output_records, strict=False)
+            ):
+                source_copy = dict(source_item)
+                output_copy = dict(output_item)
+                source_copy.pop("byteOffset", None)
+                output_copy.pop("byteOffset", None)
+                if index in simplified_view_indices:
+                    source_copy.pop("byteLength", None)
+                    output_copy.pop("byteLength", None)
+                normalized_source.append(source_copy)
+                normalized_output.append(output_copy)
+            preserved = (
+                len(source_records) == len(output_records)
+                and normalized_source == normalized_output
+            )
+            source_hash = _canonical_hash(normalized_source)
+            output_hash = _canonical_hash(normalized_output)
+        elif simplification is not None and section == "buffers":
+            source_records = cast(list[dict[str, object]], source_section)
+            output_records = cast(list[dict[str, object]], output_section)
+            normalized_source = [
+                {key: value for key, value in item.items() if key != "byteLength"}
+                for item in source_records
+            ]
+            normalized_output = [
+                {key: value for key, value in item.items() if key != "byteLength"}
+                for item in output_records
+            ]
+            preserved = (
+                len(source_records) == len(output_records)
+                and normalized_source == normalized_output
+            )
+            source_hash = _canonical_hash(normalized_source)
+            output_hash = _canonical_hash(normalized_output)
+        elif append_only_geometry and section in {"accessors", "bufferViews"}:
             source_records = cast(list[object], source_section)
             output_records = cast(list[object], output_section)
             preserved = source_records == output_records[: len(source_records)]
@@ -348,14 +592,30 @@ def _preservation_checks(
                     f"The original {section} records are preserved and authorized weld data is "
                     "append-only."
                     if append_only_geometry and section in {"accessors", "bufferViews", "buffers"}
-                    else f"The {section} records are semantically unchanged."
+                    else (
+                        f"The {section} identities and protected metadata are preserved; only "
+                        "approved packed geometry lengths and offsets changed."
+                        if simplification is not None
+                        and section in {"accessors", "bufferViews", "buffers"}
+                        else f"The {section} records are semantically unchanged."
+                    )
                 ),
                 expected=source_hash,
                 actual=output_hash,
             )
         )
 
-    if not append_only_geometry:
+    if simplification is not None:
+        source_mesh_hash = _canonical_hash(
+            _without_display_names(_document_section(source_document, "meshes"))
+        )
+        output_mesh_hash = _canonical_hash(
+            _without_display_names(_document_section(output_document, "meshes"))
+        )
+        mesh_preserved = source_mesh_hash == output_mesh_hash and _simplification_tuple_subset(
+            source_gltf, output_gltf
+        )
+    elif not append_only_geometry:
         source_mesh_hash = _canonical_hash(
             _without_display_names(_document_section(source_document, "meshes"))
         )
@@ -390,20 +650,38 @@ def _preservation_checks(
     checks.append(
         _check(
             "MESH_PRIMITIVES_PRESERVED",
-            source_mesh_hash == output_mesh_hash,
+            mesh_preserved if simplification is not None else source_mesh_hash == output_mesh_hash,
             (
                 "Every surviving expanded primitive corner retains identical attributes and draw "
                 "metadata."
                 if append_only_geometry
                 else (
-                    "Mesh primitives, attributes, topology, material references, and extras are "
-                    "unchanged."
+                    "Mesh draw metadata is unchanged and every output vertex tuple is an exact "
+                    "source tuple; only approved triangle selection changed."
+                    if simplification is not None
+                    else (
+                        "Mesh primitives, attributes, topology, material references, and extras "
+                        "are unchanged."
+                    )
                 )
             ),
             expected=source_mesh_hash,
             actual=output_mesh_hash,
         )
     )
+    if simplification is not None:
+        protected_ok, protected_expected, protected_actual = (
+            _protected_simplification_components_preserved(source_gltf, output_gltf, simplification)
+        )
+        checks.append(
+            _check(
+                "MESH_SIMPLIFICATION_SMALL_COMPONENTS_PRESERVED",
+                protected_ok,
+                "Every source component below 1,000 triangles is retained face-for-face.",
+                expected=cast(JsonValue, protected_expected),
+                actual=cast(JsonValue, protected_actual),
+            )
+        )
 
     source_nodes = cast(list[object], _document_section(source_document, "nodes"))
     output_nodes = cast(list[object], _document_section(output_document, "nodes"))
@@ -447,6 +725,26 @@ def _preservation_checks(
         if not append_only_geometry
         else bytes(output_blob or b"").startswith(bytes(source_blob or b""))
     )
+    if simplification is not None:
+        preserved_views = True
+        for view_index, source_view in enumerate(source_gltf.bufferViews):
+            if view_index in simplified_view_indices:
+                continue
+            output_view = output_gltf.bufferViews[view_index]
+            source_start = source_view.byteOffset or 0
+            output_start = output_view.byteOffset or 0
+            source_payload = bytes(source_blob or b"")[
+                source_start : source_start + source_view.byteLength
+            ]
+            output_payload = bytes(output_blob or b"")[
+                output_start : output_start + output_view.byteLength
+            ]
+            if source_payload != output_payload:
+                preserved_views = False
+                break
+        binary_preserved = preserved_views and len(bytes(output_blob or b"")) < len(
+            bytes(source_blob or b"")
+        )
     checks.append(
         _check(
             "BINARY_PAYLOAD_PRESERVED",
@@ -456,8 +754,13 @@ def _preservation_checks(
                 "geometry data."
                 if append_only_geometry
                 else (
-                    "The complete embedded binary payload, including geometry and images, is "
-                    "unchanged."
+                    "Every non-geometry buffer view is byte-identical and the compacted binary "
+                    "payload is smaller."
+                    if simplification is not None
+                    else (
+                        "The complete embedded binary payload, including geometry and images, "
+                        "is unchanged."
+                    )
                 )
             ),
             expected=source_blob_hash,
@@ -780,43 +1083,8 @@ def verify_repair(
         weld = _executed_weld(plan, outcome)
         cleanup = _executed_degenerate_cleanup(plan, outcome)
         component_removal = _executed_component_removal(plan, outcome)
-        expected_vertex_count = (
-            original.geometry.vertex_count
-            - (
-                sum(primitive.merge_count for primitive in weld.primitives)
-                if weld is not None
-                else 0
-            )
-            - (
-                sum(primitive.removed_unused_position_count for primitive in cleanup.primitives)
-                if cleanup is not None
-                else 0
-            )
-        )
-        expected_triangle_count = (
-            original.geometry.triangle_count
-            - (
-                sum(primitive.removed_degenerate_triangle_count for primitive in cleanup.primitives)
-                if cleanup is not None
-                else 0
-            )
-            - (
-                sum(primitive.removed_triangle_count for primitive in component_removal.primitives)
-                if component_removal is not None
-                else 0
-            )
-        )
-        count_pairs = (
-            (
-                "VERTEX_COUNT_PRESERVED",
-                expected_vertex_count,
-                output.geometry.vertex_count,
-            ),
-            (
-                "TRIANGLE_COUNT_PRESERVED",
-                expected_triangle_count,
-                output.geometry.triangle_count,
-            ),
+        simplification = _executed_simplification(plan, outcome)
+        count_pairs: tuple[tuple[str, int, int], ...] = (
             (
                 "MATERIAL_COUNT_PRESERVED",
                 original.package.material_count,
@@ -828,6 +1096,48 @@ def verify_repair(
                 output.package.texture_count,
             ),
         )
+        if simplification is None:
+            expected_vertex_count = (
+                original.geometry.vertex_count
+                - (
+                    sum(primitive.merge_count for primitive in weld.primitives)
+                    if weld is not None
+                    else 0
+                )
+                - (
+                    sum(primitive.removed_unused_position_count for primitive in cleanup.primitives)
+                    if cleanup is not None
+                    else 0
+                )
+            )
+            expected_triangle_count = (
+                original.geometry.triangle_count
+                - (
+                    sum(
+                        primitive.removed_degenerate_triangle_count
+                        for primitive in cleanup.primitives
+                    )
+                    if cleanup is not None
+                    else 0
+                )
+                - (
+                    sum(
+                        primitive.removed_triangle_count
+                        for primitive in component_removal.primitives
+                    )
+                    if component_removal is not None
+                    else 0
+                )
+            )
+            count_pairs = (
+                ("VERTEX_COUNT_PRESERVED", expected_vertex_count, output.geometry.vertex_count),
+                (
+                    "TRIANGLE_COUNT_PRESERVED",
+                    expected_triangle_count,
+                    output.geometry.triangle_count,
+                ),
+                *count_pairs,
+            )
         for code, expected, actual in count_pairs:
             checks.append(
                 _check(
@@ -836,6 +1146,104 @@ def verify_repair(
                     code.replace("_", " ").title(),
                     expected=expected,
                     actual=actual,
+                )
+            )
+        if simplification is not None:
+            source_bounds = np.asarray(
+                [original.geometry.bounds.minimum_m, original.geometry.bounds.maximum_m],
+                dtype=np.float64,
+            )
+            output_bounds = np.asarray(
+                [output.geometry.bounds.minimum_m, output.geometry.bounds.maximum_m],
+                dtype=np.float64,
+            )
+            bounds_tolerance = (
+                np.maximum(source_bounds[1] - source_bounds[0], 1e-9)
+                * simplification.maximum_bounds_drift_fraction
+            )
+            bounds_preserved = bool(
+                np.all(np.abs(output_bounds - source_bounds) <= bounds_tolerance)
+            )
+            source_components = {
+                f"{primitive.mesh_index}:{primitive.primitive_index}": (
+                    primitive.near_contact_probes[-1].group_count
+                    if primitive.near_contact_probes
+                    else len(primitive.disconnected_components)
+                )
+                for primitive in (
+                    original.diagnostics.primitives if original.diagnostics is not None else ()
+                )
+                if any(
+                    item.mesh_index == primitive.mesh_index
+                    and item.primitive_index == primitive.primitive_index
+                    for item in simplification.primitives
+                )
+            }
+            output_components = {
+                f"{primitive.mesh_index}:{primitive.primitive_index}": (
+                    primitive.near_contact_probes[-1].group_count
+                    if primitive.near_contact_probes
+                    else len(primitive.disconnected_components)
+                )
+                for primitive in (
+                    output.diagnostics.primitives if output.diagnostics is not None else ()
+                )
+                if any(
+                    item.mesh_index == primitive.mesh_index
+                    and item.primitive_index == primitive.primitive_index
+                    for item in simplification.primitives
+                )
+            }
+            checks.extend(
+                (
+                    _check(
+                        "MESH_SIMPLIFICATION_REDUCED_TRIANGLES",
+                        0 < output.geometry.triangle_count < original.geometry.triangle_count,
+                        "The approved lossy optimization produced a non-empty triangle reduction.",
+                        expected=cast(
+                            JsonValue,
+                            {
+                                "less_than": original.geometry.triangle_count,
+                                "target": simplification.target_triangle_count,
+                            },
+                        ),
+                        actual=output.geometry.triangle_count,
+                    ),
+                    _check(
+                        "MESH_SIMPLIFICATION_COMPONENTS_PRESERVED",
+                        source_components == output_components,
+                        "Every bounded near-contact body group remains represented after "
+                        "simplification.",
+                        expected=cast(JsonValue, source_components),
+                        actual=cast(JsonValue, output_components),
+                    ),
+                    _check(
+                        "MESH_SIMPLIFICATION_BOUNDS_PRESERVED",
+                        bounds_preserved,
+                        "World bounds drift stays within two percent on every side.",
+                        expected=cast(
+                            JsonValue,
+                            {
+                                "maximum_drift_fraction": (
+                                    simplification.maximum_bounds_drift_fraction
+                                )
+                            },
+                        ),
+                        actual=cast(
+                            JsonValue,
+                            {
+                                "source": source_bounds.tolist(),
+                                "output": output_bounds.tolist(),
+                            },
+                        ),
+                    ),
+                    _check(
+                        "MESH_SIMPLIFICATION_FILE_SIZE_REDUCED",
+                        len(candidate_bytes) < source.stat().st_size,
+                        "The measured exported GLB is smaller than its immutable source.",
+                        expected=cast(JsonValue, {"less_than_bytes": source.stat().st_size}),
+                        actual=len(candidate_bytes),
+                    ),
                 )
             )
         if weld is not None:

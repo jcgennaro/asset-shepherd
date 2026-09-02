@@ -21,12 +21,25 @@
     <form action="{{ url_for('clarify_intent', intent_id=intent.intent_id) }}" method="post" class="intent-form clarification-form" data-busy-form>
       {% if "target_use" in intent.target.missing_fields %}
         {{ asset_description(intent.original_description, label="Add what this should be, how it will be used, and any scale clue you know") }}
-      {% elif "target_dimensions_cm" in intent.target.missing_fields %}
+      {% else %}
+      {% if "target_dimensions_cm" in intent.target.missing_fields %}
         <fieldset class="target-bounds"><legend>Approximate target size</legend>
           <label>X <span class="number-with-unit"><input type="number" name="target_x_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
           <label>Y <span class="number-with-unit"><input type="number" name="target_y_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
           <label>Z <span class="number-with-unit"><input type="number" name="target_z_m" min="0.001" max="1000" step="0.001" required><b>m</b></span></label>
         </fieldset>
+      {% endif %}
+      {% if "viewing_use" in intent.target.missing_fields %}
+        <fieldset class="viewing-use-choice" aria-label="Typical viewing use">
+          <legend>How closely will this asset normally be viewed?</legend>
+          {% for value, name, hint in (
+            ('CLOSE_UP_SHOWCASE', 'Close-up / showcase', 'Players may inspect it closely.'),
+            ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
+            ('SMALL_DISTANT_REPEATED', 'Small, distant, or repeated', 'Usually small on screen or many copies appear.')) %}
+            <label class="viewing-use-option"><input type="radio" name="viewing_use" value="{{ value }}" required{% if value == 'NORMAL_GAMEPLAY' %} checked{% endif %}><span><strong>{{ name }}</strong><small>{{ hint }}</small></span></label>
+          {% endfor %}
+        </fieldset>
+      {% endif %}
       {% endif %}
       <div class="intent-confirm-actions">
         <a class="secondary-button" href="{{ url_for('home') }}">← Start over</a>

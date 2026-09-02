@@ -307,6 +307,14 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "shepherd this for Unspecified endpoint within 1.8 x 1.8 x 1.8 m." in measured.text
     assert measured.text.count('class="expectation-group"') == 3
     assert "Start shepherding" in measured.text
+    assert "How closely will this asset normally be viewed?" in measured.text
+    assert "Close-up / showcase" in measured.text
+    assert "Normal gameplay" in measured.text
+    assert "Small, distant, or repeated" in measured.text
+    assert 'name="viewing_use" value="NORMAL_GAMEPLAY" required checked' in measured.text
+    assert "50,000" not in measured.text
+    assert "15,000" not in measured.text
+    assert "2,500" not in measured.text
     assert "<summary>Change target…</summary>" in measured.text
     assert 'textarea class="asset-description-input"' in measured.text
     assert 'class="asset-description-field"' in measured.text
@@ -333,10 +341,15 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
         f"{workspace_path}/target",
         data={
             "command_id": command_id,
+            "viewing_use": "NORMAL_GAMEPLAY",
         },
         follow_redirects=False,
     )
     assert confirmed.status_code == 303
+    frozen_profile = (work_root / "hosted" / workspace_id / "profile.json").read_text(
+        encoding="utf-8"
+    )
+    assert '"max_triangles":15000' in frozen_profile.replace(" ", "")
     pending = client.get(workspace_path)
     assert "Asset Shepherd -- Friendly Humanoid Robot" in pending.text
     assert pending.text.count("data-inspection-check") == 5

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image
 
@@ -45,3 +46,21 @@ def test_web_renderer_produces_four_pngs_and_object_masks(tmp_path: Path) -> Non
             assert mask.format == "PNG"
             assert mask.mode == "L"
             assert mask.getextrema() == (0, 255)
+
+
+@pytest.mark.skipif(find_chromium() is None, reason="Chromium-family browser is not installed")
+def test_shared_scale_comparison_keeps_both_models_inside_frame(tmp_path: Path) -> None:
+    """Two equal-size models retain a clear edge margin in the combined evidence view."""
+    asset = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
+    paths = render_model_views(asset, tmp_path, reference_asset=asset, timeout_seconds=60)
+
+    for path in paths:
+        mask_path = path.with_name(path.name.replace(".png", ".mask.png"))
+        with Image.open(mask_path) as opened:
+            foreground = np.asarray(opened.convert("L"), dtype=np.uint8) >= 128
+        rows, columns = np.nonzero(foreground)
+        assert len(rows)
+        assert int(columns.min()) > 0
+        assert int(columns.max()) < foreground.shape[1] - 1
+        assert int(rows.min()) > 0
+        assert int(rows.max()) < foreground.shape[0] - 1

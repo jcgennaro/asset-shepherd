@@ -21,6 +21,16 @@
       "title": "AssetTargetUse",
       "type": "string"
     },
+    "AssetViewingUse": {
+      "description": "User-facing viewing context used to derive a mesh-complexity budget.",
+      "enum": [
+        "CLOSE_UP_SHOWCASE",
+        "NORMAL_GAMEPLAY",
+        "SMALL_DISTANT_REPEATED"
+      ],
+      "title": "AssetViewingUse",
+      "type": "string"
+    },
     "TargetEvidenceSource": {
       "description": "Auditable source of one proposed target field.",
       "enum": [
@@ -53,7 +63,8 @@
             "target_use",
             "endpoint",
             "target_dimensions_cm",
-            "target_height_cm"
+            "target_height_cm",
+            "viewing_use"
           ],
           "title": "Field",
           "type": "string"
@@ -157,7 +168,8 @@
           "target_use",
           "endpoint",
           "target_dimensions_cm",
-          "target_height_cm"
+          "target_height_cm",
+          "viewing_use"
         ],
         "type": "string"
       },
@@ -171,7 +183,8 @@
         2,
         3,
         4,
-        5
+        5,
+        6
       ],
       "title": "Schema Version",
       "type": "integer"
@@ -225,6 +238,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/AssetTargetUse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "viewing_use": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssetViewingUse"
         },
         {
           "type": "null"

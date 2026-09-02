@@ -161,6 +161,7 @@
               "normalization": "#/$defs/NormalizationPayload",
               "remove_disconnected_components": "#/$defs/ComponentRemovalPayload",
               "rename": "#/$defs/RenamePayload",
+              "simplify_mesh": "#/$defs/MeshSimplificationPayload",
               "weld_identical_vertices": "#/$defs/WeldPayload"
             },
             "propertyName": "payload_type"
@@ -180,6 +181,9 @@
             },
             {
               "$ref": "#/$defs/ComponentRemovalPayload"
+            },
+            {
+              "$ref": "#/$defs/MeshSimplificationPayload"
             }
           ],
           "title": "Payload"
@@ -366,6 +370,113 @@
         "removed_unused_position_count"
       ],
       "title": "DegenerateGeometryPrimitivePayload",
+      "type": "object"
+    },
+    "MeshSimplificationPayload": {
+      "additionalProperties": false,
+      "description": "Typed request for controlled, attribute-preserving mesh simplification.",
+      "properties": {
+        "consequence_summary": {
+          "title": "Consequence Summary",
+          "type": "string"
+        },
+        "maximum_bounds_drift_fraction": {
+          "default": 0.02,
+          "exclusiveMinimum": 0.0,
+          "maximum": 0.02,
+          "title": "Maximum Bounds Drift Fraction",
+          "type": "number"
+        },
+        "payload_type": {
+          "const": "simplify_mesh",
+          "default": "simplify_mesh",
+          "title": "Payload Type",
+          "type": "string"
+        },
+        "primitives": {
+          "items": {
+            "$ref": "#/$defs/MeshSimplificationPrimitivePayload"
+          },
+          "title": "Primitives",
+          "type": "array"
+        },
+        "protected_component_triangle_threshold": {
+          "default": 1000,
+          "exclusiveMinimum": 0,
+          "title": "Protected Component Triangle Threshold",
+          "type": "integer"
+        },
+        "source_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Source Triangle Count",
+          "type": "integer"
+        },
+        "target_error": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 0.1,
+          "title": "Target Error",
+          "type": "number"
+        },
+        "target_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Target Triangle Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source_triangle_count",
+        "target_triangle_count",
+        "target_error",
+        "primitives",
+        "consequence_summary"
+      ],
+      "title": "MeshSimplificationPayload",
+      "type": "object"
+    },
+    "MeshSimplificationPrimitivePayload": {
+      "additionalProperties": false,
+      "description": "Approved triangle target and protections for one simplifiable primitive.",
+      "properties": {
+        "before_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Before Triangle Count",
+          "type": "integer"
+        },
+        "mesh_index": {
+          "minimum": 0,
+          "title": "Mesh Index",
+          "type": "integer"
+        },
+        "primitive_index": {
+          "minimum": 0,
+          "title": "Primitive Index",
+          "type": "integer"
+        },
+        "protected_component_count": {
+          "minimum": 0,
+          "title": "Protected Component Count",
+          "type": "integer"
+        },
+        "protected_triangle_count": {
+          "minimum": 0,
+          "title": "Protected Triangle Count",
+          "type": "integer"
+        },
+        "target_triangle_count": {
+          "exclusiveMinimum": 0,
+          "title": "Target Triangle Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mesh_index",
+        "primitive_index",
+        "before_triangle_count",
+        "target_triangle_count",
+        "protected_component_count",
+        "protected_triangle_count"
+      ],
+      "title": "MeshSimplificationPrimitivePayload",
       "type": "object"
     },
     "NormalizationComponent": {
@@ -848,7 +959,8 @@
         "NORMALIZATION_TRANSFORM",
         "WELD_IDENTICAL_VERTICES",
         "CLEAN_DEGENERATE_GEOMETRY",
-        "REMOVE_DISCONNECTED_COMPONENTS"
+        "REMOVE_DISCONNECTED_COMPONENTS",
+        "SIMPLIFY_MESH"
       ],
       "title": "RepairKind",
       "type": "string"

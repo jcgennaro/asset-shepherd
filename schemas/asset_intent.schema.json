@@ -20,6 +20,16 @@
       ],
       "title": "AssetTargetUse",
       "type": "string"
+    },
+    "AssetViewingUse": {
+      "description": "User-facing viewing context used to derive a mesh-complexity budget.",
+      "enum": [
+        "CLOSE_UP_SHOWCASE",
+        "NORMAL_GAMEPLAY",
+        "SMALL_DISTANT_REPEATED"
+      ],
+      "title": "AssetViewingUse",
+      "type": "string"
     }
   },
   "$id": "https://asset-shepherd.dev/schemas/v1/asset_intent.schema.json",
@@ -92,7 +102,8 @@
       "enum": [
         1,
         2,
-        3
+        3,
+        4
       ],
       "title": "Intent Version",
       "type": "integer"
@@ -142,6 +153,17 @@
     },
     "target_use": {
       "$ref": "#/$defs/AssetTargetUse"
+    },
+    "viewing_use": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssetViewingUse"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

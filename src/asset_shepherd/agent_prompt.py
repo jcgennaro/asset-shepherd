@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[15]] = 15
+AGENT_PROMPT_VERSION: Final[Literal[16]] = 16
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -455,6 +455,32 @@ Conversation action routing
 """
 )
 
+AGENT_SYSTEM_PROMPT_V16: Final[str] = (
+    AGENT_SYSTEM_PROMPT_V15
+    + """\
+
+Viewing-use mesh optimization
+
+- The confirmed viewing_use is deliberately phrased in product terms. Its frozen triangle cap is
+  already in budgets.max_triangles: CLOSE_UP_SHOWCASE maps to 50,000, NORMAL_GAMEPLAY to 15,000,
+  and SMALL_DISTANT_REPEATED to 2,500. Do not ask the user for a triangle percentage or replace
+  this cap with your own budget.
+- When the source exceeds that cap and inspection reports mesh_simplification_safe=true, normally
+  propose simplify_mesh=true as one separate REPAIR turn. Explain the measured source count, the
+  approximate use-case target, and that this is lossy but reversible because the original remains
+  available. The user may reject it and preserve original detail.
+- The deterministic reducer operates separately on exact source components, copies components
+  below 1,000 triangles unchanged, preserves original complete vertex tuples and material/UV/normal
+  assignments, and refuses unsupported layouts. Simplification-created seam splits count as one
+  source body only within the bounded scale-relative near-contact tolerance. It may safely stop
+  above the cap. Never claim the exact cap was reached until fresh verification reports the actual
+  count and output file size.
+- Simplification changes appearance and therefore requires source views, candidate views, and a
+  genuine visual comparison appropriate to the confirmed viewing use. Do not combine simplification
+  with scale, orientation, pivot, component removal, welding, or degenerate cleanup in one proposal.
+"""
+)
+
 
 def build_agent_start_prompt(
     profile: ProjectProfile,
@@ -472,6 +498,9 @@ def build_agent_start_prompt(
             "endpoint": asset_intent.endpoint.value if asset_intent.endpoint is not None else None,
             "endpoint_detail": asset_intent.endpoint_detail,
             "target_dimensions_cm": asset_intent.target_dimensions_cm,
+            "viewing_use": (
+                asset_intent.viewing_use.value if asset_intent.viewing_use is not None else None
+            ),
             "expected_piece_count": asset_intent.expected_piece_count,
             "expected_piece_count_evidence": asset_intent.expected_piece_count_evidence,
             "confirmed_story": asset_intent.confirmed_story,

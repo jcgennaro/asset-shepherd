@@ -108,7 +108,10 @@ def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:
     assert contract.asset_name == "Goop Mountain"
     assert contract.expected_piece_count == 1
     assert contract.expected_piece_count_evidence == "The description identifies one mountain."
-    assert {item.source for item in contract.evidence} == {TargetEvidenceSource.MODEL_INFERENCE}
+    assert {item.source for item in contract.evidence} == {
+        TargetEvidenceSource.MODEL_INFERENCE,
+        TargetEvidenceSource.DETERMINISTIC_FALLBACK,
+    }
     assert captured["model"] == OPENAI_INTAKE_MODEL
     assert captured["reasoning"] == {"effort": "xhigh"}
     assert captured["store"] is False

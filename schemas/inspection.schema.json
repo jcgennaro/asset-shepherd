@@ -1029,6 +1029,23 @@
           "title": "Mesh Reference Count",
           "type": "integer"
         },
+        "mesh_simplification_block_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mesh Simplification Block Reason"
+        },
+        "mesh_simplification_safe": {
+          "default": false,
+          "title": "Mesh Simplification Safe",
+          "type": "boolean"
+        },
         "near_contact_probes": {
           "default": [],
           "items": {

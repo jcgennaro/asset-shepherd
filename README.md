@@ -94,9 +94,18 @@ remains loadable for saved configuration, but new configuration should use `bedr
 Open `http://127.0.0.1:8010`. **Gallery** starts a new asset or resumes one of seven isolated,
 persisted workspaces. The numbered workflow is **1 Upload → 2 Describe → 3 Shepherd → 4 Refine**.
 Upload performs objective GLB preflight before the user describes the intended endpoint and
-approximate dimensions. Shepherd lets the Strands agent choose sensing tools, assess evidence, and
+approximate dimensions. At target confirmation the user also chooses whether the asset will normally
+be seen close-up, at ordinary gameplay distance, or small/distant/repeated. Asset Shepherd converts
+that use-case answer into a 50,000, 15,000, or 2,500-triangle soft cap without asking the user to
+choose technical reduction settings. Shepherd lets the Strands agent choose sensing tools, assess evidence, and
 propose typed repairs. The user reviews consequential changes; the selected input or candidate can
 then enter as many numbered Refine iterations as needed before download.
+
+When a supported mesh exceeds the confirmed cap, the agent may propose one controlled lossy
+optimization. The original remains immutable and the user can reject the proposal to preserve full
+detail. The deterministic reducer protects small components, original attribute tuples, UVs,
+normals, materials, names, and bounds, then reports measured—not predicted—triangle and file-size
+changes. Preservation limits may make the safe result larger than the soft cap.
 
 The recommended provider uses Kimi K2.5 through Amazon Bedrock Converse for semantic intake and
 workflow decisions. The GLB stays local; the provider receives

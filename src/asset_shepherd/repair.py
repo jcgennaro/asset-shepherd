@@ -20,6 +20,7 @@ from asset_shepherd.glb import (
     raw_glb_document,
     remove_disconnected_components,
     save_glb,
+    simplify_mesh_primitives,
     weld_identical_vertex_tuples,
 )
 from asset_shepherd.models import (
@@ -29,6 +30,7 @@ from asset_shepherd.models import (
     DecisionSource,
     DecisionValue,
     DegenerateGeometryPayload,
+    MeshSimplificationPayload,
     NormalizationPayload,
     RenamePayload,
     RepairKind,
@@ -368,6 +370,30 @@ def apply_repairs(
                 remove_disconnected_components(gltf, expected_selections)
             except (GlbError, IndexError) as error:
                 raise RepairInvariantError(str(error)) from error
+        elif candidate.kind is RepairKind.SIMPLIFY_MESH:
+            payload = candidate.payload
+            if not isinstance(payload, MeshSimplificationPayload):
+                raise RepairInvariantError("Mesh-simplification candidate has the wrong payload")
+            requests = {
+                (primitive.mesh_index, primitive.primitive_index): (
+                    primitive.target_triangle_count,
+                    payload.protected_component_triangle_threshold,
+                    payload.target_error,
+                    payload.maximum_bounds_drift_fraction,
+                )
+                for primitive in payload.primitives
+            }
+            try:
+                actual = simplify_mesh_primitives(gltf, requests)
+            except (GlbError, IndexError, ValueError) as error:
+                raise RepairInvariantError(str(error)) from error
+            for primitive in payload.primitives:
+                key = (primitive.mesh_index, primitive.primitive_index)
+                result = actual.get(key)
+                if result is None or result.before_triangles != primitive.before_triangle_count:
+                    raise RepairInvariantError(
+                        "Mesh-simplification evidence changed since planning"
+                    )
         else:
             raise RepairInvariantError(f"Unregistered repair kind: {candidate.kind}")
         executed.append(candidate.id)

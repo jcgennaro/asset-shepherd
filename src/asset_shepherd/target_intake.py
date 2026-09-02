@@ -10,13 +10,20 @@ from typing import Annotated, Literal
 from pydantic import Field, model_validator
 
 from asset_shepherd.intent import normalize_intent_description, target_height_cm_from_meters
-from asset_shepherd.models import AssetEndpoint, AssetTargetUse, ContractModel
+from asset_shepherd.models import AssetEndpoint, AssetTargetUse, AssetViewingUse, ContractModel
 
-TargetField = Literal["target_use", "endpoint", "target_dimensions_cm", "target_height_cm"]
+TargetField = Literal[
+    "target_use",
+    "endpoint",
+    "target_dimensions_cm",
+    "target_height_cm",
+    "viewing_use",
+]
 MINIMUM_TARGET_FIELDS: tuple[TargetField, ...] = (
     "target_use",
     "endpoint",
     "target_dimensions_cm",
+    "viewing_use",
 )
 MINIMUM_TARGET_CONFIDENCE = 0.8
 
@@ -42,7 +49,7 @@ class TargetFieldEvidence(ContractModel):
 class TargetIntakeContract(ContractModel):
     """Minimum typed state required before Asset Shepherd may offer target confirmation."""
 
-    schema_version: Literal[1, 2, 3, 4, 5] = 4
+    schema_version: Literal[1, 2, 3, 4, 5, 6] = 4
     description: Annotated[str, Field(min_length=12, max_length=600)]
     asset_name: Annotated[str, Field(min_length=2, max_length=48)] = "Untitled asset"
     analyzer_provider: Annotated[str, Field(min_length=1, max_length=40)] = "deterministic"
@@ -51,6 +58,7 @@ class TargetIntakeContract(ContractModel):
     target_height_cm: Annotated[float, Field(gt=0.0, le=100000.0)] | None = None
     endpoint: AssetEndpoint | None = None
     endpoint_detail: Annotated[str, Field(min_length=2, max_length=80)] | None = None
+    viewing_use: AssetViewingUse | None = None
     target_dimensions_cm: (
         tuple[
             Annotated[float, Field(gt=0.0, le=100000.0)],
@@ -71,8 +79,10 @@ class TargetIntakeContract(ContractModel):
         """Require missing fields and evidence to describe the exact populated state."""
         expected_missing_values: list[TargetField] = []
         required_fields: tuple[TargetField, ...]
-        if self.schema_version >= 5:
+        if self.schema_version >= 6:
             required_fields = MINIMUM_TARGET_FIELDS
+        elif self.schema_version >= 5:
+            required_fields = ("target_use", "endpoint", "target_dimensions_cm")
         else:
             required_fields = ("target_use", "target_height_cm")
         for field_name in required_fields:
@@ -293,8 +303,18 @@ def draft_target_intake(description: str) -> TargetIntakeContract:
                 confidence=MINIMUM_TARGET_CONFIDENCE,
                 evidence="Offline fallback expanded the explicit size anchor to X/Y/Z.",
             )
-    evidence = tuple(
-        item for item in (use_evidence, endpoint_evidence, dimensions_evidence) if item is not None
+    evidence = (
+        *(
+            item
+            for item in (use_evidence, endpoint_evidence, dimensions_evidence)
+            if item is not None
+        ),
+        TargetFieldEvidence(
+            field="viewing_use",
+            source=TargetEvidenceSource.DETERMINISTIC_FALLBACK,
+            confidence=MINIMUM_TARGET_CONFIDENCE,
+            evidence="Normal gameplay is preselected for explicit target-stage confirmation.",
+        ),
     )
     missing_values: list[TargetField] = []
     if target_use is None:
@@ -302,7 +322,7 @@ def draft_target_intake(description: str) -> TargetIntakeContract:
     if target_dimensions_cm is None:
         missing_values.append("target_dimensions_cm")
     return TargetIntakeContract(
-        schema_version=5,
+        schema_version=6,
         description=normalized,
         asset_name=fallback_asset_name(normalized),
         analyzer_provider="deterministic",
@@ -311,6 +331,7 @@ def draft_target_intake(description: str) -> TargetIntakeContract:
         target_height_cm=target_height_cm,
         endpoint=endpoint,
         endpoint_detail="Unspecified endpoint" if endpoint is AssetEndpoint.OTHER else None,
+        viewing_use=AssetViewingUse.NORMAL_GAMEPLAY,
         target_dimensions_cm=target_dimensions_cm,
         expected_piece_count=1,
         expected_piece_count_evidence=(
@@ -327,6 +348,7 @@ def clarify_target_intake(
     target_use_value: str | None = None,
     endpoint_value: str | None = None,
     endpoint_detail: str | None = None,
+    viewing_use_value: str | None = None,
     target_x_m: str | None = None,
     target_y_m: str | None = None,
     target_z_m: str | None = None,
@@ -340,6 +362,7 @@ def clarify_target_intake(
     endpoint = draft.endpoint
     resolved_endpoint_detail = draft.endpoint_detail
     target_dimensions_cm = draft.target_dimensions_cm
+    viewing_use = draft.viewing_use
     evidence = list(draft.evidence)
     if target_use is None:
         if target_use_value is None:
@@ -395,8 +418,23 @@ def clarify_target_intake(
                 evidence="Explicit structured clarification",
             )
         )
+    if viewing_use is None:
+        if viewing_use_value is None:
+            raise ValueError("Choose how closely the asset will normally be viewed.")
+        try:
+            viewing_use = AssetViewingUse(viewing_use_value)
+        except ValueError as error:
+            raise ValueError("Choose one of the three asset viewing uses.") from error
+        evidence.append(
+            TargetFieldEvidence(
+                field="viewing_use",
+                source=TargetEvidenceSource.USER_CLARIFICATION,
+                confidence=1.0,
+                evidence="Explicit structured use-case choice",
+            )
+        )
     return TargetIntakeContract(
-        schema_version=5,
+        schema_version=6,
         description=draft.description,
         asset_name=draft.asset_name,
         analyzer_provider=draft.analyzer_provider,
@@ -405,11 +443,42 @@ def clarify_target_intake(
         target_height_cm=target_height_cm,
         endpoint=endpoint,
         endpoint_detail=resolved_endpoint_detail,
+        viewing_use=viewing_use,
         target_dimensions_cm=target_dimensions_cm,
         expected_piece_count=draft.expected_piece_count,
         expected_piece_count_evidence=draft.expected_piece_count_evidence,
         evidence=tuple(evidence),
         missing_fields=(),
+    )
+
+
+def confirm_target_viewing_use(
+    draft: TargetIntakeContract,
+    viewing_use_value: str | None,
+) -> TargetIntakeContract:
+    """Record the explicit use-case choice made on the target confirmation card."""
+    if viewing_use_value is None:
+        viewing_use = draft.viewing_use or AssetViewingUse.NORMAL_GAMEPLAY
+    else:
+        try:
+            viewing_use = AssetViewingUse(viewing_use_value)
+        except ValueError as error:
+            raise ValueError("Choose one of the three asset viewing uses.") from error
+    evidence = (
+        *(item for item in draft.evidence if item.field != "viewing_use"),
+        TargetFieldEvidence(
+            field="viewing_use",
+            source=TargetEvidenceSource.USER_CLARIFICATION,
+            confidence=1.0,
+            evidence="Explicit use-case choice at target confirmation",
+        ),
+    )
+    return draft.model_copy(
+        update={
+            "schema_version": 6,
+            "viewing_use": viewing_use,
+            "evidence": evidence,
+        }
     )
 
 
@@ -419,6 +488,7 @@ def revise_target_intake(
     target_use_value: str,
     endpoint_value: str = AssetEndpoint.OTHER.value,
     endpoint_detail: str | None = None,
+    viewing_use_value: str = AssetViewingUse.NORMAL_GAMEPLAY.value,
     target_x_m: str | None = None,
     target_y_m: str | None = None,
     target_z_m: str | None = None,
@@ -436,6 +506,10 @@ def revise_target_intake(
     resolved_endpoint_detail = endpoint_detail.strip() if endpoint_detail else None
     if endpoint is AssetEndpoint.OTHER and resolved_endpoint_detail is None:
         resolved_endpoint_detail = "Unspecified endpoint"
+    try:
+        viewing_use = AssetViewingUse(viewing_use_value)
+    except ValueError as error:
+        raise ValueError("Choose one of the three asset viewing uses.") from error
     if target_x_m is not None and target_y_m is not None and target_z_m is not None:
         target_dimensions_cm = (
             target_height_cm_from_meters(target_x_m),
@@ -467,9 +541,15 @@ def revise_target_intake(
             confidence=1.0,
             evidence="Explicit target adjustment",
         ),
+        TargetFieldEvidence(
+            field="viewing_use",
+            source=TargetEvidenceSource.USER_CLARIFICATION,
+            confidence=1.0,
+            evidence="Explicit use-case adjustment",
+        ),
     )
     return TargetIntakeContract(
-        schema_version=5,
+        schema_version=6,
         description=draft.description,
         asset_name=draft.asset_name,
         analyzer_provider=draft.analyzer_provider,
@@ -478,6 +558,7 @@ def revise_target_intake(
         target_height_cm=target_height_cm,
         endpoint=endpoint,
         endpoint_detail=resolved_endpoint_detail,
+        viewing_use=viewing_use,
         target_dimensions_cm=target_dimensions_cm,
         expected_piece_count=draft.expected_piece_count,
         expected_piece_count_evidence=draft.expected_piece_count_evidence,
