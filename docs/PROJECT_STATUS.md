@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-01
-**Current commit:** Collar benchmark, interrupt-safe usage ledger, and immediate user turns (this file is included)
+**Current commit:** Portable Chromium/model-viewer evidence renderer (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -51,6 +51,18 @@ ambiguous-orientation and changed-goal live evaluation. Deterministic code remai
 enforcement, exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D091 portable model-visible rendering: agent-required evidence now uses the vendored
+  `<model-viewer>` 4.3.1 runtime through headless Chromium, not a locally installed Blender process.
+  The loopback-only renderer fixes the four glTF source-axis views, preserves shared-scale
+  source/candidate placement, captures transparent PNGs, derives object masks, composites the dark
+  audit frames, and passes the unchanged visibility/framing checks. A clean robot passed all four
+  views; a comparison preserved the actual 1.8 m-versus-182 m scale difference; and the exact
+  30.2 MB, 783,571-triangle shattered-heart collar rendered four validated 512 px textured views in
+  about 3.5 seconds in the local smoke invocation. Blender remains an explicit local compatibility
+  fallback. The Step 4 clean-Linux container and cold-start gates remain open because Docker is not
+  installed on this workstation. The common gate passes with 213 tests, two opt-in live skips,
+  lock validation, Ruff, formatting, JavaScript syntax validation, and zero Pyright findings.
 
 - D090 shattered-heart collar benchmark and conversation observability: the exact 30,204,480-byte
   Meshy GLB (`30ca4838…`) measures 1.898 × 0.623 × 1.880 m, contains 783,571 triangles, and presents

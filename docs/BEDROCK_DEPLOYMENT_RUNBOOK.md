@@ -56,7 +56,8 @@ until the remote-product gate passes.
   through the least-privilege profile. Luna's optional Responses evaluation remains separately
   blocked by its one-time agreement.
 - [ ] Step 3 cloud-portable state and artifacts.
-- [ ] Step 4 deployable visual sensing.
+- [ ] Step 4 deployable visual sensing. The portable Chromium/model-viewer implementation and local
+  source/shared-scale gates pass; the clean Linux container gate remains open.
 - [ ] Step 5 AgentCore runtime.
 - [ ] Step 6 remote web product.
 - [ ] Step 7 operations and cleanup.
@@ -419,14 +420,26 @@ completion; the exact workspace resumes from S3/DynamoDB without duplicate mutat
 
 ## Step 4 — Make standardized visual sensing deployable
 
-The current agent-required renderer invokes locally installed Blender. Resolve this before moving
-the GLB tools into AgentCore.
+The production code path now invokes the vendored `<model-viewer>` 4.3.1 distribution through a
+headless Chromium-family browser. It no longer invokes Blender by default. Python serves each
+trusted job asset over an ephemeral loopback-only HTTP server, fixes the source-axis camera and
+shared-scale placement, receives four transparent PNG captures, derives matching object masks from
+alpha, composites the audit images, and runs the existing framing-quality gate. Browser discovery
+accepts `ASSET_SHEPHERD_CHROMIUM_PATH`; `ASSET_SHEPHERD_EVIDENCE_RENDERER=blender` is an explicit
+local compatibility fallback only.
 
 ### Preferred route
 
-Package a lightweight Linux/ARM64-capable GLB renderer that produces the existing four
-coordinate-labeled 512 px views, masks, camera contract, shared-scale comparison views, and framing
-quality metrics. It must preserve material/texture appearance well enough for the D036 visual gate.
+Package Chromium with the existing Python/model-viewer renderer in the production Linux container.
+It already produces the four coordinate-labeled 512 px views, masks, versioned camera contract,
+shared-scale comparison views, and framing quality metrics. It must preserve material/texture
+appearance well enough for the D036 visual gate in that exact container architecture.
+
+Local acceptance on 2026-09-01 passed with no Blender process: the clean robot produced all four
+validated views and masks; a clean-versus-182 m broken-robot comparison preserved the true relative
+scale; and the 30.2 MB, 783,571-triangle shattered-heart collar rendered and validated in one
+browser run. The remaining work is the same test in a clean Linux image with packaged Chromium,
+followed by source/candidate/shared-scale reproducibility and cold-start measurements.
 
 ### Bounded fallback
 
@@ -436,7 +449,8 @@ and accessible only through exact S3 inputs/outputs. Measure image size, cold-st
 before acceptance.
 
 **Step 4 gate:** a clean Linux environment generates nonblank, unclipped, reproducible source,
-candidate, and shared-scale views with no workstation path or interactive desktop dependency.
+candidate, and shared-scale views with no workstation path or interactive desktop dependency. The
+local implementation gate is complete; the container gate is not.
 
 ## Step 5 — Deploy the Strands agent to AgentCore Runtime
 

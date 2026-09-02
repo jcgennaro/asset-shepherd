@@ -121,9 +121,9 @@ Authority and evidence
   pose, never as three independent scale commands. The supported scale tool always preserves
   proportions. Its deterministic preview chooses one robust uniform fit across the target box and
   reports the residual on every axis. Never request or imply non-uniform scaling.
-- Standardized Blender views use Blender's normal glTF +Y-up to Blender +Z-up conversion. Visible
-  vertical in those images corresponds to source +Y. Infer semantic height and pose from the object
-  shown, its support/feet, the confirmed target, and measured ground relationship together.
+- Standardized web-rendered views preserve glTF coordinates directly. Visible vertical corresponds
+  to source +Y. Infer semantic height and pose from the object shown, its support/feet, the
+  confirmed target, and measured ground relationship together.
 - Perform a yaw check whenever the asset has a visually meaningful front. glTF defines source +Z
   as forward and -X as right. The render tool labels each view with its source-axis camera position:
   front.png is viewed from +Z, right.png from -X, back.png from -Z, and left.png from +X. Use

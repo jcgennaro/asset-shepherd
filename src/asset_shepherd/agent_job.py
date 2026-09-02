@@ -1,6 +1,7 @@
 """Stateful, path-confined stages exposed to the Strands agent."""
 
 import json
+import os
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -8,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Final, Literal, Protocol
+from typing import Final, Literal, Protocol, cast
 
 import numpy as np
 from PIL import Image, ImageStat, UnidentifiedImageError
@@ -57,6 +58,10 @@ from asset_shepherd.profile_policy import (
 )
 from asset_shepherd.repair import RepairOutcome, apply_repairs, create_decisions
 from asset_shepherd.verification import verify_repair
+from asset_shepherd.web_evidence_renderer import (
+    WebEvidenceRendererError,
+    render_model_views,
+)
 from asset_shepherd.workflow import (
     build_blocked_verification,
     build_provenance,
@@ -98,7 +103,9 @@ def _write_json(path: Path, value: object) -> None:
 
 GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
     "schema_version": 1,
-    "render_contract_version": 5,
+    "render_contract_version": 6,
+    "render_backend": "model-viewer 4.3.1 through headless Chromium",
+    "projection": "fixed 24-degree perspective with standardized framing",
     "source_coordinate_system": "glTF right-handed",
     "source_up": "+Y",
     "source_forward": "+Z",
@@ -116,6 +123,13 @@ GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
         "maximum_foreground_fraction": 0.8,
         "requires_clear_frame_margin": True,
     },
+}
+
+_BLENDER_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
+    **GLTF_SOURCE_VIEW_CONTRACT,
+    "render_contract_version": 5,
+    "render_backend": "Blender compatibility fallback",
+    "projection": "orthographic",
 }
 
 
@@ -812,6 +826,12 @@ class AgentJob:
         reference_asset: Path | None = None,
     ) -> tuple[Path, ...]:
         """Render one trusted job asset into four standardized local views."""
+        renderer = os.environ.get("ASSET_SHEPHERD_EVIDENCE_RENDERER", "web").strip().lower()
+        if renderer not in {"web", "blender"}:
+            raise AgentWorkflowError("ASSET_SHEPHERD_EVIDENCE_RENDERER must be 'web' or 'blender'")
+        render_contract = (
+            GLTF_SOURCE_VIEW_CONTRACT if renderer == "web" else _BLENDER_SOURCE_VIEW_CONTRACT
+        )
         names = ("front.png", "right.png", "back.png", "left.png")
         existing = tuple(view_root / name for name in names)
         masks = tuple(view_root / name.replace(".png", ".mask.png") for name in names)
@@ -819,15 +839,31 @@ class AgentJob:
         cached_evidence_error: AgentWorkflowError | None = None
         if all(path.is_file() for path in (*existing, *masks)) and contract_path.is_file():
             try:
-                if json.loads(contract_path.read_text(encoding="utf-8")) == (
-                    GLTF_SOURCE_VIEW_CONTRACT
-                ):
-                    self.validate_render_evidence(view_root, existing)
+                if json.loads(contract_path.read_text(encoding="utf-8")) == render_contract:
+                    self.validate_render_evidence(
+                        view_root, existing, render_contract=render_contract
+                    )
                     return existing
             except AgentWorkflowError as error:
                 cached_evidence_error = error
             except (OSError, json.JSONDecodeError):
                 pass
+        view_root.mkdir(parents=True, exist_ok=True)
+        if renderer == "web":
+            try:
+                rendered = render_model_views(
+                    asset,
+                    view_root,
+                    reference_asset=reference_asset,
+                    resolution=512,
+                )
+            except WebEvidenceRendererError as error:
+                if cached_evidence_error is not None:
+                    raise cached_evidence_error from error
+                raise AgentWorkflowError(f"Standardized visual sensing failed: {error}") from error
+            self.validate_render_evidence(view_root, rendered, render_contract=render_contract)
+            _write_json(contract_path, render_contract)
+            return rendered
         configured = shutil.which("blender")
         blender = (
             Path(configured)
@@ -845,7 +881,6 @@ class AgentJob:
         )
         if not script.is_file():
             raise AgentWorkflowError("Standardized visual sensing script is unavailable")
-        view_root.mkdir(parents=True, exist_ok=True)
         command = [
             str(blender),
             "--background",
@@ -872,19 +907,23 @@ class AgentJob:
         if completed.returncode != 0 or not all(path.is_file() for path in (*existing, *masks)):
             detail = completed.stderr.strip().splitlines()[-1:] or ["unknown Blender error"]
             raise AgentWorkflowError(f"Standardized visual sensing failed: {detail[0]}")
-        self.validate_render_evidence(view_root, existing)
-        _write_json(contract_path, GLTF_SOURCE_VIEW_CONTRACT)
+        self.validate_render_evidence(view_root, existing, render_contract=render_contract)
+        _write_json(contract_path, render_contract)
         return existing
 
     def validate_render_evidence(
         self,
         view_root: Path,
         views: tuple[Path, ...],
+        *,
+        render_contract: dict[str, object] | None = None,
     ) -> dict[str, object]:
         """Reject undecodable, blank, clipped, or ineffectively framed render evidence."""
+        active_contract = render_contract or GLTF_SOURCE_VIEW_CONTRACT
         metrics: dict[str, object] = {
             "schema_version": 1,
-            "render_contract_version": GLTF_SOURCE_VIEW_CONTRACT["render_contract_version"],
+            "render_contract_version": active_contract["render_contract_version"],
+            "render_backend": active_contract.get("render_backend", "unknown"),
             "views": {},
         }
         view_metrics: dict[str, object] = {}
@@ -963,10 +1002,20 @@ class AgentJob:
         """Return freshly validated quality metrics for a standardized render set."""
         if not paths:
             raise AgentWorkflowError("No standardized render evidence was provided")
-        return self.validate_render_evidence(paths[0].parent, paths)
+        contract: dict[str, object] | None = None
+        contract_path = paths[0].parent / "view_contract.json"
+        try:
+            decoded = cast(object, json.loads(contract_path.read_text(encoding="utf-8")))
+            if isinstance(decoded, dict):
+                decoded_mapping = cast(dict[object, object], decoded)
+                if all(isinstance(key, str) for key in decoded_mapping):
+                    contract = {cast(str, key): value for key, value in decoded_mapping.items()}
+        except (OSError, json.JSONDecodeError):
+            pass
+        return self.validate_render_evidence(paths[0].parent, paths, render_contract=contract)
 
     def render_source_views(self) -> tuple[Path, ...]:
-        """Render four standardized model-consumable source views through local Blender."""
+        """Render four standardized model-consumable source views."""
         if self.inspection is None:
             raise AgentWorkflowError("Inspection must run before visual sensing")
         return self._render_asset_views(

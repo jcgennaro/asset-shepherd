@@ -4,6 +4,57 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D091 — Use the existing web GLB stack for model-visible evidence
+
+**Date:** 2026-09-01
+
+**Status:** ACCEPTED; local renderer gate complete, Linux container gate open
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+The interactive viewport already uses a pinned local `<model-viewer>` 4.3.1 distribution built on
+Three.js, but the agent's standardized source, candidate, and shared-scale screenshots still invoked
+a workstation Blender executable. Shipping Blender inside the first AWS runtime would materially
+increase image size, cold start, architecture constraints, and operational complexity. The visual
+contract itself only requires four fixed glTF-axis views, true shared scale, masks, material-visible
+captures, and deterministic framing checks; it does not require a DCC application.
+
+**Decision**
+
+Use the vendored `<model-viewer>` distribution through a discovered headless Chromium-family
+browser as the default evidence backend. Serve only the trusted job inputs and renderer bundle from
+an ephemeral loopback HTTP server. Compute world bounds and comparison offset deterministically in
+Python, fix a 24-degree camera and four source-axis azimuths, capture transparent 512 px PNGs through
+`model-viewer.toBlob()`, derive L-mode masks from alpha, and composite the existing dark audit
+frames. Retain the existing mask/framing validator as the acceptance authority.
+
+Discover Chromium from `ASSET_SHEPHERD_CHROMIUM_PATH`, normal command lookup, or known desktop
+locations. Keep Blender behind the explicit `ASSET_SHEPHERD_EVIDENCE_RENDERER=blender`
+compatibility setting; never silently fall back to it in production. The next AWS image packages
+Chromium and must pass the clean-Linux reproducibility and cold-start gate before Step 4 completes.
+
+**Evidence and consequences**
+
+The real clean-robot fixture produced four correctly oriented, textured 512 px PNGs and alpha masks
+that passed every existing nonblank, occupancy, span, clipping, and clear-margin check. A
+clean-versus-broken comparison retained the true shared scale: the 182 m candidate dominated its
+1.8 m reference rather than receiving an independent fit. The 30.2 MB, 783,571-triangle
+shattered-heart collar also produced four validated textured views in one local browser invocation,
+with roughly 28–30% foreground occupancy and clear margins. Renderer regression coverage exercises
+browser discovery and a real four-view capture when Chromium is present. The common gate passes with
+213 tests, two opt-in live skips, lock validation, Ruff, formatting, JavaScript syntax validation,
+and zero Pyright findings.
+
+This closes the workstation-Blender implementation gap, not the AWS portability gate. Docker is not
+installed on the current workstation, so the clean Linux container, packaged-browser size,
+cold-start, ARM64-versus-x86 choice, and repeatability measurements remain required. Independent
+Blender and Unreal imports remain useful consumer-validation evidence and are not part of the hosted
+rendering dependency.
+
 ### D090 — Preserve every Shepherd invocation and benchmark ambiguous component cleanup
 
 **Date:** 2026-09-01

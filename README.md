@@ -114,10 +114,13 @@ API remains a development adapter, not a production fallback.
 
 The agent decides which checks and bounded actions are appropriate. Deterministic tools remain
 authoritative for measurements, exact action consequences, authorization, source immutability,
-mutation scope, independent verification, and packaging. The 3D preview uses the pinned local
-`<model-viewer>` distribution, while standardized model-visible evidence is rendered separately.
-Production persistence, judge access, and renderer portability remain explicit AWS deployment
-gates rather than being implied by the local product.
+mutation scope, independent verification, and packaging. Both the interactive 3D preview and the
+standardized model-visible evidence use the pinned local `<model-viewer>` distribution. Evidence
+rendering launches an installed Chromium-family browser headlessly; set
+`ASSET_SHEPHERD_CHROMIUM_PATH` when browser discovery is unavailable. Blender is only an explicit
+local compatibility fallback selected with `ASSET_SHEPHERD_EVIDENCE_RENDERER=blender`, not a
+production dependency. Production persistence, judge access, and clean-Linux renderer acceptance
+remain explicit AWS deployment gates rather than being implied by the local product.
 
 ## Deterministic repair-engine harness
 

@@ -98,20 +98,21 @@ class AssetShepherdTools:
         """Render four coordinate-labeled source views for size, pose, and yaw assessment.
 
         Call after inspection and before proposing any scale, rotation, or grounding change. The
-        images show the GLB after Blender's normal glTF +Y-up to Blender +Z-up import conversion;
-        visible vertical therefore corresponds to source +Y. glTF defines source +Z as forward.
-        Each image is paired with the source-axis camera direction so the model can check whether
-        the semantic front faces +Z. A long visible body axis is not automatically height. Returns
-        front, right, back, and left images as model-visible evidence.
+        web-rendered images preserve the GLB's glTF coordinate frame; visible vertical therefore
+        corresponds to source +Y. glTF defines source +Z as forward. Each image is paired with the
+        source-axis camera direction so the model can check whether the semantic front faces +Z. A
+        long visible body axis is not automatically height. Returns front, right, back, and left
+        images as model-visible evidence.
 
         """
         paths = self.job.render_source_views()
         content: list[dict[str, object]] = [
             {
                 "text": (
-                    "SOURCE GLB AXES: +Y is up, +Z is forward, and -X is right. Blender converted "
-                    "+Y-up to visible +Z-up. Use the camera-axis label beside each image to check "
-                    "upright pose and yaw; do not infer either from bounds alone."
+                    "SOURCE GLB AXES: +Y is up, +Z is forward, and -X is right. The standardized "
+                    "web renderer preserves that frame directly. Use the camera-axis label beside "
+                    "each image to check upright pose and yaw; do not infer either from bounds "
+                    "alone."
                 )
             }
         ]
