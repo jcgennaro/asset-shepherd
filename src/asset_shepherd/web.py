@@ -1593,11 +1593,38 @@ class WebJobStore:
         """Run one Strands job through completion or its first native interrupt."""
         with job.lock:
             try:
-                job.latest_result = job.runtime.start()
-                if job.latest_result.stop_reason != "interrupt":
-                    job.workflow_result = job.runtime.complete(job.latest_result)
+                self._settle_model_turn(job, job.runtime.start())
             except Exception as error:
                 job.error = _public_workflow_error(error)
+
+    @staticmethod
+    def _settle_model_turn(job: WebJob, result: AgentResult) -> None:
+        """Boundedly recover a provider early-end, then interrupt or complete the turn."""
+        runtime_job = job.runtime.job
+        if runtime_job.agent_orchestrated:
+            if (
+                result.stop_reason != "interrupt"
+                and runtime_job.inspection is not None
+                and runtime_job.agent_assessment is None
+            ):
+                result = job.runtime.retry_incomplete_planning()
+            if (
+                result.stop_reason != "interrupt"
+                and runtime_job.selected_plan is not None
+                and runtime_job.outcome is None
+                and runtime_job.selected_plan.approval_action_ids
+            ):
+                result = job.runtime.continue_prepared_plan()
+            if (
+                result.stop_reason != "interrupt"
+                and runtime_job.result is None
+                and runtime_job.outcome is not None
+                and runtime_job.outcome.executed_action_ids
+            ):
+                result = job.runtime.continue_incomplete_turn()
+        job.latest_result = result
+        if result.stop_reason != "interrupt":
+            job.workflow_result = job.runtime.complete(result)
 
     def get(self, job_id: str) -> WebJob | None:
         """Return a known in-process job without inspecting arbitrary disk paths."""
@@ -1610,8 +1637,7 @@ class WebJobStore:
             if job.error is not None:
                 raise AgentWorkflowError("A stopped job cannot be resumed")
             result = job.runtime.resume(interrupt_id, approved=approved)
-            job.latest_result = result
-            job.workflow_result = job.runtime.complete(result)
+            self._settle_model_turn(job, result)
 
     def continue_after_feedback(self, job: WebJob, feedback: str) -> None:
         """Advance the current candidate into a fresh bounded agent turn."""
@@ -1621,12 +1647,10 @@ class WebJobStore:
             if job.waiting_for_approval:
                 raise AgentWorkflowError("Resolve the current approval before continuing")
             result = job.runtime.continue_after_feedback(feedback)
-            job.latest_result = result
             job.workflow_result = None
             job.inspection_acknowledged = False
             job.accepted = False
-            if result.stop_reason != "interrupt":
-                job.workflow_result = job.runtime.complete(result)
+            self._settle_model_turn(job, result)
 
 
 def _finding_groups(job: WebJob) -> tuple[tuple[str, tuple[Finding, ...]], ...]:

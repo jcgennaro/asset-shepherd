@@ -15,6 +15,7 @@ from typing import Any, Literal, TypeVar, cast
 
 import boto3
 import openai
+from botocore.config import Config as BotocoreConfig
 from pydantic import BaseModel
 from strands import Agent
 from strands.agent import AgentResult
@@ -63,6 +64,8 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 ActivitySink = Callable[[str], None]
+
+DEFAULT_BEDROCK_READ_TIMEOUT_SECONDS = 300
 
 _TOOL_ACTIVITY_LABELS: dict[str, str] = {
     "inspect_asset_for_job": "Measuring the GLB",
@@ -447,9 +450,29 @@ def build_environment_model(
         model = AssetShepherdBedrockConverseModel(
             hoist_tool_result_images=capability.requires_tool_result_image_hoisting,
             boto_session=session,
+            boto_client_config=_bedrock_client_config(values),
             **converse_config,
         )
     return model, configuration
+
+
+def _bedrock_client_config(values: Mapping[str, str]) -> BotocoreConfig:
+    """Bound a stalled Converse socket without imposing a total model-turn deadline."""
+    raw_timeout = values.get(
+        "ASSET_SHEPHERD_BEDROCK_READ_TIMEOUT_SECONDS",
+        str(DEFAULT_BEDROCK_READ_TIMEOUT_SECONDS),
+    )
+    try:
+        read_timeout = int(raw_timeout)
+    except ValueError as error:
+        raise AgentWorkflowError("Amazon Bedrock read timeout must be an integer") from error
+    if not 30 <= read_timeout <= 900:
+        raise AgentWorkflowError("Amazon Bedrock read timeout must be between 30 and 900 seconds")
+    return BotocoreConfig(
+        connect_timeout=10,
+        read_timeout=read_timeout,
+        retries={"total_max_attempts": 1, "mode": "standard"},
+    )
 
 
 def workflow_model_available(values: Mapping[str, str] = environ) -> bool:
@@ -879,6 +902,45 @@ class AssetShepherdAgent:
             self._capture_interrupt(result)
         return result
 
+    def continue_prepared_plan(self) -> AgentResult:
+        """Advance one frozen approval-required plan to its native review interrupt.
+
+        Some providers correctly inspect, assess, and select a plan, then end their response before
+        invoking the executor that raises the Strands interrupt. This bounded recovery exposes only
+        that executor. It can surface an approval card but cannot approve or mutate the candidate.
+        """
+        if not self.job.agent_orchestrated:
+            raise AgentWorkflowError("Prepared-plan recovery requires agent-orchestrated mode")
+        if self.job.pending_interrupt_id is not None:
+            raise AgentWorkflowError("The prepared plan already has a pending approval")
+        if self.job.result is not None or self.job.outcome is not None:
+            raise AgentWorkflowError("The prepared plan has already executed or completed")
+        plan = self.job.selected_plan
+        if plan is None or plan.blocked:
+            raise AgentWorkflowError("There is no executable prepared plan")
+        if not plan.approval_action_ids:
+            raise AgentWorkflowError("The prepared plan does not require user approval")
+
+        # Use the original agent instance so Strands can resume the native interrupt on the same
+        # in-memory conversation. A separate constrained Agent can raise an interrupt, but its
+        # response cannot legally be resumed through this runtime's primary agent.
+        result = self._invoke_agent(
+            self.agent,
+            (
+                "Prepared-plan recovery: the exact repair selection is already frozen. Do not "
+                "inspect, plan, explain, approve, or mutate it yourself. Call "
+                "execute_selected_repairs exactly once so its native review interrupt is shown "
+                "to the user, then stop."
+            ),
+            turn_limit=4,
+        )
+        if result.stop_reason != "interrupt":
+            raise AgentWorkflowError(
+                "The prepared repair plan did not reach its approval interrupt"
+            )
+        self._capture_interrupt(result)
+        return result
+
     def continue_incomplete_turn(self) -> AgentResult:
         """Resume evidence and verification after a transient post-action interruption."""
         if not self.job.agent_orchestrated:
@@ -1024,6 +1086,12 @@ class AssetShepherdAgent:
             raise AgentWorkflowError("The agent has not been invoked")
         if current.stop_reason == "interrupt":
             raise AgentWorkflowError("The agent cannot complete while approval is pending")
+        if self.job.result is None and self.job.auto_authorized_execution_available:
+            # Some providers correctly freeze an empty or display-name-only selection and then
+            # end their turn before calling the deterministic executor. There is no approval or
+            # model judgment left at this boundary; execute the already-selected AUTO_SAFE work
+            # (or immutable no-op copy) so mandatory verification can still run.
+            self.job.execute(approved=None, interrupt_id=None)
         if self.job.result is None and self.job.deterministic_completion_available:
             # Provider-neutral safety net: the model already chose and executed the repair and,
             # when required, recorded its visual reassessment. Independent verification and

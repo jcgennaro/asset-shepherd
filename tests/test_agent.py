@@ -581,6 +581,34 @@ def test_environment_model_builds_model_neutral_converse_for_kimi() -> None:
     assert model.get_config().get("max_tokens") == 16_384
     assert model.get_config().get("additional_request_fields") is None
     assert model.hoist_tool_result_images
+    client_configuration = vars(model.client.meta.config)
+    assert client_configuration["read_timeout"] == 300
+    retries = cast(dict[str, object], client_configuration["retries"])
+    assert retries["total_max_attempts"] == 1
+
+
+def test_bedrock_converse_read_timeout_is_bounded_and_validated() -> None:
+    """One stalled provider socket cannot hold a web turn or acceptance run overnight."""
+    model, _ = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-converse",
+            "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+            "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+            "ASSET_SHEPHERD_BEDROCK_READ_TIMEOUT_SECONDS": "90",
+        }
+    )
+
+    assert isinstance(model, AssetShepherdBedrockConverseModel)
+    assert vars(model.client.meta.config)["read_timeout"] == 90
+    with pytest.raises(AgentWorkflowError, match="between 30 and 900"):
+        build_environment_model(
+            {
+                "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-converse",
+                "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+                "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+                "ASSET_SHEPHERD_BEDROCK_READ_TIMEOUT_SECONDS": "3600",
+            }
+        )
 
 
 def test_kimi_adapter_hoists_images_without_mutating_the_tool_result_history() -> None:

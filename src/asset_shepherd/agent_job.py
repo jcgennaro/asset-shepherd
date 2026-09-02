@@ -119,7 +119,7 @@ GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
     },
     "evidence_validation": {
         "decodable_png": True,
-        "minimum_foreground_fraction": 0.005,
+        "minimum_foreground_fraction": 0.001,
         "minimum_projected_span_fraction": 0.08,
         "maximum_foreground_fraction": 0.8,
         "requires_clear_frame_margin": True,
@@ -606,6 +606,21 @@ class AgentJob:
         return self.output_dir / "candidate.glb"
 
     @property
+    def auto_authorized_execution_available(self) -> bool:
+        """Return whether a frozen plan can execute without a user approval decision.
+
+        An empty accepted plan and a display-name-only plan contain no approval-required action.
+        Finishing either is deterministic invariant work after the agent has registered its exact
+        selection. Physical and topology actions never satisfy this predicate.
+        """
+        return bool(
+            self.selected_plan is not None
+            and not self.selected_plan.blocked
+            and self.outcome is None
+            and not self.selected_plan.approval_action_ids
+        )
+
+    @property
     def deterministic_completion_available(self) -> bool:
         """Return whether invariant verification can finish this already-decided turn.
 
@@ -966,7 +981,11 @@ class AgentJob:
             foreground_pixels = int(np.count_nonzero(foreground))
             foreground_fraction = foreground_pixels / float(width * height)
             foreground_y, foreground_x = np.nonzero(foreground)
-            if foreground_pixels == 0 or foreground_fraction < 0.005:
+            # Thin assets can be clearly framed while occupying very little image area in an
+            # edge-on view.  Keep a small absolute coverage floor here and enforce projected
+            # span separately below; the earlier 0.5% floor intermittently rejected valid crops,
+            # blades, cables, and similar silhouettes that spanned a useful part of the frame.
+            if foreground_pixels == 0 or foreground_fraction < 0.001:
                 raise AgentWorkflowError(
                     f"Standardized visual sensing rejected {path.name}: asset is not visible"
                 )

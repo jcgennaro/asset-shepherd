@@ -1,9 +1,9 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; Kimi and Claude Haiku 4.5 intake/full Strands workflows passed
-through the least-privilege runtime role, while the browser matrix and cloud deployment remain open
+**Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate through the least-privilege
+runtime role, while cloud-portable state, Linux rendering, and remote deployment remain open
 
-**Last verified against official documentation:** 2026-08-29
+**Last verified against official documentation:** 2026-09-02
 
 **Milestone:** M9 hosted Bedrock conversation and deployment
 
@@ -35,7 +35,9 @@ until the remote-product gate passes.
   bounded calls in `us-east-1`; Kimi is the recommended selection (D077/D078).
 - [x] Step 1.4 the user confirmed an AWS Budget zero-cost alert and $100 promotional-credit
   allocation. The alert is notification rather than a hard spending cap, and credit eligibility
-  remains subject to the account's credit terms.
+  remains subject to the account's credit terms. On 2026-09-02 the user reported approximately
+  $130 in credits remaining and roughly $20 used; treat that as planning input, not an audited
+  billing balance.
 - [x] Step 2.1/2.2 Bedrock intake, workflow transport, short-term-token, and launcher implementation.
 - [x] D074 Nova diagnostic: least-privilege connectivity, typed intake, and one complete local
   Strands approval-through-package workflow passed through native Bedrock Converse.
@@ -49,12 +51,13 @@ until the remote-product gate passes.
   approval-gated proportional fit, and deterministic execution independently verified the final
   `1.22376 x 0.820321 x 0.268958 m` candidate grounded at `Y=0`. This qualifies Nova as a usable
   diagnostic path, not the default parity model or a completed browser matrix.
-- [x] D075 selects App Runner as the first public FastAPI host beside private AgentCore, with
-  ECS/Fargate retained only as a measured fallback. No remote resources have been deployed yet.
-- [ ] Step 2.3 local all-Bedrock browser matrix. Kimi is the recommended model; the refreshed
-  bootstrap session installed exact-resource runtime policies and all five choices now invoke
-  through the least-privilege profile. Luna's optional Responses evaluation remains separately
-  blocked by its one-time agreement.
+- [x] D093 supersedes D075 and selects ECS Express Mode as the first public FastAPI host beside
+  private AgentCore. AWS has closed App Runner to new customers. No remote resources have been
+  deployed yet.
+- [x] Step 2.3 fixed Bedrock provider gate. Kimi passes 8/8 safety and 8/8 semantic/visual cases
+  through the least-privilege profile. Mistral Large 3 fails two hard semantic cases and is not a
+  production default. Luna's optional Bedrock evaluation remains separately blocked by its account
+  agreement.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing. The portable Chromium/model-viewer implementation and local
   source/shared-scale gates pass; the clean Linux container gate remains open.
@@ -82,9 +85,46 @@ until the remote-product gate passes.
   and a budget alert are confirmed.
 - Stop for approval before architecture expected to cost more than $10 during development or more
   than $2 per idle day.
+- The local Kimi provider gate is complete. Make no further paid model bakeoff calls unless a code
+  regression invalidates a frozen case; reserve the next paid work for deployment proof and the
+  remote acceptance replay.
 - Never commit credentials, account IDs, tokens, presigned URLs, or secret-bearing command output.
 
 ## Target deployment shape
+
+### Current live-test topology (what exists now)
+
+```mermaid
+flowchart LR
+    B[Browser on this PC] --> W[Local FastAPI at 127.0.0.1:8010]
+    W --> A[Local Strands agent process]
+    A -->|HTTPS Converse calls| BR[Amazon Bedrock Kimi K2.5]
+    A --> T[Local deterministic GLB tools]
+    T --> R[Local headless Chromium renderer]
+    A --> F[Local build/web jobs and Strands snapshots]
+```
+
+Only the Bedrock inference box is in AWS. The authenticated `asset-shepherd` AWS CLI profile and
+its short-lived assumed-role session authorize those calls; they do not deploy the site. No Asset
+Shepherd ECR repository, ECS service, AgentCore runtime, S3 workspace bucket, or DynamoDB workspace
+table exists yet.
+
+Current AWS evidence is visible in these places in `us-east-1`:
+
+- **Amazon Bedrock → Model catalog:** search for Kimi K2.5 to see the active model and its in-region
+  model ID. This is an on-demand model, not an Asset Shepherd service configuration.
+- **CloudWatch → Metrics → All metrics → `AWS/Bedrock` → By ModelId:** view invocation count,
+  latency, input/output tokens, and errors for `moonshotai.kimi-k2.5`.
+- **IAM → Roles → `AssetShepherdBedrockRuntime`:** review the least-privilege runtime role. The
+  friendly local profile name `asset-shepherd` exists in the workstation's AWS configuration, not
+  as a console service.
+- **Billing and Cost Management:** view Bedrock charges after AWS's normal reporting delay.
+
+Detailed model invocation logging is disabled by default and has not been enabled by this project.
+Do not enable request/response or image logging casually: it can persist user prompts and evidence
+to CloudWatch Logs or S3 and needs an explicit privacy/retention decision.
+
+### Intended AWS topology (not yet deployed)
 
 ```mermaid
 flowchart TD
@@ -120,8 +160,8 @@ The AWS deployment uses the same application contracts with cloud-backed adapter
 
 | Concern | Local configuration | AWS configuration |
 |---|---|---|
-| Browser address | `http://127.0.0.1:8010` | App Runner HTTPS service URL or approved custom domain |
-| FastAPI/Jinja web process | Local Uvicorn process | Stateless App Runner container |
+| Browser address | `http://127.0.0.1:8010` | ECS Express HTTPS load-balancer URL or approved custom domain |
+| FastAPI/Jinja web process | Local Uvicorn process | Stateless ECS Express Mode/Fargate task |
 | Workflow execution | Local Strands process | Private AgentCore Runtime invocation |
 | Model inference | Bedrock over outbound HTTPS | Bedrock from the AgentCore execution role |
 | GLBs, evidence, packages | Isolated local workspace directories | Private S3 workspace prefixes |
@@ -134,30 +174,29 @@ behavior stay shared.
 
 ### Selected first web host
 
-Use **AWS App Runner** for the first remote FastAPI deployment, packaged as a Linux container in a
-private Amazon ECR repository. App Runner is selected over an initial ECS/Fargate web deployment
-because it supplies a managed public HTTPS service and container rollout with less infrastructure
-while the product has one web process. App Runner does not become a state authority: its filesystem
-and instances are disposable, and all durable workspace data must already be in S3/DynamoDB before
-the remote-product gate.
+Use **Amazon ECS Express Mode** for the first remote FastAPI deployment, packaged as a Linux
+container in a private Amazon ECR repository. AWS recommends ECS Express Mode after closing App
+Runner to new customers. Express Mode provisions an ECS/Fargate service, Application Load Balancer,
+auto scaling, and networking from one service definition; the underlying resources remain visible
+and billable. The web task does not become a state authority: its filesystem and instances are
+disposable, and all durable workspace data must already be in S3/DynamoDB before the remote-product
+gate.
 
-AgentCore remains a separate private runtime for the Strands workflow. The App Runner instance role
-may invoke that runtime and access only the required S3/DynamoDB records. The browser receives
-application sessions and short-lived exact-object transfer URLs, never AWS credentials. If a
-compatibility spike proves App Runner cannot meet measured request-duration, startup, or cost
-requirements, switching the web compute layer to ECS/Fargate requires a recorded decision but does
-not change the application or agent contracts.
+AgentCore remains a separate private runtime for the Strands workflow. The ECS task role may invoke
+that runtime and access only the required S3/DynamoDB records. The browser receives application
+sessions and short-lived exact-object transfer URLs, never AWS credentials. A compatibility failure
+requires a recorded replacement-host decision but does not change application or agent contracts.
 
 ## Current implementation map
 
 | Concern | Current implementation | Required migration |
 |---|---|---|
-| Workflow model | Capability-aware Bedrock Converse adapter with Kimi recommended and three bounded alternatives; Luna Responses and direct-OpenAI development adapters remain | Complete Kimi browser matrix and runtime-role policy |
-| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI development, and deterministic test adapters | Complete hosted Kimi browser evaluation after authentication renewal |
+| Workflow model | Capability-aware Bedrock Converse adapter with Kimi accepted by the fixed 8/8 gate; Luna Responses and direct-OpenAI development adapters remain | Re-run the same gate in the deployed runtime |
+| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI development, and deterministic test adapters | Re-run typed intake in the deployed runtime |
 | Agent session | `SnapshotSessionManager` with `LocalFileStorage` under one workspace | Replace storage with Strands S3 session storage while retaining `workspace_id` |
 | Workspace record | Atomic JSON files plus process-local locking | DynamoDB record with optimistic/conditional writes |
 | Binary artifacts | Per-workspace local directories | Private S3 prefixes with hashes, lifecycle, and presigned transfer |
-| Visual sensing | Four standardized Blender renders plus masks | Replace with a portable renderer or isolate rendering outside AgentCore |
+| Visual sensing | Vendored model-viewer/Three.js through headless Chromium plus masks | Prove the same renderer in the ARM64 Linux runtime image |
 | Interactive preview | Browser-local `<model-viewer>` | Retain; serve GLB URLs from authenticated/presigned object storage |
 | Web application | FastAPI/Jinja/Uvicorn on localhost | Deploy independently from AgentCore through the simplest stable AWS web route |
 
@@ -367,22 +406,27 @@ same strict Pydantic contract remains the server authority. The trial intentiona
 high reasoning because the live service requires `maxTokens` to be unset at high effort; medium is
 the documented agentic-workflow setting and retains 4,096/8,192 output limits.
 
-Run the current local browser product through Bedrock before changing storage or hosting. Cover:
+Run the frozen provider matrix before changing storage or hosting. Cover:
 
 1. clean accept-as-is;
-2. ordinary scale/naming repair with approval;
-3. ambiguous orientation where the model asks or preserves orientation;
-4. disconnected-component selection with user revision;
-5. a Refine turn requiring a new consequential action and approval;
-6. rejection and subsequent feedback;
-7. inappropriate-content refusal; and
-8. visual reassessment using source, isolated candidate, and shared-scale comparison renders.
+2. ordinary scale/pose repair with approval;
+3. proven degenerate cleanup with approval;
+4. Patchling preservation;
+5. Shader Lantern normalization;
+6. riding-crop exact component selection;
+7. robot-dog intentional component preservation; and
+8. shattered-heart collar simplification with intentional multipart preservation.
+
+Malformed upload, rejection/refinement, duplicate approval, and inappropriate-content behavior stay
+in the deterministic/offline suite; they do not require a paid model call to prove enforcement.
 
 Capture tool calls, typed assessments, provider/model identity, latency, token metrics when reported,
 and approximate cost per completed run. Do not publish private reasoning tokens.
 
-**Step 2 gate:** intake and workflow use Bedrock, `OPENAI_API_KEY` is absent, representative D036
-cases pass, and the normal offline suite remains green.
+**Step 2 gate:** intake and workflow use Bedrock, `OPENAI_API_KEY` is absent, all eight cases pass
+safety, at least seven pass semantic/visual scoring, and the normal offline suite remains green.
+Kimi currently passes 8/8 on both measures; the gate is complete locally and must be replayed after
+AgentCore deployment.
 
 ## Step 3 — Make state and artifacts cloud-portable
 
@@ -478,8 +522,8 @@ derives the asset workspace from the authenticated user/session, not arbitrary b
 
 ## Step 6 — Deploy the interactive web product
 
-Deploy the existing FastAPI/Jinja application to **AWS App Runner** after a small container
-compatibility spike. Keep ECS/Fargate as the measured fallback, not a parallel implementation.
+Deploy the existing FastAPI/Jinja application to **Amazon ECS Express Mode** after the container
+compatibility spike. Do not create an App Runner service; AWS has closed it to new customers.
 
 ### 6.1 Container compatibility
 
@@ -488,14 +532,15 @@ compatibility spike. Keep ECS/Fargate as the measured fallback, not a parallel i
 - Run that exact image locally with Nova and complete upload, approval, refinement, and download.
 - Prove the process makes no durability assumption about its container filesystem.
 - Keep visual sensing behind the Step 4 portable-renderer boundary; do not install desktop Blender
-  in the App Runner web container.
+  in the ECS web container.
 
-### 6.2 App Runner service
+### 6.2 ECS Express Mode service
 
 - Push the accepted image to one private ECR repository.
-- Create one App Runner service with manual deployment for the initial gate, a public HTTPS endpoint,
-  health check, bounded CPU/memory, and an instance role containing only the required
-  AgentCore/S3/DynamoDB/CloudWatch permissions.
+- Create one ECS Express Mode service for the initial gate, with its generated load balancer,
+  health check, bounded CPU/memory, and a task role containing only the required
+  AgentCore/S3/DynamoDB/CloudWatch permissions. Keep the infrastructure role separate from the task
+  execution role and application task role.
 - Supply non-secret model, region, bucket, table, retention, and runtime identifiers through service
   configuration. Use AWS-managed identity/secret mechanisms for anything sensitive.
 - Keep at least one explicit version/tag and rollback target until the remote gate passes.
@@ -510,12 +555,12 @@ For the competition deployment, provide either logged-out access or one document
 Prefer web authentication plus service-to-service SigV4 invocation; do not distribute AWS
 credentials to the browser.
 
-The first successful deployment receives an AWS-managed `awsapprunner.com` HTTPS URL. A custom
-domain is optional and comes only after the default URL passes the full acceptance matrix. The local
+The first successful deployment receives the generated ECS Express load-balancer endpoint. A custom
+domain is optional and comes only after that endpoint passes the full acceptance matrix. The local
 launcher continues to serve `127.0.0.1`; it never redirects to or updates the remote service.
 
 **Step 6 gate:** a fresh user can upload, leave, return through the gallery, approve/refine, and
-download from the remote URL. Restarting or replacing the App Runner instance does not lose or
+download from the remote URL. Restarting or replacing the ECS task does not lose or
 duplicate any workspace state, mutation, decision, or package.
 
 ## Step 7 — Guardrails, observability, retention, and cost
@@ -575,7 +620,6 @@ before public release or submission work.
 - [AgentCore quotas](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/bedrock-agentcore-limits.html)
 - [AgentCore authentication](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-oauth.html)
 - [AgentCore observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html)
-- [AWS App Runner overview](https://docs.aws.amazon.com/apprunner/latest/dg/what-is-apprunner.html)
-- [Create an App Runner service](https://docs.aws.amazon.com/apprunner/latest/dg/manage-create.html)
-- [App Runner service from an ECR image](https://docs.aws.amazon.com/apprunner/latest/dg/service-source-image.html)
-- [App Runner default and custom domains](https://docs.aws.amazon.com/apprunner/latest/dg/manage-custom-domains.html)
+- [AWS App Runner availability change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)
+- [Amazon ECS Express Mode overview](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-overview.html)
+- [Amazon ECS Express Mode considerations](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-considerations.html)

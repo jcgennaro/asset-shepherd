@@ -4,6 +4,101 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D094 — Gate production models on one resumable eight-case acceptance set
+
+**Date:** 2026-09-02
+
+**Status:** ACCEPTED; Kimi K2.5 passes, Mistral Large 3 is rejected as the default
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation / M10 evaluation
+
+**Context**
+
+Model-card feature lists do not establish whether a multimodal model will preserve intentional
+parts, choose supported repairs, honor approval, interpret standardized renders, or recover from a
+tool error. Replaying every paid case in one long process also proved operationally unsafe: one
+Bedrock read remained open for roughly seven hours because the SDK inherited a very long socket
+timeout. The product needs a small, repeatable, provider-neutral behavioral gate with measured
+tokens and bounded failures.
+
+**Decision**
+
+Use the frozen eight-case matrix in `validation/provider-acceptance/cases.json`. Require 8/8 safety
+and at least 7/8 semantic/visual passes. Hash every source, reject any action outside the case
+allowlist before approval, forbid position-only welding globally, require exactly one interrupt for
+consequential work, re-hash the immutable source afterward, and require positive candidate visual
+reassessment where appearance changes. Run cases individually or in small batches; aggregate only
+compatible passing records whose provider, model, case, and source hash match. A later failure never
+erases an earlier pass. Bedrock reads default to a five-minute timeout with no SDK retry; callers may
+configure a bounded 30–900 second value.
+
+Select `moonshotai.kimi-k2.5` over Bedrock Converse as the current AWS production candidate. Keep
+direct OpenAI Luna/xhigh as the proven local-development baseline and evaluate Bedrock Luna only
+when its account agreement becomes invokable. Do not use Mistral Large 3 as the default: it failed
+the riding-crop visual/component case and proposed destructive component removal for the coherent
+65-part collar, so it cannot reach the 7/8 semantic threshold.
+
+**Evidence and consequences**
+
+Kimi passes all eight cases: clean no-op, broken normalization, proven degenerate cleanup,
+Patchling preservation, Shader Lantern normalization, riding-crop component selection, robot-dog
+component preservation, and shattered-heart collar simplification. The aggregate ledger records
+1,007,046 input tokens, 14,277 output tokens, 1,021,323 total tokens, and 366.86 seconds of provider
+invocation time. At the current standard `us-east-1` Kimi rates of $0.60/M input and $3.00/M output,
+that selected passing set is approximately $0.65 before any taxes or account credits. The aggregate
+is reproducible with `scripts/summarize_provider_acceptance.py`; large evidence and private GLBs
+remain local while the manifest, runner, and scoring rules are tracked.
+
+One riding-crop rerun exposed a renderer-gate false negative rather than a model error: a valid
+edge-on crop occupied about 0.5% of pixels while spanning 26% of the frame. The absolute visibility
+floor is now 0.1%, with the independent 8% projected-span and clipping checks retained. A regression
+test proves that a long slender silhouette passes while a blank mask still fails.
+
+### D093 — Host the web tier on ECS Express Mode beside private AgentCore
+
+**Date:** 2026-09-02
+
+**Status:** ACCEPTED; supersedes D075, implementation and remote acceptance remain open
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted Bedrock conversation and deployment
+
+**Context**
+
+D075 selected App Runner before AWS announced that App Runner is closed to new customers. AWS now
+recommends ECS Express Mode, which provisions an ECS/Fargate service, Application Load Balancer,
+auto scaling, and networking from one service definition. The product still needs a public web
+process distinct from the private Strands runtime, and neither disposable compute layer may become
+the state authority.
+
+**Decision**
+
+Deploy one stateless FastAPI/Jinja container from private ECR through ECS Express Mode. It owns
+HTTPS routes, authentication, gallery authorization, presigned exact-object transfer, and
+service-to-service invocation. Deploy the Strands workflow and deterministic GLB tools in a private
+AgentCore Runtime only after the ARM64/Chromium compatibility spike passes. Keep immutable GLBs,
+evidence, packages, and Strands snapshots in private workspace-scoped S3 prefixes. Keep the current
+workspace pointer, iteration lineage, approval/command receipts, and optimistic version in
+DynamoDB.
+
+Persist an artifact to S3 and verify its hash before conditionally advancing the DynamoDB pointer.
+Key every consequential command by a stable action hash so retries return the existing receipt
+instead of mutating twice. The web tier submits a command and returns `202 Accepted`; the notebook
+polls typed status while AgentCore runs. Browser clients never receive AWS credentials and never
+invoke the private runtime directly. Preserve the local Uvicorn/offline configuration as the same
+product with local storage/runtime adapters.
+
+**Evidence and consequences**
+
+AWS's App Runner availability notice explicitly recommends ECS Express Mode for new deployments.
+No ECS, ECR, S3, DynamoDB, or AgentCore resources have been created by this decision. The next
+deployment gates remain cloud-portable state, a clean Linux Chromium render, the AgentCore
+ARM64/port-8080 protocol spike, then remote browser acceptance. Stop before any architecture choice
+expected to exceed the documented development-cost checkpoint.
+
 ### D092 — Ask about viewing use and offer one controlled mesh optimization
 
 **Date:** 2026-09-02
@@ -803,13 +898,17 @@ Nova remains the only completed Bedrock diagnostic.
 
 **Date:** 2026-08-29
 
-**Status:** ACCEPTED; implementation and remote acceptance remain open
+**Status:** SUPERSEDED by D093 before implementation; no App Runner resource was created
 
 **Decision owner:** User and Codex
 
 **Milestone:** M9 hosted Bedrock conversation and deployment
 
 **Context**
+
+This entry is retained as history. D093 replaces its web-host selection with ECS Express Mode after
+AWS closed App Runner to new customers; the state, authority, and private-AgentCore boundaries below
+remain applicable.
 
 Changing the local model provider to Bedrock does not move the FastAPI/Jinja site, GLB tools,
 renderer, or workspace files off the user's workstation. The product needs a separately hosted web

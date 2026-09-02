@@ -31,6 +31,7 @@ from asset_shepherd.models import (
     ProposalLane,
     ProposalResponse,
     Provenance,
+    VerificationState,
 )
 from asset_shepherd.planner import plan_agent_repairs
 from asset_shepherd.web import _inspection_checks
@@ -757,6 +758,17 @@ def test_render_evidence_rejects_blank_and_clipped_views(tmp_path: Path) -> None
         "left.png",
     }
 
+    slender_image = Image.new("RGB", (160, 160), (8, 14, 18))
+    ImageDraw.Draw(slender_image).line((40, 80, 120, 80), fill=(96, 154, 178), width=1)
+    slender_image.save(view_root / "front.png", format="PNG")
+    slender_mask = Image.new("L", (160, 160), 0)
+    ImageDraw.Draw(slender_mask).line((40, 80, 120, 80), fill=255, width=1)
+    slender_mask.save(view_root / "front.mask.png", format="PNG")
+    slender_metrics = job.validate_render_evidence(view_root, views)
+    front_metrics = cast(dict[str, dict[str, float]], slender_metrics["views"])["front.png"]
+    assert front_metrics["foreground_fraction"] < 0.005
+    assert front_metrics["projected_span_fraction"] > 0.5
+
     blank_mask = Image.new("L", (160, 160), 0)
     blank_mask.save(view_root / "front.mask.png", format="PNG")
     with pytest.raises(AgentWorkflowError, match="asset is not visible"):
@@ -1019,3 +1031,39 @@ def test_display_name_only_action_packages_without_visual_reassessment(tmp_path:
     assert job.candidate_reassessment is None
     assert all(check.code != "AGENT_VISUAL_REASSESSMENT" for check in verification.checks)
     assert (output / "result.zip").is_file()
+
+
+def test_empty_accepted_plan_is_auto_authorized_invariant_work(tmp_path: Path) -> None:
+    """A provider may end after freezing a no-op plan without stranding verification."""
+    output = tmp_path / "accepted-no-op"
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        output,
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    plan = job.register_agent_plan(
+        initiating_tool_call_id="accepted-no-op-plan-tool-call",
+        disposition="ACCEPT",
+        summary="The clean robot already satisfies its confirmed scale, pose, and structure.",
+        evidence=["Deterministic inspection and rendered evidence show no required repair."],
+        confidence=0.99,
+        semantic_height_axis=None,
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=False,
+        source_views_used=[],
+    )
+
+    assert plan.candidates == ()
+    assert job.auto_authorized_execution_available
+    outcome = job.execute(approved=None, interrupt_id=None)
+    assert outcome.executed_action_ids == ()
+    assert job.deterministic_completion_available
+    verification, result = job.verify_and_package()
+    assert verification.state is VerificationState.PASSED_PROJECT_READY
+    assert result is not None
