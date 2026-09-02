@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-02
-**Current commit:** Provider acceptance gate and ECS Express/AgentCore topology (this file is included)
+**Current commit:** AWS target architecture diagram (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -75,11 +75,13 @@ exact-mutation, invariant-verification, and packaging layer.
 
 - D093 deployment topology: only model inference currently runs in AWS. The browser, FastAPI,
   Strands loop, GLB tools, Chromium renderer, and workspace files remain local. The runbook now
-  diagrams that current topology separately from the intended AWS topology. AWS has closed App
-  Runner to new customers, so D093 supersedes D075 and selects one stateless ECS Express Mode web
-  container beside a private AgentCore Runtime, with S3 as immutable artifact/session storage and
-  DynamoDB as the conditional workspace/command pointer. No ECS, ECR, AgentCore, S3, or DynamoDB
-  resource has been deployed yet.
+  diagrams that current topology separately from the intended AWS topology. A checked-in AWS-style
+  SVG and rendered PNG now make the intended browser, ECS Express Mode, AgentCore, Bedrock, S3,
+  DynamoDB, ECR, IAM, and CloudWatch boundaries explicit for implementation and contest materials.
+  AWS has closed App Runner to new customers, so D093 supersedes D075 and selects one stateless ECS
+  Express Mode web container beside a private AgentCore Runtime, with S3 as immutable
+  artifact/session storage and DynamoDB as the conditional workspace/command pointer. No ECS, ECR,
+  AgentCore, S3, or DynamoDB resource has been deployed yet.
 
 - D092 use-case-driven controlled mesh simplification: target confirmation now asks whether the
   asset will normally be seen close-up/showcase, at ordinary gameplay distance, or

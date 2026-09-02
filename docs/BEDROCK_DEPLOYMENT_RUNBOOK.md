@@ -126,6 +126,17 @@ to CloudWatch Logs or S3 and needs an explicit privacy/retention decision.
 
 ### Intended AWS topology (not yet deployed)
 
+The following AWS-style diagram is the canonical visual for the planned production deployment.
+Its source is an editable SVG; the checked-in PNG is the presentation-ready rendered copy.
+
+![Asset Shepherd target AWS production architecture](assets/asset-shepherd-aws-architecture.svg)
+
+[Open the editable SVG](assets/asset-shepherd-aws-architecture.svg) ·
+[Open the rendered PNG](assets/asset-shepherd-aws-architecture.png)
+
+The compact Mermaid view below carries the same runtime relationships as a text-accessible
+fallback.
+
 ```mermaid
 flowchart TD
     B[Browser] --> W[FastAPI web service]
