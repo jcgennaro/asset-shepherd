@@ -4,6 +4,54 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D100 — Make deferred mesh optimization a typed, sequential repair
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation
+
+**Context**
+
+An over-budget Gemini run correctly chose physical normalization before lossy mesh simplification,
+but the only available assessment representation described that choice as though the agent had
+ignored optimization. The user then had to infer that a freeform refinement was required. Scale,
+grounding, and pivot changes are technically compatible with simplification, but combining them in
+one candidate would make a failed bounds, topology, or visual check harder to attribute and would
+let one approval authorize two materially different changes.
+
+The same review found that Chrome's generic “blocked by your organization” download message can
+appear on a personal, unmanaged Windows computer with no Chrome policies. Reviewing the relevant
+Internet Options setting through `inetcpl.cpl` restored the local GLB download.
+
+**Decision**
+
+Keep physical normalization and lossy simplification in separate candidate and verification lanes,
+but make their sequence explicit and easy. The agent may attach the typed
+`deferred_repair_kinds=["SIMPLIFY_MESH"]` marker only when it proposes a different repair first and
+the measured source exceeds the confirmed use-case cap through a safely simplifiable primitive.
+The topology row then says optimization is queued instead of saying it was not proposed.
+
+After the first candidate passes, offer **Continue to mesh optimization** as a one-click,
+candidate-based refinement and **Finish with this version** as the non-lossy exit. Continuing
+re-inspects the verified candidate and requires a fresh simplification proposal and approval; the
+first repair's approval never authorizes the second. Preserve the general freeform refinement path.
+
+Add a persistent FAQ entry to the utility navigation. It explains formats, source preservation,
+use-case triangle caps, sequential repair rationale, pivots, and cautious Windows download
+troubleshooting without claiming that the user's unmanaged machine has an organization policy.
+
+**Evidence and consequences**
+
+Typed-model tests prove current and deferred simplification cannot coexist. Agent-job validation
+rejects deferral for an asset that is already within its cap or has no safe simplification path.
+Prompt and hosted-page coverage protect the agent instruction, the FAQ, and navigation. A deferred
+second stage costs another bounded model turn only when the user explicitly continues; it is never
+silently purchased or applied.
+
 ### D099 — Canonicalize target forms and ask viewing use once
 
 **Date:** 2026-09-03

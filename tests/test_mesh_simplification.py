@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+import pytest
 import trimesh
 
 from asset_shepherd.fixtures import fixture_profile
@@ -67,6 +68,29 @@ def test_viewing_use_maps_to_the_three_product_triangle_caps() -> None:
         AssetViewingUse.NORMAL_GAMEPLAY: 15_000,
         AssetViewingUse.SMALL_DISTANT_REPEATED: 2_500,
     }
+
+
+def test_model_can_defer_simplification_behind_a_separate_physical_turn() -> None:
+    """A typed deferral queues the next lane without combining approval authority."""
+    assessment = AgentRepairAssessment(
+        assessment_id="assessment-8877665544332211-v1",
+        disposition=AgentDisposition.REPAIR,
+        summary="Normalize this oversized asset first, then review its excessive mesh complexity.",
+        evidence=("The model is oversized and exceeds its confirmed triangle cap.",),
+        confidence=1.0,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=True,
+        deferred_repair_kinds=("SIMPLIFY_MESH",),
+        source_views_used=("source-front.png",),
+    )
+
+    assert assessment.simplify_mesh is False
+    assert assessment.deferred_repair_kinds == ("SIMPLIFY_MESH",)
+
+    with pytest.raises(ValueError, match="both current and deferred"):
+        AgentRepairAssessment.model_validate(
+            {**assessment.model_dump(mode="python"), "simplify_mesh": True}
+        )
 
 
 def test_approved_simplification_reduces_and_independently_verifies(tmp_path: Path) -> None:

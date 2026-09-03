@@ -1284,7 +1284,14 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "Add comment…" in workspace_template
     assert "Download current" in workspace_template
     assert "data-plan-comment-panel hidden" in workspace_template
-    assert workspace_template.count("data-pending-user-turn") == 3
+    assert workspace_template.count("data-pending-user-turn") == 4
+    assert "Continue to mesh optimization" in workspace_template
+    assert "Finish with this version" in workspace_template
+    assert 'name="continue_from" value="candidate"' in workspace_template
+    assert (
+        "deferred_simplification and can_continue and workspace.ready_candidate"
+        in workspace_template
+    )
     assert 'data-user-turn-field="feedback"' in workspace_template
     assert "Use this version" in workspace_template
     assert ">Refine…</summary>" in workspace_template

@@ -252,10 +252,19 @@
                 {% if comparison_scene and not workspace.ready_candidate %}
                   <a class="secondary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download title="Automated verification rejected this candidate; download it for human review">Download candidate</a>
                 {% endif %}
+                {% if deferred_simplification and can_continue and workspace.ready_candidate %}
+                  <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback">
+                    <input type="hidden" name="command_id" value="{{ command_id }}">
+                    <input type="hidden" name="decision" value="continue">
+                    <input type="hidden" name="continue_from" value="candidate">
+                    <input type="hidden" name="feedback" value="Continue with the mesh optimization Asset Shepherd identified for the verified candidate.">
+                    <button type="submit" class="primary-button" data-submit-button>Continue to mesh optimization <span aria-hidden="true">→</span></button>
+                  </form>
+                {% endif %}
                 <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-result-accept>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
                   <input type="hidden" name="decision" value="accept">
-                  <button type="submit" class="primary-button">Use this version</button>
+                  <button type="submit" class="{% if deferred_simplification and can_continue and workspace.ready_candidate %}secondary-button{% else %}primary-button{% endif %}">{% if deferred_simplification and can_continue and workspace.ready_candidate %}Finish with this version{% else %}Use this version{% endif %}</button>
                 </form>
                 {% if can_continue %}
                   <details>

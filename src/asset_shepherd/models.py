@@ -859,6 +859,7 @@ class AgentRepairAssessment(ContractModel):
     weld_identical_vertices: bool = False
     clean_degenerate_geometry: bool = False
     simplify_mesh: bool = False
+    deferred_repair_kinds: tuple[Literal["SIMPLIFY_MESH"], ...] = ()
     remove_component_ids: tuple[str, ...] = ()
     source_views_used: tuple[str, ...] = ()
 
@@ -902,6 +903,8 @@ class AgentRepairAssessment(ContractModel):
             raise ValueError(
                 "Vertex-tuple welding and degenerate cleanup require separate repair turns"
             )
+        if self.simplify_mesh and self.deferred_repair_kinds:
+            raise ValueError("Mesh simplification cannot be both current and deferred")
         if self.simplify_mesh and any(
             (
                 self.weld_identical_vertices,
@@ -917,6 +920,24 @@ class AgentRepairAssessment(ContractModel):
                 "Mesh simplification requires its own repair turn so its visual and geometric "
                 "effects can be verified independently"
             )
+        if len(self.deferred_repair_kinds) != len(set(self.deferred_repair_kinds)):
+            raise ValueError("Deferred repair kinds must be unique")
+        if self.deferred_repair_kinds:
+            separate_current_action = any(
+                (
+                    self.weld_identical_vertices,
+                    self.clean_degenerate_geometry,
+                    bool(self.remove_component_ids),
+                    self.scale_to_confirmed_height,
+                    self.rotation_degrees != 0,
+                    self.ground_to_y_zero,
+                    self.pivot_target != "PRESERVE",
+                )
+            )
+            if self.disposition is not AgentDisposition.REPAIR or not separate_current_action:
+                raise ValueError(
+                    "A deferred mesh simplification requires a separate current repair action"
+                )
         if len(self.remove_component_ids) != len(set(self.remove_component_ids)):
             raise ValueError("Disconnected component IDs must be unique")
         if self.remove_component_ids and (
@@ -1327,7 +1348,7 @@ class AgentWorkflowResult(ContractModel):
     """Structured agent result kept outside the contracted deterministic ZIP."""
 
     schema_version: Literal[1] = 1
-    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] = 16
+    prompt_version: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17] = 17
     job_result: JobResult
     user_message: str
     metrics: AgentMetrics

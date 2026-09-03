@@ -5,7 +5,7 @@
 **Hackathon:** Agents for Humans  
 **Submission deadline:** September 14, 2026 at 5:00 p.m. Pacific  
 **Internal submission target:** September 13, 2026  
-**Document version:** 2.3
+**Document version:** 2.4
 **Controlling status:** Approved project contract once committed by the user  
 **Approved amendments:** D019 conversation-led hosted workspace, D021 parameterized policy family,
 D022 minimum target-intake contract, D023 provider-neutral semantic intake, D036 agent-orchestrated
@@ -14,7 +14,7 @@ handling, D048 attribute-seam presentation, D049 subtitle-free task screens and 
 normalization, D050 proportional target-box fitting and weld disclosure, D053 bounded
 agent-selected pivot placement, D064 source-bound measured pivot anchors, D065 agent-message
 identity, D077 per-asset model-neutral Bedrock allowlist, and D092 use-case-driven controlled mesh
-simplification, through 2026-09-02
+simplification, and D100 typed sequential repair continuation, through 2026-09-03
 
 ---
 

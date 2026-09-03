@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="how-page faq-page" data-focus-area="frequently asked questions" aria-label="Frequently asked questions">
+    <header class="how-hero">
+      <p class="conversation-prompt">Quick answers about supported assets, repairs, optimization, and downloads.</p>
+    </header>
+
+    <div class="faq-list">
+      <details>
+        <summary>Which 3D file formats can I upload?</summary>
+        <div class="faq-answer">
+          <p>Asset Shepherd currently accepts one static-mesh <code>.glb</code> file up to 50 MB. FBX support is in development; loose <code>.gltf</code> packages, OBJ, ZIP archives, animation, skinning, and morph-target repair are not part of the current workflow.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Does Asset Shepherd overwrite my original model?</summary>
+        <div class="faq-answer">
+          <p>No. The uploaded source remains unchanged. Every repair creates a separate candidate, and you can preserve the original instead of accepting a proposed change.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>What do Hero, Normal gameplay, and Background / repeated change?</summary>
+        <div class="faq-answer">
+          <p>They describe how closely players will normally see the asset. Asset Shepherd translates that use case into a soft complexity target: up to 50,000 triangles for Hero / close-up, 15,000 for Normal gameplay, or 2,500 for Background / repeated. If a safe optimization is available, it is proposed for your approval; you can always preserve the original detail.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Why can scaling and mesh optimization happen in separate turns?</summary>
+        <div class="faq-answer">
+          <p>They are technically compatible, but they affect different evidence. Scaling and pivot placement change the model’s bounds and placement; simplification changes topology and may affect its silhouette, normals, UV seams, named parts, and file size. Asset Shepherd verifies them separately so a failed check has one attributable cause and each lossy change remains independently reviewable. When both are useful, optimization should be offered as the next refinement rather than silently omitted.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Why did Chrome say a GLB download was “blocked by your organization” on my personal PC?</summary>
+        <div class="faq-answer">
+          <p>Chrome can use that generic wording even on a personal, unmanaged computer with no Chrome policies. Windows Internet Options, local security software, or Chrome’s own download protection can prevent the save without identifying an actual organization.</p>
+          <p>On Windows, open Internet Options by pressing <kbd>Win</kbd>+<kbd>R</kbd>, entering <code>inetcpl.cpl</code>, and pressing Enter. Review the active zone under <strong>Security → Custom level</strong>, including its download settings. Adjusting the relevant Internet Options setting resolved the problem in our local Chrome test even though the computer was personal and the browser reported no management or policies. Change only a setting you understand, and do not lower unrelated security protections. You can also inspect <code>chrome://management</code> and <code>chrome://policy</code> to rule out a named policy.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>Why does Asset Shepherd sometimes keep the pivot at the bottom instead of the center?</summary>
+        <div class="faq-answer">
+          <p>A footprint-center pivot makes characters, furniture, and grounded props easier to place on a floor. Bounds-center is often better for handheld, suspended, or freely rotating objects. The agent chooses from measured pivot anchors based on the described use, and you can request a different supported anchor in a refinement.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="how-finish">
+      <a class="primary-button how-cta" href="{{ url_for('hosted_home') }}">Return to gallery <span aria-hidden="true">↵</span></a>
+    </div>
+  </section>
+{% endblock %}

@@ -34,6 +34,15 @@
       "title": "Confidence",
       "type": "number"
     },
+    "deferred_repair_kinds": {
+      "default": [],
+      "items": {
+        "const": "SIMPLIFY_MESH",
+        "type": "string"
+      },
+      "title": "Deferred Repair Kinds",
+      "type": "array"
+    },
     "disposition": {
       "$ref": "#/$defs/AgentDisposition"
     },

@@ -798,6 +798,86 @@ a.rail-primary-option:focus-visible,
   text-decoration: none;
 }
 
+.faq-list {
+  display: grid;
+  margin-top: clamp(36px, 6vh, 64px);
+  border-top: 1px solid var(--line-strong);
+}
+
+.faq-list details {
+  border-bottom: 1px solid var(--line);
+}
+
+.faq-list summary {
+  display: grid;
+  min-height: 88px;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 4px;
+  color: var(--text);
+  font-size: clamp(1.1rem, 1.65vw, 1.45rem);
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-list summary::after {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--accent);
+  content: "+";
+}
+
+.faq-list details[open] summary::after {
+  content: "−";
+}
+
+.faq-list summary:hover,
+.faq-list summary:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.faq-answer {
+  max-width: 880px;
+  padding: 0 52px 24px 4px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.faq-answer p {
+  margin: 0;
+}
+
+.faq-answer p + p {
+  margin-top: 12px;
+}
+
+.faq-answer code,
+.faq-answer kbd {
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.faq-answer kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
 .intent-stage {
   width: 100%;
   margin: clamp(16px, 3vh, 40px) 0 0;

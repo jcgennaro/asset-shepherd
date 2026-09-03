@@ -1,6 +1,6 @@
 """D036 tests for model-authored target-dependent action previews."""
 
-# pyright: reportPrivateUsage=false
+# pyright: reportMissingTypeStubs=false, reportPrivateUsage=false, reportUnknownMemberType=false
 
 import json
 from datetime import UTC, datetime
@@ -10,6 +10,7 @@ from zipfile import ZipFile
 
 import numpy as np
 import pytest
+import trimesh
 from PIL import Image, ImageDraw
 
 from asset_shepherd.agent_job import (
@@ -24,6 +25,7 @@ from asset_shepherd.models import (
     AgentRepairAssessment,
     AssetIntentProvenance,
     AssetTargetUse,
+    AssetViewingUse,
     Bounds3D,
     NormalizationPayload,
     ProjectProfile,
@@ -300,6 +302,62 @@ def test_executed_action_without_verification_is_presented_as_interrupted(
     assert size_and_pose.action.startswith("Applied — verification has not completed")
     assert display_names.status_label == "Verification interrupted"
     assert display_names.action.startswith("Applied — verification has not completed")
+
+
+def test_deferred_simplification_is_presented_as_the_next_separate_refinement(
+    tmp_path: Path,
+) -> None:
+    """An agent-authored deferral is visible instead of looking like an omission."""
+    source = tmp_path / "source.glb"
+    source.write_bytes(
+        cast(
+            bytes, trimesh.Scene(trimesh.creation.icosphere(subdivisions=5)).export(file_type="glb")
+        )
+    )
+    source_gltf = load_glb(source)
+    assert source_gltf.meshes is not None
+    assert source_gltf.nodes is not None
+    source_gltf.meshes[0].name = "Mesh_000"
+    source_gltf.nodes[0].name = "Node_000"
+    save_glb(source_gltf, source)
+    profile = _profile()
+    profile = profile.model_copy(
+        update={"budgets": profile.budgets.model_copy(update={"max_triangles": 10})}
+    )
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text(profile.model_dump_json(indent=2), encoding="utf-8")
+    output = tmp_path / "output"
+    job = AgentJob(
+        source,
+        profile_path,
+        output,
+        asset_intent=_intent(height_cm=360.0).model_copy(
+            update={"viewing_use": AssetViewingUse.NORMAL_GAMEPLAY}
+        ),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+    job.register_agent_plan(
+        initiating_tool_call_id="sequential-repair-plan",
+        disposition="REPAIR",
+        summary="Normalize the asset first, then simplify its excessive geometry separately.",
+        evidence=["The asset is oversized and exceeds its confirmed complexity cap."],
+        confidence=0.95,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=True,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=False,
+        deferred_repair_kinds=["SIMPLIFY_MESH"],
+        source_views_used=["front.png", "right.png", "back.png"],
+    )
+
+    topology = _inspection_checks(job)[2]
+
+    assert "Mesh optimization is queued as the next separate refinement" in topology.action
+    assert "agent did not propose optimization" not in topology.action
 
 
 def test_approximate_target_box_uses_one_robust_uniform_scale() -> None:

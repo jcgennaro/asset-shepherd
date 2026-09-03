@@ -151,8 +151,16 @@ choose technical reduction settings. Shepherd lets the Strands agent choose sens
 propose typed repairs. The user reviews consequential changes; the selected input or candidate can
 then enter as many numbered Refine iterations as needed before download.
 
+The in-product **FAQ** covers supported formats, source preservation, viewing-use mesh targets,
+sequential repair verification, pivot choices, and Windows download troubleshooting. If Chrome
+claims a GLB is “blocked by your organization” on an unmanaged personal PC, the FAQ records the
+`inetcpl.cpl` Internet Options check that resolved the local test without suggesting that users
+disable unrelated security protections.
+
 When a supported mesh exceeds the confirmed cap, the agent may propose one controlled lossy
-optimization. The original remains immutable and the user can reject the proposal to preserve full
+optimization. If another consequential repair must run first, the agent records optimization as a
+typed deferred stage and the verified candidate offers a one-click continuation into its separate
+proposal. The original remains immutable and the user can reject the proposal to preserve full
 detail. The deterministic reducer protects small components, original attribute tuples, UVs,
 normals, materials, names, and bounds, then reports measured—not predicted—triangle and file-size
 changes. Preservation limits may make the safe result larger than the soft cap.

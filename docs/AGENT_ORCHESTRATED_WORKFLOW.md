@@ -344,6 +344,14 @@ the original detail. The reducer treats original exact components separately, pr
 below 1,000 triangles, retains original complete attribute tuples, and may stop above the cap rather
 than cross a preservation limit. It never silently substitutes its own reduction ratio.
 
+When the agent judges that a different consequential repair should run first, it records
+`SIMPLIFY_MESH` as a typed deferred repair rather than silently omitting optimization or combining
+two independently reviewable changes. After the first candidate passes verification, the result
+cell offers one context-specific continuation from that candidate. Continuing starts a fresh
+simplification-only refinement with new sensing, evidence, proposal, approval, and verification;
+finishing with the first candidate remains available. Approval of the first repair never authorizes
+the later lossy simplification.
+
 After execution the agent must review fresh source, candidate, and shared-scale visual evidence.
 Independent verification reports actual triangles and exported bytes, checks a maximum two-percent
 bounds drift, proves protected small components remain exact, and confirms that the bounded

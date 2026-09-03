@@ -2216,6 +2216,12 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 f"triangles exceeds the {triangle_soft_cap:,}-triangle {viewing_use_name} "
                 "soft cap."
             )
+        elif "SIMPLIFY_MESH" in assessment.deferred_repair_kinds:
+            complexity_action = (
+                f"Mesh optimization is queued as the next separate refinement — "
+                f"{source_triangle_count:,} triangles exceeds the {triangle_soft_cap:,}-triangle "
+                f"{viewing_use_name} soft cap."
+            )
         elif any(primitive.mesh_simplification_safe for primitive in diagnostic_primitives):
             complexity_action = (
                 f"Mesh detail preserved this turn — {source_triangle_count:,} triangles exceeds "
@@ -3719,6 +3725,11 @@ def create_app(
                     and runtime_job.turns_remaining > 0
                 ),
                 "has_candidate": bool(runtime_job and _has_next_turn_candidate(runtime_job)),
+                "deferred_simplification": bool(
+                    runtime_job
+                    and runtime_job.agent_assessment is not None
+                    and "SIMPLIFY_MESH" in runtime_job.agent_assessment.deferred_repair_kinds
+                ),
                 "can_retry_iteration": bool(
                     runtime_job
                     and runtime_job.agent_orchestrated
@@ -3888,6 +3899,18 @@ def create_app(
             context={
                 "active_mode": "capabilities",
                 "active_style": "What it does",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def faq(request: Request) -> Response:
+        """Answer common product and troubleshooting questions."""
+        return templates.TemplateResponse(
+            request=request,
+            name="faq.html",
+            context={
+                "active_mode": "faq",
+                "active_style": "FAQ",
             },
             headers={"Cache-Control": "no-store"},
         )
@@ -5111,6 +5134,13 @@ def create_app(
         methods=["GET"],
         response_class=HTMLResponse,
         name="what_it_does",
+    )
+    app.add_api_route(
+        "/faq",
+        faq,
+        methods=["GET"],
+        response_class=HTMLResponse,
+        name="faq",
     )
     app.add_api_route(
         "/feedback",

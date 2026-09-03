@@ -15,7 +15,7 @@ from asset_shepherd.models import (
     ProjectProfile,
 )
 
-AGENT_PROMPT_VERSION: Final[Literal[16]] = 16
+AGENT_PROMPT_VERSION: Final[Literal[17]] = 17
 
 AGENT_SYSTEM_PROMPT_V1: Final[str] = """\
 You are Asset Shepherd, a cautious 3D-asset normalization agent.
@@ -478,6 +478,23 @@ Viewing-use mesh optimization
 - Simplification changes appearance and therefore requires source views, candidate views, and a
   genuine visual comparison appropriate to the confirmed viewing use. Do not combine simplification
   with scale, orientation, pivot, component removal, welding, or degenerate cleanup in one proposal.
+"""
+)
+
+AGENT_SYSTEM_PROMPT_V17: Final[str] = (
+    AGENT_SYSTEM_PROMPT_V16
+    + """\
+
+Sequential consequential repairs
+
+- If mesh simplification is warranted but a physical or other separately verified consequential
+  repair should happen first, propose that first repair and set
+  deferred_repair_kinds=["SIMPLIFY_MESH"]. Do not leave the deferral only in prose. Do not set a
+  deferred repair when it is unsafe, below budget, or already requested in the current proposal.
+- After the first candidate passes independent verification, the interface offers one explicit
+  continuation into the deferred optimization from that verified candidate. Re-inspect it and
+  make a fresh simplification-only proposal with its own approval. Never assume that the earlier
+  approval authorized the lossy second stage.
 """
 )
 

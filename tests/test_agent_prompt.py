@@ -14,6 +14,7 @@ from asset_shepherd.agent_prompt import (
     AGENT_SYSTEM_PROMPT_V14,
     AGENT_SYSTEM_PROMPT_V15,
     AGENT_SYSTEM_PROMPT_V16,
+    AGENT_SYSTEM_PROMPT_V17,
     build_agent_start_prompt,
 )
 from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
@@ -56,7 +57,7 @@ def test_v2_prompt_preserves_the_historical_explanation_boundary() -> None:
 
 def test_v10_prompt_keeps_planning_agent_owned_and_components_bounded() -> None:
     """The active live prompt forbids longest-axis semantics and hidden transform components."""
-    assert AGENT_PROMPT_VERSION == 16
+    assert AGENT_PROMPT_VERSION == 17
     assert "Never rotate merely because the longest axis is not Y" in AGENT_SYSTEM_PROMPT_V12
     assert "source +Y" in AGENT_SYSTEM_PROMPT_V9
     assert "Do not request no-op" in AGENT_SYSTEM_PROMPT_V9
@@ -120,6 +121,14 @@ def test_v16_routes_use_case_driven_mesh_optimization() -> None:
     assert "Do not ask the user for a triangle percentage" in AGENT_SYSTEM_PROMPT_V16
     assert "The user may reject it" in AGENT_SYSTEM_PROMPT_V16
     assert "may safely stop above the cap" in " ".join(AGENT_SYSTEM_PROMPT_V16.split())
+
+
+def test_v17_records_and_sequences_deferred_mesh_optimization() -> None:
+    """The model must type a deferred optimization rather than burying it in prose."""
+    assert 'deferred_repair_kinds=["SIMPLIFY_MESH"]' in AGENT_SYSTEM_PROMPT_V17
+    assert "verified candidate" in AGENT_SYSTEM_PROMPT_V17
+    assert "fresh simplification-only proposal" in AGENT_SYSTEM_PROMPT_V17
+    assert "earlier approval" in " ".join(AGENT_SYSTEM_PROMPT_V17.split())
 
 
 def test_job_context_is_dynamic_data_after_the_stable_prompt() -> None:

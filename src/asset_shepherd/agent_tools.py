@@ -281,6 +281,7 @@ class AssetShepherdTools:
         weld_identical_vertices: bool = False,
         clean_degenerate_geometry: bool = False,
         simplify_mesh: bool = False,
+        deferred_repair_kinds: list[Literal["SIMPLIFY_MESH"]] | None = None,
         remove_component_ids: list[str] | None = None,
         source_views_used: list[str] | None = None,
     ) -> dict[str, Any]:
@@ -319,6 +320,10 @@ class AssetShepherdTools:
                 separately approved action selects original complete vertex tuples, protects exact
                 components below 1,000 triangles, and may stop above the cap when preservation
                 limits bind. Never combine it with another topology or physical action.
+            deferred_repair_kinds: Set to ["SIMPLIFY_MESH"] only when this assessment finds mesh
+                optimization warranted but proposes another required consequential repair first.
+                The verified candidate can then enter a separate optimization turn without asking
+                the user to invent a refinement prompt.
             remove_component_ids: Exact inspected component IDs the agent proposes removing after
                 comparing the confirmed semantic piece count, structured inventory, and all four
                 source views. Disconnected does not mean unwanted. Near-contact groups are hints
@@ -350,6 +355,7 @@ class AssetShepherdTools:
             weld_identical_vertices=weld_identical_vertices,
             clean_degenerate_geometry=clean_degenerate_geometry,
             simplify_mesh=simplify_mesh,
+            deferred_repair_kinds=deferred_repair_kinds,
             remove_component_ids=remove_component_ids,
             source_views_used=source_views_used or [],
         )

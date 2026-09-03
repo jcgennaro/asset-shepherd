@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-03
-**Current commit:** Canonical target-form recovery and single viewing-use prompt (this file is included)
+**Current commit:** Typed sequential repair continuation and user-facing FAQ (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -56,6 +56,18 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D100 typed sequential repair continuation and FAQ: an agent that selects physical normalization
+  before an independently lossy optimization now records `SIMPLIFY_MESH` in a validated deferred
+  repair field. The topology row identifies the queued work, and a verified candidate offers
+  **Continue to mesh optimization** or **Finish with this version**. Continuing uses the candidate
+  as a fresh refinement input with separate sensing, proposal, approval, and verification; the
+  first approval cannot authorize the simplification. A persistent FAQ explains the use-case caps,
+  repair sequencing, pivot behavior, source preservation, formats, and the Windows Internet
+  Options remedy that restored a GLB download on an unmanaged personal computer with no Chrome
+  policies. Targeted prompt, model, schema, and hosted-web coverage passes; common-gate evidence is
+  238 passing tests with two intentional live-provider skips, lock validation, Ruff, formatting,
+  and zero Pyright findings.
 
 - D099 target-form recovery: saved Gemini workspace `d53910f6f898440b8b447a9801ad9b5e`
   remained valid after a clarification request failed because a browser-restored Other-destination

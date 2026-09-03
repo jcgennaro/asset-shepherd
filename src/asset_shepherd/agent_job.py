@@ -1155,6 +1155,7 @@ class AgentJob:
         weld_identical_vertices: bool = False,
         clean_degenerate_geometry: bool = False,
         simplify_mesh: bool = False,
+        deferred_repair_kinds: list[Literal["SIMPLIFY_MESH"]] | None = None,
         remove_component_ids: list[str] | None = None,
         pivot_target: Literal[
             "PRESERVE", "BOUNDS_CENTER", "FOOTPRINT_CENTER_BOTTOM", "MEASURED_ANCHOR"
@@ -1182,8 +1183,12 @@ class AgentJob:
             )
         )
         requested_component_ids = remove_component_ids or []
+        requested_deferred_repairs = deferred_repair_kinds or []
         visual_evidence_requested = (
-            physical_requested or bool(requested_component_ids) or simplify_mesh
+            physical_requested
+            or bool(requested_component_ids)
+            or simplify_mesh
+            or bool(requested_deferred_repairs)
         )
         # Report-only and return-to-creation conclusions may still rely on rendered
         # evidence. Validate any cited views even when no mutation is requested.
@@ -1271,6 +1276,7 @@ class AgentJob:
             "weld_identical_vertices": weld_identical_vertices,
             "clean_degenerate_geometry": clean_degenerate_geometry,
             "simplify_mesh": simplify_mesh,
+            "deferred_repair_kinds": requested_deferred_repairs,
             "remove_component_ids": requested_component_ids,
             "source_views_used": source_views_used,
         }
@@ -1297,9 +1303,24 @@ class AgentJob:
             weld_identical_vertices=weld_identical_vertices,
             clean_degenerate_geometry=clean_degenerate_geometry,
             simplify_mesh=simplify_mesh,
+            deferred_repair_kinds=tuple(requested_deferred_repairs),
             remove_component_ids=tuple(requested_component_ids),
             source_views_used=tuple(source_views_used),
         )
+        if requested_deferred_repairs:
+            if (
+                self.inspection.geometry is None
+                or self.inspection.geometry.triangle_count <= self.profile.budgets.max_triangles
+                or self.inspection.diagnostics is None
+                or not any(
+                    primitive.mesh_simplification_safe and primitive.valid_triangle_count > 1
+                    for primitive in self.inspection.diagnostics.primitives
+                )
+            ):
+                raise AgentWorkflowError(
+                    "Deferred mesh simplification requires a measured over-budget, safely "
+                    "simplifiable source"
+                )
         plan = plan_agent_repairs(
             self.inspection,
             self.profile,

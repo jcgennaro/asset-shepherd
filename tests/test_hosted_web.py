@@ -236,11 +236,25 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Choose or drop your GLB" not in entry.text
     assert ">Gallery</strong>" in entry.text
     assert ">Workflow</strong>" in entry.text
+    assert 'href="/faq"' in entry.text
+    assert ">FAQ</span>" in entry.text
     assert 'aria-label="Workflow steps"' not in entry.text
     assert "Use the form-led reference workflow instead" not in entry.text
     assert "durable workspace" not in entry.text
     assert "only your description is sent" not in entry.text
     assert entry.text.count('data-focus-area="') == 1
+
+    faq = client.get("/faq")
+    assert faq.status_code == 200
+    assert "Asset Shepherd -- FAQ" in faq.text
+    assert "blocked by your organization" in faq.text
+    assert "inetcpl.cpl" in faq.text
+    assert "no Chrome policies" in faq.text
+    assert "Security → Custom level" in faq.text
+    assert "download settings" in faq.text
+    assert "50,000 triangles" in faq.text
+    assert "optimization should be offered as the next refinement" in faq.text
+    assert 'aria-label="Frequently asked questions"' in faq.text
 
     upload = client.get("/workspace/new/upload")
     assert upload.status_code == 200
