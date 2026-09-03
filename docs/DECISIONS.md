@@ -4,6 +4,58 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D095 — Add Muse Spark 1.3 as an explicit Meta evaluation comparator
+
+**Date:** 2026-09-02
+
+**Status:** ACCEPTED for opt-in evaluation; not selected for AWS production
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation / M10 evaluation
+
+**Context**
+
+Meta released Muse Spark 1.3 with multimodal input, tool use, structured output, and a documented
+OpenAI-compatible Responses endpoint. It is not an Amazon Bedrock model, but Strands can use a
+custom OpenAI-compatible provider. The user wants a bounded comparison against the same Asset
+Shepherd evidence and tool contract. For this local test, the user explicitly chose Meta's cheaper
+Contributor model and accepted that Meta may use the evaluation inputs and outputs for model
+improvement. That consent does not extend to production or to arbitrary user assets.
+
+**Decision**
+
+Add `meta` as an opt-in provider with the reviewed endpoint `https://api.meta.ai/v1`. Permit only
+`muse-spark-1.3` by default. Permit `muse-spark-1.3-contributor` only when the exact model ID is paired
+with `ASSET_SHEPHERD_ALLOW_META_TRAINING=1`; otherwise fail closed. Keep the Meta key in the same
+Windows current-user DPAPI pattern as the OpenAI development key and expose it only to the launched
+child process. Normalize requested `xhigh` to Meta's effective `high` maximum. Move standardized
+render images into user messages at the provider boundary because Meta accepts image blocks there,
+not inside tool-output messages.
+
+Use the Contributor endpoint only for explicitly designated local evaluation assets. If Meta is
+ever selected for production, use `muse-spark-1.3` without the training flag, place the credential
+in an approved secret store, and separately approve outbound AgentCore networking and the resulting
+non-Bedrock architecture. D094 remains controlling: Kimi K2.5 over Bedrock Converse is still the
+current AWS production candidate, and Muse has not passed the full eight-case release gate.
+
+**Evidence and consequences**
+
+Three live Contributor/high cases completed through the unchanged Strands tools and deterministic
+verification:
+
+| Case | Result | Input / output tokens | Provider time | Approx. Contributor cost |
+|---|---|---:|---:|---:|
+| Clean control | Passed; no repair required | 323,527 / 4,092 | 119.57 s | $0.0332 |
+| Riding-crop component selection | Passed; kept the intended center component and removed the two extras | 139,300 / 4,058 | 120.81 s | $0.0147 |
+| Robot-dog component preservation | Passed; preserved all five intentional forms while scaling and renaming | 149,124 / 6,153 | 175.51 s | $0.0161 |
+
+The sample totals 611,951 input and 14,303 output tokens over 415.88 provider seconds, approximately
+$0.0641 at the user-selected Contributor rates of $0.10/M input and $0.20/M output. It demonstrates
+basic multimodal and tool-contract compatibility, including both component removal and intentional
+component preservation. It does not establish an eight-case pass, a general quality advantage, or
+a production privacy decision.
+
 ### D094 — Gate production models on one resumable eight-case acceptance set
 
 **Date:** 2026-09-02

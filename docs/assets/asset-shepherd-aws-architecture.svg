@@ -1,19 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1120" viewBox="0 0 1800 1120" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100" role="img" aria-labelledby="title description">
   <title id="title">Asset Shepherd target AWS production architecture</title>
-  <desc id="description">A planned contest deployment with users entering through an ECS Express Mode FastAPI web service, a private AgentCore Runtime running the Strands agent and deterministic GLB tools, Bedrock Kimi inference, S3 artifact storage, DynamoDB workflow state, ECR images, IAM roles, and CloudWatch observability.</desc>
+  <desc id="description">Planned, not-yet-deployed AWS topology. A browser reaches a stateless ECS Express Mode web service, which privately invokes an AgentCore Runtime containing the Strands agent and deterministic GLB tools. Bedrock provides Kimi inference; S3 holds immutable artifacts and snapshots; DynamoDB coordinates conditional workflow state; ECR, IAM, and CloudWatch support deployment, identity, and observability.</desc>
   <defs>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#17212b" flood-opacity="0.14"/>
-    </filter>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#263645"/>
-    </marker>
-    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#147eba"/>
-    </marker>
-    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#7b42c3"/>
-    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#17212b" flood-opacity="0.14"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#263645"/></marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#147eba"/></marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#7b42c3"/></marker>
     <style>
       .title { font: 700 34px Inter, "Segoe UI", Arial, sans-serif; fill: #17212b; }
       .subtitle { font: 400 18px Inter, "Segoe UI", Arial, sans-serif; fill: #526170; }
@@ -24,8 +16,8 @@
       .service-copy-strong { font: 600 14px Inter, "Segoe UI", Arial, sans-serif; fill: #263645; }
       .icon-letter { font: 800 17px Inter, "Segoe UI", Arial, sans-serif; fill: white; text-anchor: middle; dominant-baseline: middle; }
       .connector { fill: none; stroke: #263645; stroke-width: 2.2; marker-end: url(#arrow); }
+      .connector-purple { fill: none; stroke: #7b42c3; stroke-width: 2.3; marker-end: url(#arrowPurple); }
       .connector-blue { fill: none; stroke: #147eba; stroke-width: 2.5; stroke-dasharray: 9 7; marker-end: url(#arrowBlue); }
-      .connector-purple { fill: none; stroke: #7b42c3; stroke-width: 2.2; marker-end: url(#arrowPurple); }
       .deployment { fill: none; stroke: #697786; stroke-width: 2; stroke-dasharray: 7 7; marker-end: url(#arrow); }
       .connector-label { font: 600 13px Inter, "Segoe UI", Arial, sans-serif; fill: #263645; paint-order: stroke; stroke: white; stroke-width: 5; stroke-linejoin: round; }
       .connector-label-blue { font: 600 14px Inter, "Segoe UI", Arial, sans-serif; fill: #147eba; paint-order: stroke; stroke: white; stroke-width: 6; stroke-linejoin: round; }
@@ -34,159 +26,134 @@
     </style>
   </defs>
 
-  <rect width="1800" height="1120" fill="#f7f8fa"/>
+  <rect width="1800" height="1100" fill="#f7f8fa"/>
   <text class="title" x="34" y="52">Asset Shepherd — Target AWS Production Architecture</text>
-  <text class="subtitle" x="34" y="82">Planned contest deployment • one typed workflow across local and AWS configurations</text>
+  <text class="subtitle" x="34" y="82">Planned topology • current application remains local • no AWS resources deployed</text>
   <g transform="translate(1518 30)">
     <rect width="248" height="48" rx="24" fill="#fff3cd" stroke="#d69e00" stroke-width="1.5"/>
     <circle cx="25" cy="24" r="8" fill="#d69e00"/>
     <text x="45" y="30" font-family="Inter, Segoe UI, Arial" font-size="15" font-weight="700" fill="#704b00">TARGET • NOT YET DEPLOYED</text>
   </g>
 
-  <!-- AWS Cloud -->
-  <rect x="180" y="115" width="1585" height="955" rx="4" fill="#ffffff" stroke="#232f3e" stroke-width="2.5"/>
-  <rect x="180" y="115" width="46" height="46" fill="#232f3e"/>
-  <text x="203" y="139" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="13" font-weight="700" fill="#ffffff">aws</text>
-  <text class="cloud-label" x="240" y="144">AWS Cloud • us-east-1</text>
+  <!-- Planned AWS boundary -->
+  <rect x="170" y="115" width="1595" height="930" rx="4" fill="#ffffff" stroke="#232f3e" stroke-width="2.5"/>
+  <rect x="170" y="115" width="46" height="46" fill="#232f3e"/>
+  <text x="193" y="139" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="13" font-weight="700" fill="#ffffff">aws</text>
+  <text class="cloud-label" x="230" y="144">AWS Cloud • target region: us-east-1</text>
 
-  <!-- Users / browser outside AWS -->
-  <g transform="translate(20 285)">
-    <rect width="138" height="220" rx="16" fill="#ffffff" stroke="#6b7885" stroke-width="1.7" filter="url(#shadow)"/>
-    <circle cx="69" cy="45" r="18" fill="none" stroke="#263645" stroke-width="3"/>
-    <path d="M34 100 C37 70, 101 70, 104 100" fill="none" stroke="#263645" stroke-width="3" stroke-linecap="round"/>
-    <rect x="25" y="117" width="88" height="54" rx="5" fill="none" stroke="#263645" stroke-width="3"/>
-    <path d="M17 180 H121" stroke="#263645" stroke-width="3" stroke-linecap="round"/>
-    <text class="service-title" x="69" y="205" text-anchor="middle">Users</text>
-    <text class="service-copy" x="69" y="224" text-anchor="middle">Web browser</text>
+  <!-- Browser outside AWS -->
+  <g transform="translate(20 330)">
+    <rect width="126" height="218" rx="16" fill="#ffffff" stroke="#6b7885" stroke-width="1.7" filter="url(#shadow)"/>
+    <circle cx="63" cy="42" r="18" fill="none" stroke="#263645" stroke-width="3"/>
+    <path d="M29 96 C32 67, 94 67, 97 96" fill="none" stroke="#263645" stroke-width="3" stroke-linecap="round"/>
+    <rect x="21" y="108" width="84" height="48" rx="5" fill="none" stroke="#263645" stroke-width="3"/>
+    <path d="M15 165 H111" stroke="#263645" stroke-width="3" stroke-linecap="round"/>
+    <text class="service-title" x="63" y="190" text-anchor="middle">Users</text>
+    <text class="service-copy" x="63" y="210" text-anchor="middle">Web browser</text>
   </g>
 
-  <!-- VPC / ECS Express boundary -->
-  <rect x="390" y="180" width="650" height="390" rx="4" fill="#fbfff9" stroke="#2e9b21" stroke-width="2"/>
-  <rect x="390" y="180" width="44" height="44" fill="#2e9b21"/>
-  <path d="M402 207 V194 H422 V210 H414 V215 H406 V210 Z" fill="none" stroke="#ffffff" stroke-width="2"/>
-  <text class="boundary-label" x="448" y="209" fill="#2e7d32">VPC • ECS Express Mode</text>
-  <text class="service-copy" x="448" y="232">Fargate service, Application Load Balancer, autoscaling, and networking</text>
+  <!-- Optional edge service -->
+  <g transform="translate(220 210)" filter="url(#shadow)">
+    <rect width="145" height="100" rx="9" fill="#ffffff" stroke="#8a55d7" stroke-width="1.8"/>
+    <rect x="14" y="15" width="42" height="42" rx="6" fill="#8a55d7"/>
+    <text class="icon-letter" x="35" y="37">53</text>
+    <text class="service-title" x="68" y="34">Route 53</text>
+    <text class="service-copy-strong" x="68" y="55">+ ACM</text>
+    <text class="service-copy" x="14" y="82">Optional domain + TLS</text>
+  </g>
 
-  <rect x="430" y="260" width="570" height="270" rx="5" fill="#ffffff" stroke="#ec7211" stroke-width="2"/>
-  <rect x="430" y="260" width="44" height="44" fill="#ec7211"/>
-  <path d="M441 271 h21 v21 h-21z M446 276 h11 v11 h-11z" fill="none" stroke="#ffffff" stroke-width="2"/>
-  <text class="boundary-label" x="488" y="289" fill="#b65300">Public web tier</text>
+  <!-- ECS Express Mode -->
+  <rect x="390" y="185" width="675" height="385" rx="4" fill="#fbfff9" stroke="#2e9b21" stroke-width="2"/>
+  <rect x="390" y="185" width="44" height="44" fill="#2e9b21"/>
+  <path d="M402 212 V199 H422 V215 H414 V220 H406 V215 Z" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <text class="boundary-label" x="448" y="214" fill="#2e7d32">VPC • ECS Express Mode</text>
+  <text class="service-copy" x="448" y="237">Fargate service, Application Load Balancer, autoscaling, and networking</text>
 
-  <!-- AgentCore boundary -->
-  <rect x="390" y="630" width="650" height="350" rx="5" fill="#fdfaff" stroke="#7b42c3" stroke-width="2.2"/>
+  <rect x="430" y="270" width="595" height="245" rx="5" fill="#ffffff" stroke="#ec7211" stroke-width="2"/>
+  <rect x="430" y="270" width="44" height="44" fill="#ec7211"/>
+  <path d="M441 281 h21 v21 h-21z M446 286 h11 v11 h-11z" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <text class="boundary-label" x="488" y="299" fill="#b65300">Public web tier</text>
+
+  <g transform="translate(475 345)" filter="url(#shadow)">
+    <rect width="190" height="92" rx="9" fill="#ffffff" stroke="#8a55d7" stroke-width="1.8"/>
+    <circle cx="39" cy="43" r="23" fill="#8a55d7"/>
+    <path d="M28 43 H50 M39 32 V54 M28 32 L50 54 M50 32 L28 54" stroke="#ffffff" stroke-width="2"/>
+    <text class="service-title" x="72" y="39">Application</text>
+    <text class="service-title" x="72" y="61">Load Balancer</text>
+  </g>
+
+  <g transform="translate(750 320)" filter="url(#shadow)">
+    <rect width="235" height="150" rx="9" fill="#ffffff" stroke="#ec7211" stroke-width="2"/>
+    <rect x="14" y="17" width="44" height="44" rx="6" fill="#ec7211"/>
+    <path d="M24 29 h24 v20 h-24z M24 36 h24 M31 29 v20" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <text class="service-title" x="70" y="36">FastAPI + Jinja</text>
+    <text class="service-copy-strong" x="70" y="58">Stateless web task</text>
+    <text class="service-copy" x="14" y="87">Auth • gallery • notebook UI</text>
+    <text class="service-copy" x="14" y="108">Returns 202 • polls typed status</text>
+    <text class="service-copy" x="14" y="129">Signs exact-object transfers</text>
+  </g>
+
+  <!-- Private agent runtime -->
+  <rect x="390" y="630" width="675" height="300" rx="5" fill="#fdfaff" stroke="#7b42c3" stroke-width="2.2"/>
   <rect x="390" y="630" width="44" height="44" fill="#7b42c3"/>
   <circle cx="412" cy="652" r="12" fill="none" stroke="#ffffff" stroke-width="2"/>
   <path d="M405 653 l5 5 10-12" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
   <text class="boundary-label" x="448" y="659" fill="#6332a5">Amazon Bedrock AgentCore Runtime • private</text>
   <text class="service-copy" x="448" y="682">ARM64 container • port 8080 • /invocations and /ping</text>
 
-  <!-- Managed-services heading -->
-  <text class="cloud-label" x="1100" y="185">AWS managed services</text>
-  <path d="M1100 195 H1715" stroke="#d7dce1" stroke-width="1.5"/>
+  <!-- Connectors sit beneath service cards to keep the main path readable. -->
+  <path class="connector" d="M146 430 H475"/>
+  <text class="connector-label" x="253" y="418">HTTPS • UI, commands, status</text>
+  <path class="connector" d="M665 390 H750"/>
+  <text class="connector-label" x="681" y="377">HTTP</text>
+  <path class="deployment" d="M365 260 H410 V355 H475"/>
+  <text class="connector-label" x="380" y="328">DNS / TLS</text>
 
-  <!-- Connectors: placed behind cards -->
-  <path class="connector" d="M158 405 H475"/>
-  <text class="connector-label" x="252" y="393">HTTPS</text>
-  <path class="deployment" d="M158 350 C185 350 195 285 220 285"/>
-  <path class="deployment" d="M365 285 C410 285 425 350 475 350"/>
+  <path class="connector-purple" d="M868 470 V630"/>
+  <text class="connector-label" x="878" y="555">private command invoke</text>
+  <path class="connector-purple" d="M680 786 H735"/>
+  <text class="connector-label" x="687" y="772">typed tools</text>
 
-  <path class="connector" d="M665 385 H750"/>
-  <text class="connector-label" x="681" y="371">HTTP</text>
+  <path class="connector" d="M1065 740 H1085 V455 H1110"/>
+  <text class="connector-label" x="1098" y="590">Bedrock inference + visual evidence</text>
+  <path class="connector" d="M1065 775 H1110"/>
+  <path class="connector" d="M1065 875 H1400 V760 H1435"/>
+  <text class="connector-label" x="1128" y="864">conditional state + action receipts</text>
+  <path class="connector-purple" d="M1065 675 H1400 V455 H1435"/>
+  <text class="connector-label" x="1188" y="657">logs • metrics • traces</text>
 
-  <path class="connector-purple" d="M855 455 V630"/>
-  <text class="connector-label" x="588" y="602">command_id • 202 Accepted • poll status</text>
+  <path class="deployment" d="M1110 265 H1050 V320 H985"/>
+  <path class="deployment" d="M1240 315 H1385 V600 H1050 V630"/>
+  <text class="connector-label" x="1005" y="282">container images</text>
 
-  <path class="connector-purple" d="M680 770 H750"/>
-  <text class="connector-label" x="692" y="756">typed tools</text>
-  <path class="connector-purple" d="M870 805 V840"/>
+  <path class="connector-blue" d="M83 548 C92 978 635 1010 1110 790"/>
+  <text class="connector-label-blue" x="455" y="1023">Direct presigned GLB upload • candidate / evidence / package download</text>
 
-  <path class="connector" d="M680 745 H1065 V500 H1110"/>
-  <text class="connector-label" x="924" y="486">Converse: text + bounded evidence</text>
-
-  <path class="connector" d="M990 745 H1110"/>
-  <text class="connector-label" x="1001" y="731">hashed objects</text>
-  <path class="connector" d="M990 785 H1065 V680 H1510 V730"/>
-  <text class="connector-label" x="1140" y="669">conditional action receipts</text>
-
-  <path class="connector" d="M960 350 H1030 V690 H1210 V730"/>
-  <text class="connector-label" x="1039" y="622">presigned URLs</text>
-  <path class="connector" d="M960 425 H1050 V600 H1600 V730"/>
-  <text class="connector-label" x="1190" y="589">workspace status / pointers</text>
-
-  <path class="connector-purple" d="M1040 650 H1080 V620 H1560 V565"/>
-  <text class="connector-label" x="1228" y="610">logs • metrics • traces</text>
-  <path class="connector-purple" d="M1370 500 H1430"/>
-
-  <path class="deployment" d="M1110 260 H1040 V290 H900 V315"/>
-  <path class="deployment" d="M1240 310 V600 H970 V630"/>
-  <text class="connector-label" x="1000" y="280">container images</text>
-
-  <path class="connector-blue" d="M90 505 C95 1028 765 1055 1110 855"/>
-  <text class="connector-label-blue" x="480" y="1043">Presigned GLB upload • candidate/evidence download</text>
-
-  <!-- Optional DNS and certificate -->
-  <g transform="translate(220 225)" filter="url(#shadow)">
-    <rect width="145" height="120" rx="9" fill="#ffffff" stroke="#8a55d7" stroke-width="1.8"/>
-    <rect x="14" y="16" width="42" height="42" rx="6" fill="#8a55d7"/>
-    <text class="icon-letter" x="35" y="38">53</text>
-    <text class="service-title" x="68" y="35">Route 53</text>
-    <text class="service-copy-strong" x="68" y="56">+ ACM</text>
-    <text class="service-copy" x="14" y="84">Optional custom</text>
-    <text class="service-copy" x="14" y="103">domain and TLS</text>
-  </g>
-
-  <!-- ALB -->
-  <g transform="translate(475 340)" filter="url(#shadow)">
-    <rect width="190" height="90" rx="9" fill="#ffffff" stroke="#8a55d7" stroke-width="1.8"/>
-    <circle cx="39" cy="42" r="23" fill="#8a55d7"/>
-    <path d="M28 42 H50 M39 31 V53 M28 31 L50 53 M50 31 L28 53" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="38">Application</text>
-    <text class="service-title" x="72" y="60">Load Balancer</text>
-  </g>
-
-  <!-- Web application -->
-  <g transform="translate(750 315)" filter="url(#shadow)">
-    <rect width="210" height="140" rx="9" fill="#ffffff" stroke="#ec7211" stroke-width="2"/>
-    <rect x="14" y="17" width="44" height="44" rx="6" fill="#ec7211"/>
-    <path d="M24 29 h24 v20 h-24z M24 36 h24 M31 29 v20" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="70" y="35">FastAPI + Jinja</text>
-    <text class="service-copy-strong" x="70" y="57">Stateless web task</text>
-    <text class="service-copy" x="14" y="87">Auth • gallery • notebook UI</text>
-    <text class="service-copy" x="14" y="108">Signed transfers • command API</text>
-    <text class="service-copy" x="14" y="129">No model authority or local state</text>
-  </g>
-
-  <!-- AgentCore internals -->
-  <g transform="translate(440 720)" filter="url(#shadow)">
-    <rect width="240" height="100" rx="9" fill="#ffffff" stroke="#7b42c3" stroke-width="1.8"/>
+  <g transform="translate(440 735)" filter="url(#shadow)">
+    <rect width="240" height="102" rx="9" fill="#ffffff" stroke="#7b42c3" stroke-width="1.8"/>
     <rect x="14" y="18" width="44" height="44" rx="22" fill="#7b42c3"/>
     <path d="M25 43 C25 29 47 29 47 43 M28 47 H44" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
     <text class="service-title" x="72" y="39">Strands agent</text>
     <text class="service-copy-strong" x="72" y="60">Semantic orchestrator</text>
-    <text class="service-copy" x="14" y="85">Plans • interrupts • conversation</text>
+    <text class="service-copy" x="14" y="86">Plans • interrupts • conversation</text>
   </g>
 
-  <g transform="translate(750 690)" filter="url(#shadow)">
-    <rect width="240" height="115" rx="9" fill="#ffffff" stroke="#167d93" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="6" fill="#167d93"/>
-    <path d="M26 28 h20 v24 h-20z M30 34 h12 M30 40 h12 M30 46 h8" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="39">Deterministic GLB tools</text>
-    <text class="service-copy-strong" x="72" y="61">Bounded hands + proof</text>
-    <text class="service-copy" x="14" y="87">Inspect • mutate • hash • verify</text>
-    <text class="service-copy" x="14" y="106">Exact approval/action receipts</text>
-  </g>
-
-  <g transform="translate(750 840)" filter="url(#shadow)">
-    <rect width="240" height="105" rx="9" fill="#ffffff" stroke="#167d93" stroke-width="1.8"/>
+  <g transform="translate(735 710)" filter="url(#shadow)">
+    <rect width="260" height="145" rx="9" fill="#ffffff" stroke="#167d93" stroke-width="1.8"/>
     <rect x="14" y="17" width="44" height="44" rx="6" fill="#167d93"/>
-    <path d="M23 28 h26 v20 h-26z M29 53 h14 M36 48 v5" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="38">Headless Chromium</text>
-    <text class="service-copy-strong" x="72" y="59">model-viewer / Three.js</text>
-    <text class="service-copy" x="14" y="86">Standardized visual evidence</text>
+    <path d="M26 28 h20 v24 h-20z M30 34 h12 M30 40 h12 M30 46 h8" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <text class="service-title" x="72" y="38">Deterministic GLB tools</text>
+    <text class="service-copy-strong" x="72" y="60">Bounded action + proof</text>
+    <text class="service-copy" x="14" y="87">Inspect • mutate • hash • verify</text>
+    <text class="service-copy" x="14" y="108">Exact approval/action receipts</text>
+    <text class="service-copy" x="14" y="129">Headless Chromium evidence renderer</text>
   </g>
 
-  <!-- ECR -->
-  <g transform="translate(1110 210)" filter="url(#shadow)">
+  <!-- Managed services -->
+  <text class="cloud-label" x="1110" y="185">AWS managed services</text>
+  <path d="M1110 195 H1715" stroke="#d7dce1" stroke-width="1.5"/>
+
+  <g transform="translate(1110 215)" filter="url(#shadow)">
     <rect width="260" height="100" rx="9" fill="#ffffff" stroke="#ec7211" stroke-width="1.8"/>
     <rect x="14" y="18" width="44" height="44" rx="6" fill="#ec7211"/>
     <path d="M25 29 l11-6 11 6 v18 l-11 6-11-6z M25 29 l11 6 11-6 M36 35 v18" fill="none" stroke="#ffffff" stroke-width="2"/>
@@ -195,42 +162,38 @@
     <text class="service-copy" x="14" y="86">Web + AgentCore runtime</text>
   </g>
 
-  <!-- IAM -->
-  <g transform="translate(1430 210)" filter="url(#shadow)">
+  <g transform="translate(1435 215)" filter="url(#shadow)">
     <rect width="260" height="115" rx="9" fill="#ffffff" stroke="#dd344c" stroke-width="1.8"/>
     <rect x="14" y="18" width="44" height="44" rx="22" fill="#dd344c"/>
     <path d="M36 27 a7 7 0 1 1 0 14 a7 7 0 1 1 0-14 M25 55 c2-12 20-12 22 0" fill="none" stroke="#ffffff" stroke-width="2"/>
     <text class="service-title" x="72" y="38">AWS IAM</text>
     <text class="service-copy-strong" x="72" y="60">Least-privilege roles</text>
     <text class="service-copy" x="14" y="84">Web task + AgentCore runtime</text>
-    <text class="service-copy" x="14" y="101">use SigV4 service identity</text>
+    <text class="service-copy" x="14" y="101">SigV4 service identities</text>
   </g>
 
-  <!-- Bedrock -->
-  <g transform="translate(1110 445)" filter="url(#shadow)">
-    <rect width="260" height="120" rx="9" fill="#ffffff" stroke="#7b42c3" stroke-width="1.8"/>
+  <g transform="translate(1110 400)" filter="url(#shadow)">
+    <rect width="260" height="110" rx="9" fill="#ffffff" stroke="#7b42c3" stroke-width="1.8"/>
     <rect x="14" y="18" width="44" height="44" rx="22" fill="#7b42c3"/>
     <path d="M26 42 C27 28 45 28 46 42 C45 53 27 53 26 42 Z M31 37 C35 33 40 33 44 37" fill="none" stroke="#ffffff" stroke-width="2"/>
     <text class="service-title" x="72" y="38">Amazon Bedrock</text>
     <text class="service-copy-strong" x="72" y="60">Kimi K2.5 • Converse</text>
-    <text class="service-copy" x="14" y="88">Multimodal planning and review</text>
-    <text class="service-copy" x="14" y="108">No direct browser access</text>
+    <text class="service-copy" x="14" y="86">Multimodal planning and review</text>
+    <text class="service-copy" x="14" y="103">No direct browser access</text>
   </g>
 
-  <!-- CloudWatch -->
-  <g transform="translate(1430 445)" filter="url(#shadow)">
-    <rect width="260" height="120" rx="9" fill="#ffffff" stroke="#b0084d" stroke-width="1.8"/>
+  <g transform="translate(1435 400)" filter="url(#shadow)">
+    <rect width="260" height="110" rx="9" fill="#ffffff" stroke="#b0084d" stroke-width="1.8"/>
     <rect x="14" y="18" width="44" height="44" rx="6" fill="#b0084d"/>
     <path d="M23 52 l8-10 6 4 10-16 M23 55 h26" fill="none" stroke="#ffffff" stroke-width="2.2"/>
     <text class="service-title" x="72" y="38">Amazon CloudWatch</text>
     <text class="service-copy-strong" x="72" y="60">Metrics • logs • traces</text>
-    <text class="service-copy" x="14" y="88">Correlated workspace/turn IDs</text>
-    <text class="service-copy" x="14" y="108">No private reasoning in logs</text>
+    <text class="service-copy" x="14" y="86">Web + runtime correlation IDs</text>
+    <text class="service-copy" x="14" y="103">No private reasoning in logs</text>
   </g>
 
-  <!-- S3 -->
-  <g transform="translate(1110 730)" filter="url(#shadow)">
-    <rect width="275" height="180" rx="9" fill="#ffffff" stroke="#3f8624" stroke-width="1.8"/>
+  <g transform="translate(1110 665)" filter="url(#shadow)">
+    <rect width="275" height="185" rx="9" fill="#ffffff" stroke="#3f8624" stroke-width="1.8"/>
     <rect x="14" y="18" width="44" height="44" rx="6" fill="#3f8624"/>
     <path d="M25 29 c0-7 22-7 22 0 v23 c0 7-22 7-22 0z M25 29 c0 7 22 7 22 0 M25 40 c0 7 22 7 22 0" fill="none" stroke="#ffffff" stroke-width="2"/>
     <text class="service-title" x="72" y="38">Amazon S3</text>
@@ -241,9 +204,8 @@
     <text class="service-copy" x="18" y="160">• Hashes, versions, lifecycle policy</text>
   </g>
 
-  <!-- DynamoDB -->
-  <g transform="translate(1430 730)" filter="url(#shadow)">
-    <rect width="275" height="180" rx="9" fill="#ffffff" stroke="#3b48cc" stroke-width="1.8"/>
+  <g transform="translate(1435 665)" filter="url(#shadow)">
+    <rect width="260" height="185" rx="9" fill="#ffffff" stroke="#3b48cc" stroke-width="1.8"/>
     <rect x="14" y="18" width="44" height="44" rx="6" fill="#3b48cc"/>
     <path d="M24 28 h24 v25 h-24z M30 28 v25 M42 28 v25 M24 36 h24 M24 45 h24" fill="none" stroke="#ffffff" stroke-width="1.8"/>
     <text class="service-title" x="72" y="38">Amazon DynamoDB</text>
@@ -254,16 +216,15 @@
     <text class="service-copy" x="18" y="160">• Conditional idempotent updates</text>
   </g>
 
-  <!-- Security and legend -->
-  <g transform="translate(1100 945)">
-    <rect width="605" height="88" rx="9" fill="#f6f8fa" stroke="#ccd3da" stroke-width="1.3"/>
+  <g transform="translate(1110 900)">
+    <rect width="585" height="92" rx="9" fill="#f6f8fa" stroke="#ccd3da" stroke-width="1.3"/>
     <text class="service-copy-strong" x="18" y="27">Security boundary</text>
-    <text class="small-note" x="18" y="49">The browser receives application sessions and exact-object presigned URLs—never AWS credentials.</text>
-    <line x1="18" y1="70" x2="74" y2="70" stroke="#263645" stroke-width="2.2" marker-end="url(#arrow)"/>
-    <text class="legend" x="84" y="75">runtime/control</text>
-    <line x1="210" y1="70" x2="266" y2="70" stroke="#147eba" stroke-width="2.5" stroke-dasharray="9 7" marker-end="url(#arrowBlue)"/>
-    <text class="legend" x="276" y="75">presigned data</text>
-    <line x1="405" y1="70" x2="461" y2="70" stroke="#697786" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
-    <text class="legend" x="471" y="75">deploy / identity</text>
+    <text class="small-note" x="18" y="49">Browser gets an application session and exact-object presigned URLs—never AWS credentials.</text>
+    <line x1="18" y1="71" x2="74" y2="71" stroke="#263645" stroke-width="2.2" marker-end="url(#arrow)"/>
+    <text class="legend" x="84" y="76">runtime/control</text>
+    <line x1="210" y1="71" x2="266" y2="71" stroke="#147eba" stroke-width="2.5" stroke-dasharray="9 7" marker-end="url(#arrowBlue)"/>
+    <text class="legend" x="276" y="76">presigned data</text>
+    <line x1="405" y1="71" x2="461" y2="71" stroke="#697786" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+    <text class="legend" x="471" y="76">deploy / edge</text>
   </g>
 </svg>

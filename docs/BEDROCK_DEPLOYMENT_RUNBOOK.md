@@ -58,6 +58,9 @@ until the remote-product gate passes.
   through the least-privilege profile. Mistral Large 3 fails two hard semantic cases and is not a
   production default. Luna's optional Bedrock evaluation remains separately blocked by its account
   agreement.
+- [x] D095 opt-in external comparator. Muse Spark 1.3 passes three local representative cases
+  through Meta's Model API, including opposite component-selection decisions. This does not alter
+  the AWS production topology or satisfy the fixed eight-case gate.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing. The portable Chromium/model-viewer implementation and local
   source/shared-scale gates pass; the clean Linux container gate remains open.
@@ -88,6 +91,8 @@ until the remote-product gate passes.
 - The local Kimi provider gate is complete. Make no further paid model bakeoff calls unless a code
   regression invalidates a frozen case; reserve the next paid work for deployment proof and the
   remote acceptance replay.
+- Meta Contributor mode is evaluation-only and requires the user's explicit training-data consent
+  flag. Never enable it for production or for an asset outside that consented evaluation set.
 - Never commit credentials, account IDs, tokens, presigned URLs, or secret-bearing command output.
 
 ## Target deployment shape
@@ -108,6 +113,11 @@ Only the Bedrock inference box is in AWS. The authenticated `asset-shepherd` AWS
 its short-lived assumed-role session authorize those calls; they do not deploy the site. No Asset
 Shepherd ECR repository, ECS service, AgentCore runtime, S3 workspace bucket, or DynamoDB workspace
 table exists yet.
+
+The optional Meta/Muse comparator is a separate local test configuration: local Strands calls the
+Meta Model API over outbound HTTPS instead of Bedrock. It is deliberately absent from the canonical
+AWS production diagram. Deploying it later would require a reviewed secret, AgentCore internet
+egress, the standard non-training model, and a new architecture decision.
 
 Current AWS evidence is visible in these places in `us-east-1`:
 
@@ -202,8 +212,8 @@ requires a recorded replacement-host decision but does not change application or
 
 | Concern | Current implementation | Required migration |
 |---|---|---|
-| Workflow model | Capability-aware Bedrock Converse adapter with Kimi accepted by the fixed 8/8 gate; Luna Responses and direct-OpenAI development adapters remain | Re-run the same gate in the deployed runtime |
-| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI development, and deterministic test adapters | Re-run typed intake in the deployed runtime |
+| Workflow model | Capability-aware Bedrock Converse adapter with Kimi accepted by the fixed 8/8 gate; Luna Responses, direct-OpenAI development, and opt-in Meta/Muse evaluation adapters remain | Re-run the same gate in the deployed runtime |
+| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI and opt-in Meta/Muse development, and deterministic test adapters | Re-run typed intake in the deployed runtime |
 | Agent session | `SnapshotSessionManager` with `LocalFileStorage` under one workspace | Replace storage with Strands S3 session storage while retaining `workspace_id` |
 | Workspace record | Atomic JSON files plus process-local locking | DynamoDB record with optimistic/conditional writes |
 | Binary artifacts | Per-workspace local directories | Private S3 prefixes with hashes, lifecycle, and presigned transfer |

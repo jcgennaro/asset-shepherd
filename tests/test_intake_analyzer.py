@@ -15,6 +15,7 @@ from asset_shepherd.intake_analyzer import (
     BedrockConverseTargetIntakeConfiguration,
     BedrockTargetIntakeAnalyzer,
     BedrockTargetIntakeConfiguration,
+    MetaTargetIntakeAnalyzer,
     OpenAITargetIntakeAnalyzer,
     OpenAITargetIntakeConfiguration,
     TargetDimensionsInference,
@@ -25,6 +26,7 @@ from asset_shepherd.intake_analyzer import (
     contract_from_inference,
     load_bedrock_converse_target_intake_configuration,
     load_bedrock_target_intake_configuration,
+    load_meta_target_intake_configuration,
     load_nova_target_intake_configuration,
 )
 from asset_shepherd.models import AssetEndpoint, AssetTargetUse
@@ -53,6 +55,42 @@ def _tool_response(inference: dict[str, object]) -> dict[str, object]:
             }
         ]
     }
+
+
+def test_meta_intake_uses_standard_muse_responses_contract() -> None:
+    """Meta intake maps xhigh to high and omits OpenAI-only verbosity controls."""
+    values = {
+        "ASSET_SHEPHERD_INTAKE_PROVIDER": "meta",
+        "ASSET_SHEPHERD_MODEL_ID": "muse-spark-1.3",
+        "ASSET_SHEPHERD_INTAKE_REASONING": "xhigh",
+        "MODEL_API_KEY": "test-only-meta-key",
+    }
+    configuration = load_meta_target_intake_configuration(values)
+    assert configuration.model_id == "muse-spark-1.3"
+    assert configuration.reasoning_effort == "high"
+    assert configuration.responses_url == "https://api.meta.ai/v1/responses"
+
+    analyzer = build_target_intake_analyzer(values)
+    assert isinstance(analyzer, MetaTargetIntakeAnalyzer)
+    payload = analyzer._request_payload("A waist-high game prop.")  # pyright: ignore[reportPrivateUsage]
+    assert payload["reasoning"] == {"effort": "high"}
+    assert "verbosity" not in cast(dict[str, object], payload["text"])
+
+    with pytest.raises(TargetIntakeAnalysisError, match="ALLOW_META_TRAINING"):
+        load_meta_target_intake_configuration(
+            {
+                **values,
+                "ASSET_SHEPHERD_MODEL_ID": "muse-spark-1.3-contributor",
+            }
+        )
+    contributor = load_meta_target_intake_configuration(
+        {
+            **values,
+            "ASSET_SHEPHERD_MODEL_ID": "muse-spark-1.3-contributor",
+            "ASSET_SHEPHERD_ALLOW_META_TRAINING": "1",
+        }
+    )
+    assert contributor.model_id == "muse-spark-1.3-contributor"
 
 
 def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:

@@ -48,6 +48,11 @@ from asset_shepherd.bedrock_responses import (
     provide_bedrock_token,
     validate_bedrock_responses_model_id,
 )
+from asset_shepherd.meta_model_api import (
+    META_MODEL_API_BASE_URL,
+    resolve_meta_reasoning_effort,
+    validate_meta_model_id,
+)
 from asset_shepherd.models import (
     AgentMetrics,
     AgentTokenUsage,
@@ -148,7 +153,9 @@ def load_model_configuration(
         )
     if provider == "openai" and not values.get("OPENAI_API_KEY"):
         raise AgentWorkflowError("Missing live model configuration: OPENAI_API_KEY")
-    if provider not in {"bedrock", "bedrock-converse", "bedrock-nova", "openai"}:
+    if provider == "meta" and not values.get("MODEL_API_KEY"):
+        raise AgentWorkflowError("Missing live model configuration: MODEL_API_KEY")
+    if provider not in {"bedrock", "bedrock-converse", "bedrock-nova", "meta", "openai"}:
         raise AgentWorkflowError(f"Unsupported live model provider: {provider}")
     return ModelConfiguration(
         provider=provider,
@@ -290,6 +297,75 @@ class CompleteResponseBedrockModel(CompleteResponseOpenAIModel):
         return client_args
 
 
+class CompleteResponseMetaModel(CompleteResponseOpenAIModel):
+    """Use Meta's Responses endpoint while keeping rendered evidence in user messages."""
+
+    def _format_request(
+        self,
+        messages: Messages,
+        tool_specs: list[ToolSpec] | None = None,
+        system_prompt: str | None = None,
+        tool_choice: ToolChoice | None = None,
+        model_state: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Hoist tool-result images to Meta's documented image-capable user role."""
+        request = super()._format_request(  # pyright: ignore[reportPrivateUsage]
+            messages,
+            tool_specs,
+            system_prompt,
+            tool_choice,
+            model_state,
+        )
+        raw_input = request.get("input")
+        if not isinstance(raw_input, list):
+            return request
+        normalized: list[object] = []
+        for raw_item in cast(list[object], raw_input):
+            if not isinstance(raw_item, dict):
+                normalized.append(raw_item)
+                continue
+            item = cast(dict[str, object], raw_item)
+            output = item.get("output")
+            if item.get("type") != "function_call_output" or not isinstance(output, list):
+                normalized.append(item)
+                continue
+            images: list[object] = []
+            non_images: list[object] = []
+            for raw_part in cast(list[object], output):
+                if isinstance(raw_part, dict):
+                    part = cast(dict[str, object], raw_part)
+                    if part.get("type") == "input_image":
+                        images.append(part)
+                    else:
+                        non_images.append(part)
+                else:
+                    non_images.append(raw_part)
+            if not images:
+                normalized.append(item)
+                continue
+            normalized.append(
+                {
+                    **item,
+                    "output": non_images
+                    or [{"type": "input_text", "text": "Rendered evidence follows."}],
+                }
+            )
+            normalized.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": "Private rendered evidence from the preceding tool result.",
+                        },
+                        *images,
+                    ],
+                }
+            )
+        request["input"] = normalized
+        return request
+
+
 class AssetShepherdBedrockConverseModel(BedrockModel):
     """Normalize proven model differences while preserving one Converse tool protocol."""
 
@@ -390,16 +466,32 @@ def build_environment_model(
 ) -> tuple[Model, ModelConfiguration]:
     """Construct the configured provider; invocation remains caller-controlled and opt-in."""
     configuration = load_model_configuration(values)
-    if configuration.provider in {"openai", "bedrock"}:
+    if configuration.provider in {"openai", "bedrock", "meta"}:
         effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
-        if effort not in {"low", "medium", "high", "xhigh", "max"}:
-            raise AgentWorkflowError("Unsupported workflow reasoning effort")
-        model_parameters = {
-            "reasoning": {"effort": effort, "context": "all_turns"},
-            "max_output_tokens": 8192,
-            "parallel_tool_calls": False,
-            "text": {"verbosity": "low"},
-        }
+        meta_model_id = configuration.model_id
+        if configuration.provider == "meta":
+            try:
+                meta_effort = resolve_meta_reasoning_effort(effort)
+                meta_model_id = validate_meta_model_id(
+                    configuration.model_id,
+                    allow_contributor=(values.get("ASSET_SHEPHERD_ALLOW_META_TRAINING") == "1"),
+                )
+            except ValueError as error:
+                raise AgentWorkflowError(str(error)) from error
+            model_parameters = {
+                "reasoning": {"effort": meta_effort},
+                "max_output_tokens": 16_384,
+                "parallel_tool_calls": False,
+            }
+        else:
+            if effort not in {"low", "medium", "high", "xhigh", "max"}:
+                raise AgentWorkflowError("Unsupported workflow reasoning effort")
+            model_parameters = {
+                "reasoning": {"effort": effort, "context": "all_turns"},
+                "max_output_tokens": 8192,
+                "parallel_tool_calls": False,
+                "text": {"verbosity": "low"},
+            }
         if configuration.provider == "openai":
             model = CompleteResponseOpenAIModel(
                 client_args={"api_key": values["OPENAI_API_KEY"]},
@@ -407,7 +499,7 @@ def build_environment_model(
                 stateful=True,
                 params=model_parameters,
             )
-        else:
+        elif configuration.provider == "bedrock":
             try:
                 model = CompleteResponseBedrockModel(
                     model_id=configuration.model_id,
@@ -417,6 +509,16 @@ def build_environment_model(
                 )
             except ValueError as error:
                 raise AgentWorkflowError(str(error)) from error
+        else:
+            model = CompleteResponseMetaModel(
+                client_args={
+                    "api_key": values["MODEL_API_KEY"],
+                    "base_url": META_MODEL_API_BASE_URL,
+                },
+                model_id=meta_model_id,
+                stateful=True,
+                params=model_parameters,
+            )
     else:
         try:
             capability = resolve_bedrock_converse_model(configuration.model_id)

@@ -33,6 +33,11 @@ from asset_shepherd.conversation_policy import (
     CONTENT_REFUSAL_MESSAGE,
 )
 from asset_shepherd.intent import normalize_intent_description
+from asset_shepherd.meta_model_api import (
+    META_MODEL_API_BASE_URL,
+    resolve_meta_reasoning_effort,
+    validate_meta_model_id,
+)
 from asset_shepherd.models import AssetEndpoint, AssetTargetUse, AssetViewingUse, ContractModel
 from asset_shepherd.target_intake import (
     MINIMUM_TARGET_CONFIDENCE,
@@ -384,7 +389,7 @@ class OpenAITargetIntakeConfiguration:
 
     api_key: str = field(repr=False)
     model_id: str = OPENAI_INTAKE_MODEL
-    reasoning_effort: Literal["low", "medium", "high", "xhigh"] = OPENAI_REASONING_EFFORT
+    reasoning_effort: Literal["minimal", "low", "medium", "high", "xhigh"] = OPENAI_REASONING_EFFORT
     responses_url: str = OPENAI_RESPONSES_URL
 
 
@@ -398,12 +403,12 @@ def load_openai_target_intake_configuration(
             "OpenAI intake is not configured. Set OPENAI_API_KEY or start with --offline-intake."
         )
     effort = values.get("ASSET_SHEPHERD_INTAKE_REASONING", OPENAI_REASONING_EFFORT)
-    if effort not in {"low", "medium", "high", "xhigh"}:
+    if effort not in {"minimal", "low", "medium", "high", "xhigh"}:
         raise TargetIntakeAnalysisError("Unsupported intake reasoning effort.")
     return OpenAITargetIntakeConfiguration(
         api_key=api_key,
         model_id=values.get("ASSET_SHEPHERD_INTAKE_MODEL", OPENAI_INTAKE_MODEL),
-        reasoning_effort=cast(Literal["low", "medium", "high", "xhigh"], effort),
+        reasoning_effort=cast(Literal["minimal", "low", "medium", "high", "xhigh"], effort),
         responses_url=values.get("ASSET_SHEPHERD_OPENAI_RESPONSES_URL", OPENAI_RESPONSES_URL),
     )
 
@@ -546,6 +551,58 @@ class OpenAITargetIntakeAnalyzer:
             provider=self.provider,
             model_id=self.model_id,
         )
+
+
+def load_meta_target_intake_configuration(
+    values: Mapping[str, str] = environ,
+) -> OpenAITargetIntakeConfiguration:
+    """Load the standard Muse checkpoint without accepting contributor-tier data use."""
+    api_key = values.get("MODEL_API_KEY")
+    if not api_key:
+        raise TargetIntakeAnalysisError(
+            "Meta Model API intake is not configured. Set MODEL_API_KEY."
+        )
+    model_id = values.get("ASSET_SHEPHERD_INTAKE_MODEL") or values.get("ASSET_SHEPHERD_MODEL_ID")
+    if not model_id:
+        raise TargetIntakeAnalysisError(
+            "Meta Model API intake is not configured. Set ASSET_SHEPHERD_MODEL_ID."
+        )
+    try:
+        validated_model_id = validate_meta_model_id(
+            model_id,
+            allow_contributor=(values.get("ASSET_SHEPHERD_ALLOW_META_TRAINING") == "1"),
+        )
+        reasoning_effort = resolve_meta_reasoning_effort(
+            values.get("ASSET_SHEPHERD_INTAKE_REASONING")
+        )
+    except ValueError as error:
+        raise TargetIntakeAnalysisError(str(error)) from error
+    return OpenAITargetIntakeConfiguration(
+        api_key=api_key,
+        model_id=validated_model_id,
+        reasoning_effort=reasoning_effort,
+        responses_url=f"{META_MODEL_API_BASE_URL}/responses",
+    )
+
+
+class MetaTargetIntakeAnalyzer(OpenAITargetIntakeAnalyzer):
+    """Meta Responses structured-output implementation of semantic intake."""
+
+    provider = "meta"
+
+    def _request_payload(
+        self, description: str, *, require_dimensions: bool = False
+    ) -> dict[str, object]:
+        """Use only request fields documented by Meta's Responses compatibility surface."""
+        payload = super()._request_payload(
+            description,
+            require_dimensions=require_dimensions,
+        )
+        raw_text = payload.get("text")
+        if isinstance(raw_text, dict):
+            text_config = cast(dict[str, object], raw_text)
+            text_config.pop("verbosity", None)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -957,6 +1014,8 @@ def build_target_intake_analyzer(
         )
     if provider == "bedrock-nova":
         return BedrockConverseTargetIntakeAnalyzer(load_nova_target_intake_configuration(values))
+    if provider == "meta":
+        return MetaTargetIntakeAnalyzer(load_meta_target_intake_configuration(values))
     if provider == "deterministic":
         return DeterministicTargetIntakeAnalyzer()
     raise TargetIntakeAnalysisError(f"Unsupported intake provider: {provider}")

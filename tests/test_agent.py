@@ -23,6 +23,7 @@ from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationF
 from asset_shepherd.agent_runtime import (
     AssetShepherdBedrockConverseModel,
     CompleteResponseBedrockModel,
+    CompleteResponseMetaModel,
     CompleteResponseOpenAIModel,
     WorkflowActivityCallback,
     build_environment_model,
@@ -563,6 +564,89 @@ def test_environment_model_builds_bedrock_responses_not_converse() -> None:
     assert isinstance(model, CompleteResponseBedrockModel)
     assert configuration.provider == "bedrock"
     assert configuration.model_id == "us.openai.gpt-5.6-luna"
+
+
+def test_environment_model_builds_meta_responses_with_provider_specific_fields() -> None:
+    """Muse uses Meta's endpoint and effective maximum without inheriting Luna fields."""
+    model, configuration = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "meta",
+            "ASSET_SHEPHERD_MODEL_ID": "muse-spark-1.3",
+            "ASSET_SHEPHERD_WORKFLOW_REASONING": "xhigh",
+            "MODEL_API_KEY": "test-only-meta-key",
+        }
+    )
+
+    assert isinstance(model, CompleteResponseMetaModel)
+    assert configuration.provider == "meta"
+    assert configuration.region is None
+    assert model.get_config().get("params") == {
+        "reasoning": {"effort": "high"},
+        "max_output_tokens": 16_384,
+        "parallel_tool_calls": False,
+    }
+
+
+def test_meta_model_requires_standard_checkpoint_and_hoists_tool_images() -> None:
+    """Contributor data use requires consent and images stay in Meta-supported user content."""
+    with pytest.raises(AgentWorkflowError, match="ALLOW_META_TRAINING"):
+        build_environment_model(
+            {
+                "ASSET_SHEPHERD_MODEL_PROVIDER": "meta",
+                "ASSET_SHEPHERD_MODEL_ID": "muse-spark-1.3-contributor",
+                "MODEL_API_KEY": "test-only-meta-key",
+            }
+        )
+    contributor, _ = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "meta",
+            "ASSET_SHEPHERD_MODEL_ID": "muse-spark-1.3-contributor",
+            "ASSET_SHEPHERD_ALLOW_META_TRAINING": "1",
+            "MODEL_API_KEY": "test-only-meta-key",
+        }
+    )
+    assert contributor.get_config()["model_id"] == "muse-spark-1.3-contributor"
+
+    stream = BytesIO()
+    Image.new("RGB", (2, 2), (20, 120, 200)).save(stream, format="PNG")
+    model = CompleteResponseMetaModel(
+        client_args={
+            "api_key": "test-only-meta-key",
+            "base_url": "https://api.meta.ai/v1",
+        },
+        model_id="muse-spark-1.3",
+        stateful=True,
+    )
+    messages: Messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "toolResult": {
+                        "toolUseId": "render-call-1",
+                        "status": "success",
+                        "content": [
+                            {"text": "Front view."},
+                            {
+                                "image": {
+                                    "format": "png",
+                                    "source": {"bytes": stream.getvalue()},
+                                }
+                            },
+                        ],
+                    }
+                }
+            ],
+        }
+    ]
+
+    request = model._format_request(messages)
+    request_input = cast(list[dict[str, object]], request["input"])
+    tool_output = cast(list[dict[str, object]], request_input[0]["output"])
+    assert all(part.get("type") != "input_image" for part in tool_output)
+    assert request_input[1]["role"] == "user"
+    user_content = cast(list[dict[str, object]], request_input[1]["content"])
+    assert any(part.get("type") == "input_image" for part in user_content)
 
 
 def test_environment_model_builds_model_neutral_converse_for_kimi() -> None:

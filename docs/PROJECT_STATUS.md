@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-02
-**Current commit:** AWS target architecture diagram (this file is included)
+**Current commit:** Muse comparator and simplified AWS architecture diagram (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance |  | Kimi passes the fixed 8/8 gate; cloud-portable state, Linux runtime rendering, AgentCore, and remote ECS deployment remain open |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator |  | Kimi passes the fixed 8/8 gate; cloud-portable state, Linux runtime rendering, AgentCore, and remote ECS deployment remain open |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -56,6 +56,22 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D095 opt-in Muse Spark 1.3 comparator and architecture-diagram review: the Meta Model API now
+  sits behind the same Strands model boundary for local evaluation, with one reviewed endpoint,
+  fail-closed model IDs, DPAPI-protected credentials, and a provider shim that places standardized
+  renders in user messages. The lower-cost `muse-spark-1.3-contributor` model cannot run unless the
+  exact `ASSET_SHEPHERD_ALLOW_META_TRAINING=1` consent flag is present; production must use the
+  standard model without that flag. Three live high-reasoning cases passed: clean no-op,
+  riding-crop component selection, and robot-dog preservation. They used 611,951 input and 14,303
+  output tokens over 415.88 provider seconds, approximately $0.0641 at the selected Contributor
+  rates. This is a promising three-case sample, not D094's eight-case production gate, so Kimi on
+  Bedrock remains the AWS candidate. A separate Terra/xhigh review simplified the canonical AWS
+  diagram into a clearer left-to-right browser → web → agent flow, consolidated deterministic GLB
+  mutation and Chromium rendering, and retained every storage, identity, observability, and deploy
+  relationship without implying that any AWS application resource is already deployed. The common
+  gate passes with 228 tests, two intentional live-provider skips, lock validation, Ruff,
+  formatting, PowerShell parsing, valid SVG/PNG artifacts, and zero Pyright findings.
 
 - D094 provider acceptance and bounded completion: the checked-in provider-neutral matrix freezes
   eight representative cases and requires 8/8 safety plus at least 7/8 semantic/visual passes.

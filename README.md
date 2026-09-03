@@ -73,6 +73,33 @@ without setting `ASSET_SHEPHERD_MODEL_PROVIDER=bedrock`:
 .\scripts\Start-AssetShepherd.ps1
 ```
 
+Muse Spark 1.3 is available as an opt-in Meta Model API comparator, not as an AWS production
+fallback. Save its separate key with Windows user-scoped encryption. For evaluation assets whose
+inputs and outputs the user has explicitly agreed Meta may use for model improvement, run the
+lower-cost contributor model in a dedicated local workspace:
+
+```powershell
+.\scripts\Save-MetaModelKey.ps1
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'meta'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'meta'
+$env:ASSET_SHEPHERD_INTAKE_MODEL = 'muse-spark-1.3-contributor'
+$env:ASSET_SHEPHERD_MODEL_ID = 'muse-spark-1.3-contributor'
+$env:ASSET_SHEPHERD_ALLOW_META_TRAINING = '1'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'high'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'high'
+.\scripts\Start-AssetShepherd.ps1 -WorkDirectory 'build/web/jobs-muse'
+```
+
+The launcher exposes `MODEL_API_KEY` only to the running server process and restores the caller's
+environment when it exits. Contributor mode fails closed unless both its exact model ID and
+`ASSET_SHEPHERD_ALLOW_META_TRAINING=1` are present. A production evaluation must instead use
+`muse-spark-1.3` and omit the training flag. Meta documents `high` as the effective maximum for
+Muse Spark 1.3; `xhigh` is accepted by Asset Shepherd as an alias and is normalized to `high`.
+See Meta's [release announcement](https://research.meta.ai/blog/introducing-muse-spark-1-3), the
+[official API cookbook](https://github.com/meta-models/meta-model-cookbook/blob/main/README.md), and
+Strands' [OpenAI-compatible provider documentation](https://strandsagents.com/docs/user-guide/concepts/model-providers/openai/)
+for the external-provider boundary.
+
 Nova 2 Lite can still be selected explicitly through the shared Converse adapter:
 
 ```powershell

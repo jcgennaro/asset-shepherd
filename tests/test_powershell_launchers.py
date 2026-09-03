@@ -4,6 +4,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SAVE_SCRIPT = PROJECT_ROOT / "scripts" / "Save-OpenAIKey.ps1"
+META_SAVE_SCRIPT = PROJECT_ROOT / "scripts" / "Save-MetaModelKey.ps1"
 START_SCRIPT = PROJECT_ROOT / "scripts" / "Start-AssetShepherd.ps1"
 KHRONOS_SCRIPT = PROJECT_ROOT / "scripts" / "Install-KhronosValidator.ps1"
 
@@ -46,6 +47,24 @@ def test_launcher_bedrock_mode_never_requires_or_exposes_an_openai_key() -> None
     assert "Bedrock mode requires ASSET_SHEPHERD_AWS_REGION or AWS_REGION" in script
     assert "$env:ASSET_SHEPHERD_INTAKE_PROVIDER = $modelProvider" in script
     assert "Remove-Item Env:OPENAI_API_KEY" in script
+
+
+def test_meta_key_setup_and_launcher_keep_the_key_process_scoped() -> None:
+    """Muse evaluation uses a separate DPAPI secret and clears it after the web process."""
+    save_script = META_SAVE_SCRIPT.read_text(encoding="utf-8")
+    start_script = START_SCRIPT.read_text(encoding="utf-8")
+
+    assert (
+        "Read-Host 'Paste the Meta Model API key (input is hidden)' -AsSecureString" in save_script
+    )
+    assert "ProtectedData]::Protect" in save_script
+    assert "meta-model-api-key.dpapi" in save_script
+    assert "setx" not in save_script.casefold()
+    assert "$modelProvider -eq 'meta'" in start_script
+    assert "$env:MODEL_API_KEY = $plainKey" in start_script
+    assert "$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'meta'" in start_script
+    assert "Remove-Item Env:MODEL_API_KEY" in start_script
+    assert "No saved Meta Model API key was found" in start_script
 
 
 def test_khronos_installer_is_pinned_hashed_and_powershell_51_compatible() -> None:

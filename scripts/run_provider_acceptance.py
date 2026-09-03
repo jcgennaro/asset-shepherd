@@ -48,7 +48,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument(
         "--provider",
         required=True,
-        choices=("openai", "bedrock", "bedrock-converse"),
+        choices=("openai", "bedrock", "bedrock-converse", "meta"),
     )
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--aws-profile")
@@ -71,7 +71,7 @@ def _provider_values(args: argparse.Namespace) -> dict[str, str]:
     values = dict(os.environ)
     values["ASSET_SHEPHERD_MODEL_PROVIDER"] = str(args.provider)
     values["ASSET_SHEPHERD_MODEL_ID"] = str(args.model_id)
-    if args.provider != "openai":
+    if args.provider in {"bedrock", "bedrock-converse"}:
         values["ASSET_SHEPHERD_AWS_REGION"] = str(args.region)
         if args.aws_profile:
             values["AWS_PROFILE"] = str(args.aws_profile)
