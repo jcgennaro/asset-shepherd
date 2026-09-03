@@ -52,8 +52,8 @@ until the remote-product gate passes.
   `1.22376 x 0.820321 x 0.268958 m` candidate grounded at `Y=0`. This qualifies Nova as a usable
   diagnostic path, not the default parity model or a completed browser matrix.
 - [x] D093 supersedes D075 and selects ECS Express Mode as the first public FastAPI host beside
-  private AgentCore. AWS has closed App Runner to new customers. No remote resources have been
-  deployed yet.
+  IAM-controlled AgentCore. AWS has closed App Runner to new customers. No remote resources have
+  been deployed yet.
 - [x] Step 2.3 fixed Bedrock provider gate. Kimi passes 8/8 safety and 8/8 semantic/visual cases
   through the least-privilege profile. Mistral Large 3 fails two hard semantic cases and is not a
   production default. Luna's optional Bedrock evaluation remains separately blocked by its account
@@ -116,8 +116,8 @@ table exists yet.
 
 The optional Meta/Muse comparator is a separate local test configuration: local Strands calls the
 Meta Model API over outbound HTTPS instead of Bedrock. It is deliberately absent from the canonical
-AWS production diagram. Deploying it later would require a reviewed secret, AgentCore internet
-egress, the standard non-training model, and a new architecture decision.
+AWS contest-deployment diagram. Deploying it later would require a reviewed secret, AgentCore
+internet egress, the standard non-training model, and a new architecture decision.
 
 Current AWS evidence is visible in these places in `us-east-1`:
 
@@ -136,10 +136,10 @@ to CloudWatch Logs or S3 and needs an explicit privacy/retention decision.
 
 ### Intended AWS topology (not yet deployed)
 
-The following AWS-style diagram is the canonical visual for the planned production deployment.
+The following AWS-style diagram is the canonical visual for the planned contest deployment.
 Its source is an editable SVG; the checked-in PNG is the presentation-ready rendered copy.
 
-![Asset Shepherd target AWS production architecture](assets/asset-shepherd-aws-architecture.svg)
+![Asset Shepherd target AWS contest deployment architecture](assets/asset-shepherd-aws-architecture.svg)
 
 [Open the editable SVG](assets/asset-shepherd-aws-architecture.svg) ·
 [Open the rendered PNG](assets/asset-shepherd-aws-architecture.png)
@@ -149,9 +149,9 @@ fallback.
 
 ```mermaid
 flowchart TD
-    B[Browser] --> W[FastAPI web service]
+    B[Browser] --> W[ECS Express Mode<br/>Managed HTTPS + FastAPI/Jinja]
     B -->|presigned upload/download| S3[Private S3 asset storage]
-    W -->|workspace_id and structured turn| A[AgentCore Runtime]
+    W -->|IAM-authorized InvokeAgentRuntime| A[AgentCore Runtime]
     A --> ST[Strands agent]
     ST --> BR[Amazon Bedrock model]
     ST --> T[Deterministic GLB tools]
@@ -163,10 +163,15 @@ flowchart TD
     W --> CW
     T --> R[Portable renderer or isolated render worker]
     R --> S3
+    ECR[Amazon ECR] -. container image .-> W
+    IAM[AWS IAM roles] -. service identity .-> W
+    IAM -. service identity .-> A
 ```
 
-The web service authenticates users and invokes AgentCore service-to-service. The browser does not
-receive AWS credentials and does not invoke the private agent runtime directly.
+The web service authenticates users and invokes AgentCore's regional API with its IAM task role.
+The browser does not receive AWS credentials and does not invoke the agent runtime directly.
+PrivateLink, custom AgentCore VPC connectivity, Route 53, and a custom domain are deferred rather
+than implied by the contest deployment.
 
 ### Local and remote execution are configurations of one product
 
@@ -183,7 +188,7 @@ The AWS deployment uses the same application contracts with cloud-backed adapter
 |---|---|---|
 | Browser address | `http://127.0.0.1:8010` | ECS Express HTTPS load-balancer URL or approved custom domain |
 | FastAPI/Jinja web process | Local Uvicorn process | Stateless ECS Express Mode/Fargate task |
-| Workflow execution | Local Strands process | Private AgentCore Runtime invocation |
+| Workflow execution | Local Strands process | IAM-authorized AgentCore Runtime invocation |
 | Model inference | Bedrock over outbound HTTPS | Bedrock from the AgentCore execution role |
 | GLBs, evidence, packages | Isolated local workspace directories | Private S3 workspace prefixes |
 | Workspace and command state | Atomic local JSON plus locks | Conditional DynamoDB records |
@@ -203,10 +208,11 @@ and billable. The web task does not become a state authority: its filesystem and
 disposable, and all durable workspace data must already be in S3/DynamoDB before the remote-product
 gate.
 
-AgentCore remains a separate private runtime for the Strands workflow. The ECS task role may invoke
-that runtime and access only the required S3/DynamoDB records. The browser receives application
-sessions and short-lived exact-object transfer URLs, never AWS credentials. A compatibility failure
-requires a recorded replacement-host decision but does not change application or agent contracts.
+AgentCore remains a separate IAM-controlled runtime for the Strands workflow. The ECS task role may
+invoke that runtime and access only the required S3/DynamoDB records. The browser receives
+application sessions and short-lived exact-object transfer URLs, never AWS credentials. A
+compatibility failure requires a recorded replacement-host decision but does not change application
+or agent contracts.
 
 ## Current implementation map
 

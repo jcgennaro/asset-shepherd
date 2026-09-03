@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-02
-**Current commit:** Muse comparator and simplified AWS architecture diagram (this file is included)
+**Current commit:** Simplified AWS contest-deployment architecture (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -69,7 +69,10 @@ exact-mutation, invariant-verification, and packaging layer.
   Bedrock remains the AWS candidate. A separate Terra/xhigh review simplified the canonical AWS
   diagram into a clearer left-to-right browser → web → agent flow, consolidated deterministic GLB
   mutation and Chromium rendering, and retained every storage, identity, observability, and deploy
-  relationship without implying that any AWS application resource is already deployed. The common
+  relationship without implying that any AWS application resource is already deployed. A follow-up
+  architecture review collapses ALB/TLS/Fargate/networking into the ECS Express abstraction,
+  removes Route 53/custom-domain polish, and labels AgentCore as an IAM-authorized regional API
+  rather than implying PrivateLink or custom VPC networking. The common
   gate passes with 228 tests, two intentional live-provider skips, lock validation, Ruff,
   formatting, PowerShell parsing, valid SVG/PNG artifacts, and zero Pyright findings.
 
@@ -95,7 +98,7 @@ exact-mutation, invariant-verification, and packaging layer.
   SVG and rendered PNG now make the intended browser, ECS Express Mode, AgentCore, Bedrock, S3,
   DynamoDB, ECR, IAM, and CloudWatch boundaries explicit for implementation and contest materials.
   AWS has closed App Runner to new customers, so D093 supersedes D075 and selects one stateless ECS
-  Express Mode web container beside a private AgentCore Runtime, with S3 as immutable
+  Express Mode web container beside an IAM-controlled AgentCore Runtime, with S3 as immutable
   artifact/session storage and DynamoDB as the conditional workspace/command pointer. No ECS, ECR,
   AgentCore, S3, or DynamoDB resource has been deployed yet.
 

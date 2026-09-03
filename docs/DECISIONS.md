@@ -108,7 +108,7 @@ edge-on crop occupied about 0.5% of pixels while spanning 26% of the frame. The 
 floor is now 0.1%, with the independent 8% projected-span and clipping checks retained. A regression
 test proves that a long slender silhouette passes while a blank mask still fails.
 
-### D093 — Host the web tier on ECS Express Mode beside private AgentCore
+### D093 — Host the web tier on ECS Express Mode beside IAM-controlled AgentCore
 
 **Date:** 2026-09-02
 
@@ -128,19 +128,24 @@ the state authority.
 
 **Decision**
 
-Deploy one stateless FastAPI/Jinja container from private ECR through ECS Express Mode. It owns
-HTTPS routes, authentication, gallery authorization, presigned exact-object transfer, and
-service-to-service invocation. Deploy the Strands workflow and deterministic GLB tools in a private
-AgentCore Runtime only after the ARM64/Chromium compatibility spike passes. Keep immutable GLBs,
-evidence, packages, and Strands snapshots in private workspace-scoped S3 prefixes. Keep the current
-workspace pointer, iteration lineage, approval/command receipts, and optimistic version in
-DynamoDB.
+Deploy one stateless FastAPI/Jinja container from private ECR through ECS Express Mode. Treat its
+managed HTTPS endpoint, Application Load Balancer, TLS, health checks, Fargate service, autoscaling,
+and networking as one deployment abstraction rather than separately designed infrastructure. It
+owns HTTPS routes, authentication, gallery authorization, presigned exact-object transfer, and
+service-to-service invocation. Deploy the Strands workflow and deterministic GLB tools in an
+IAM-controlled AgentCore Runtime only after the ARM64/Chromium compatibility spike passes. Keep
+immutable GLBs, evidence, packages, and Strands snapshots in private workspace-scoped S3 prefixes.
+Keep the current workspace pointer, iteration lineage, approval/command receipts, and optimistic
+version in DynamoDB.
 
 Persist an artifact to S3 and verify its hash before conditionally advancing the DynamoDB pointer.
 Key every consequential command by a stable action hash so retries return the existing receipt
 instead of mutating twice. The web tier submits a command and returns `202 Accepted`; the notebook
 polls typed status while AgentCore runs. Browser clients never receive AWS credentials and never
-invoke the private runtime directly. Preserve the local Uvicorn/offline configuration as the same
+invoke the runtime directly. The web task calls the normal regional `InvokeAgentRuntime` API with
+its IAM role; PrivateLink and custom AgentCore VPC connectivity are deferred unless a later
+requirement justifies them. Route 53 and a custom domain are optional polish rather than contest
+dependencies. Preserve the local Uvicorn/offline configuration as the same
 product with local storage/runtime adapters.
 
 **Evidence and consequences**
