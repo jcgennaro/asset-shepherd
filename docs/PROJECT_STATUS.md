@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-03
-**Current commit:** Native Gemini 3.8 Flash comparator (this file is included)
+**Current commit:** Responsive target/use-case and inline-scene presentation (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -56,6 +56,18 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D097 responsive target and active-scene presentation: destination and viewing-use choices now
+  share one target card, use labels describe the user's use case rather than polygon terminology,
+  and reflow from the conversation lane's actual width. Below 1,151 pixels the one shared 3D scene
+  moves into the active notebook cell instead of occupying an inaccessible side column; desktop
+  keeps the sticky resizable scene. The Topology action now states how the confirmed use case
+  affected simplification. The saved Stylized Radio Handset run therefore explicitly reports that
+  4,327 triangles were preserved because they are below the 15,000-triangle normal-gameplay soft
+  cap. The repaired-GLB response was independently verified as a named attachment; Codex's embedded
+  browser requests it and then resets the connection, so Chrome or Edge remains necessary for local
+  downloads. The common gate passes with 231 tests, two intentional live-provider skips, lock
+  validation, Ruff, formatting, and zero Pyright findings.
 
 - D096 Gemini 3.8 Flash comparator: native Gemini structured intake and Strands workflow adapters
   now preserve the same typed authority boundary and standardized rendered evidence used by other

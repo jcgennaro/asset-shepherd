@@ -28,11 +28,7 @@
           </header>
           <blockquote class="history-user-message"><strong>You</strong><p>Uploaded {{ record.original_filename }}.</p></blockquote>
           <p class="history-agent-message"><strong>Asset Shepherd</strong><span>{{ upload_summary }}</span></p>
-          {% if record.phase.value == 'TARGET_CONFIRMATION' and comparison_scene %}
-            <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="upload" aria-label="Uploaded 3D state"></div>
-          {% else %}
-            <div class="notebook-scene-slot" data-notebook-scene-slot data-scene-key="upload" data-scene-url="{{ url_for('hosted_source_scene', workspace_id=record.workspace_id) }}" aria-label="Uploaded 3D state"></div>
-          {% endif %}
+          <div class="notebook-scene-slot" data-notebook-scene-slot data-scene-key="upload" data-scene-url="{{ url_for('hosted_source_scene', workspace_id=record.workspace_id) }}" aria-label="Uploaded 3D state"></div>
         </article>
 
         <article class="workflow-cell{% if record.phase.value == 'TARGET_CONFIRMATION' %} current{% else %} complete{% endif %}" id="notebook-describe">
@@ -79,7 +75,7 @@
           <p{% if not has_appended_current_result %} id="current-turn"{% endif %} class="conversation-prompt agent-message{% if record.phase.value != 'TARGET_CONFIRMATION' %} completion-prompt{% endif %}{% if cannot_repair %} blocked{% endif %}" data-agent-message><span class="agent-message-speaker" aria-hidden="true">Asset Shepherd</span><span class="visually-hidden">Asset Shepherd says: </span>
             {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and target_draft.ready_for_confirmation %}I’d shepherd this for {{ endpoint_label }} within {{ target_bounds_label }}.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "target_use" in target_draft.missing_fields %}Tell me the missing intent in your own words.
-            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}<span class="endpoint-help-prompt"><span>Select target engine.</span><button class="endpoint-help-button" type="button" aria-label="Explain target engines" title="What does the target change?" data-endpoint-help-open>?</button></span>
+            {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}<span class="endpoint-help-prompt"><span>Choose the target engine and how this asset will be viewed.</span><button class="endpoint-help-button" type="button" aria-label="Explain target engines" title="What does the target change?" data-endpoint-help-open>?</button></span>
             {% elif record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "viewing_use" in target_draft.missing_fields %}Select typical viewing use.
             {% elif record.phase.value == 'TARGET_CONFIRMATION' %}Enter the approximate target size.
             {% elif record.phase.value == 'APPROVAL' and agent_assessment_sentence %}{{ agent_assessment_sentence }}
@@ -87,6 +83,10 @@
             {% elif current_turn_outcome_summary %}{{ current_turn_outcome_summary }}
             {% else %}The workflow stopped.{% endif %}
           </p>
+
+        {% if record.phase.value == 'TARGET_CONFIRMATION' and comparison_scene %}
+          <div class="notebook-scene-slot active" data-notebook-scene-slot data-scene-key="upload" aria-label="Current uploaded 3D target preview"></div>
+        {% endif %}
 
         {% if record.phase.value == 'TARGET_CONFIRMATION' and target_draft and "endpoint" in target_draft.missing_fields %}
           <dialog class="description-examples-dialog endpoint-help-dialog" data-endpoint-help-dialog aria-labelledby="endpoint-help-title">
@@ -148,15 +148,15 @@
                     <input type="text" name="endpoint_detail" maxlength="80" placeholder="Other destination">
                   </fieldset>
                 {% endif %}
-                {% if "viewing_use" in target_draft.missing_fields %}
+                {% if "viewing_use" in target_draft.missing_fields or "endpoint" in target_draft.missing_fields %}
                   <fieldset class="viewing-use-choice" aria-label="Typical viewing use">
                     <legend>How closely will this asset normally be viewed?</legend>
                     {% for value, name, hint in (
-                      ('CLOSE_UP_SHOWCASE', 'Close-up / showcase', 'Players may inspect it closely.'),
+                      ('CLOSE_UP_SHOWCASE', 'Hero / close-up', 'Players may inspect it closely.'),
                       ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
-                      ('SMALL_DISTANT_REPEATED', 'Small, distant, or repeated', 'Usually small on screen or many copies appear.')) %}
+                      ('SMALL_DISTANT_REPEATED', 'Background / repeated', 'Usually small on screen or many copies appear.')) %}
                       <label class="viewing-use-option">
-                        <input type="radio" name="viewing_use" value="{{ value }}" required{% if value == 'NORMAL_GAMEPLAY' %} checked{% endif %}>
+                        <input type="radio" name="viewing_use" value="{{ value }}" required{% if target_draft.viewing_use and value == target_draft.viewing_use.value or not target_draft.viewing_use and value == 'NORMAL_GAMEPLAY' %} checked{% endif %}>
                         <span><strong>{{ name }}</strong><small>{{ hint }}</small></span>
                       </label>
                     {% endfor %}
@@ -301,7 +301,7 @@
             <p class="history-agent-message decision-question" id="hosted-result-accepted-title" tabindex="-1" data-result-title><strong>Asset Shepherd</strong><span>The current version is ready to download.</span></p>
             <div class="result-download-actions">
               {% if workspace.ready_candidate %}
-                <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
+                <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download="{{ record.asset_name|lower|replace(' ', '-') }}.glb">Download fixed model <span aria-hidden="true">↓</span></a>
                 <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Evidence package</a>
               {% elif comparison_scene %}
                 <a class="primary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download>Download candidate <span aria-hidden="true">↓</span></a>

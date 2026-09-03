@@ -354,7 +354,7 @@ def clarify_target_intake(
     target_z_m: str | None = None,
     target_height_m: str | None = None,
 ) -> TargetIntakeContract:
-    """Fill only missing required fields from explicit structured clarification answers."""
+    """Fill missing fields and retain an explicit viewing-use choice made beside them."""
     if draft.ready_for_confirmation:
         raise ValueError("The target proposal is already complete.")
     target_use = draft.target_use
@@ -418,13 +418,12 @@ def clarify_target_intake(
                 evidence="Explicit structured clarification",
             )
         )
-    if viewing_use is None:
-        if viewing_use_value is None:
-            raise ValueError("Choose how closely the asset will normally be viewed.")
+    if viewing_use_value is not None:
         try:
             viewing_use = AssetViewingUse(viewing_use_value)
         except ValueError as error:
             raise ValueError("Choose one of the three asset viewing uses.") from error
+        evidence = [item for item in evidence if item.field != "viewing_use"]
         evidence.append(
             TargetFieldEvidence(
                 field="viewing_use",
@@ -433,6 +432,8 @@ def clarify_target_intake(
                 evidence="Explicit structured use-case choice",
             )
         )
+    elif viewing_use is None:
+        raise ValueError("Choose how closely the asset will normally be viewed.")
     return TargetIntakeContract(
         schema_version=6,
         description=draft.description,

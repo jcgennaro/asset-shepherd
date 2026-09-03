@@ -4,6 +4,58 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D097 — Keep target choices and the active 3D scene usable at narrow widths
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation
+
+**Context**
+
+The destination cards were sized from the full browser viewport even when the persistent scene
+column left only a narrow conversation lane. Four compressed engine cards became difficult to read,
+and the use-case choice that controls mesh-complexity policy appeared only on the following target
+review. Below the two-column breakpoint, the shared 3D scene was also placed outside the active
+notebook turn, so the user could lose the visual context needed to answer the current question.
+Finally, the selected viewing use froze a triangle cap but a below-budget no-op was visible only in
+agent evidence, leaving users unable to tell whether simplification had been considered.
+
+**Decision**
+
+Collect the target engine and the single ordinary-language viewing-use choice together whenever the
+endpoint needs clarification. Name the choices `Hero / close-up`, `Normal gameplay`, and
+`Background / repeated`; retain the frozen caps of 50,000, 15,000, and 2,500 triangles. Let both
+choice grids reflow from their own available width instead of relying on a full-window breakpoint.
+
+Keep one shared interactive 3D scene. At desktop widths it remains in the resizable sticky evidence
+column. At widths of 1,150 pixels or less, move that same scene into the currently active notebook
+cell; scrolling changes both the active historical state and the scene's location. Do not create a
+second viewer or duplicate WebGL state.
+
+Always state the deterministic mesh-complexity outcome in the Topology action once viewing use is
+confirmed: optimization proposed/applied/rejected, detail preserved because the source is under the
+cap, optimization unavailable for an unsafe layout, or an over-budget case where the agent did not
+propose it. This is presentation of frozen policy and measured facts, not new deterministic planning.
+
+**Evidence and consequences**
+
+Hosted acceptance covers the combined destination/use-case form, an explicit non-default choice,
+the inline current-scene slot, and the visible normal-gameplay budget outcome. The saved radio run
+now reports that its 4,327 triangles were preserved because they are within the confirmed
+15,000-triangle soft cap. Static acceptance proves that the shared scene moves between the evidence
+host and active notebook slot across the breakpoint. The responsive implementation preserves one
+scene instance and all existing scroll-driven historical selection behavior.
+
+The fixed-model endpoint returns HTTP 206/200 with `Content-Disposition: attachment` and the
+expected filename. The Codex embedded browser requests that file but resets the connection instead
+of presenting a save surface; that is a host-browser limitation, not a failed Asset Shepherd
+package. Full Chrome, Edge, and the future deployed browser path remain the supported download
+surfaces.
+
 ### D096 — Add Gemini 3.8 Flash as a native opt-in comparator
 
 **Date:** 2026-09-03

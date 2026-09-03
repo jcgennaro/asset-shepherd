@@ -441,9 +441,9 @@ def test_web_drafts_and_requires_explicit_target_story_agreement(tmp_path: Path)
     assert 'name="target_height_m"' not in review.text
     assert "Start shepherding" in review.text
     assert "How closely will this asset normally be viewed?" in review.text
-    assert "Close-up / showcase" in review.text
+    assert "Hero / close-up" in review.text
     assert "Normal gameplay" in review.text
-    assert "Small, distant, or repeated" in review.text
+    assert "Background / repeated" in review.text
     assert 'name="viewing_use" value="NORMAL_GAMEPLAY" required checked' in review.text
     assert "<summary>Change target…</summary>" in review.text
     assert "Yes, inspect this asset" not in review.text
@@ -1175,6 +1175,12 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     banana_bounds = world_bounds(load_glb(banana_path))
     assert 0.16 <= max(banana_bounds.dimensions) <= 0.21
 
+    stylesheet = client.get("/static/app.css")
+    assert stylesheet.status_code == 200
+    assert "repeat(auto-fit, minmax(min(190px, 100%), 1fr))" in stylesheet.text
+    assert "repeat(auto-fit, minmax(min(210px, 100%), 1fr))" in stylesheet.text
+    assert ".notebook-scene-slot.active .notebook-shared-scene" in stylesheet.text
+
     script = client.get("/static/app.js")
     assert script.status_code == 200
     assert 'viewer.addEventListener("camera-change", scheduleHud)' in script.text
@@ -1206,7 +1212,9 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert 'window.addEventListener("scroll", scheduleSelection' in script.text
     assert "const viewportCenter = window.innerHeight / 2" in script.text
     assert 'notebook.querySelector("[data-notebook-scene-host]")' in script.text
-    assert "slot.append(sharedScene)" not in script.text
+    assert 'window.matchMedia("(max-width: 1150px)")' in script.text
+    assert "destination.append(sharedScene)" in script.text
+    assert 'inlineScene.addEventListener("change", placeSharedScene)' in script.text
     assert 'sceneHost.classList.add("loading")' in script.text
     assert "function initializeEvidenceResizer(notebook)" in script.text
     assert "const minimumConversationWidth = 500" in script.text

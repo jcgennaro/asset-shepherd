@@ -1492,9 +1492,18 @@ function initializeSceneNotebook(notebook) {
 
   const sceneCache = new Map([[sharedScene.dataset.sceneKey, sharedScene.innerHTML]]);
   const sceneLinks = [...document.querySelectorAll("[data-notebook-scene-link]")];
+  const inlineScene = window.matchMedia("(max-width: 1150px)");
   let activeKey = sharedScene.dataset.sceneKey;
+  let activeSlot = slots.find((slot) => slot.classList.contains("active")) || slots[0];
   let requestSequence = 0;
   let frame = 0;
+
+  function placeSharedScene() {
+    const destination = inlineScene.matches ? activeSlot : sceneHost;
+    if (destination && sharedScene.parentElement !== destination) {
+      destination.append(sharedScene);
+    }
+  }
 
   function renderScene(html, key) {
     if (key !== activeKey) {
@@ -1504,7 +1513,7 @@ function initializeSceneNotebook(notebook) {
     sharedScene.dataset.sceneKey = key;
     sharedScene.removeAttribute("aria-busy");
     sceneHost.classList.remove("loading");
-    slots.find((slot) => slot.dataset.sceneKey === key)?.classList.remove("loading");
+    activeSlot?.classList.remove("loading");
     initializeRenderedScene(sharedScene);
   }
 
@@ -1548,10 +1557,10 @@ function initializeSceneNotebook(notebook) {
 
   function activateSlot(slot) {
     const key = slot.dataset.sceneKey;
-    if (!key || key === activeKey) {
+    if (!key || (key === activeKey && slot === activeSlot)) {
       return;
     }
-    const previousSlot = slots.find((candidate) => candidate.classList.contains("active"));
+    const previousSlot = activeSlot;
     if (activeKey && !sceneCache.has(activeKey)) {
       sceneCache.set(activeKey, sharedScene.innerHTML);
     }
@@ -1559,6 +1568,11 @@ function initializeSceneNotebook(notebook) {
     previousSlot?.removeAttribute("aria-current");
     slot.classList.add("active");
     slot.setAttribute("aria-current", "true");
+    activeSlot = slot;
+    placeSharedScene();
+    if (key === activeKey) {
+      return;
+    }
     activeKey = key;
     for (const link of sceneLinks) {
       link.closest("li")?.classList.toggle("scene-current", link.dataset.notebookSceneLink === key);
@@ -1588,9 +1602,9 @@ function initializeSceneNotebook(notebook) {
     }
   }
 
-  const initialSlot = slots.find((slot) => slot.dataset.sceneKey === activeKey) || slots[0];
-  initialSlot.classList.add("active");
-  initialSlot?.setAttribute("aria-current", "true");
+  activeSlot.classList.add("active");
+  activeSlot.setAttribute("aria-current", "true");
+  placeSharedScene();
   for (const link of sceneLinks) {
     link
       .closest("li")
@@ -1599,6 +1613,7 @@ function initializeSceneNotebook(notebook) {
   window.addEventListener("scroll", scheduleSelection, { passive: true });
   window.addEventListener("resize", scheduleSelection);
   window.addEventListener("hashchange", scheduleSelection);
+  inlineScene.addEventListener("change", placeSharedScene);
   // Workspace routes deliberately arrive at #current-turn. Preserve the server-rendered
   // current comparison until the user actually scrolls; an eager selection can otherwise
   // replace it with the upload-only scene before anchor positioning settles.

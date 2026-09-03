@@ -1279,9 +1279,9 @@ def _target_expectations(
         ExpectationView(
             label="Typical viewing",
             value={
-                AssetViewingUse.CLOSE_UP_SHOWCASE: "Close-up / showcase",
+                AssetViewingUse.CLOSE_UP_SHOWCASE: "Hero / close-up",
                 AssetViewingUse.NORMAL_GAMEPLAY: "Normal gameplay",
-                AssetViewingUse.SMALL_DISTANT_REPEATED: "Small, distant, or repeated",
+                AssetViewingUse.SMALL_DISTANT_REPEATED: "Background / repeated",
             }[target.viewing_use],
             source=_evidence_source_label(viewing_evidence),
             detail=(
@@ -1805,6 +1805,16 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         primitive.degenerate_triangle_count for primitive in diagnostic_primitives
     )
     unused_positions = sum(primitive.unused_position_count for primitive in diagnostic_primitives)
+    source_triangle_count = inspection.geometry.triangle_count if inspection.geometry else None
+    triangle_soft_cap = core.profile.budgets.max_triangles
+    viewing_use = core.asset_intent.viewing_use if core.asset_intent is not None else None
+    viewing_use_name = "selected use case"
+    if viewing_use is not None:
+        viewing_use_name = {
+            AssetViewingUse.CLOSE_UP_SHOWCASE: "hero / close-up",
+            AssetViewingUse.NORMAL_GAMEPLAY: "normal gameplay",
+            AssetViewingUse.SMALL_DISTANT_REPEATED: "background / repeated",
+        }[viewing_use]
     protected_attributes = sorted(
         {
             attribute
@@ -1908,8 +1918,8 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 simplification_source_triangles = payload.source_triangle_count
                 simplification_action = (
                     f"Approval required — optimize {payload.source_triangle_count:,} toward "
-                    f"approximately {payload.target_triangle_count:,} triangles; protect small "
-                    "components and preserve the original."
+                    f"the {viewing_use_name} soft cap of {payload.target_triangle_count:,} "
+                    "triangles; protect small components and preserve the original."
                 )
                 continue
             before_name = payload.before_name or "(unnamed)"
@@ -2179,6 +2189,36 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                 name_action = f"Attempted — verification did not confirm {name_detail}"
         elif name_warning:
             name_action = "No change — names remain unresolved."
+
+    if source_triangle_count is not None and viewing_use is not None and not simplification_ids:
+        if source_triangle_count <= triangle_soft_cap:
+            complexity_action = (
+                f"Mesh detail preserved — {source_triangle_count:,} triangles is within the "
+                f"{triangle_soft_cap:,}-triangle {viewing_use_name} soft cap."
+            )
+        elif assessment is None:
+            complexity_action = (
+                f"Mesh complexity is still being evaluated — {source_triangle_count:,} "
+                f"triangles exceeds the {triangle_soft_cap:,}-triangle {viewing_use_name} "
+                "soft cap."
+            )
+        elif any(primitive.mesh_simplification_safe for primitive in diagnostic_primitives):
+            complexity_action = (
+                f"Mesh detail preserved this turn — {source_triangle_count:,} triangles exceeds "
+                f"the {triangle_soft_cap:,}-triangle {viewing_use_name} soft cap, but the agent "
+                "did not propose optimization."
+            )
+        else:
+            complexity_action = (
+                f"Mesh optimization unavailable — {source_triangle_count:,} triangles exceeds "
+                f"the {triangle_soft_cap:,}-triangle {viewing_use_name} soft cap, but this GLB "
+                "layout cannot be simplified safely."
+            )
+        topology_action = (
+            complexity_action
+            if topology_action == "—"
+            else f"{topology_action} {complexity_action}"
+        )
 
     topology_facts: list[str] = []
     if selectable_component_count:
@@ -3636,9 +3676,9 @@ def create_app(
                 ),
                 "viewing_use_label": (
                     {
-                        AssetViewingUse.CLOSE_UP_SHOWCASE: "Close-up / showcase",
+                        AssetViewingUse.CLOSE_UP_SHOWCASE: "Hero / close-up",
                         AssetViewingUse.NORMAL_GAMEPLAY: "Normal gameplay",
-                        AssetViewingUse.SMALL_DISTANT_REPEATED: ("Small, distant, or repeated"),
+                        AssetViewingUse.SMALL_DISTANT_REPEATED: "Background / repeated",
                     }[workspace.record.target_draft.viewing_use]
                     if workspace.record.target_draft is not None
                     and workspace.record.target_draft.viewing_use is not None

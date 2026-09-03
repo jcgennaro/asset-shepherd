@@ -308,9 +308,9 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert measured.text.count('class="expectation-group"') == 3
     assert "Start shepherding" in measured.text
     assert "How closely will this asset normally be viewed?" in measured.text
-    assert "Close-up / showcase" in measured.text
+    assert "Hero / close-up" in measured.text
     assert "Normal gameplay" in measured.text
-    assert "Small, distant, or repeated" in measured.text
+    assert "Background / repeated" in measured.text
     assert 'name="viewing_use" value="NORMAL_GAMEPLAY" required checked' in measured.text
     assert "50,000" not in measured.text
     assert "15,000" not in measured.text
@@ -360,6 +360,8 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert 'class="approval-change"' not in pending.text
     assert "Proposed action" in pending.text
     assert "Approval required" in pending.text
+    assert "Mesh detail preserved" in pending.text
+    assert "15,000-triangle normal gameplay soft cap" in pending.text
     assert "Display names" in pending.text
     assert "Repair plan" not in pending.text
     assert "Confirmed the proposed target." in pending.text
@@ -529,8 +531,10 @@ def test_hosted_route_asks_only_for_missing_target_information(tmp_path: Path) -
     assert "What real-world height should it have?" not in proposal.text
 
 
-def test_hosted_endpoint_clarification_is_one_focused_linked_choice(tmp_path: Path) -> None:
-    """A missing endpoint produces one sentence and four concise destination choices."""
+def test_hosted_endpoint_clarification_collects_destination_and_viewing_use(
+    tmp_path: Path,
+) -> None:
+    """A missing endpoint collects both global target choices in one responsive card."""
 
     class MissingEndpointAnalyzer:
         provider = "test"
@@ -581,9 +585,10 @@ def test_hosted_endpoint_clarification_is_one_focused_linked_choice(tmp_path: Pa
         data={"description": "A computer chip about 5 by 5 by 2 cm."},
         follow_redirects=False,
     )
-    page = client.get(urlparse(created.headers["location"]).path)
+    workspace_path = urlparse(created.headers["location"]).path
+    page = client.get(workspace_path)
 
-    assert "Select target engine." in page.text
+    assert "Choose the target engine and how this asset will be viewed." in page.text
     assert "I need one" not in page.text
     assert 'aria-label="Explain target engines"' in page.text
     assert "What the target changes" in page.text
@@ -594,6 +599,25 @@ def test_hosted_endpoint_clarification_is_one_focused_linked_choice(tmp_path: Pa
     assert 'href="https://www.unrealengine.com/"' in page.text
     assert 'href="https://godotengine.org/"' in page.text
     assert "endpoint-orbit" in page.text
+    assert "How closely will this asset normally be viewed?" in page.text
+    assert "Hero / close-up" in page.text
+    assert "Normal gameplay" in page.text
+    assert "Background / repeated" in page.text
+    assert 'name="viewing_use" value="NORMAL_GAMEPLAY" required checked' in page.text
+    assert 'aria-label="Current uploaded 3D target preview"' in page.text
+
+    answered = client.post(
+        f"{workspace_path}/target/clarify",
+        data={
+            "command_id": _hidden(page.text, "command_id"),
+            "endpoint": "UNREAL",
+            "viewing_use": "SMALL_DISTANT_REPEATED",
+        },
+        follow_redirects=False,
+    )
+    assert answered.status_code == 303
+    reviewed = client.get(workspace_path)
+    assert 'name="viewing_use" value="SMALL_DISTANT_REPEATED" required checked' in reviewed.text
 
 
 def test_upload_preflight_rejects_an_invalid_glb_before_description(tmp_path: Path) -> None:

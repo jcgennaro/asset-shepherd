@@ -42,9 +42,9 @@
         <fieldset class="viewing-use-choice target-review-use" aria-label="Typical viewing use">
           <legend>How closely will this asset normally be viewed?</legend>
           {% for value, name, hint in (
-            ('CLOSE_UP_SHOWCASE', 'Close-up / showcase', 'Players may inspect it closely.'),
+            ('CLOSE_UP_SHOWCASE', 'Hero / close-up', 'Players may inspect it closely.'),
             ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
-            ('SMALL_DISTANT_REPEATED', 'Small, distant, or repeated', 'Usually small on screen or many copies appear.')) %}
+            ('SMALL_DISTANT_REPEATED', 'Background / repeated', 'Usually small on screen or many copies appear.')) %}
             <label class="viewing-use-option">
               <input type="radio" name="viewing_use" value="{{ value }}" required{% if value == viewing_use_value %} checked{% endif %}>
               <span><strong>{{ name }}</strong><small>{{ hint }}</small></span>
