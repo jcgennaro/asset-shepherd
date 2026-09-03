@@ -22,6 +22,7 @@ from strands.types.content import Messages
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
 from asset_shepherd.agent_runtime import (
     AssetShepherdBedrockConverseModel,
+    AssetShepherdGeminiModel,
     CompleteResponseBedrockModel,
     CompleteResponseMetaModel,
     CompleteResponseOpenAIModel,
@@ -647,6 +648,68 @@ def test_meta_model_requires_standard_checkpoint_and_hoists_tool_images() -> Non
     assert request_input[1]["role"] == "user"
     user_content = cast(list[dict[str, object]], request_input[1]["content"])
     assert any(part.get("type") == "input_image" for part in user_content)
+
+
+def test_environment_model_builds_native_gemini_and_hoists_tool_images() -> None:
+    """Gemini receives only allowlisted controls and native image parts beside tool results."""
+    model, configuration = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "gemini",
+            "ASSET_SHEPHERD_MODEL_ID": "gemini-3.8-flash",
+            "ASSET_SHEPHERD_WORKFLOW_REASONING": "xhigh",
+            "GEMINI_API_KEY": "test-only-gemini-key",
+        }
+    )
+
+    assert isinstance(model, AssetShepherdGeminiModel)
+    assert configuration.provider == "gemini"
+    assert configuration.region is None
+    assert model.get_config().get("params") == {
+        "candidate_count": 1,
+        "max_output_tokens": 16_384,
+        "thinking_config": {"thinking_level": "HIGH"},
+    }
+
+    stream = BytesIO()
+    Image.new("RGB", (2, 2), (20, 120, 200)).save(stream, format="PNG")
+    messages: Messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "toolResult": {
+                        "toolUseId": "render-call-1",
+                        "status": "success",
+                        "content": [
+                            {"text": "Front view."},
+                            {
+                                "image": {
+                                    "format": "png",
+                                    "source": {"bytes": stream.getvalue()},
+                                }
+                            },
+                        ],
+                    }
+                }
+            ],
+        }
+    ]
+    request = model._format_request(messages, None, None, None)
+    contents = cast(list[dict[str, object]], request["contents"])
+    parts = cast(list[dict[str, object]], contents[0]["parts"])
+    function_response = cast(dict[str, object], parts[0]["function_response"])
+    response = cast(dict[str, object], function_response["response"])
+    assert response["output"] == [{"text": "Front view."}]
+    assert cast(dict[str, object], parts[1]["inline_data"])["mime_type"] == "image/png"
+
+    with pytest.raises(AgentWorkflowError, match=r"only gemini-3\.8-flash"):
+        build_environment_model(
+            {
+                "ASSET_SHEPHERD_MODEL_PROVIDER": "gemini",
+                "ASSET_SHEPHERD_MODEL_ID": "gemini-other",
+                "GEMINI_API_KEY": "test-only-gemini-key",
+            }
+        )
 
 
 def test_environment_model_builds_model_neutral_converse_for_kimi() -> None:

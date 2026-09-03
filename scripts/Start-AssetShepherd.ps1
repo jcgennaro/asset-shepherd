@@ -7,7 +7,8 @@ param(
     [int]$Port = 8010,
     [string]$WorkDirectory = 'build/web/jobs',
     [string]$SecretPath = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'AssetShepherd\openai-api-key.dpapi'),
-    [string]$MetaSecretPath = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'AssetShepherd\meta-model-api-key.dpapi')
+    [string]$MetaSecretPath = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'AssetShepherd\meta-model-api-key.dpapi'),
+    [string]$GeminiSecretPath = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'AssetShepherd\gemini-api-key.dpapi')
 )
 
 Set-StrictMode -Version Latest
@@ -69,6 +70,97 @@ if ($modelProvider -in @('bedrock', 'bedrock-converse', 'bedrock-nova')) {
         else {
             Remove-Item Env:ASSET_SHEPHERD_INTAKE_PROVIDER -ErrorAction SilentlyContinue
         }
+    }
+    exit $exitCode
+}
+if ($modelProvider -eq 'gemini') {
+    if ([string]::IsNullOrWhiteSpace($env:ASSET_SHEPHERD_MODEL_ID)) {
+        throw 'Gemini mode requires ASSET_SHEPHERD_MODEL_ID.'
+    }
+    if ($env:OS -ne 'Windows_NT') {
+        throw 'This local key helper requires Windows data protection.'
+    }
+    Add-Type -AssemblyName System.Security
+    if (-not (Test-Path -LiteralPath $GeminiSecretPath -PathType Leaf)) {
+        throw 'No saved Gemini API key was found. Run .\scripts\Save-GeminiKey.ps1 first.'
+    }
+
+    $protectedBytes = $null
+    $plainBytes = $null
+    $plainKey = $null
+    $hadPreviousGeminiKey = Test-Path Env:GEMINI_API_KEY
+    $previousGeminiKey = if ($hadPreviousGeminiKey) { $env:GEMINI_API_KEY } else { $null }
+    $hadPreviousModelKey = Test-Path Env:MODEL_API_KEY
+    $previousModelKey = if ($hadPreviousModelKey) { $env:MODEL_API_KEY } else { $null }
+    $hadPreviousOpenAIKey = Test-Path Env:OPENAI_API_KEY
+    $previousOpenAIKey = if ($hadPreviousOpenAIKey) { $env:OPENAI_API_KEY } else { $null }
+    $hadPreviousIntakeProvider = Test-Path Env:ASSET_SHEPHERD_INTAKE_PROVIDER
+    $previousIntakeProvider = if ($hadPreviousIntakeProvider) {
+        $env:ASSET_SHEPHERD_INTAKE_PROVIDER
+    }
+    else {
+        $null
+    }
+    $exitCode = 1
+
+    try {
+        $protectedBytes = [Convert]::FromBase64String(
+            [IO.File]::ReadAllText($GeminiSecretPath, [Text.Encoding]::UTF8).Trim()
+        )
+        $plainBytes = [System.Security.Cryptography.ProtectedData]::Unprotect(
+            $protectedBytes,
+            $null,
+            [System.Security.Cryptography.DataProtectionScope]::CurrentUser
+        )
+        $plainKey = [Text.Encoding]::UTF8.GetString($plainBytes)
+        if ([string]::IsNullOrWhiteSpace($plainKey)) {
+            throw 'The saved Gemini API key is empty. Save it again.'
+        }
+
+        $env:GEMINI_API_KEY = $plainKey
+        Remove-Item Env:MODEL_API_KEY -ErrorAction SilentlyContinue
+        Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+        if (-not $hadPreviousIntakeProvider) {
+            $env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'gemini'
+        }
+        Push-Location $projectRoot
+        try {
+            & uv run asset-shepherd web --host $BindAddress --port $Port --work-dir $WorkDirectory
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            Pop-Location
+        }
+    }
+    catch [System.Security.Cryptography.CryptographicException] {
+        throw 'The saved Gemini API key cannot be unlocked by this Windows user. Save it again.'
+    }
+    finally {
+        if ($hadPreviousGeminiKey) {
+            $env:GEMINI_API_KEY = $previousGeminiKey
+        }
+        else {
+            Remove-Item Env:GEMINI_API_KEY -ErrorAction SilentlyContinue
+        }
+        if ($hadPreviousModelKey) {
+            $env:MODEL_API_KEY = $previousModelKey
+        }
+        if ($hadPreviousOpenAIKey) {
+            $env:OPENAI_API_KEY = $previousOpenAIKey
+        }
+        if ($hadPreviousIntakeProvider) {
+            $env:ASSET_SHEPHERD_INTAKE_PROVIDER = $previousIntakeProvider
+        }
+        else {
+            Remove-Item Env:ASSET_SHEPHERD_INTAKE_PROVIDER -ErrorAction SilentlyContinue
+        }
+        if ($null -ne $protectedBytes) {
+            [Array]::Clear($protectedBytes, 0, $protectedBytes.Length)
+        }
+        if ($null -ne $plainBytes) {
+            [Array]::Clear($plainBytes, 0, $plainBytes.Length)
+        }
+        $plainKey = $null
     }
     exit $exitCode
 }

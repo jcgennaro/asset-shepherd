@@ -100,6 +100,29 @@ See Meta's [release announcement](https://research.meta.ai/blog/introducing-muse
 Strands' [OpenAI-compatible provider documentation](https://strandsagents.com/docs/user-guide/concepts/model-providers/openai/)
 for the external-provider boundary.
 
+Gemini 3.8 Flash is also available as an opt-in local comparator through Strands' native Gemini
+provider. It is not an Amazon Bedrock model and is not part of the AWS production architecture.
+Save its separate key with Windows user-scoped encryption, then isolate test workspaces from the
+OpenAI, Bedrock, and Meta runs:
+
+```powershell
+.\scripts\Save-GeminiKey.ps1
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'gemini'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'gemini'
+$env:ASSET_SHEPHERD_INTAKE_MODEL = 'gemini-3.8-flash'
+$env:ASSET_SHEPHERD_MODEL_ID = 'gemini-3.8-flash'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'high'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'high'
+.\scripts\Start-AssetShepherd.ps1 -WorkDirectory 'build/web/jobs-gemini'
+```
+
+The launcher exposes `GEMINI_API_KEY` only to the running server process and restores the caller's
+environment when it exits. Asset Shepherd accepts only the exact evaluated model ID and maps its
+usual `xhigh` setting to Gemini's supported `high` level. The structured intake uses native Gemini
+JSON-schema output, and the Strands workflow sends standardized renders as native image parts.
+Create and manage the key in [Google AI Studio](https://aistudio.google.com/apikey). The web app and
+geometry tools still run locally in this mode; only model requests leave the workstation.
+
 Nova 2 Lite can still be selected explicitly through the shared Converse adapter:
 
 ```powershell
@@ -142,11 +165,11 @@ resume the same asset without sharing conversation state or repeating mutation. 
 `uv run asset-shepherd web --offline-intake` for the explicit-text intake fallback. Deterministic
 providers remain available for zero-network tests.
 
-The Windows launch scripts keep an optional direct-OpenAI development key under the current user's
-local app data, outside the repository. In OpenAI mode, the launcher exposes it only to the running
-server process and removes it when that command ends. In Bedrock mode, the launcher removes any
-inherited OpenAI key and uses only the active AWS session credentials. The direct OpenAI
-API remains a development adapter, not a production fallback.
+The Windows launch scripts keep optional direct-OpenAI, Meta, and Gemini development keys under the
+current user's local app data, outside the repository. A launcher exposes only the selected key to
+the running server process and removes it when that command ends. In Bedrock mode, the launcher
+removes any inherited OpenAI key and uses only the active AWS session credentials. External APIs
+remain development comparators, not production fallbacks.
 
 The agent decides which checks and bounded actions are appropriate. Deterministic tools remain
 authoritative for measurements, exact action consequences, authorization, source immutability,

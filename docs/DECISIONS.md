@@ -4,6 +4,44 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D096 — Add Gemini 3.8 Flash as a native opt-in comparator
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED for opt-in local evaluation; live acceptance pending
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation / M10 evaluation
+
+**Context**
+
+The user wants to compare Gemini 3.8 Flash against Asset Shepherd's proven Luna, Kimi, and Muse
+runs. Gemini accepts standardized image evidence and tool use, and Strands has a native provider,
+but Gemini is not hosted by Amazon Bedrock. This is therefore a development comparator rather than
+a change to the AWS contest deployment.
+
+**Decision**
+
+Add `gemini` behind the existing provider-neutral intake and workflow boundaries. Permit only the
+exact `gemini-3.8-flash` model ID. Use native Gemini JSON-schema output for semantic intake and the
+native Strands Gemini model for the tool loop. Hoist rendered tool-result images into first-class
+Gemini image parts so visual evidence is not serialized as opaque function-response JSON. Map the
+project's `xhigh` convention to Gemini's supported `high` reasoning level.
+
+Store the local API key with Windows current-user DPAPI, outside the repository. Expose
+`GEMINI_API_KEY` only while the selected local server child process runs. Keep Gemini workspaces
+separate from other provider runs. A production use would require a separate privacy, secret-store,
+egress, billing, and architecture decision; it does not replace Kimi's accepted Bedrock path.
+
+**Evidence and consequences**
+
+The implementation includes native structured intake, native multimodal Strands tool transport,
+fail-closed model and reasoning validation, provider-acceptance runner support, and zero-network
+tests for configuration, screenshot transport, schema use, and DPAPI launcher behavior. Live API
+evidence and measured token/time results remain pending until the user saves a key and authorizes
+the first comparison run.
+
 ### D095 — Add Muse Spark 1.3 as an explicit Meta evaluation comparator
 
 **Date:** 2026-09-02

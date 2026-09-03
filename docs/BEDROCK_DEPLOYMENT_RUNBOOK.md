@@ -3,7 +3,7 @@
 **Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate through the least-privilege
 runtime role, while cloud-portable state, Linux rendering, and remote deployment remain open
 
-**Last verified against official documentation:** 2026-09-02
+**Last verified against official documentation:** 2026-09-03
 
 **Milestone:** M9 hosted Bedrock conversation and deployment
 
@@ -61,6 +61,9 @@ until the remote-product gate passes.
 - [x] D095 opt-in external comparator. Muse Spark 1.3 passes three local representative cases
   through Meta's Model API, including opposite component-selection decisions. This does not alter
   the AWS production topology or satisfy the fixed eight-case gate.
+- [x] D096 native Gemini comparator implementation. The exact Gemini 3.8 Flash model is available
+  for isolated local comparison without entering the canonical AWS deployment; live case evidence
+  remains pending.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing. The portable Chromium/model-viewer implementation and local
   source/shared-scale gates pass; the clean Linux container gate remains open.
@@ -114,10 +117,11 @@ its short-lived assumed-role session authorize those calls; they do not deploy t
 Shepherd ECR repository, ECS service, AgentCore runtime, S3 workspace bucket, or DynamoDB workspace
 table exists yet.
 
-The optional Meta/Muse comparator is a separate local test configuration: local Strands calls the
-Meta Model API over outbound HTTPS instead of Bedrock. It is deliberately absent from the canonical
-AWS contest-deployment diagram. Deploying it later would require a reviewed secret, AgentCore
-internet egress, the standard non-training model, and a new architecture decision.
+The optional Meta/Muse and Google/Gemini comparators are separate local test configurations: local
+Strands calls the selected external API over outbound HTTPS instead of Bedrock. They are
+deliberately absent from the canonical AWS contest-deployment diagram. Deploying either later would
+require a reviewed secret, AgentCore internet egress, privacy and retention review, and a new
+architecture decision. Muse would additionally require the standard non-training checkpoint.
 
 Current AWS evidence is visible in these places in `us-east-1`:
 
@@ -218,8 +222,8 @@ or agent contracts.
 
 | Concern | Current implementation | Required migration |
 |---|---|---|
-| Workflow model | Capability-aware Bedrock Converse adapter with Kimi accepted by the fixed 8/8 gate; Luna Responses, direct-OpenAI development, and opt-in Meta/Muse evaluation adapters remain | Re-run the same gate in the deployed runtime |
-| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI and opt-in Meta/Muse development, and deterministic test adapters | Re-run typed intake in the deployed runtime |
+| Workflow model | Capability-aware Bedrock Converse adapter with Kimi accepted by the fixed 8/8 gate; Luna Responses, direct-OpenAI development, opt-in Meta/Muse Responses, and native Gemini evaluation adapters remain | Re-run the same gate in the deployed runtime |
+| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI/Meta development, native Gemini structured output, and deterministic test adapters | Re-run typed intake in the deployed runtime |
 | Agent session | `SnapshotSessionManager` with `LocalFileStorage` under one workspace | Replace storage with Strands S3 session storage while retaining `workspace_id` |
 | Workspace record | Atomic JSON files plus process-local locking | DynamoDB record with optimistic/conditional writes |
 | Binary artifacts | Per-workspace local directories | Private S3 prefixes with hashes, lifecycle, and presigned transfer |

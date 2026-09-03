@@ -2,10 +2,13 @@
 
 import json
 import os
+from types import SimpleNamespace
 from typing import cast
 
 import httpx
 import pytest
+from google import genai
+from google.genai import types as genai_types
 
 from asset_shepherd.intake_analyzer import (
     BEDROCK_INTAKE_TOOL,
@@ -15,6 +18,7 @@ from asset_shepherd.intake_analyzer import (
     BedrockConverseTargetIntakeConfiguration,
     BedrockTargetIntakeAnalyzer,
     BedrockTargetIntakeConfiguration,
+    GeminiTargetIntakeAnalyzer,
     MetaTargetIntakeAnalyzer,
     OpenAITargetIntakeAnalyzer,
     OpenAITargetIntakeConfiguration,
@@ -26,6 +30,7 @@ from asset_shepherd.intake_analyzer import (
     contract_from_inference,
     load_bedrock_converse_target_intake_configuration,
     load_bedrock_target_intake_configuration,
+    load_gemini_target_intake_configuration,
     load_meta_target_intake_configuration,
     load_nova_target_intake_configuration,
 )
@@ -91,6 +96,68 @@ def test_meta_intake_uses_standard_muse_responses_contract() -> None:
         }
     )
     assert contributor.model_id == "muse-spark-1.3-contributor"
+
+
+def test_gemini_intake_uses_native_structured_output_and_allowlisted_model() -> None:
+    """Gemini uses its native SDK schema and maps xhigh to the supported high level."""
+    values = {
+        "ASSET_SHEPHERD_INTAKE_PROVIDER": "gemini",
+        "ASSET_SHEPHERD_MODEL_ID": "gemini-3.8-flash",
+        "ASSET_SHEPHERD_INTAKE_REASONING": "xhigh",
+        "GEMINI_API_KEY": "test-only-gemini-key",
+    }
+    configuration = load_gemini_target_intake_configuration(values)
+    assert configuration.model_id == "gemini-3.8-flash"
+    assert configuration.reasoning_effort == "high"
+
+    captured: dict[str, object] = {}
+
+    class FakeModels:
+        def generate_content(self, **kwargs: object) -> SimpleNamespace:
+            captured.update(kwargs)
+            return SimpleNamespace(
+                text=json.dumps(
+                    {
+                        "engagement_decision": "PROCEED",
+                        "asset_name": "Riding Crop",
+                        "target_use": "STATIC_GAME_ASSET",
+                        "target_use_confidence": 0.95,
+                        "target_use_evidence": "The description identifies a handheld prop.",
+                        "endpoint": "UNREAL",
+                        "endpoint_detail": None,
+                        "endpoint_confidence": 0.94,
+                        "endpoint_evidence": "The description names Unreal.",
+                        "target_dimensions_cm": {"x_cm": 3.0, "y_cm": 70.0, "z_cm": 3.0},
+                        "target_dimensions_confidence": 0.92,
+                        "target_dimensions_evidence": "A riding crop is a long handheld prop.",
+                        "expected_piece_count": 1,
+                        "expected_piece_count_evidence": "One complete riding crop is requested.",
+                    }
+                )
+            )
+
+    fake_client = SimpleNamespace(models=FakeModels())
+    analyzer = GeminiTargetIntakeAnalyzer(
+        configuration,
+        client=cast(genai.Client, cast(object, fake_client)),
+    )
+    contract = analyzer.analyze("A riding crop for Unreal.")
+
+    assert contract.analyzer_provider == "gemini"
+    assert contract.analyzer_model == "gemini-3.8-flash"
+    assert contract.target_dimensions_cm == (3.0, 70.0, 3.0)
+    assert captured["model"] == "gemini-3.8-flash"
+    config = cast(genai_types.GenerateContentConfig, captured["config"])
+    assert config.thinking_config is not None
+    assert config.thinking_config.thinking_level == genai_types.ThinkingLevel.HIGH
+    assert config.response_mime_type == "application/json"
+
+    built = build_target_intake_analyzer(values)
+    assert isinstance(built, GeminiTargetIntakeAnalyzer)
+    with pytest.raises(TargetIntakeAnalysisError, match=r"only gemini-3\.8-flash"):
+        load_gemini_target_intake_configuration(
+            {**values, "ASSET_SHEPHERD_MODEL_ID": "gemini-other"}
+        )
 
 
 def test_openai_luna_xhigh_proposes_semantic_use_and_scale() -> None:

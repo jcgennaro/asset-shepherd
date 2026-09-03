@@ -48,7 +48,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument(
         "--provider",
         required=True,
-        choices=("openai", "bedrock", "bedrock-converse", "meta"),
+        choices=("openai", "bedrock", "bedrock-converse", "gemini", "meta"),
     )
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--aws-profile")

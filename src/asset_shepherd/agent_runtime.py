@@ -21,6 +21,7 @@ from strands import Agent
 from strands.agent import AgentResult
 from strands.models import Model
 from strands.models.bedrock import BedrockModel
+from strands.models.gemini import GeminiModel
 from strands.models.openai_responses import OpenAIResponsesModel
 from strands.session import SessionManager, SnapshotSessionManager
 from strands.storage import LocalFileStorage
@@ -47,6 +48,10 @@ from asset_shepherd.bedrock_responses import (
     bedrock_responses_base_url,
     provide_bedrock_token,
     validate_bedrock_responses_model_id,
+)
+from asset_shepherd.gemini_api import (
+    resolve_gemini_reasoning_effort,
+    validate_gemini_model_id,
 )
 from asset_shepherd.meta_model_api import (
     META_MODEL_API_BASE_URL,
@@ -155,7 +160,16 @@ def load_model_configuration(
         raise AgentWorkflowError("Missing live model configuration: OPENAI_API_KEY")
     if provider == "meta" and not values.get("MODEL_API_KEY"):
         raise AgentWorkflowError("Missing live model configuration: MODEL_API_KEY")
-    if provider not in {"bedrock", "bedrock-converse", "bedrock-nova", "meta", "openai"}:
+    if provider == "gemini" and not values.get("GEMINI_API_KEY"):
+        raise AgentWorkflowError("Missing live model configuration: GEMINI_API_KEY")
+    if provider not in {
+        "bedrock",
+        "bedrock-converse",
+        "bedrock-nova",
+        "gemini",
+        "meta",
+        "openai",
+    }:
         raise AgentWorkflowError(f"Unsupported live model provider: {provider}")
     return ModelConfiguration(
         provider=provider,
@@ -461,12 +475,100 @@ class AssetShepherdBedrockConverseModel(BedrockModel):
         return request
 
 
+class AssetShepherdGeminiModel(GeminiModel):
+    """Keep rendered tool evidence as native Gemini image parts."""
+
+    def _format_request(
+        self,
+        messages: Messages,
+        tool_specs: list[ToolSpec] | None,
+        system_prompt: str | None,
+        params: dict[str, Any] | None,
+        tool_choice: ToolChoice | None = None,
+    ) -> dict[str, Any]:
+        """Hoist images out of function responses before the SDK serializes messages."""
+        normalized_messages: list[object] = []
+        for raw_message in cast(list[object], messages):
+            if not isinstance(raw_message, dict):
+                normalized_messages.append(raw_message)
+                continue
+            message = cast(dict[str, object], raw_message)
+            raw_content = message.get("content")
+            if message.get("role") != "user" or not isinstance(raw_content, list):
+                normalized_messages.append(message)
+                continue
+            normalized_content: list[object] = []
+            for raw_block in cast(list[object], raw_content):
+                if not isinstance(raw_block, dict):
+                    normalized_content.append(raw_block)
+                    continue
+                block = cast(dict[str, object], raw_block)
+                raw_tool_result = block.get("toolResult")
+                if not isinstance(raw_tool_result, dict):
+                    normalized_content.append(block)
+                    continue
+                tool_result = cast(dict[str, object], raw_tool_result)
+                raw_tool_content = tool_result.get("content")
+                if not isinstance(raw_tool_content, list):
+                    normalized_content.append(block)
+                    continue
+                images: list[object] = []
+                non_images: list[object] = []
+                for result_block in cast(list[object], raw_tool_content):
+                    if isinstance(result_block, dict):
+                        result = cast(dict[str, object], result_block)
+                        if "image" in result:
+                            images.append(result)
+                        else:
+                            non_images.append(result)
+                        continue
+                    non_images.append(result_block)
+                if not images:
+                    normalized_content.append(block)
+                    continue
+                normalized_content.append(
+                    {
+                        **block,
+                        "toolResult": {
+                            **tool_result,
+                            "content": non_images or [{"text": "Rendered tool evidence follows."}],
+                        },
+                    }
+                )
+                normalized_content.extend(images)
+            normalized_messages.append({**message, "content": normalized_content})
+        return super()._format_request(  # pyright: ignore[reportPrivateUsage]
+            cast(Messages, normalized_messages),
+            tool_specs,
+            system_prompt,
+            params,
+            tool_choice,
+        )
+
+
 def build_environment_model(
     values: Mapping[str, str] = environ,
 ) -> tuple[Model, ModelConfiguration]:
     """Construct the configured provider; invocation remains caller-controlled and opt-in."""
     configuration = load_model_configuration(values)
-    if configuration.provider in {"openai", "bedrock", "meta"}:
+    if configuration.provider == "gemini":
+        try:
+            model_id = validate_gemini_model_id(configuration.model_id)
+            effort = resolve_gemini_reasoning_effort(
+                values.get("ASSET_SHEPHERD_WORKFLOW_REASONING")
+            )
+        except ValueError as error:
+            raise AgentWorkflowError(str(error)) from error
+        model = AssetShepherdGeminiModel(
+            client_args={"api_key": values["GEMINI_API_KEY"]},
+            model_id=model_id,
+            params={
+                "candidate_count": 1,
+                "max_output_tokens": 16_384,
+                "thinking_config": {"thinking_level": effort.upper()},
+            },
+        )
+    elif configuration.provider in {"openai", "bedrock", "meta"}:
         effort = values.get("ASSET_SHEPHERD_WORKFLOW_REASONING", "xhigh")
         meta_model_id = configuration.model_id
         if configuration.provider == "meta":

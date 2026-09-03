@@ -12,6 +12,9 @@ from typing import Annotated, Literal, Protocol, cast
 import boto3
 import httpx
 from botocore.exceptions import BotoCoreError, ClientError
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types as genai_types
 from pydantic import Field, model_validator
 
 from asset_shepherd.bedrock_converse import (
@@ -31,6 +34,12 @@ from asset_shepherd.bedrock_responses import (
 from asset_shepherd.conversation_policy import (
     ASSET_CONTENT_BOUNDARY,
     CONTENT_REFUSAL_MESSAGE,
+)
+from asset_shepherd.gemini_api import (
+    GEMINI_3_8_FLASH_MODEL_ID,
+    GeminiReasoningEffort,
+    resolve_gemini_reasoning_effort,
+    validate_gemini_model_id,
 )
 from asset_shepherd.intent import normalize_intent_description
 from asset_shepherd.meta_model_api import (
@@ -606,6 +615,123 @@ class MetaTargetIntakeAnalyzer(OpenAITargetIntakeAnalyzer):
 
 
 @dataclass(frozen=True)
+class GeminiTargetIntakeConfiguration:
+    """Explicit native Gemini settings with secret-free representation."""
+
+    api_key: str = field(repr=False)
+    model_id: str = GEMINI_3_8_FLASH_MODEL_ID
+    reasoning_effort: GeminiReasoningEffort = "high"
+
+
+def load_gemini_target_intake_configuration(
+    values: Mapping[str, str] = environ,
+) -> GeminiTargetIntakeConfiguration:
+    """Load the single Gemini checkpoint admitted to the comparator."""
+    api_key = values.get("GEMINI_API_KEY")
+    if not api_key:
+        raise TargetIntakeAnalysisError("Gemini intake is not configured. Set GEMINI_API_KEY.")
+    model_id = (
+        values.get("ASSET_SHEPHERD_INTAKE_MODEL")
+        or values.get("ASSET_SHEPHERD_MODEL_ID")
+        or GEMINI_3_8_FLASH_MODEL_ID
+    )
+    try:
+        validated_model_id = validate_gemini_model_id(model_id)
+        reasoning_effort = resolve_gemini_reasoning_effort(
+            values.get("ASSET_SHEPHERD_INTAKE_REASONING")
+        )
+    except ValueError as error:
+        raise TargetIntakeAnalysisError(str(error)) from error
+    return GeminiTargetIntakeConfiguration(
+        api_key=api_key,
+        model_id=validated_model_id,
+        reasoning_effort=reasoning_effort,
+    )
+
+
+class GeminiTargetIntakeAnalyzer:
+    """Native Gemini structured-output implementation of semantic intake."""
+
+    provider = "gemini"
+
+    def __init__(
+        self,
+        configuration: GeminiTargetIntakeConfiguration,
+        *,
+        client: genai.Client | None = None,
+    ) -> None:
+        """Bind the API key to a native Google Gen AI client or test double."""
+        self.configuration = configuration
+        self.model_id = configuration.model_id
+        self._client = client or genai.Client(api_key=configuration.api_key)
+
+    def _request_config(self, *, require_dimensions: bool) -> genai_types.GenerateContentConfig:
+        """Require one typed, non-conversational target proposal."""
+        return genai_types.GenerateContentConfig(
+            system_instruction=_target_intake_instructions(require_dimensions=require_dimensions),
+            response_mime_type="application/json",
+            response_schema=TargetIntakeInference,
+            candidate_count=1,
+            max_output_tokens=4096,
+            temperature=0.0,
+            thinking_config=genai_types.ThinkingConfig(
+                thinking_level=genai_types.ThinkingLevel(
+                    self.configuration.reasoning_effort.upper()
+                )
+            ),
+        )
+
+    def analyze(self, description: str) -> TargetIntakeContract:
+        """Request a proposal, retry one omitted size estimate, and confidence-gate it."""
+        normalized = normalize_intent_description(description)
+        try:
+            inference: TargetIntakeInference | None = None
+            for require_dimensions in (False, True):
+                response = self._client.models.generate_content(
+                    model=self.model_id,
+                    contents=normalized,
+                    config=self._request_config(require_dimensions=require_dimensions),
+                )
+                response_text = response.text
+                if not response_text:
+                    raise TargetIntakeAnalysisError(
+                        "The intake model returned no structured output."
+                    )
+                inference = TargetIntakeInference.model_validate_json(response_text)
+                if not _needs_dimensions_retry(inference):
+                    break
+        except genai_errors.APIError as error:
+            LOGGER.warning(
+                "Gemini intake request failed with status %s and code %s",
+                getattr(error, "status", None),
+                getattr(error, "code", None),
+            )
+            if getattr(error, "code", None) == 429 or getattr(error, "status", None) in {
+                "RESOURCE_EXHAUSTED",
+                "UNAVAILABLE",
+            }:
+                public_message = "The intake model is busy. Try again in a moment."
+            elif getattr(error, "code", None) in {401, 403}:
+                public_message = "Gemini access is not ready. Check the API key and project access."
+            else:
+                public_message = "I couldn't analyze that description right now. Try again."
+            raise TargetIntakeAnalysisError(public_message) from error
+        except (json.JSONDecodeError, ValueError) as error:
+            if isinstance(error, TargetIntakeAnalysisError):
+                raise
+            LOGGER.warning("Gemini intake response failed validation: %s", error)
+            raise TargetIntakeAnalysisError(
+                "The intake model did not return a valid target proposal."
+            ) from error
+        return contract_from_inference(
+            normalized,
+            inference,
+            provider=self.provider,
+            model_id=self.model_id,
+        )
+
+
+@dataclass(frozen=True)
 class BedrockTargetIntakeConfiguration:
     """Explicit Bedrock Responses settings with a request-scoped credential provider."""
 
@@ -1016,6 +1142,8 @@ def build_target_intake_analyzer(
         return BedrockConverseTargetIntakeAnalyzer(load_nova_target_intake_configuration(values))
     if provider == "meta":
         return MetaTargetIntakeAnalyzer(load_meta_target_intake_configuration(values))
+    if provider == "gemini":
+        return GeminiTargetIntakeAnalyzer(load_gemini_target_intake_configuration(values))
     if provider == "deterministic":
         return DeterministicTargetIntakeAnalyzer()
     raise TargetIntakeAnalysisError(f"Unsupported intake provider: {provider}")
