@@ -620,7 +620,7 @@ class GeminiTargetIntakeConfiguration:
 
     api_key: str = field(repr=False)
     model_id: str = GEMINI_3_8_FLASH_MODEL_ID
-    reasoning_effort: GeminiReasoningEffort = "high"
+    reasoning_effort: GeminiReasoningEffort = "medium"
 
 
 def load_gemini_target_intake_configuration(

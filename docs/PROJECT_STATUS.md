@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-03
-**Current commit:** Responsive target/use-case and inline-scene presentation (this file is included)
+**Current commit:** Gemini response-limit diagnosis and recovery presentation (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -56,6 +56,19 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D098 Gemini response-limit recovery: workspace `c839d09e26b6450fa092615f0055302e`
+  completed deterministic inspection and a single compact 768 x 256, three-view JPEG evidence
+  sheet, then Gemini exhausted its 16,384 generated-token allowance before submitting a typed
+  assessment. Browser viewport rotation made no workflow request and was coincidental. The
+  truncated turn contained only 236 visible words, localizing the consumption to the model's
+  high-level thinking rather than excess screenshots. Gemini intake and workflow evaluation now
+  default to medium reasoning while explicit high/xhigh remains available. The recoverable
+  conversation says that the response limit was reached, confirms no repair was applied, preserves
+  saved measurements, and offers the existing user-triggered Retry Shepherd action without
+  exposing raw provider diagnostics or silently purchasing another model call. The common gate
+  passes with 233 tests, two intentional live-provider skips, lock validation, Ruff, formatting,
+  and zero Pyright findings.
 
 - D097 responsive target and active-scene presentation: destination and viewing-use choices now
   share one target card, use labels describe the user's use case rather than polygon terminology,

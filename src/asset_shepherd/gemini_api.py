@@ -15,8 +15,8 @@ def validate_gemini_model_id(model_id: str) -> str:
 
 
 def resolve_gemini_reasoning_effort(value: str | None) -> GeminiReasoningEffort:
-    """Map Asset Shepherd's xhigh convention to Gemini's highest supported level."""
-    normalized = (value or "high").lower()
+    """Use a bounded default while retaining an explicit xhigh-to-high mapping."""
+    normalized = (value or "medium").lower()
     if normalized == "xhigh":
         normalized = "high"
     if normalized not in {"low", "medium", "high"}:

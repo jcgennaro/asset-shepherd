@@ -4,6 +4,55 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D098 — Bound Gemini thinking and explain recoverable response-limit failures
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation / M10 evaluation
+
+**Context**
+
+Gemini workspace `c839d09e26b6450fa092615f0055302e` completed deterministic inspection
+and rendered evidence, then stopped before submitting its assessment. The failure happened while
+the user happened to rotate the browser viewport, but the camera handler performs only local HUD
+projection and sent no workflow request. Durable state records the actual provider failure:
+Gemini reached the configured 16,384 generated-token limit.
+
+This was not an oversized-image recurrence. The model received one 768 x 256 JPEG contact sheet
+containing three 256-pixel views; its stored binary payload was about 13 KB. The truncated model
+turn contained only 236 visible words. The remainder of the allowance was consumed by high-level
+thinking while reconciling an oversized asset, display-name cleanup, and a separate lossy
+simplification decision. The provider terminated before a typed `propose_agent_repair_plan` call.
+
+**Decision**
+
+Use Gemini `medium` reasoning by default for both intake and workflow evaluation. Continue to
+accept explicit `high`, and map an explicit project `xhigh` request to Gemini `high`, so controlled
+comparisons remain possible. Keep the 16,384 generated-token bound instead of paying for unbounded
+reasoning.
+
+Do not retry automatically. Preserve the completed measurements and rendered evidence, explain in
+the Asset Shepherd conversation that the model reached its response limit and that no repair was
+applied, then offer the existing explicit **Retry Shepherd** action. Hide raw provider diagnostics
+and documentation URLs from the product surface. This retains the established bounded-recovery
+contract and avoids an unrequested second billable model call.
+
+**Evidence and consequences**
+
+The exact workspace contains successful inspection and render tool results, no assessment, no
+repair plan, no interrupt, and no candidate. Its browser camera-change path performs only local
+overlay scheduling. Targeted tests cover the medium Gemini default, the explicit xhigh-to-high
+path, the actionable sanitized response-limit message, and the hosted conversation surface.
+
+The provider did not return a completed result object after `MAX_TOKENS`, so this run has no exact
+usage ledger. The configured cap and short visible fragment nevertheless localize the failure to
+generated thinking rather than request size. A manual retry is a fresh bounded planning pass from
+the saved deterministic inspection.
+
 ### D097 — Keep target choices and the active 3D scene usable at narrow widths
 
 **Date:** 2026-09-03

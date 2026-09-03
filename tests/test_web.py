@@ -36,7 +36,11 @@ from asset_shepherd.models import (
 )
 from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.target_intake import TargetIntakeContract
-from asset_shepherd.web import create_app, gallery_status
+from asset_shepherd.web import (
+    _persisted_workflow_error_message,  # pyright: ignore[reportPrivateUsage]
+    create_app,
+    gallery_status,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
@@ -71,6 +75,22 @@ _USE_DESCRIPTION = {
     AssetTargetUse.RIG_READY_CHARACTER.value: "a rig-ready character",
     AssetTargetUse.PLAYABLE_CHARACTER.value: "a playable character",
 }
+
+
+def test_response_limit_failure_is_actionable_without_exposing_provider_diagnostics() -> None:
+    """A recoverable saved turn explains what stopped and confirms that nothing ran."""
+    provider_error = (
+        "Model stopped generating due to maximum token limit. The partial message has been "
+        "added to the conversation history. See https://provider.invalid/private-diagnostic"
+    )
+
+    message = _persisted_workflow_error_message(provider_error)
+
+    assert message == (
+        "I reached this model's response limit before I finished the assessment. "
+        "No repair was applied; retry from the saved measurements."
+    )
+    assert "provider.invalid" not in message
 
 
 @pytest.mark.parametrize(

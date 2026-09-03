@@ -5,8 +5,8 @@
   <section class="hosted-workspace" data-focus-area="asset conversation">
     {% if error %}
       <div class="alert danger" role="alert"><strong>Could not continue</strong><span>{{ error }}</span></div>
-    {% elif record.error %}
-      <div class="alert danger" role="alert"><strong>Stopped</strong><span>{{ record.error }}</span></div>
+    {% elif workflow_failure_message and not can_retry_iteration %}
+      <div class="alert danger" role="alert"><strong>Could not continue</strong><span>{{ workflow_failure_message }}</span></div>
     {% endif %}
 
     <div class="hosted-columns" data-scene-notebook>
@@ -81,7 +81,8 @@
             {% elif record.phase.value == 'APPROVAL' and agent_assessment_sentence %}{{ agent_assessment_sentence }}
             {% elif agent_assessment_sentence %}{{ agent_assessment_sentence }}
             {% elif current_turn_outcome_summary %}{{ current_turn_outcome_summary }}
-            {% else %}The workflow stopped.{% endif %}
+            {% elif workflow_failure_message %}{{ workflow_failure_message }}
+            {% else %}I could not complete this workflow. No output is ready.{% endif %}
           </p>
 
         {% if record.phase.value == 'TARGET_CONFIRMATION' and comparison_scene %}

@@ -1042,6 +1042,19 @@ def _public_workflow_error(error: Exception) -> str:
     return "The workflow stopped unexpectedly. No output is ready."
 
 
+def _persisted_workflow_error_message(error: str | None) -> str | None:
+    """Translate a stored provider failure into concise, actionable product language."""
+    if error is None:
+        return None
+    normalized = " ".join(error.split()).strip()
+    if "maximum token limit" in normalized.lower():
+        return (
+            "I reached this model's response limit before I finished the assessment. "
+            "No repair was applied; retry from the saved measurements."
+        )
+    return "I could not complete this workflow. No output is ready."
+
+
 def _display_target_height(height_cm: float) -> str:
     """Format target scale in the most readable metric unit for confirmation."""
     if height_cm < 1.0:
@@ -3603,12 +3616,14 @@ def create_app(
             and runtime_job.agent_assessment.disposition is AgentDisposition.RETURN_TO_CREATION_TOOL
         )
         preflight_geometry = workspace.record.preflight.geometry
+        workflow_failure_message = _persisted_workflow_error_message(workspace.record.error)
         return templates.TemplateResponse(
             request=request,
             name="hosted_workspace.html",
             context={
                 "workspace": workspace,
                 "record": workspace.record,
+                "workflow_failure_message": workflow_failure_message,
                 "preflight": workspace.record.preflight,
                 "job": runtime_job,
                 "inspection": inspection,

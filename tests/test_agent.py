@@ -650,6 +650,21 @@ def test_meta_model_requires_standard_checkpoint_and_hoists_tool_images() -> Non
     assert any(part.get("type") == "input_image" for part in user_content)
 
 
+def test_environment_model_defaults_gemini_to_medium_reasoning() -> None:
+    """The comparator avoids spending its whole response allowance on hidden thinking."""
+    model, _configuration = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "gemini",
+            "ASSET_SHEPHERD_MODEL_ID": "gemini-3.8-flash",
+            "GEMINI_API_KEY": "test-only-gemini-key",
+        }
+    )
+
+    assert model.get_config().get("params", {}).get("thinking_config") == {
+        "thinking_level": "MEDIUM"
+    }
+
+
 def test_environment_model_builds_native_gemini_and_hoists_tool_images() -> None:
     """Gemini receives only allowlisted controls and native image parts beside tool results."""
     model, configuration = build_environment_model(
