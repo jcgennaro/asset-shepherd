@@ -5076,6 +5076,12 @@ textarea.asset-description-input {
   font-weight: 800;
 }
 
+.viewing-use-legend {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .viewing-use-option {
   position: relative;
   display: grid;

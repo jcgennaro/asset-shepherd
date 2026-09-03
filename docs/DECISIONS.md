@@ -4,6 +4,54 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D099 — Canonicalize target forms and ask viewing use once
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation
+
+**Context**
+
+After a local server restart, saved Gemini workspace `d53910f6f898440b8b447a9801ad9b5e`
+reached endpoint clarification with an otherwise valid Dog Helmet target draft. Submitting a
+canonical engine also submitted a stale value from the always-enabled `Other destination` field.
+The target contract correctly rejects endpoint detail for Unity, Unreal, and Godot, but the form
+boundary passed the irrelevant string through and exposed the resulting raw Pydantic validation
+diagnostic in the conversation.
+
+The same endpoint card also collected the ordinary-language viewing-use choice, but the following
+target review rendered the full question again. Its permanent explanation introduced polygon
+terminology even when the user did not need it.
+
+**Decision**
+
+Treat canonical endpoint enums as complete values. Both clarification and revision discard any
+submitted endpoint detail unless the selected endpoint is Other. As progressive enhancement, hide
+and disable the Other text field until Other is selected, but retain the server-side invariant as
+the authority because browser state and direct requests cannot be trusted. Convert any unexpected
+typed-contract construction failure at this boundary to a concise target retry message.
+
+Record whether viewing use already has explicit user evidence. If the user chose it beside a
+missing endpoint, do not ask again on the review card; if no explicit choice has yet been made, ask
+once there. Move the explanatory sentence behind a question-mark dialog. The dialog describes the
+50,000-triangle hero/close-up, 15,000-triangle normal-gameplay, and 2,500-triangle
+background/repeated guidelines, explains that below-guideline geometry is preserved, and states
+that a proposed optimization can be declined.
+
+**Evidence and consequences**
+
+Regression acceptance submits a canonical endpoint with a deliberately stale Other value and
+proves the persisted endpoint detail is null. Unit coverage applies the same invariant to target
+revision. Hosted rendering coverage proves the viewing-use question appears before clarification,
+does not appear again after an explicit selection, remains available on first-time review paths,
+and exposes the detailed complexity policy only through a native dialog. Static acceptance covers
+the dialog and endpoint-state handlers. The common gate passes with 235 tests, two intentional
+live-provider skips, lock validation, Ruff, formatting, and zero Pyright findings.
+
 ### D098 — Bound Gemini thinking and explain recoverable response-limit failures
 
 **Date:** 2026-09-03

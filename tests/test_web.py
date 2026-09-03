@@ -1251,6 +1251,10 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "pending-user-message" in script.text
     assert 'status.classList.add("shepherd-sprite", "shepherd-sprite-thinking")' in script.text
     assert 'document.querySelector("[data-endpoint-help-dialog]")' in script.text
+    assert 'document.querySelector("[data-viewing-use-help-dialog]")' in script.text
+    assert 'choices.querySelector("[data-endpoint-detail]")' in script.text
+    assert 'const usesOther = selected?.value === "OTHER"' in script.text
+    assert "detail.disabled = !usesOther" in script.text
 
     comparison_template = (
         PROJECT_ROOT / "src" / "asset_shepherd" / "templates" / "_model_comparison.html"

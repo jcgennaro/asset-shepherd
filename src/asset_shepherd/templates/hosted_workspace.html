@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_workflow_components.html" import asset_description, confirmation_decision %}
+{% from "_workflow_components.html" import asset_description, confirmation_decision, viewing_use_choice %}
 {% block header_actions %}<button type="button" class="secondary-button compact-button" data-job-contract-open>Job details</button>{% endblock %}
 {% block content %}
   <section class="hosted-workspace" data-focus-area="asset conversation">
@@ -146,23 +146,11 @@
                         <strong>Other</strong>
                       </label>
                     </div>
-                    <input type="text" name="endpoint_detail" maxlength="80" placeholder="Other destination">
+                    <input type="text" name="endpoint_detail" maxlength="80" placeholder="Other destination" data-endpoint-detail>
                   </fieldset>
                 {% endif %}
                 {% if "viewing_use" in target_draft.missing_fields or "endpoint" in target_draft.missing_fields %}
-                  <fieldset class="viewing-use-choice" aria-label="Typical viewing use">
-                    <legend>How closely will this asset normally be viewed?</legend>
-                    {% for value, name, hint in (
-                      ('CLOSE_UP_SHOWCASE', 'Hero / close-up', 'Players may inspect it closely.'),
-                      ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
-                      ('SMALL_DISTANT_REPEATED', 'Background / repeated', 'Usually small on screen or many copies appear.')) %}
-                      <label class="viewing-use-option">
-                        <input type="radio" name="viewing_use" value="{{ value }}" required{% if target_draft.viewing_use and value == target_draft.viewing_use.value or not target_draft.viewing_use and value == 'NORMAL_GAMEPLAY' %} checked{% endif %}>
-                        <span><strong>{{ name }}</strong><small>{{ hint }}</small></span>
-                      </label>
-                    {% endfor %}
-                    <p>Choose by use case. Asset Shepherd will translate this into a technical complexity recommendation later, which you can decline.</p>
-                  </fieldset>
+                  {{ viewing_use_choice(target_draft.viewing_use.value if target_draft.viewing_use else "NORMAL_GAMEPLAY") }}
                 {% endif %}
                 {% if "target_dimensions_cm" in target_draft.missing_fields %}
                   <fieldset class="target-bounds"><legend>Approximate target size</legend>
@@ -190,7 +178,8 @@
                 activity_url=url_for('hosted_workspace_activity', workspace_id=record.workspace_id),
                 activity_step="3",
                 activity_label="Shepherd",
-                viewing_use_value=target_draft.viewing_use.value
+                viewing_use_value=target_draft.viewing_use.value,
+                ask_viewing_use=ask_viewing_use
               ) }}
             </div>
           {% endif %}

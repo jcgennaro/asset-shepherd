@@ -15,7 +15,7 @@ from threading import RLock
 from typing import BinaryIO, Literal, Self, cast
 from uuid import uuid4
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, ValidationError, model_validator
 from strands.agent import AgentResult
 
 from asset_shepherd.agent_job import AgentJob, AgentWorkflowError, VerificationFunction
@@ -777,6 +777,10 @@ class HostedWorkspaceStore:
                     target_z_m=target_z_m,
                     target_height_m=target_height_m,
                 )
+            except ValidationError as error:
+                raise HostedWorkspaceError(
+                    "That target choice could not be saved. Please choose the engine again."
+                ) from error
             except ValueError as error:
                 raise HostedWorkspaceError(str(error)) from error
             processed = {**workspace.record.processed_commands, command_id: "TARGET_CLARIFIED"}
@@ -831,6 +835,10 @@ class HostedWorkspaceStore:
                     target_z_m=target_z_m,
                     target_height_m=target_height_m,
                 )
+            except ValidationError as error:
+                raise HostedWorkspaceError(
+                    "That target change could not be saved. Please review the target values."
+                ) from error
             except ValueError as error:
                 raise HostedWorkspaceError(str(error)) from error
             processed = {**workspace.record.processed_commands, command_id: "TARGET_REVISED"}

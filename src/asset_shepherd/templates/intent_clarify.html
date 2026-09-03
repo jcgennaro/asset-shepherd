@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_workflow_components.html" import asset_description, workflow_stage %}
+{% from "_workflow_components.html" import asset_description, viewing_use_choice, workflow_stage %}
 {% block content %}
   {% if "target_use" in intent.target.missing_fields %}
     {% set clarify_title = "Tell me the missing intent in your own words." %}
@@ -30,15 +30,7 @@
         </fieldset>
       {% endif %}
       {% if "viewing_use" in intent.target.missing_fields %}
-        <fieldset class="viewing-use-choice" aria-label="Typical viewing use">
-          <legend>How closely will this asset normally be viewed?</legend>
-          {% for value, name, hint in (
-            ('CLOSE_UP_SHOWCASE', 'Hero / close-up', 'Players may inspect it closely.'),
-            ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
-            ('SMALL_DISTANT_REPEATED', 'Background / repeated', 'Usually small on screen or many copies appear.')) %}
-            <label class="viewing-use-option"><input type="radio" name="viewing_use" value="{{ value }}" required{% if value == 'NORMAL_GAMEPLAY' %} checked{% endif %}><span><strong>{{ name }}</strong><small>{{ hint }}</small></span></label>
-          {% endfor %}
-        </fieldset>
+        {{ viewing_use_choice() }}
       {% endif %}
       {% endif %}
       <div class="intent-confirm-actions">

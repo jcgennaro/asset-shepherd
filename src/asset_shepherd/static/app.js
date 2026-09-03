@@ -797,6 +797,42 @@ if (endpointHelpDialog instanceof HTMLDialogElement && endpointHelpOpen) {
   });
 }
 
+const viewingUseHelpDialog = document.querySelector("[data-viewing-use-help-dialog]");
+const viewingUseHelpOpen = document.querySelector("[data-viewing-use-help-open]");
+const viewingUseHelpClose = document.querySelector("[data-viewing-use-help-close]");
+
+if (viewingUseHelpDialog instanceof HTMLDialogElement && viewingUseHelpOpen) {
+  viewingUseHelpOpen.addEventListener("click", () => viewingUseHelpDialog.showModal());
+  viewingUseHelpClose?.addEventListener("click", () => viewingUseHelpDialog.close());
+  viewingUseHelpDialog.addEventListener("click", (event) => {
+    if (event.target === viewingUseHelpDialog) {
+      viewingUseHelpDialog.close();
+    }
+  });
+}
+
+for (const choices of document.querySelectorAll(".endpoint-choice")) {
+  const detail = choices.querySelector("[data-endpoint-detail]");
+  const radios = [...choices.querySelectorAll('input[name="endpoint"]')];
+  if (!(detail instanceof HTMLInputElement)) {
+    continue;
+  }
+  const syncEndpointDetail = () => {
+    const selected = radios.find((radio) => radio.checked);
+    const usesOther = selected?.value === "OTHER";
+    detail.disabled = !usesOther;
+    detail.required = usesOther;
+    detail.hidden = !usesOther;
+    if (!usesOther) {
+      detail.value = "";
+    }
+  };
+  for (const radio of radios) {
+    radio.addEventListener("change", syncEndpointDetail);
+  }
+  syncEndpointDetail();
+}
+
 function bindViewerError(viewer) {
   if (viewer.dataset.errorBound === "true") {
     return;

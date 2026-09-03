@@ -386,9 +386,14 @@ def clarify_target_intake(
             endpoint = AssetEndpoint(endpoint_value)
         except ValueError as error:
             raise ValueError("Choose Unity, Unreal, Godot, or Other.") from error
-        resolved_endpoint_detail = endpoint_detail.strip() if endpoint_detail else None
-        if endpoint is AssetEndpoint.OTHER and not resolved_endpoint_detail:
-            raise ValueError("Name the other tool or destination.")
+        if endpoint is AssetEndpoint.OTHER:
+            resolved_endpoint_detail = endpoint_detail.strip() if endpoint_detail else None
+            if not resolved_endpoint_detail:
+                raise ValueError("Name the other tool or destination.")
+        else:
+            # Browsers may restore or autofill a now-irrelevant free-text value. Canonical
+            # destinations are fully represented by their enum and must ignore that field.
+            resolved_endpoint_detail = None
         evidence.append(
             TargetFieldEvidence(
                 field="endpoint",
@@ -504,9 +509,12 @@ def revise_target_intake(
         endpoint = AssetEndpoint(endpoint_value)
     except ValueError as error:
         raise ValueError("Choose Unity, Unreal, Godot, or Other.") from error
-    resolved_endpoint_detail = endpoint_detail.strip() if endpoint_detail else None
-    if endpoint is AssetEndpoint.OTHER and resolved_endpoint_detail is None:
-        resolved_endpoint_detail = "Unspecified endpoint"
+    if endpoint is AssetEndpoint.OTHER:
+        resolved_endpoint_detail = endpoint_detail.strip() if endpoint_detail else None
+        if resolved_endpoint_detail is None:
+            resolved_endpoint_detail = "Unspecified endpoint"
+    else:
+        resolved_endpoint_detail = None
     try:
         viewing_use = AssetViewingUse(viewing_use_value)
     except ValueError as error:

@@ -1,5 +1,6 @@
 """Browser-route acceptance for the D019 conversation-led workspace."""
 
+import json
 import re
 from hashlib import sha256
 from io import BytesIO
@@ -312,9 +313,10 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "Normal gameplay" in measured.text
     assert "Background / repeated" in measured.text
     assert 'name="viewing_use" value="NORMAL_GAMEPLAY" required checked' in measured.text
-    assert "50,000" not in measured.text
-    assert "15,000" not in measured.text
-    assert "2,500" not in measured.text
+    assert "data-viewing-use-help-dialog" in measured.text
+    assert "Up to 50,000 triangles" in measured.text
+    assert "Up to 15,000 triangles" in measured.text
+    assert "Up to 2,500 triangles" in measured.text
     assert "<summary>Change target…</summary>" in measured.text
     assert 'textarea class="asset-description-input"' in measured.text
     assert 'class="asset-description-field"' in measured.text
@@ -604,6 +606,13 @@ def test_hosted_endpoint_clarification_collects_destination_and_viewing_use(
     assert "Normal gameplay" in page.text
     assert "Background / repeated" in page.text
     assert 'name="viewing_use" value="NORMAL_GAMEPLAY" required checked' in page.text
+    assert 'aria-label="Explain viewing use and mesh complexity"' in page.text
+    assert "Up to 50,000 triangles" in page.text
+    assert "Up to 15,000 triangles" in page.text
+    assert "Up to 2,500 triangles" in page.text
+    assert "Choose by use case." not in page.text
+    assert 'name="endpoint_detail"' in page.text
+    assert "data-endpoint-detail" in page.text
     assert 'aria-label="Current uploaded 3D target preview"' in page.text
 
     answered = client.post(
@@ -611,13 +620,23 @@ def test_hosted_endpoint_clarification_collects_destination_and_viewing_use(
         data={
             "command_id": _hidden(page.text, "command_id"),
             "endpoint": "UNREAL",
+            "endpoint_detail": "stale restored browser value",
             "viewing_use": "SMALL_DISTANT_REPEATED",
         },
         follow_redirects=False,
     )
     assert answered.status_code == 303
     reviewed = client.get(workspace_path)
-    assert 'name="viewing_use" value="SMALL_DISTANT_REPEATED" required checked' in reviewed.text
+    assert 'name="viewing_use"' not in reviewed.text
+    assert "How closely will this asset normally be viewed?" not in reviewed.text
+    assert "Start shepherding" in reviewed.text
+    saved_target = json.loads(
+        (
+            tmp_path / "jobs" / "hosted" / workspace_path.rsplit("/", 1)[-1] / "target_intake.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert saved_target["endpoint"] == "UNREAL"
+    assert saved_target["endpoint_detail"] is None
 
 
 def test_upload_preflight_rejects_an_invalid_glb_before_description(tmp_path: Path) -> None:

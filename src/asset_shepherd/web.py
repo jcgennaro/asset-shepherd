@@ -96,6 +96,7 @@ from asset_shepherd.models import (
 from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
 from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.target_intake import (
+    TargetEvidenceSource,
     TargetFieldEvidence,
     TargetIntakeContract,
     clarify_target_intake,
@@ -3698,6 +3699,18 @@ def create_app(
                     if workspace.record.target_draft is not None
                     and workspace.record.target_draft.viewing_use is not None
                     else None
+                ),
+                "ask_viewing_use": bool(
+                    target_draft
+                    and not any(
+                        item.field == "viewing_use"
+                        and item.source
+                        in {
+                            TargetEvidenceSource.EXPLICIT_USER_TEXT,
+                            TargetEvidenceSource.USER_CLARIFICATION,
+                        }
+                        for item in target_draft.evidence
+                    )
                 ),
                 "command_id": uuid4().hex,
                 "can_continue": bool(

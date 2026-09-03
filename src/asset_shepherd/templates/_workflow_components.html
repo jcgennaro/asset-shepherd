@@ -33,25 +33,43 @@
   </div>
 {%- endmacro %}
 
-{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="", activity_step="", activity_label="", viewing_use_value="NORMAL_GAMEPLAY") -%}
+{% macro viewing_use_choice(viewing_use_value="NORMAL_GAMEPLAY", extra_class="") -%}
+  <fieldset class="viewing-use-choice{% if extra_class %} {{ extra_class }}{% endif %}" aria-label="Typical viewing use">
+    <legend><span class="viewing-use-legend">How closely will this asset normally be viewed?<button class="endpoint-help-button" type="button" aria-label="Explain viewing use and mesh complexity" title="What does this change?" data-viewing-use-help-open>?</button></span></legend>
+    {% for value, name, hint in (
+      ('CLOSE_UP_SHOWCASE', 'Hero / close-up', 'Players may inspect it closely.'),
+      ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
+      ('SMALL_DISTANT_REPEATED', 'Background / repeated', 'Usually small on screen or many copies appear.')) %}
+      <label class="viewing-use-option">
+        <input type="radio" name="viewing_use" value="{{ value }}" required{% if value == viewing_use_value %} checked{% endif %}>
+        <span><strong>{{ name }}</strong><small>{{ hint }}</small></span>
+      </label>
+    {% endfor %}
+  </fieldset>
+  <dialog class="description-examples-dialog endpoint-help-dialog" data-viewing-use-help-dialog aria-labelledby="viewing-use-help-title">
+    <div class="description-examples-content">
+      <header>
+        <p class="description-examples-title" id="viewing-use-help-title">What this choice changes</p>
+        <button class="compact-button" type="button" data-viewing-use-help-close>Close</button>
+      </header>
+      <p>Choose the ordinary use case, not a polygon count. Asset Shepherd translates it into a mesh-complexity guideline and may propose a reversible simplification when the source exceeds it.</p>
+      <ol>
+        <li><strong>Hero / close-up</strong><span>Up to 50,000 triangles for assets players may inspect closely.</span></li>
+        <li><strong>Normal gameplay</strong><span>Up to 15,000 triangles for ordinary gameplay distance.</span></li>
+        <li><strong>Background / repeated</strong><span>Up to 2,500 triangles when an asset is distant, small on screen, or appears many times.</span></li>
+      </ol>
+      <p>If the source is already below the guideline, Asset Shepherd leaves it alone. If optimization is proposed, you can decline it and preserve the original detail.</p>
+    </div>
+  </dialog>
+{%- endmacro %}
+
+{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="", activity_step="", activity_label="", viewing_use_value="NORMAL_GAMEPLAY", ask_viewing_use=true) -%}
   <section class="confirmation-question" aria-label="Choose the next step" data-confirmation-decision>
     <div class="confirmation-actions">
       <form action="{{ confirm_url }}" method="post" data-busy-form{% if activity_url %} data-activity-url="{{ activity_url }}"{% endif %}{% if activity_step %} data-activity-step="{{ activity_step }}"{% endif %}{% if activity_label %} data-activity-label="{{ activity_label }}"{% endif %}>
         {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
         {% if accept_supported_goal %}<input type="hidden" name="accept_supported_goal" value="true">{% endif %}
-        <fieldset class="viewing-use-choice target-review-use" aria-label="Typical viewing use">
-          <legend>How closely will this asset normally be viewed?</legend>
-          {% for value, name, hint in (
-            ('CLOSE_UP_SHOWCASE', 'Hero / close-up', 'Players may inspect it closely.'),
-            ('NORMAL_GAMEPLAY', 'Normal gameplay', 'Seen at ordinary gameplay distance.'),
-            ('SMALL_DISTANT_REPEATED', 'Background / repeated', 'Usually small on screen or many copies appear.')) %}
-            <label class="viewing-use-option">
-              <input type="radio" name="viewing_use" value="{{ value }}" required{% if value == viewing_use_value %} checked{% endif %}>
-              <span><strong>{{ name }}</strong><small>{{ hint }}</small></span>
-            </label>
-          {% endfor %}
-          <p>Choose by use case. Asset Shepherd turns this into a technical recommendation later, and you can decline it.</p>
-        </fieldset>
+        {% if ask_viewing_use %}{{ viewing_use_choice(viewing_use_value, "target-review-use") }}{% endif %}
         <button class="primary-button" type="submit" data-submit-button>Start shepherding</button>
       </form>
       <details class="intent-adjust">

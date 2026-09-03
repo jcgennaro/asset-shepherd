@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-03
-**Current commit:** Gemini response-limit diagnosis and recovery presentation (this file is included)
+**Current commit:** Canonical target-form recovery and single viewing-use prompt (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -56,6 +56,18 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D099 target-form recovery: saved Gemini workspace `d53910f6f898440b8b447a9801ad9b5e`
+  remained valid after a clarification request failed because a browser-restored Other-destination
+  string accompanied the selected canonical engine. Canonical Unity, Unreal, and Godot choices now
+  discard irrelevant endpoint detail at both clarification and revision boundaries; the Other text
+  control is disabled and hidden until Other is selected. Unexpected typed-contract failures are
+  presented as concise retryable target errors rather than raw Pydantic diagnostics. A viewing-use
+  choice made beside the engine is no longer repeated on the following review; first-time review
+  paths still ask once. The persistent technical sentence moved behind a `?` dialog that explains
+  the 50,000 / 15,000 / 2,500 triangle guidelines and the user's right to decline optimization.
+  The common gate passes with 235 tests, two intentional live-provider skips, lock validation,
+  Ruff, formatting, and zero Pyright findings.
 
 - D098 Gemini response-limit recovery: workspace `c839d09e26b6450fa092615f0055302e`
   completed deterministic inspection and a single compact 768 x 256, three-view JPEG evidence

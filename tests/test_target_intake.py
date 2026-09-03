@@ -2,7 +2,7 @@
 
 import pytest
 
-from asset_shepherd.models import AssetTargetUse
+from asset_shepherd.models import AssetEndpoint, AssetTargetUse, AssetViewingUse
 from asset_shepherd.target_intake import (
     MINIMUM_TARGET_CONFIDENCE,
     TargetEvidenceSource,
@@ -118,3 +118,68 @@ def test_user_can_explicitly_replace_an_unconfirmed_model_proposal() -> None:
     assert revised.description == draft.description
     assert revised.analyzer_provider == draft.analyzer_provider
     assert {item.source for item in revised.evidence} == {TargetEvidenceSource.USER_CLARIFICATION}
+
+
+def test_canonical_endpoint_clarification_discards_stale_other_detail() -> None:
+    """Browser-restored Other text cannot invalidate a canonical engine choice."""
+    draft = TargetIntakeContract(
+        schema_version=6,
+        description="A static dog helmet measuring about 18 by 16 by 20 centimeters.",
+        asset_name="Dog Helmet",
+        analyzer_provider="gemini",
+        analyzer_model="gemini-3.8-flash",
+        target_use=AssetTargetUse.STATIC_GAME_ASSET,
+        target_height_cm=16.0,
+        endpoint=None,
+        endpoint_detail=None,
+        viewing_use=AssetViewingUse.NORMAL_GAMEPLAY,
+        target_dimensions_cm=(18.0, 16.0, 20.0),
+        evidence=(
+            TargetFieldEvidence(
+                field="target_use",
+                source=TargetEvidenceSource.MODEL_INFERENCE,
+                confidence=0.99,
+                evidence="The description identifies a static game prop.",
+            ),
+            TargetFieldEvidence(
+                field="target_dimensions_cm",
+                source=TargetEvidenceSource.MODEL_INFERENCE,
+                confidence=0.99,
+                evidence="The description supplies all three target dimensions.",
+            ),
+            TargetFieldEvidence(
+                field="viewing_use",
+                source=TargetEvidenceSource.DETERMINISTIC_FALLBACK,
+                confidence=1.0,
+                evidence="Normal gameplay is the default viewing use.",
+            ),
+        ),
+        missing_fields=("endpoint",),
+    )
+
+    complete = clarify_target_intake(
+        draft,
+        endpoint_value=AssetEndpoint.UNREAL.value,
+        endpoint_detail="stale browser value",
+        viewing_use_value=AssetViewingUse.NORMAL_GAMEPLAY.value,
+    )
+
+    assert complete.endpoint is AssetEndpoint.UNREAL
+    assert complete.endpoint_detail is None
+
+
+def test_canonical_endpoint_revision_discards_stale_other_detail() -> None:
+    """The explicit target-revision boundary applies the same endpoint invariant."""
+    draft = draft_target_intake("A 1.2 m lantern used as a static game asset.")
+
+    revised = revise_target_intake(
+        draft,
+        target_use_value=AssetTargetUse.STATIC_GAME_ASSET.value,
+        endpoint_value=AssetEndpoint.UNITY.value,
+        endpoint_detail="restored custom engine",
+        viewing_use_value=AssetViewingUse.CLOSE_UP_SHOWCASE.value,
+        target_height_m="1.2",
+    )
+
+    assert revised.endpoint is AssetEndpoint.UNITY
+    assert revised.endpoint_detail is None
