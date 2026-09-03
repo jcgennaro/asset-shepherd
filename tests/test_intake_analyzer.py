@@ -151,6 +151,7 @@ def test_gemini_intake_uses_native_structured_output_and_allowlisted_model() -> 
     assert config.thinking_config is not None
     assert config.thinking_config.thinking_level == genai_types.ThinkingLevel.HIGH
     assert config.response_mime_type == "application/json"
+    assert config.response_json_schema == TargetIntakeInference.model_json_schema()
 
     built = build_target_intake_analyzer(values)
     assert isinstance(built, GeminiTargetIntakeAnalyzer)

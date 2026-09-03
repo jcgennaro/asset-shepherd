@@ -663,14 +663,20 @@ class GeminiTargetIntakeAnalyzer:
         """Bind the API key to a native Google Gen AI client or test double."""
         self.configuration = configuration
         self.model_id = configuration.model_id
-        self._client = client or genai.Client(api_key=configuration.api_key)
+        self._client = client or genai.Client(
+            api_key=configuration.api_key,
+            http_options=genai_types.HttpOptions(
+                timeout=90_000,
+                retry_options=genai_types.HttpRetryOptions(attempts=1),
+            ),
+        )
 
     def _request_config(self, *, require_dimensions: bool) -> genai_types.GenerateContentConfig:
         """Require one typed, non-conversational target proposal."""
         return genai_types.GenerateContentConfig(
             system_instruction=_target_intake_instructions(require_dimensions=require_dimensions),
             response_mime_type="application/json",
-            response_schema=TargetIntakeInference,
+            response_json_schema=TargetIntakeInference.model_json_schema(),
             candidate_count=1,
             max_output_tokens=4096,
             temperature=0.0,

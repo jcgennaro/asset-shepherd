@@ -76,6 +76,7 @@ T = TypeVar("T", bound=BaseModel)
 ActivitySink = Callable[[str], None]
 
 DEFAULT_BEDROCK_READ_TIMEOUT_SECONDS = 300
+DEFAULT_GEMINI_TIMEOUT_MILLISECONDS = 300_000
 
 _TOOL_ACTIVITY_LABELS: dict[str, str] = {
     "inspect_asset_for_job": "Measuring the GLB",
@@ -560,7 +561,13 @@ def build_environment_model(
         except ValueError as error:
             raise AgentWorkflowError(str(error)) from error
         model = AssetShepherdGeminiModel(
-            client_args={"api_key": values["GEMINI_API_KEY"]},
+            client_args={
+                "api_key": values["GEMINI_API_KEY"],
+                "http_options": {
+                    "timeout": DEFAULT_GEMINI_TIMEOUT_MILLISECONDS,
+                    "retry_options": {"attempts": 1},
+                },
+            },
             model_id=model_id,
             params={
                 "candidate_count": 1,

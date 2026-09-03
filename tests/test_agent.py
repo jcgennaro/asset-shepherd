@@ -669,6 +669,10 @@ def test_environment_model_builds_native_gemini_and_hoists_tool_images() -> None
         "max_output_tokens": 16_384,
         "thinking_config": {"thinking_level": "HIGH"},
     }
+    assert model.client_args["http_options"] == {
+        "timeout": 300_000,
+        "retry_options": {"attempts": 1},
+    }
 
     stream = BytesIO()
     Image.new("RGB", (2, 2), (20, 120, 200)).save(stream, format="PNG")

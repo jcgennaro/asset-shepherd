@@ -62,10 +62,12 @@ exact-mutation, invariant-verification, and packaging layer.
   models. The exact `gemini-3.8-flash` ID is allowlisted; `xhigh` maps to Gemini `high`; tool-result
   screenshots are emitted as native image parts; and the Windows launcher decrypts a separate
   current-user DPAPI secret only for the server child process. The fixed acceptance runner accepts
-  Gemini, but no live result is claimed until the key-backed comparison completes. Gemini remains
-  outside the canonical AWS production topology. The common gate passes with 231 tests, two
-  intentional live-provider skips, lock validation, Ruff, formatting, PowerShell parsing, and zero
-  Pyright findings.
+  Gemini. A live structured-intake smoke proposed plausible riding-crop bounds, and the full
+  `broken-normalization` case passed safety, semantic, visual, approval, and packaging gates in
+  89.91 provider seconds using 307,454 input and 20,274 output tokens. This is one representative
+  pass rather than D094's eight-case release gate. Gemini remains outside the canonical AWS
+  production topology. The common gate passes with 231 tests, two intentional live-provider skips,
+  lock validation, Ruff, formatting, PowerShell parsing, and zero Pyright findings.
 
 - D095 opt-in Muse Spark 1.3 comparator and architecture-diagram review: the Meta Model API now
   sits behind the same Strands model boundary for local evaluation, with one reviewed endpoint,

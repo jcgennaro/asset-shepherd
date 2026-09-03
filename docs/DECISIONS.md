@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-03
 
-**Status:** ACCEPTED for opt-in local evaluation; live acceptance pending
+**Status:** ACCEPTED for opt-in local evaluation; one live representative case passes
 
 **Decision owner:** User and Codex
 
@@ -37,10 +37,18 @@ egress, billing, and architecture decision; it does not replace Kimi's accepted 
 **Evidence and consequences**
 
 The implementation includes native structured intake, native multimodal Strands tool transport,
-fail-closed model and reasoning validation, provider-acceptance runner support, and zero-network
-tests for configuration, screenshot transport, schema use, and DPAPI launcher behavior. Live API
-evidence and measured token/time results remain pending until the user saves a key and authorizes
-the first comparison run.
+fail-closed model and reasoning validation, provider-acceptance runner support, bounded provider
+timeouts, and zero-network tests for configuration, screenshot transport, schema use, and DPAPI
+launcher behavior. A live native structured-intake smoke identified a single Unreal riding-crop
+prop and proposed plausible `4 x 65 x 4 cm` bounds.
+
+The fixed `broken-normalization` case then passed safety, semantic, visual, approval, and packaging
+checks. Gemini selected the required 100-fold scale reduction, +90-degree Z rotation,
+footprint-center-bottom pivot, and safe display-name cleanup; deterministic verification confirmed
+`1.22 x 1.82 x 0.40 m` final bounds and preserved the immutable source. The two-turn workflow used
+307,454 input and 20,274 output tokens over 89.91 provider seconds. This is a promising one-case
+sample, not the eight-case release gate, and it does not replace Kimi on Bedrock as the AWS
+production candidate.
 
 ### D095 — Add Muse Spark 1.3 as an explicit Meta evaluation comparator
 

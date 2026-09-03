@@ -62,8 +62,8 @@ until the remote-product gate passes.
   through Meta's Model API, including opposite component-selection decisions. This does not alter
   the AWS production topology or satisfy the fixed eight-case gate.
 - [x] D096 native Gemini comparator implementation. The exact Gemini 3.8 Flash model is available
-  for isolated local comparison without entering the canonical AWS deployment; live case evidence
-  remains pending.
+  for isolated local comparison without entering the canonical AWS deployment. Native structured
+  intake and one complete broken-normalization workflow pass; the full release matrix has not run.
 - [ ] Step 3 cloud-portable state and artifacts.
 - [ ] Step 4 deployable visual sensing. The portable Chromium/model-viewer implementation and local
   source/shared-scale gates pass; the clean Linux container gate remains open.
