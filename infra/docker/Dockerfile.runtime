@@ -41,7 +41,7 @@ EXPOSE 8080
 
 
 FROM runtime-base AS web
-CMD ["sh", "-c", "exec uvicorn asset_shepherd.web:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "exec uvicorn asset_shepherd.web:app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips='*'"]
 
 
 FROM runtime-base AS agentcore
