@@ -1,8 +1,9 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate and the private S3,
-DynamoDB, and Strands-session foundation is deployed through the least-privilege runtime role;
-full interruption replay, Linux rendering, AgentCore, and remote web deployment remain open
+**Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate, private S3/DynamoDB state
+and Strands sessions are live, and the private AgentCore runtime has completed direct typed
+invocation, approval, execution, rendering, and verification; full successful phase replay and the
+remote web deployment remain open
 
 **Last verified against official documentation:** 2026-09-03
 
@@ -71,9 +72,11 @@ until the remote-product gate passes.
 - [x] Step 4 deployable visual sensing. CodeBuild produced a `linux/arm64` image, then launched that
   exact image and passed four source views, four shared-scale views, masks, and the application
   import gate through packaged Debian Chromium. The accepted compressed image is 387,633,373 bytes.
-- [ ] Step 5 AgentCore runtime. The typed invocation boundary, dedicated least-privilege role
-  template, and container entry point are implemented; remote deployment and multi-turn proof are
-  in progress.
+- [ ] Step 5 AgentCore runtime. The private runtime, dedicated service-only role, typed status,
+  planning, exact approval interrupt/resume, deterministic execution, Chromium reassessment, and
+  packaging paths are live. The first broken-robot proof reached deterministic verification but
+  correctly stopped `BLOCKED` after Kimi rejected its own candidate; a successful completion and
+  exactly-once replay still remain.
 - [ ] Step 6 remote web product.
 - [ ] Step 7 operations and cleanup.
 - [ ] Step 8 remote M9 acceptance.
@@ -120,12 +123,12 @@ flowchart LR
     W -->|workspace pointers| D[DynamoDB table]
 ```
 
-The browser, web server, agent, tools, renderer, and disposable cache are still local. Bedrock
-inference, a private S3 workspace/session bucket, a conditional DynamoDB workspace table, the
-remote ARM64 CodeBuild project, and the private ECR repository are now in AWS. The authenticated
-`asset-shepherd` AWS CLI profile assumes the restricted local-test role. The deployed AgentCore
-runtime will use a separate service-only execution role. No ECS service or AgentCore runtime exists
-yet.
+The browser and web server remain local. Bedrock inference, private S3 workspace/session storage,
+conditional DynamoDB coordination, ARM64 CodeBuild, private ECR, and the private AgentCore runtime
+are live in AWS. AgentCore now runs the Strands agent, deterministic GLB tools, Chromium evidence
+renderer, and disposable cache under its own service-only role. The authenticated
+`asset-shepherd` AWS CLI profile remains a separate restricted local-test identity. No ECS web
+service exists yet.
 
 The optional Meta/Muse and Google/Gemini comparators are separate local test configurations: local
 Strands calls the selected external API over outbound HTTPS instead of Bedrock. They are
@@ -149,6 +152,10 @@ Current AWS evidence is visible in these places in `us-east-1`:
   its Chromium/source/shared-scale acceptance logs.
 - **ECR → Private registry → Repositories → `asset-shepherd-contest`:** review accepted immutable
   deployment image tags and scan results.
+- **Amazon Bedrock → AgentCore → Runtime:** review `AssetShepherdRuntime`, its deployed ARM64
+  container version, invocation state, and service-only execution role.
+- **CloudFormation → Stacks → `asset-shepherd-agentcore`:** review the private runtime and its
+  dedicated least-privilege role as one versioned deployment.
 - **S3:** the generated private workspace bucket contains content-addressed workspace objects,
   immutable manifests, and Strands session snapshots. Public access is blocked.
 - **DynamoDB:** the generated workspace table contains the owner-scoped active record and its
@@ -582,6 +589,14 @@ derives the asset workspace from the authenticated user/session, not arbitrary b
 
 **Step 5 gate:** a direct AgentCore invocation completes a multi-turn inspect → approval interrupt
 → resume → repair → reassess → package flow, with visible logs/traces and exactly-once semantics.
+
+The first live proof on 2026-09-03 established the runtime portion of this gate: typed `status`
+returned HTTP 200 from a cloud-hydrated workspace; `confirm_target` invoked Bedrock Kimi and stopped
+at the exact approval interrupt; and the approved `decision` resumed execution, rendered evidence,
+verified every deterministic invariant, and packaged its evidence. Kimi then rejected the synthetic
+robot candidate as visually inverted, so the durable workspace correctly ended `BLOCKED` rather
+than being mislabeled complete. That run used 208,234 input and 11,444 output tokens. A successful
+candidate and duplicate-command/replaced-runtime replay remain required before Step 5 is checked.
 
 ## Step 6 — Deploy the interactive web product
 

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-03
-**Current commit:** ARM64 runtime and typed AgentCore boundary (this file is included)
+**Current commit:** Live private AgentCore runtime proof (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state proof and Linux ARM64 renderer gate pass; full phase replay, AgentCore deployment, and remote ECS deployment remain open |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, and private AgentCore typed invocation/interrupt/resume paths pass; successful remote completion, full phase replay, and remote ECS web deployment remain open |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -57,6 +57,18 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D104 live AgentCore proof: CloudFormation deployed the immutable ARM64 AgentCore image and a
+  separate service-only execution role. A direct typed `status` invocation returned HTTP 200 for a
+  workspace hydrated from S3/DynamoDB. The next call used Bedrock Kimi to inspect and plan, then
+  stopped at its exact `execute_selected_repairs` approval interrupt. An approved decision resumed
+  in AgentCore, executed the selected normalization/naming actions, rendered source/candidate/shared
+  evidence through packaged Chromium, passed every deterministic invariant, and wrote the evidence
+  package and monotonically versioned state back to AWS. Kimi rejected its own synthetic-robot
+  candidate as visually inverted, so the workflow correctly persisted `BLOCKED` rather than
+  declaring success. Metrics report 168.65 seconds, 208,234 input tokens, 11,444 output tokens, one
+  interrupt, and successful inspect/plan/render/verify tools. This proves the remote architecture
+  path but intentionally leaves successful completion and exactly-once replay open.
 
 - D104 ARM64 runtime and typed AgentCore boundary: the retained
   `asset-shepherd-container-build` stack now owns a private immutable-tag ECR repository, a

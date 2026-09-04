@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-03
 
-**Status:** ACCEPTED; AgentCore deployment proof pending
+**Status:** ACCEPTED; runtime deployed, successful-completion replay pending
 
 **Decision owner:** Codex
 
@@ -56,8 +56,17 @@ disabled only for the AgentCore container target, which runs inside AgentCore's 
 and processes loopback-served bounded assets with vendored viewer code. This remains a deliberate
 defense-in-depth tradeoff; the public ECS web target does not inherit that setting. Four boundary
 tests prove actor/session confusion and undeclared prompt fields fail closed. The common gate passes
-with 253 tests and three intentional live skips. Remote AgentCore invocation and full multi-turn
-exactly-once replay remain open.
+with 253 tests and three intentional live skips.
+
+CloudFormation then deployed the accepted immutable AgentCore image and separate service-only role.
+A direct typed status call returned HTTP 200 from a cloud-hydrated workspace. A paid Kimi turn
+produced an exact approval interrupt, and approval resumed deterministic mutation, Chromium
+rendering, invariant verification, evidence packaging, and versioned S3/DynamoDB persistence in the
+managed runtime. Every deterministic check passed, but Kimi rejected the synthetic robot candidate
+as visually inverted, so the workflow correctly persisted `BLOCKED`. The run took 168.65 seconds
+and recorded 208,234 input plus 11,444 output tokens. This proves the deployed invocation,
+interrupt/resume, tool, renderer, verification, and persistence boundaries; a successful candidate
+and full duplicate-command/replaced-runtime replay remain open.
 
 ### D103 — Back replaceable processes with immutable S3 manifests and conditional DynamoDB state
 
