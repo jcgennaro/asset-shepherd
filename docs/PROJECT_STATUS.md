@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Prepare the private alarm notification route (this file is included)
+**Current commit:** Deploy the private alarm notification route (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary; D105 durable SQS/Lambda command dispatch; D106 bounded observability and verified purge; D107 immutable Bedrock content boundary; D108 private alarm notification route |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, private AgentCore, and the public ECS/SQS/Lambda browser path pass through accepted download and forced task replacement; the immutable Guardrail now passes direct and rebuilt public-application acceptance; the alarm route is ready for deployment/confirmation; Step 7 identity isolation and the full Step 8 remote matrix remain |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary; D105 durable SQS/Lambda command dispatch; D106 bounded observability and verified purge; D107 immutable Bedrock content boundary; D108 private alarm notification route |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, private AgentCore, and the public ECS/SQS/Lambda browser path pass through accepted download and forced task replacement; the immutable Guardrail now passes direct and rebuilt public-application acceptance; all eight live alarms are wired to one private topic and await recipient confirmation; Step 7 identity isolation and the full Step 8 remote matrix remain |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -57,6 +57,13 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D108 private alarm notification route: `asset-shepherd-operations` reached `UPDATE_COMPLETE` with
+  one deployment-parameterized SNS topic. All eight `asset-shepherd-contest-*` alarms have exactly
+  one enabled action on that topic and remain `OK`; the email subscription is
+  `PendingConfirmation`. The address is supplied only through a `NoEcho` parameter and is absent
+  from repository content and stack outputs. Recipient confirmation and a bounded delivery proof
+  remain.
 
 - D107 immutable Bedrock content boundary: `asset-shepherd-guardrail` is `CREATE_COMPLETE` with
   Guardrail `xadkxnj292qu`, immutable version `1`, and the exact public refusal. Direct
@@ -98,7 +105,7 @@ exact-mutation, invariant-verification, and packaging layer.
   endpoint DNS now expose two addresses. Ten health requests, the accepted notebook, and exact GLB
   download passed after the resize, with all eight alarms still `OK`. Detailed model logging remains
   disabled. D107 subsequently closes Guardrail wording/compatibility; multi-user authentication,
-  notification routing, and the full remote failure matrix remain open.
+  recipient confirmation/delivery proof, and the full remote failure matrix remain open.
 
 - D105 remote web command boundary: hosted agent actions now become schema-versioned DynamoDB
   receipts and encrypted SQS messages when the deployment queue is configured. The web request
@@ -1317,16 +1324,17 @@ RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. The least-
 8/8 Kimi gate are confirmed. Luna remains unavailable behind its account agreement but no longer
 blocks the recommended Kimi path. The public ECS/SQS/Lambda/AgentCore path now passes one clean
 acceptance-through-download run, forced web-task replacement, and immutable Guardrail acceptance.
-M9 still requires a Step 7 multi-user access choice, one alarm notification destination, and the
-complete Step 8 remote case matrix. The submission also remains blocked on the public-repository,
-free judge-access, video, disclosure, release-scan, and entrant-attestation gates in
+M9 still requires a Step 7 multi-user access choice, confirmation and delivery proof for the
+deployed alarm destination, and the complete Step 8 remote case matrix. The submission also remains
+blocked on the public-repository, free judge-access, video, disclosure, release-scan, and
+entrant-attestation gates in
 `docs/CONTEST_COMPLIANCE_PLAN.md`. A human-cleaned reference and manual-time record remain required
 for the full RW4 comparison gate.
 
 ## Next action
 
-Choose and implement the free judge-access identity boundary, attach one approved alarm notification
-destination without committing personal contact data, then run the complete Step 8 browser matrix.
+Confirm and prove the deployed private alarm subscription, then choose and implement the free
+judge-access identity boundary before running the complete Step 8 browser matrix.
 Preserve the current mutation scope, exact authorization, durability, and invariant checks; do not
 restore deterministic target-dependent planning or create a second conversational authority.
 

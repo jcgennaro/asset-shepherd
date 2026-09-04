@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-04
 
-**Status:** ACCEPTED; deployment and recipient confirmation pending
+**Status:** ACCEPTED; deployed, recipient confirmation and delivery proof pending
 
 **Decision owner:** User and Codex
 
@@ -31,8 +31,10 @@ content, outputs, application configuration, and application logs.
 **Evidence and consequences**
 
 Source acceptance requires exactly eight alarm actions, one shared topic, a `NoEcho` address
-parameter, and no committed Gmail address. CloudFormation validation, live deployment, subscription
-confirmation, and a bounded delivery test remain before this decision closes the notification gate.
+parameter, and no committed Gmail address. The live `asset-shepherd-operations` stack reached
+`UPDATE_COMPLETE`; all eight alarms have exactly one enabled action on the shared topic and remain
+`OK`. The subscription is `PendingConfirmation`. Recipient confirmation and one bounded delivery
+test remain before this decision closes the notification gate.
 
 ### D107 — Bind deployed Bedrock inference to one immutable narrow content boundary
 

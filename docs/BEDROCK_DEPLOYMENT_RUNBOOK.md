@@ -2,8 +2,8 @@
 
 **Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate, private S3/DynamoDB state
 and Strands sessions are live, and the public ECS/SQS/Lambda/AgentCore path has completed one clean
-acceptance-through-download run plus forced web-task replacement; Step 7 operations and the full
-Step 8 remote matrix remain open
+acceptance-through-download run plus forced web-task replacement; Step 7 identity isolation and
+alarm-delivery proof plus the full Step 8 remote matrix remain open
 
 **Last verified against the live deployment:** 2026-09-04
 
@@ -80,11 +80,12 @@ until the remote-product gate passes.
 - [x] Step 6 remote web product. The managed HTTPS endpoint completed upload, HTTP 202 dispatch,
   exact approval, deterministic repair, acceptance, download, gallery return, and forced ECS task
   replacement without losing the durable workspace.
-- [ ] Step 7 operations and cleanup. The dashboard, eight project alarms, seven-day log retention,
+- [ ] Step 7 operations and cleanup. The dashboard, eight project alarms, private notification
+  topic, seven-day log retention,
   bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, observed Kimi
   subtotal, and live idle-cost floor are complete. The immutable Guardrail passes direct 8/8
-  boundary and Kimi/Converse probes, and rebuilt public-application acceptance. Authentication and
-  notification routing remain.
+  boundary and Kimi/Converse probes, and rebuilt public-application acceptance. Authentication,
+  recipient confirmation, and notification delivery proof remain.
 - [ ] Step 8 remote M9 acceptance.
 
 ## Controlling constraints
@@ -734,10 +735,13 @@ metrics. Eight `asset-shepherd-contest-*` alarms cover:
 - selected-model Bedrock client or server errors; and
 - private workspace storage above the 5 GiB contest soft limit.
 
-The alarms intentionally have no notification action until an approved address/channel is chosen.
-The existing AWS Budget remains the account-level spend alert. New alarms begin in
-`INSUFFICIENT_DATA` and settle after their source metrics publish; missing data is non-breaching.
-All eight live alarms settled to `OK` during acceptance.
+All eight alarms now route entry into `ALARM` to one standard private SNS topic; recovery and
+initial-state notifications remain disabled. The recipient address is supplied only as a `NoEcho`
+deployment parameter and is not committed or returned in stack outputs. The operations stack is
+`UPDATE_COMPLETE`, all eight alarm actions are enabled, and all eight alarms remain `OK`. The SNS
+subscription is currently `PendingConfirmation`; click the AWS confirmation link, then run one
+bounded delivery test before treating the route as operational. The existing AWS Budget remains
+the account-level spend alert. Missing metric data is non-breaching.
 
 Run `scripts/Set-AssetShepherdLogRetention.ps1` after creating or replacing managed services. It
 discovers only Asset Shepherd CodeBuild, ECS, Lambda, and AgentCore groups and applies seven-day
@@ -811,8 +815,8 @@ request, while an ordinary 30 cm Unreal robot reached a target proposal. The all
 was purged with five object versions removed and `VerifiedEmpty=True`. A status invocation started
 runtime v5 and recovered the accepted workspace at `COMPLETE`. Ten health calls, the accepted
 notebook, and its 24,580-byte `model/gltf-binary` download pass, and all eight alarms remain `OK`.
-The Guardrail portion is closed. Multi-user authentication and one alarm notification route remain
-before the Step 7 gate closes.
+The Guardrail portion is closed and the alarm route is deployed. Multi-user authentication,
+recipient confirmation, and one bounded alarm-delivery proof remain before the Step 7 gate closes.
 
 ## Step 8 — Remote M9 acceptance
 
