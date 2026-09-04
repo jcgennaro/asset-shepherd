@@ -43,12 +43,14 @@ from asset_shepherd.bedrock_converse import (
     resolve_bedrock_converse_model,
     resolve_bedrock_converse_reasoning,
 )
+from asset_shepherd.bedrock_guardrail import load_optional_bedrock_guardrail
 from asset_shepherd.bedrock_responses import (
     BedrockTokenProvider,
     bedrock_responses_base_url,
     provide_bedrock_token,
     validate_bedrock_responses_model_id,
 )
+from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
 from asset_shepherd.gemini_api import (
     resolve_gemini_reasoning_effort,
     validate_gemini_model_id,
@@ -658,6 +660,23 @@ def build_environment_model(
         )
         if additional_fields:
             converse_config["additional_request_fields"] = additional_fields
+        try:
+            guardrail = load_optional_bedrock_guardrail(values)
+        except ValueError as error:
+            raise AgentWorkflowError(str(error)) from error
+        if guardrail is not None:
+            converse_config.update(
+                {
+                    "guardrail_id": guardrail.identifier,
+                    "guardrail_version": guardrail.version,
+                    "guardrail_trace": "enabled",
+                    "guardrail_redact_input": True,
+                    "guardrail_redact_input_message": CONTENT_REFUSAL_MESSAGE,
+                    "guardrail_redact_output": True,
+                    "guardrail_redact_output_message": CONTENT_REFUSAL_MESSAGE,
+                    "guardrail_latest_message": True,
+                }
+            )
         model = AssetShepherdBedrockConverseModel(
             hoist_tool_result_images=capability.requires_tool_result_image_hoisting,
             boto_session=session,

@@ -38,6 +38,7 @@ from asset_shepherd.agent_tools import (
     MODEL_EVIDENCE_VIEW_COUNT,
     _model_evidence_contact_sheet,
 )
+from asset_shepherd.conversation_policy import CONTENT_REFUSAL_MESSAGE
 from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.models import (
     AgentWorkflowResult,
@@ -752,6 +753,43 @@ def test_environment_model_builds_model_neutral_converse_for_kimi() -> None:
     assert client_configuration["read_timeout"] == 300
     retries = cast(dict[str, object], client_configuration["retries"])
     assert retries["total_max_attempts"] == 1
+
+
+def test_environment_model_applies_the_immutable_guardrail_to_latest_user_evidence() -> None:
+    """Kimi applies the accepted boundary without scanning the trusted system prompt."""
+    model, _ = build_environment_model(
+        {
+            "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-converse",
+            "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+            "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+            "ASSET_SHEPHERD_BEDROCK_GUARDRAIL_ID": "xadkxnj292qu",
+            "ASSET_SHEPHERD_BEDROCK_GUARDRAIL_VERSION": "1",
+        }
+    )
+
+    assert isinstance(model, AssetShepherdBedrockConverseModel)
+    configuration = model.get_config()
+    assert configuration.get("guardrail_id") == "xadkxnj292qu"
+    assert configuration.get("guardrail_version") == "1"
+    assert configuration.get("guardrail_trace") == "enabled"
+    assert configuration.get("guardrail_latest_message") is True
+    assert configuration.get("guardrail_redact_input") is True
+    assert configuration.get("guardrail_redact_input_message") == CONTENT_REFUSAL_MESSAGE
+    assert configuration.get("guardrail_redact_output") is True
+    assert configuration.get("guardrail_redact_output_message") == CONTENT_REFUSAL_MESSAGE
+
+
+def test_environment_model_rejects_partial_guardrail_configuration() -> None:
+    """One missing half of the deployed boundary fails closed before inference."""
+    with pytest.raises(AgentWorkflowError, match="must be configured together"):
+        build_environment_model(
+            {
+                "ASSET_SHEPHERD_MODEL_PROVIDER": "bedrock-converse",
+                "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+                "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+                "ASSET_SHEPHERD_BEDROCK_GUARDRAIL_ID": "xadkxnj292qu",
+            }
+        )
 
 
 def test_bedrock_converse_read_timeout_is_bounded_and_validated() -> None:

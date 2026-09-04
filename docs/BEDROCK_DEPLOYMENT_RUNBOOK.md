@@ -81,8 +81,9 @@ until the remote-product gate passes.
   exact approval, deterministic repair, acceptance, download, gallery return, and forced ECS task
   replacement without losing the durable workspace.
 - [ ] Step 7 operations and cleanup. The dashboard, eight project alarms, seven-day log retention,
-  bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, and observed Kimi
-  subtotal and live idle-cost floor are complete. Guardrail/authentication acceptance and
+  bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, observed Kimi
+  subtotal, and live idle-cost floor are complete. The immutable Guardrail passes direct 8/8
+  boundary and Kimi/Converse probes; rebuilt application acceptance, authentication, and
   notification routing remain.
 - [ ] Step 8 remote M9 acceptance.
 
@@ -792,10 +793,17 @@ The same command ID appears in Lambda's `dispatch_started`/`dispatch_succeeded` 
 AgentCore's `STARTED`/`SUCCEEDED` lines, alongside only workspace ID, operation, phase, and duration.
 The accepted workspace remained record version 6 and download-ready.
 
-The existing concise application refusal remains the active content boundary. Do not mark Step 7
-complete until a Bedrock Guardrail is verified with Kimi and preserves that wording, or a recorded
-decision explains why the application boundary is the accepted contest control. Multi-user
-authentication and one alarm notification route also remain before the Step 7 gate closes.
+The `asset-shepherd-guardrail` stack is `CREATE_COMPLETE`. Guardrail `xadkxnj292qu`, immutable
+version `1`, uses the exact application refusal. Its deliberately narrow policy allows ordinary
+fictional combat, monsters, horror, weapon props, and destructive game machines while blocking
+sexual exploitation, extremist recruitment, and material enablement of real-world wrongdoing.
+Five legitimate game-art probes and four disallowed probes passed 8/8. A direct Kimi Converse call
+accepted a medieval-sword request and returned `guardrail_intervened` with the exact refusal for an
+extremist-recruitment request. The application adapters now fail closed on incomplete or mutable
+Guardrail configuration, bind that version to direct intake and Strands Kimi turns, and scope
+`bedrock:ApplyGuardrail` to the exact ARN. Rebuilt-image/public-route acceptance remains before the
+Guardrail portion is closed. Multi-user authentication and one alarm notification route also remain
+before the Step 7 gate closes.
 
 ## Step 8 — Remote M9 acceptance
 

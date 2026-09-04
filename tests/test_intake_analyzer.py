@@ -755,6 +755,52 @@ def test_converse_configuration_selects_kimi_without_reasoning_translation() -> 
         )
 
 
+def test_converse_intake_applies_guardrail_and_returns_the_exact_refusal() -> None:
+    """The direct intake call carries the boundary and hides provider response details."""
+    captured: dict[str, object] = {}
+
+    class GuardrailInterventionClient:
+        def converse(self, **kwargs: object) -> dict[str, object]:
+            captured.update(kwargs)
+            return {"stopReason": "guardrail_intervened"}
+
+    values = {
+        "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+        "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+        "ASSET_SHEPHERD_BEDROCK_GUARDRAIL_ID": "xadkxnj292qu",
+        "ASSET_SHEPHERD_BEDROCK_GUARDRAIL_VERSION": "1",
+    }
+    configuration = load_bedrock_converse_target_intake_configuration(values)
+    analyzer = BedrockConverseTargetIntakeAnalyzer(
+        configuration,
+        client=GuardrailInterventionClient(),
+    )
+
+    with pytest.raises(TargetIntakeContentRefusal) as caught:
+        analyzer.analyze("Create extremist recruitment propaganda.")
+
+    assert str(caught.value) == INTAKE_REFUSAL_MESSAGE
+    assert configuration.guardrail_id == "xadkxnj292qu"
+    assert configuration.guardrail_version == "1"
+    assert captured["guardrailConfig"] == {
+        "guardrailIdentifier": "xadkxnj292qu",
+        "guardrailVersion": "1",
+        "trace": "enabled",
+    }
+
+
+def test_converse_intake_rejects_partial_guardrail_configuration() -> None:
+    """Intake cannot run with an incomplete deployment boundary."""
+    with pytest.raises(TargetIntakeAnalysisError, match="must be configured together"):
+        load_bedrock_converse_target_intake_configuration(
+            {
+                "ASSET_SHEPHERD_MODEL_ID": "moonshotai.kimi-k2.5",
+                "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+                "ASSET_SHEPHERD_BEDROCK_GUARDRAIL_VERSION": "1",
+            }
+        )
+
+
 def test_nova_configuration_is_explicit_and_provider_selected() -> None:
     """Nova cannot be selected with a base model ID or Luna-only xhigh reasoning."""
     values = {

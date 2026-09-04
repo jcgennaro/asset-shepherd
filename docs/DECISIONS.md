@@ -4,6 +4,49 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D107 — Bind deployed Bedrock inference to one immutable narrow content boundary
+
+**Date:** 2026-09-04
+
+**Status:** ACCEPTED; direct boundary/Kimi probes pass, application deployment acceptance pending
+
+**Decision owner:** Codex
+
+**Milestone:** M9 hosted conversation and deployment
+
+**Context**
+
+Asset Shepherd already shared one exact application-level refusal across target intake and workflow
+prompts. The public AWS path also needs a model-boundary control without blocking legitimate game
+art such as fictional weapons, monsters, horror, or destructive machines. Bedrock providers can use
+a native Guardrail; external OpenAI and Meta APIs cannot.
+
+**Decision**
+
+Deploy a separately versioned `asset-shepherd-guardrail` stack. Deny sexual exploitation,
+extremist recruitment, and material enablement of real-world wrongdoing, use high content filters
+for sexual, hate, misconduct, and prompt-attack inputs, and deliberately omit the general violence
+filter so normal fictional game assets stay in scope. Use the exact existing refusal for input and
+output intervention. Pin deployments to an immutable numeric version, never `DRAFT`.
+
+Apply the Guardrail to the latest user text/image message in Strands Bedrock Converse turns so the
+trusted system policy is not itself classified. Apply the same version to direct Converse target
+intake. Fail closed when only an ID or version is configured, and grant each service role
+`bedrock:ApplyGuardrail` only for the generated Guardrail ARN. Keep the shared prompt/application
+boundary for all providers; OpenAI and Meta remain supported but are not represented as protected by
+a Bedrock control.
+
+**Evidence and consequences**
+
+The stack reached `CREATE_COMPLETE` with ID `xadkxnj292qu` and version `1`. Direct `ApplyGuardrail`
+tests allow railgun, horror-monster, medieval-sword, FPS-rifle, and pet-collar requests and block
+explicit sexual content, sexualized-minor content, extremist recruitment, and concealment of a real
+explosive, passing the eight-case boundary matrix. Direct Kimi Converse accepts the fictional sword
+case and returns `guardrail_intervened` with the exact refusal for extremist recruitment. Focused
+adapter tests prove immutable environment validation, exact redaction wording, latest-message
+configuration, intake request wiring, and safe intervention mapping. Rebuilt AgentCore/web images
+and public-route acceptance remain the final deployment evidence for this decision.
+
 ### D106 — Keep contest operations bounded, correlated, and explicitly erasable
 
 **Date:** 2026-09-04

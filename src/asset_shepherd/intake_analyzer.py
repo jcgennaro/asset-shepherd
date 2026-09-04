@@ -24,6 +24,7 @@ from asset_shepherd.bedrock_converse import (
     resolve_bedrock_converse_model,
     resolve_bedrock_converse_reasoning,
 )
+from asset_shepherd.bedrock_guardrail import load_optional_bedrock_guardrail
 from asset_shepherd.bedrock_responses import (
     BedrockTokenProvider,
     bedrock_responses_base_url,
@@ -921,6 +922,8 @@ class BedrockConverseTargetIntakeConfiguration:
     region: str
     aws_profile: str | None = None
     reasoning_effort: BedrockConverseReasoning | None = None
+    guardrail_id: str | None = None
+    guardrail_version: str | None = None
     provider: str = "bedrock-converse"
 
     @property
@@ -955,6 +958,7 @@ def load_bedrock_converse_target_intake_configuration(
             capability,
             values.get("ASSET_SHEPHERD_INTAKE_REASONING"),
         )
+        guardrail = load_optional_bedrock_guardrail(values)
     except ValueError as error:
         raise TargetIntakeAnalysisError(str(error)) from error
     return BedrockConverseTargetIntakeConfiguration(
@@ -962,6 +966,8 @@ def load_bedrock_converse_target_intake_configuration(
         region=validated_region,
         aws_profile=values.get("AWS_PROFILE"),
         reasoning_effort=reasoning_effort,
+        guardrail_id=guardrail.identifier if guardrail is not None else None,
+        guardrail_version=guardrail.version if guardrail is not None else None,
         provider=provider,
     )
 
@@ -1031,6 +1037,12 @@ class BedrockConverseTargetIntakeAnalyzer:
         )
         if additional_fields:
             payload["additionalModelRequestFields"] = additional_fields
+        if self.configuration.guardrail_id is not None:
+            payload["guardrailConfig"] = {
+                "guardrailIdentifier": self.configuration.guardrail_id,
+                "guardrailVersion": cast(str, self.configuration.guardrail_version),
+                "trace": "enabled",
+            }
         return payload
 
     @staticmethod
@@ -1074,6 +1086,8 @@ class BedrockConverseTargetIntakeAnalyzer:
                 response = self._client.converse(
                     **self._request_payload(normalized, require_dimensions=require_dimensions)
                 )
+                if response.get("stopReason") == "guardrail_intervened":
+                    raise TargetIntakeContentRefusal(INTAKE_REFUSAL_MESSAGE)
                 inference = TargetIntakeInference.model_validate_json(
                     json.dumps(self._tool_input(response))
                 )

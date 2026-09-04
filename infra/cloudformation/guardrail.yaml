@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Asset Shepherd Bedrock content boundary with exact public refusal wording.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: contest
+    AllowedPattern: "[a-z0-9-]+"
+  RefusalMessage:
+    Type: String
+    Default: Sorry, I can't engage with this type of content. Let's work on something else.
+    MinLength: 1
+    MaxLength: 500
+
+Resources:
+  AssetShepherdGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: !Sub "asset-shepherd-${EnvironmentName}"
+      Description: Narrow project safety boundary that preserves legitimate fictional game assets.
+      BlockedInputMessaging: !Ref RefusalMessage
+      BlockedOutputsMessaging: !Ref RefusalMessage
+      ContentPolicyConfig:
+        ContentFiltersTierConfig:
+          TierName: CLASSIC
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+            InputModalities:
+              - TEXT
+              - IMAGE
+            OutputModalities:
+              - TEXT
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+            InputModalities:
+              - TEXT
+              - IMAGE
+            OutputModalities:
+              - TEXT
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+            InputModalities:
+              - TEXT
+              - IMAGE
+            OutputModalities:
+              - TEXT
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+            InputModalities:
+              - TEXT
+            OutputModalities:
+              - TEXT
+            InputAction: BLOCK
+            OutputAction: NONE
+            InputEnabled: true
+            OutputEnabled: false
+      TopicPolicyConfig:
+        TopicsTierConfig:
+          TierName: CLASSIC
+        TopicsConfig:
+          - Name: Sexual exploitation
+            Definition: >-
+              Requests primarily for explicit sexual content, exploitation or sexualization of
+              minors, or non-consensual sexual acts. Non-sexual art and game production are excluded.
+            Examples:
+              - Create an explicit pornographic character asset.
+              - Make a sexualized child character.
+              - Design an asset depicting non-consensual sexual abuse.
+            Type: DENY
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Name: Extremist recruitment
+            Definition: >-
+              Requests that praise, recruit for, or promote a hateful or extremist organization.
+              Neutral history and fictional villains without praise or recruitment are excluded.
+            Examples:
+              - Create recruitment propaganda praising an extremist group.
+              - Make celebratory insignia for a hateful organization.
+            Type: DENY
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Name: Real world wrongdoing enablement
+            Definition: >-
+              Requests that materially enable real-world violence, abuse, or illegal wrongdoing.
+              Fictional combat, monsters, horror, weapon props, and destructive game machines are excluded.
+            Examples:
+              - Help conceal a real explosive device at an airport.
+              - Design a real-world tool for abusing a specific person.
+              - Create instructions that facilitate an actual crime.
+            Type: DENY
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AssetShepherdGuardrailVersion:
+    Type: AWS::Bedrock::GuardrailVersion
+    Properties:
+      Description: !Sub "Asset Shepherd ${EnvironmentName} accepted content boundary"
+      GuardrailIdentifier: !GetAtt AssetShepherdGuardrail.GuardrailId
+
+Outputs:
+  GuardrailArn:
+    Description: Version-independent Guardrail ARN.
+    Value: !GetAtt AssetShepherdGuardrail.GuardrailArn
+  GuardrailId:
+    Description: Guardrail identifier for Converse and ApplyGuardrail.
+    Value: !GetAtt AssetShepherdGuardrail.GuardrailId
+  GuardrailVersion:
+    Description: Immutable Guardrail version for deployed inference.
+    Value: !GetAtt AssetShepherdGuardrailVersion.Version

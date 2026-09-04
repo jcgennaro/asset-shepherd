@@ -1,8 +1,9 @@
 # Asset Shepherd AWS infrastructure
 
-The checked-in infrastructure is intentionally incremental. All five contest stacks are live in
+The checked-in infrastructure is intentionally incremental. All six contest stacks are live in
 `us-east-1`: `asset-shepherd-state`, `asset-shepherd-container-build`,
-`asset-shepherd-agentcore`, `asset-shepherd-web`, and `asset-shepherd-operations`. The public web
+`asset-shepherd-guardrail`, `asset-shepherd-agentcore`, `asset-shepherd-web`, and
+`asset-shepherd-operations`. The public web
 gate passed on 2026-09-04;
 operations hardening and the full remote case matrix remain. See
 `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` for the evidence, current endpoint, and gated procedure.
@@ -130,6 +131,36 @@ aws codebuild batch-get-builds `
 
 The ECR repository and image lifecycle are retained if the build stack is deleted. The ephemeral
 source archive expires automatically; never upload a working-directory zip or `.env` file.
+
+## Bedrock content boundary
+
+`cloudformation/guardrail.yaml` creates the narrow Asset Shepherd content boundary and an immutable
+version. It blocks sexual exploitation, extremist recruitment, and material enablement of
+real-world wrongdoing while deliberately preserving ordinary fictional combat, monsters, horror,
+and weapon props. Its input/output message is the exact application refusal. Deploy it before the
+AgentCore and web stacks, then read its generated ID and version rather than using `DRAFT`:
+
+```powershell
+aws cloudformation deploy `
+  --profile asset-shepherd-admin `
+  --region us-east-1 `
+  --stack-name asset-shepherd-guardrail `
+  --template-file infra/cloudformation/guardrail.yaml
+
+$guardrailOutputs = aws cloudformation describe-stacks `
+  --profile asset-shepherd-admin `
+  --region us-east-1 `
+  --stack-name asset-shepherd-guardrail `
+  --query "Stacks[0].Outputs" `
+  --output json | ConvertFrom-Json
+$guardrailId = ($guardrailOutputs | Where-Object OutputKey -eq 'GuardrailId').OutputValue
+$guardrailVersion = ($guardrailOutputs | Where-Object OutputKey -eq 'GuardrailVersion').OutputValue
+```
+
+Pass `GuardrailId` and `GuardrailVersion` to both deployment stacks. Their service roles receive
+`bedrock:ApplyGuardrail` only for that exact Guardrail ARN. Bedrock Converse intake and Kimi/Converse
+workflow turns use the immutable boundary; OpenAI and Meta adapters retain the shared application
+boundary because Bedrock Guardrails cannot mediate third-party APIs.
 
 ## AgentCore and public web stacks
 
