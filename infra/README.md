@@ -1,8 +1,9 @@
 # Asset Shepherd AWS infrastructure
 
-The checked-in infrastructure is intentionally incremental. All four contest stacks are live in
+The checked-in infrastructure is intentionally incremental. All five contest stacks are live in
 `us-east-1`: `asset-shepherd-state`, `asset-shepherd-container-build`,
-`asset-shepherd-agentcore`, and `asset-shepherd-web`. The public web gate passed on 2026-09-04;
+`asset-shepherd-agentcore`, `asset-shepherd-web`, and `asset-shepherd-operations`. The public web
+gate passed on 2026-09-04;
 operations hardening and the full remote case matrix remain. See
 `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` for the evidence, current endpoint, and gated procedure.
 
@@ -150,3 +151,52 @@ stack yet. When enabled, store their production keys in AWS Secrets Manager, gra
 AgentCore execution role `secretsmanager:GetSecretValue` on the selected secret ARNs, and inject
 the chosen provider/model as non-secret configuration. Never put API keys in CloudFormation
 parameters, container images, source archives, task environment values, or browser responses.
+
+## Operations stack and cleanup
+
+`cloudformation/operations.yaml` creates the low-cost `asset-shepherd-contest` CloudWatch dashboard
+and eight no-notification alarms. Deploy it after the state and web stacks so its parameters can use
+their exact generated bucket, function, and queue names. The alarms cover dispatcher errors,
+throttles, duration, command backlog/DLQ depth, selected-model Bedrock errors, and a 5 GiB workspace
+storage soft limit. The account's existing AWS Budget remains the spend alert.
+
+```powershell
+aws cloudformation deploy `
+  --profile asset-shepherd-admin `
+  --region us-east-1 `
+  --stack-name asset-shepherd-operations `
+  --template-file infra/cloudformation/operations.yaml `
+  --parameter-overrides `
+    EnvironmentName=contest `
+    WorkspaceBucketName='<workspace-bucket-output>' `
+    DispatcherFunctionName='asset-shepherd-contest-agent-dispatch' `
+    CommandQueueName='asset-shepherd-contest-agent-commands' `
+    DeadLetterQueueName='asset-shepherd-contest-agent-commands-dlq' `
+    DefaultModelId='moonshotai.kimi-k2.5'
+```
+
+Apply bounded log retention with:
+
+```powershell
+./scripts/Set-AssetShepherdLogRetention.ps1 `
+  -Profile asset-shepherd-admin `
+  -Region us-east-1 `
+  -RetentionDays 7
+```
+
+Preview one exact administrator purge with:
+
+```powershell
+./scripts/Remove-AssetShepherdCloudWorkspace.ps1 `
+  -WorkspaceId '<32-hex-workspace-id>' `
+  -Bucket '<workspace-bucket-output>' `
+  -Table '<workspace-table-output>' `
+  -Profile asset-shepherd-admin `
+  -Region us-east-1 `
+  -WhatIf
+```
+
+Removing `-WhatIf` permanently deletes every current and noncurrent version under that exact
+workspace and Strands-session prefix plus its DynamoDB pointer and command receipts. The script
+requires owner agreement and verifies all four locations are empty. Use its orphan override only
+for a known failed test whose pointer is already absent.

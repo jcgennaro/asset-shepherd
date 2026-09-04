@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import tempfile
+import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
@@ -23,6 +26,7 @@ from asset_shepherd.models import ProjectProfile, ProposalResponse
 
 _ID_PATTERN = r"^[0-9a-f]{32}$"
 _OWNER_PATTERN = r"^[a-z0-9_.-]{2,80}$"
+logger = logging.getLogger(__name__)
 
 
 class RuntimeConfigurationError(RuntimeError):
@@ -277,14 +281,54 @@ def invoke(payload: object, context: object) -> dict[str, object]:
     """Execute a typed workspace command through AgentCore's HTTP service contract."""
     session_id_value = getattr(context, "session_id", None)
     session_id = session_id_value if isinstance(session_id_value, str) else None
+    started = time.perf_counter()
+    correlation: dict[str, object] = {"event": "agentcore_command"}
     try:
-        return execute_runtime_command(
+        command = validate_runtime_command(payload)
+        correlation.update(
+            {
+                "workspace_id": command.workspace_id,
+                "command_id": command.command_id,
+                "operation": command.operation,
+            }
+        )
+        logger.info("%s", json.dumps({**correlation, "state": "STARTED"}, sort_keys=True))
+        result = execute_runtime_command(
             payload,
             store=build_runtime_store(),
             configured_actor_id=_required_environment("ASSET_SHEPHERD_WORKSPACE_OWNER_ID"),
             session_id=session_id,
         )
+        state = result.get("state")
+        phase: object = None
+        if isinstance(state, dict):
+            phase = cast(dict[str, object], state).get("phase")
+        logger.info(
+            "%s",
+            json.dumps(
+                {
+                    **correlation,
+                    "state": "SUCCEEDED",
+                    "phase": phase,
+                    "duration_ms": round((time.perf_counter() - started) * 1000),
+                },
+                sort_keys=True,
+            ),
+        )
+        return result
     except (RuntimeConfigurationError, RuntimeInvocationError) as error:
+        logger.warning(
+            "%s",
+            json.dumps(
+                {
+                    **correlation,
+                    "state": "REJECTED",
+                    "error_type": type(error).__name__,
+                    "duration_ms": round((time.perf_counter() - started) * 1000),
+                },
+                sort_keys=True,
+            ),
+        )
         return {"ok": False, "error": str(error)}
 
 

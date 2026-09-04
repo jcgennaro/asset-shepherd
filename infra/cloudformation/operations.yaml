@@ -1,0 +1,354 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Asset Shepherd low-cost contest observability dashboard and alarms.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: contest
+    AllowedPattern: "[a-z0-9-]+"
+  WorkspaceBucketName:
+    Type: String
+    AllowedPattern: "^[a-z0-9.-]{3,63}$"
+  DispatcherFunctionName:
+    Type: String
+    Default: asset-shepherd-contest-agent-dispatch
+    AllowedPattern: "^[A-Za-z0-9-_]{1,64}$"
+  CommandQueueName:
+    Type: String
+    Default: asset-shepherd-contest-agent-commands
+    AllowedPattern: "^[A-Za-z0-9_-]{1,80}$"
+  DeadLetterQueueName:
+    Type: String
+    Default: asset-shepherd-contest-agent-commands-dlq
+    AllowedPattern: "^[A-Za-z0-9_-]{1,80}$"
+  DefaultModelId:
+    Type: String
+    Default: moonshotai.kimi-k2.5
+    AllowedValues:
+      - moonshotai.kimi-k2.5
+      - us.openai.gpt-5.6-luna
+  StorageAlarmBytes:
+    Type: Number
+    Default: 5368709120
+    MinValue: 1073741824
+
+Resources:
+  DispatcherErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-dispatcher-errors"
+      AlarmDescription: The AgentCore dispatcher reported an unhandled Lambda error.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DispatcherFunctionName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  DispatcherThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-dispatcher-throttles"
+      AlarmDescription: The one-message AgentCore dispatcher was throttled.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DispatcherFunctionName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  DispatcherDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-dispatcher-duration"
+      AlarmDescription: A dispatch approached the 900-second Lambda timeout.
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref DispatcherFunctionName
+      Statistic: Maximum
+      Unit: Milliseconds
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 840000
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  CommandQueueBacklogAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-command-backlog"
+      AlarmDescription: A queued command remained visible for at least ten minutes.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !Ref CommandQueueName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  DeadLetterQueueAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-command-dlq"
+      AlarmDescription: At least one typed command reached the dead-letter queue.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !Ref DeadLetterQueueName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  BedrockClientErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-bedrock-client-errors"
+      AlarmDescription: The selected Bedrock model rejected at least one invocation.
+      Namespace: AWS/Bedrock
+      MetricName: InvocationClientErrors
+      Dimensions:
+        - Name: ModelId
+          Value: !Ref DefaultModelId
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  BedrockServerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-bedrock-server-errors"
+      AlarmDescription: The selected Bedrock model reported at least one server error.
+      Namespace: AWS/Bedrock
+      MetricName: InvocationServerErrors
+      Dimensions:
+        - Name: ModelId
+          Value: !Ref DefaultModelId
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WorkspaceStorageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "asset-shepherd-${EnvironmentName}-workspace-storage"
+      AlarmDescription: Private workspace storage exceeded the contest soft limit.
+      Namespace: AWS/S3
+      MetricName: BucketSizeBytes
+      Dimensions:
+        - Name: BucketName
+          Value: !Ref WorkspaceBucketName
+        - Name: StorageType
+          Value: StandardStorage
+      Statistic: Average
+      Unit: Bytes
+      Period: 86400
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref StorageAlarmBytes
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  OperationsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "asset-shepherd-${EnvironmentName}"
+      DashboardBody: !Sub |
+        {
+          "start": "-PT6H",
+          "periodOverride": "inherit",
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 2,
+              "properties": {
+                "markdown": "# Asset Shepherd ${EnvironmentName}\nSafe correlation fields are workspace ID, command ID, operation, phase, duration, and state. Do not log prompts, GLB bytes, screenshots, provider responses, credentials, or private reasoning."
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 2,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Dispatcher health",
+                "region": "${AWS::Region}",
+                "period": 300,
+                "stat": "Sum",
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${DispatcherFunctionName}"],
+                  [".", "Errors", ".", "."],
+                  [".", "Throttles", ".", "."]
+                ]
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 2,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Command queues",
+                "region": "${AWS::Region}",
+                "period": 300,
+                "stat": "Maximum",
+                "metrics": [
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "${CommandQueueName}"],
+                  [".", ".", ".", "${DeadLetterQueueName}"]
+                ]
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 8,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Bedrock token usage",
+                "region": "${AWS::Region}",
+                "period": 300,
+                "stat": "Sum",
+                "metrics": [
+                  ["AWS/Bedrock", "InputTokenCount", "ModelId", "${DefaultModelId}"],
+                  [".", "OutputTokenCount", ".", "."]
+                ]
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 8,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Bedrock invocations and errors",
+                "region": "${AWS::Region}",
+                "period": 300,
+                "stat": "Sum",
+                "metrics": [
+                  ["AWS/Bedrock", "Invocations", "ModelId", "${DefaultModelId}"],
+                  [".", "InvocationClientErrors", ".", "."],
+                  [".", "InvocationServerErrors", ".", "."]
+                ]
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 14,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Dispatcher duration",
+                "region": "${AWS::Region}",
+                "period": 300,
+                "stat": "Maximum",
+                "metrics": [
+                  ["AWS/Lambda", "Duration", "FunctionName", "${DispatcherFunctionName}"]
+                ]
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 14,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Private workspace storage",
+                "region": "${AWS::Region}",
+                "period": 86400,
+                "stat": "Average",
+                "metrics": [
+                  ["AWS/S3", "BucketSizeBytes", "BucketName", "${WorkspaceBucketName}", "StorageType", "StandardStorage"]
+                ]
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardName:
+    Description: CloudWatch dashboard for the bounded contest deployment.
+    Value: !Ref OperationsDashboard
+  AlarmPrefix:
+    Description: Prefix shared by all Asset Shepherd alarms.
+    Value: !Sub "asset-shepherd-${EnvironmentName}"

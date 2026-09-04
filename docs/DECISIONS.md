@@ -4,6 +4,63 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D106 — Keep contest operations bounded, correlated, and explicitly erasable
+
+**Date:** 2026-09-04
+
+**Status:** ACCEPTED; low-cost operations foundation deployed, Step 7 remains in progress
+
+**Decision owner:** Codex
+
+**Milestone:** M9 hosted conversation and deployment
+
+**Context**
+
+The live product already had service logs, Bedrock metrics, S3 lifecycle expiry, DynamoDB TTL, a
+dead-letter queue, Lambda X-Ray passthrough, and the managed ECS deployment alarm. It did not have a
+single operational view, project-owned alarms, bounded log retention, command IDs in both sides of
+the AgentCore bridge, or an independently verifiable way to erase every version of one failed test
+workspace. Enabling detailed Bedrock request/response logging would expose prompts and rendered
+evidence without being necessary to diagnose the deployment.
+
+**Decision**
+
+Deploy one `asset-shepherd-operations` CloudFormation stack containing a CloudWatch dashboard and
+eight no-notification alarms: Lambda errors, throttles, and near-timeout duration; SQS backlog and
+DLQ depth; Bedrock client and server errors for the selected model; and a 5 GiB private-workspace
+storage soft limit. Retain every project CodeBuild, ECS, Lambda, and AgentCore log group for seven
+days. Emit only workspace ID, command ID, operation, phase/state, and duration as cross-service
+correlation fields; never log prompts, GLB bytes, screenshots, provider responses, credentials, or
+private reasoning.
+
+Keep the existing concise application-layer content refusal while Bedrock Guardrail compatibility
+and public wording are tested separately; do not claim an unverified Guardrail integration. Keep
+the existing user-created AWS Budget as the spend alert rather than duplicating account billing
+configuration in the application stack.
+
+Provide an administrator-only, `ShouldProcess`-protected cleanup script. It accepts exactly one
+32-hex workspace ID, verifies the application owner when a pointer exists, and deletes only that
+workspace's current and noncurrent S3 object/session versions plus its DynamoDB pointer and command
+receipts. An explicit orphan flag is required when the pointer is already gone. It then re-queries
+all four locations and fails closed unless they are empty.
+
+**Evidence and consequences**
+
+The operations stack reached `CREATE_COMPLETE`; the dashboard is `asset-shepherd-contest`. All five
+discovered project log groups report seven-day retention. A dry run named only the known corrupted
+deployment-test workspace `b082803b950b441c92b53c366d714927`; the real cleanup removed its
+remaining workspace versions, Strands session versions, and four command receipts. Independent AWS
+queries then returned zero versions/markers, no workspace pointer, and zero command receipts. The
+successful public demo workspace was not touched. The cleanup verifier initially miscounted an
+empty PowerShell value; that presentation bug was fixed and the now-empty target reports
+`VerifiedEmpty=True`.
+
+The accepted public workflow's recorded Kimi planning and approval turns cost about $0.114 at the
+documented $0.60/M input and $3.00/M output rates (175,184 input and 2,934 output tokens), excluding
+the separate intake call and AWS compute. This is an observed provider subtotal, not an estimate of
+the complete bill. Alarm notification routing, multi-user authentication, Guardrail acceptance, and
+the full Step 8 failure matrix remain open.
+
 ### D105 — Dispatch long AgentCore turns through durable SQS receipts and Lambda
 
 **Date:** 2026-09-04

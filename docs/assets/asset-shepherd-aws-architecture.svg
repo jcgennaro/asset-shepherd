@@ -109,7 +109,7 @@
   </g>
   <g transform="translate(1430 535)" filter="url(#shadow)">
     <rect width="265" height="110" rx="9" fill="#fff" stroke="#b0084d" stroke-width="1.8"/><rect x="16" y="17" width="42" height="42" rx="6" fill="#b0084d"/><text x="37" y="39" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="11" font-weight="800" fill="#fff">LOG</text>
-    <text class="service" x="72" y="37">CloudWatch</text><text class="copy" x="72" y="60">Service logs</text><text class="copy" x="18" y="88">Managed deployment alarm is live</text>
+    <text class="service" x="72" y="37">CloudWatch</text><text class="copy" x="72" y="60">Dashboard + 8 alarms</text><text class="copy" x="18" y="88">Service logs · 7-day retention</text>
   </g>
 
   <path class="line-blue" d="M422 450 V535"/><path class="line-blue" d="M482 450 V500 H1322 V470"/><text class="label" x="700" y="492">workspace artifacts + sessions</text>
@@ -123,7 +123,7 @@
 
   <rect x="250" y="905" width="1475" height="105" rx="8" fill="#f6f8fa" stroke="#6e7781" stroke-width="1.5" stroke-dasharray="6 5"/>
   <text class="section" x="275" y="936">STEP 7 / PRODUCTION HARDENING — PLANNED NEXT</text>
-  <text class="copy" x="275" y="965">Multi-user authentication · correlated alarms/traces · deletion and retention proof · per-run cost bounds</text>
+  <text class="copy" x="275" y="965">Multi-user authentication · Guardrail acceptance · alarm notification route · full remote failure matrix</text>
   <text class="copy" x="275" y="990">Optional OpenAI or Meta provider: AgentCore reads an approved key from Secrets Manager and calls the external API over outbound HTTPS</text>
   <rect class="badge-next" x="1570" y="921" width="125" height="25" rx="13"/><text class="badge badge-next-text" x="1632.5" y="933.5">PLANNED NEXT</text>
   <text class="small" x="275" y="1032">Public endpoint: as-73038a3f3e8d40819c72ccb90d068ec4.ecs.us-east-1.on.aws · Current access model: documented single-owner contest demo</text>

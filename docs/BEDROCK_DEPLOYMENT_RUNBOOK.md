@@ -80,7 +80,9 @@ until the remote-product gate passes.
 - [x] Step 6 remote web product. The managed HTTPS endpoint completed upload, HTTP 202 dispatch,
   exact approval, deterministic repair, acceptance, download, gallery return, and forced ECS task
   replacement without losing the durable workspace.
-- [ ] Step 7 operations and cleanup.
+- [ ] Step 7 operations and cleanup. The dashboard, eight project alarms, seven-day log retention,
+  bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, and observed Kimi
+  subtotal are complete. Guardrail/authentication acceptance and notification routing remain.
 - [ ] Step 8 remote M9 acceptance.
 
 ## Controlling constraints
@@ -716,6 +718,46 @@ tests multi-user authentication, stronger operational alarms, deletion, and rete
 
 **Step 7 gate:** the team can diagnose one failed run, prove cleanup, and bound idle and per-run
 cost without inspecting secret-laden raw logs.
+
+### 7.1 Live operations foundation — 2026-09-04
+
+The `asset-shepherd-operations` stack is `CREATE_COMPLETE`. Open **CloudWatch → Dashboards →
+`asset-shepherd-contest`** for dispatcher, queue, Bedrock token/error, duration, and S3 storage
+metrics. Eight `asset-shepherd-contest-*` alarms cover:
+
+- dispatcher errors, throttles, and maximum duration approaching the 900-second timeout;
+- a command visible for at least ten minutes and any command reaching the DLQ;
+- selected-model Bedrock client or server errors; and
+- private workspace storage above the 5 GiB contest soft limit.
+
+The alarms intentionally have no notification action until an approved address/channel is chosen.
+The existing AWS Budget remains the account-level spend alert. New alarms begin in
+`INSUFFICIENT_DATA` and settle after their source metrics publish; missing data is non-breaching.
+
+Run `scripts/Set-AssetShepherdLogRetention.ps1` after creating or replacing managed services. It
+discovers only Asset Shepherd CodeBuild, ECS, Lambda, and AgentCore groups and applies seven-day
+retention. Application logs share only workspace ID, command ID, operation, phase/state, and
+duration. Detailed Bedrock invocation logging remains disabled.
+
+For an explicit administrator deletion, first run
+`scripts/Remove-AssetShepherdCloudWorkspace.ps1` with `-WhatIf`, then repeat without `-WhatIf` only
+after checking the exact 32-hex workspace ID, owner, bucket, and table. The script permanently
+deletes current and noncurrent versions under only `workspaces/<id>/` and
+`sessions/session_<id>/`, then removes that workspace's DynamoDB pointer and command receipts and
+re-queries all four locations. `-AllowOrphanedWorkspace` is reserved for a known failed test whose
+owner-bound pointer has already been removed.
+
+The known corrupted deployment-test workspace was purged with this path. Direct AWS queries found
+zero remaining workspace/session versions or markers and no DynamoDB workspace/command records.
+The accepted public workspace was not touched. Its two recorded Kimi workflow invocations used
+175,184 input and 2,934 output tokens, or about $0.114 at $0.60/M input and $3.00/M output. Treat
+that as the observed workflow-model subtotal: the separate intake call, ECS, Lambda, AgentCore, S3,
+DynamoDB, logs, and taxes are not included.
+
+The existing concise application refusal remains the active content boundary. Do not mark Step 7
+complete until a Bedrock Guardrail is verified with Kimi and preserves that wording, or a recorded
+decision explains why the application boundary is the accepted contest control. Multi-user
+authentication and one alarm notification route also remain before the Step 7 gate closes.
 
 ## Step 8 — Remote M9 acceptance
 

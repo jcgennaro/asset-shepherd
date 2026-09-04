@@ -29,6 +29,28 @@ _RUNTIME_ARN = os.environ["AGENT_RUNTIME_ARN"]
 _ACTOR_ID = os.environ["WORKSPACE_OWNER_ID"]
 
 
+def _log_event(
+    event: str,
+    *,
+    message_id: str,
+    command: dict[str, Any] | None = None,
+    duration_ms: int | None = None,
+) -> None:
+    """Write only bounded correlation fields, never the command or provider response."""
+    value: dict[str, object] = {"event": event, "message_id": message_id}
+    if command is not None:
+        value.update(
+            {
+                "workspace_id": command.get("workspace_id"),
+                "command_id": command.get("command_id"),
+                "operation": command.get("operation"),
+            }
+        )
+    if duration_ms is not None:
+        value["duration_ms"] = duration_ms
+    logger.info("%s", json.dumps(value, separators=(",", ":"), sort_keys=True))
+
+
 def _key(command: dict[str, Any]) -> dict[str, dict[str, str]]:
     return {
         "PK": {"S": f"COMMAND#{command['workspace_id']}"},
@@ -104,10 +126,10 @@ def _claim(command: dict[str, Any]) -> bool:
         raise
 
 
-def _invoke(command: dict[str, Any]) -> None:
+def _invoke(command: dict[str, Any]) -> str:
     if command.get("actor_id") != _ACTOR_ID:
         _set_state(command, "FAILED", safe_error="The command actor is not authorized.")
-        return
+        return "FAILED"
     response = _agentcore.invoke_agent_runtime(
         agentRuntimeArn=_RUNTIME_ARN,
         runtimeSessionId=f"workspace-{command['workspace_id']}",
@@ -122,8 +144,9 @@ def _invoke(command: dict[str, Any]) -> None:
         message = result.get("error")
         safe_error = message if isinstance(message, str) else "The agent could not continue."
         _set_state(command, "FAILED", safe_error=safe_error)
-        return
+        return "FAILED"
     _set_state(command, "SUCCEEDED")
+    return "SUCCEEDED"
 
 
 def lambda_handler(event: dict[str, Any], _context: object) -> dict[str, list[dict[str, str]]]:
@@ -132,20 +155,36 @@ def lambda_handler(event: dict[str, Any], _context: object) -> dict[str, list[di
     for record in event.get("Records", []):
         message_id = str(record.get("messageId", ""))
         command: dict[str, Any] | None = None
+        started = time.perf_counter()
         try:
             decoded = json.loads(record["body"])
             if not _receipt_addressable(decoded):
+                _log_event("dispatch_ignored_unaddressable", message_id=message_id)
                 continue
             command = decoded
             if not _claim(command):
+                _log_event("dispatch_ignored_unclaimable", message_id=message_id, command=command)
                 continue
-            _invoke(command)
+            _log_event("dispatch_started", message_id=message_id, command=command)
+            state = _invoke(command)
+            _log_event(
+                f"dispatch_{state.lower()}",
+                message_id=message_id,
+                command=command,
+                duration_ms=round((time.perf_counter() - started) * 1000),
+            )
         except Exception:
-            logger.exception("AgentCore dispatch failed for SQS message %s", message_id)
+            logger.exception("AgentCore dispatch failed")
             if _receipt_addressable(command):
                 _set_state(
                     command,
                     "FAILED",
                     safe_error="The agent could not be reached. Reload before retrying.",
                 )
+            _log_event(
+                "dispatch_exception",
+                message_id=message_id,
+                command=command,
+                duration_ms=round((time.perf_counter() - started) * 1000),
+            )
     return {"batchItemFailures": failures}
