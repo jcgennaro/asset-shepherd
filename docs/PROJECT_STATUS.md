@@ -66,7 +66,10 @@ exact-mutation, invariant-verification, and packaging layer.
   phase/state, and duration as shared correlation fields. The administrator-only exact-workspace
   purge was dry-run and then exercised on the known corrupted deployment-test workspace; independent
   queries confirm zero S3 workspace versions, zero Strands session versions, no DynamoDB pointer,
-  and zero command receipts. The accepted public demo remains intact. Its two recorded Kimi workflow
+  and zero command receipts. All eight alarms settled to `OK`. AgentCore runtime version 4 runs the
+  accepted `e0356a6-ops-agentcore` image. A no-model status command crossed SQS/Lambda/AgentCore and
+  reached `SUCCEEDED`; its exact command ID appears in bounded start/success events on both services,
+  while the accepted workspace remains version 6 and download-ready. Its two recorded Kimi workflow
   turns have an observed provider subtotal of about $0.114 before the separate intake and AWS
   compute. Detailed model logging remains disabled; Guardrail wording/compatibility, multi-user
   authentication, notification routing, and the full remote failure matrix remain open.

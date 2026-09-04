@@ -733,6 +733,7 @@ metrics. Eight `asset-shepherd-contest-*` alarms cover:
 The alarms intentionally have no notification action until an approved address/channel is chosen.
 The existing AWS Budget remains the account-level spend alert. New alarms begin in
 `INSUFFICIENT_DATA` and settle after their source metrics publish; missing data is non-breaching.
+All eight live alarms settled to `OK` during acceptance.
 
 Run `scripts/Set-AssetShepherdLogRetention.ps1` after creating or replacing managed services. It
 discovers only Asset Shepherd CodeBuild, ECS, Lambda, and AgentCore groups and applies seven-day
@@ -753,6 +754,14 @@ The accepted public workspace was not touched. Its two recorded Kimi workflow in
 175,184 input and 2,934 output tokens, or about $0.114 at $0.60/M input and $3.00/M output. Treat
 that as the observed workflow-model subtotal: the separate intake call, ECS, Lambda, AgentCore, S3,
 DynamoDB, logs, and taxes are not included.
+
+AgentCore runtime version 4 uses `e0356a6-ops-agentcore`; the Lambda dispatcher package is the
+content-addressed
+`dispatch-247c24908e3cdf07345f8ee59ba8fd0093c9696a135e672feaf3c1f809b9892e.zip`. One no-model
+status command traversed the exact production SQS/Lambda/AgentCore path and reached `SUCCEEDED`.
+The same command ID appears in Lambda's `dispatch_started`/`dispatch_succeeded` lines and
+AgentCore's `STARTED`/`SUCCEEDED` lines, alongside only workspace ID, operation, phase, and duration.
+The accepted workspace remained record version 6 and download-ready.
 
 The existing concise application refusal remains the active content boundary. Do not mark Step 7
 complete until a Bedrock Guardrail is verified with Kimi and preserves that wording, or a recorded

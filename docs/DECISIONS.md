@@ -55,6 +55,13 @@ successful public demo workspace was not touched. The cleanup verifier initially
 empty PowerShell value; that presentation bug was fixed and the now-empty target reports
 `VerifiedEmpty=True`.
 
+All eight alarms settled to `OK`. AgentCore runtime version 4 uses immutable image
+`e0356a6-ops-agentcore`; the Lambda dispatcher uses content-addressed package
+`dispatch-247c24908e3cdf07345f8ee59ba8fd0093c9696a135e672feaf3c1f809b9892e.zip`. One no-model status
+command traversed the production SQS/Lambda bridge and reached `SUCCEEDED`; its exact command ID
+appeared in both services' bounded start/success events, and AgentCore also recorded `COMPLETE` plus
+duration. The accepted workspace remained version 6 and download-ready.
+
 The accepted public workflow's recorded Kimi planning and approval turns cost about $0.114 at the
 documented $0.60/M input and $3.00/M output rates (175,184 input and 2,934 output tokens), excluding
 the separate intake call and AWS compute. This is an observed provider subtotal, not an estimate of
