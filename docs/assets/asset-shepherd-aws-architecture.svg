@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1080" viewBox="0 0 1800 1080" role="img" aria-labelledby="title description">
   <title id="title">Asset Shepherd deployed AWS architecture</title>
-  <desc id="description">A browser uses the live ECS Express Mode web service. The web service stores durable state in S3 and DynamoDB and sends bounded commands through SQS to a Lambda dispatcher. Lambda invokes an IAM-controlled AgentCore Runtime containing the Strands agent, deterministic GLB tools, and Chromium evidence renderer. The runtime uses Amazon Bedrock Kimi. CodeBuild and ECR publish the web and AgentCore images. A separate box lists remaining operational hardening and optional OpenAI or Meta provider support through Secrets Manager.</desc>
+  <desc id="description">A browser uses the live ECS Express Mode web service. The web service stores durable state in S3 and DynamoDB and sends bounded commands through SQS to a Lambda dispatcher. Lambda invokes an IAM-controlled AgentCore Runtime containing the Strands agent, deterministic GLB tools, and Chromium evidence renderer. The runtime uses Amazon Bedrock Kimi through an immutable Bedrock Guardrail. CodeBuild and ECR publish the web and AgentCore images. A separate box lists remaining operational hardening and optional OpenAI or Meta provider support through Secrets Manager.</desc>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#17212b" flood-opacity="0.13"/></filter>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#304354"/></marker>
@@ -88,7 +88,7 @@
     <rect width="165" height="150" rx="10" fill="#fff" stroke="#7b42c3" stroke-width="2"/>
     <rect x="16" y="16" width="42" height="42" rx="21" fill="#7b42c3"/><text x="37" y="38" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="14" font-weight="800" fill="#fff">AI</text>
     <text class="service" x="72" y="36">Bedrock</text><text class="strong" x="72" y="58">Kimi K2.5</text>
-    <path d="M16 75 H149" stroke="#e5e9ed"/><text class="copy" x="18" y="101">Multimodal</text><text class="copy" x="18" y="124">Converse API</text>
+    <path d="M16 75 H149" stroke="#e5e9ed"/><text class="copy" x="18" y="101">Converse API</text><text class="copy" x="18" y="124">Guardrail v1</text>
   </g>
 
   <path class="line" d="M552 360 H620"/><text class="label" x="564" y="346">202 + queue</text>
@@ -123,7 +123,7 @@
 
   <rect x="250" y="905" width="1475" height="105" rx="8" fill="#f6f8fa" stroke="#6e7781" stroke-width="1.5" stroke-dasharray="6 5"/>
   <text class="section" x="275" y="936">STEP 7 / PRODUCTION HARDENING — PLANNED NEXT</text>
-  <text class="copy" x="275" y="965">Multi-user authentication · Guardrail acceptance · alarm notification route · full remote failure matrix</text>
+  <text class="copy" x="275" y="965">Multi-user authentication · alarm notification route · full remote failure matrix</text>
   <text class="copy" x="275" y="990">Optional OpenAI or Meta provider: AgentCore reads an approved key from Secrets Manager and calls the external API over outbound HTTPS</text>
   <rect class="badge-next" x="1570" y="921" width="125" height="25" rx="13"/><text class="badge badge-next-text" x="1632.5" y="933.5">PLANNED NEXT</text>
   <text class="small" x="275" y="1032">Public endpoint: as-73038a3f3e8d40819c72ccb90d068ec4.ecs.us-east-1.on.aws · Current access model: documented single-owner contest demo</text>

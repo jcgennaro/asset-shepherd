@@ -83,7 +83,7 @@ until the remote-product gate passes.
 - [ ] Step 7 operations and cleanup. The dashboard, eight project alarms, seven-day log retention,
   bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, observed Kimi
   subtotal, and live idle-cost floor are complete. The immutable Guardrail passes direct 8/8
-  boundary and Kimi/Converse probes; rebuilt application acceptance, authentication, and
+  boundary and Kimi/Converse probes, and rebuilt public-application acceptance. Authentication and
   notification routing remain.
 - [ ] Step 8 remote M9 acceptance.
 
@@ -115,26 +115,28 @@ until the remote-product gate passes.
 
 ## Target deployment shape
 
-### Current live-test topology (what exists now)
+### Current live topology (what exists now)
 
 ```mermaid
 flowchart LR
-    B[Browser on this PC] --> W[Local FastAPI at 127.0.0.1:8010]
-    W --> A[Local Strands agent process]
-    A -->|HTTPS Converse calls| BR[Amazon Bedrock Kimi K2.5]
-    A --> T[Local deterministic GLB tools]
-    T --> R[Local headless Chromium renderer]
-    A --> C[Local disposable workspace cache]
-    A -->|session snapshots| S3[Private S3 bucket]
-    W -->|workspace pointers| D[DynamoDB table]
+    B[Browser] --> W[ECS Express HTTPS + FastAPI]
+    W --> Q[Encrypted SQS command queue]
+    Q --> L[Lambda dispatcher]
+    L --> A[Private AgentCore runtime]
+    A --> S[Strands + GLB tools + Chromium]
+    S -->|Converse + Guardrail v1| BR[Amazon Bedrock Kimi K2.5]
+    W --> S3[Private S3 artifacts and sessions]
+    W --> D[DynamoDB workspace and receipts]
+    A --> S3
+    A --> D
 ```
 
-The browser and web server remain local. Bedrock inference, private S3 workspace/session storage,
-conditional DynamoDB coordination, ARM64 CodeBuild, private ECR, and the private AgentCore runtime
-are live in AWS. AgentCore now runs the Strands agent, deterministic GLB tools, Chromium evidence
-renderer, and disposable cache under its own service-only role. The authenticated
-`asset-shepherd` AWS CLI profile remains a separate restricted local-test identity. No ECS web
-service exists yet.
+The browser is the only local component in the public path. Managed HTTPS, the FastAPI/Jinja web
+task, durable queue/dispatcher bridge, AgentCore/Strands runtime, deterministic tools, Chromium,
+Kimi inference, Guardrail, S3, DynamoDB, CloudWatch, CodeBuild, and ECR are live in AWS. Local
+development remains available as a separate launch mode; it is not part of this production request
+path. The authenticated `asset-shepherd` AWS CLI profile remains a separate restricted local-test
+identity and is never delivered to the browser.
 
 The optional Meta/Muse and Google/Gemini comparators are separate local test configurations: local
 Strands calls the selected external API over outbound HTTPS instead of Bedrock. They are
@@ -785,7 +787,8 @@ then exposed only the selected zones/addresses. After the 0.5-vCPU/1-GiB canary 
 consecutive health requests, the accepted notebook page, and its 24,580-byte GLB download returned
 HTTP 200 with the exact media type and filename. All eight project alarms remained `OK`.
 
-AgentCore runtime version 4 uses `e0356a6-ops-agentcore`; the Lambda dispatcher package is the
+The correlation proof used AgentCore runtime version 4 and `e0356a6-ops-agentcore`; D107
+subsequently promotes runtime v5. The Lambda dispatcher package is the
 content-addressed
 `dispatch-247c24908e3cdf07345f8ee59ba8fd0093c9696a135e672feaf3c1f809b9892e.zip`. One no-model
 status command traversed the exact production SQS/Lambda/AgentCore path and reached `SUCCEEDED`.
@@ -801,8 +804,14 @@ Five legitimate game-art probes and four disallowed probes passed 8/8. A direct 
 accepted a medieval-sword request and returned `guardrail_intervened` with the exact refusal for an
 extremist-recruitment request. The application adapters now fail closed on incomplete or mutable
 Guardrail configuration, bind that version to direct intake and Strands Kimi turns, and scope
-`bedrock:ApplyGuardrail` to the exact ARN. Rebuilt-image/public-route acceptance remains before the
-Guardrail portion is closed. Multi-user authentication and one alarm notification route also remain
+`bedrock:ApplyGuardrail` to the exact ARN. CodeBuild accepted both architecture-specific images;
+AgentCore runtime v5 and ECS task definition 7 expose the pinned ID/version. After the old web task
+drained, the public route returned HTTP 400 with exactly one refusal and no echo for a blocked
+request, while an ordinary 30 cm Unreal robot reached a target proposal. The allowed test workspace
+was purged with five object versions removed and `VerifiedEmpty=True`. A status invocation started
+runtime v5 and recovered the accepted workspace at `COMPLETE`. Ten health calls, the accepted
+notebook, and its 24,580-byte `model/gltf-binary` download pass, and all eight alarms remain `OK`.
+The Guardrail portion is closed. Multi-user authentication and one alarm notification route remain
 before the Step 7 gate closes.
 
 ## Step 8 — Remote M9 acceptance

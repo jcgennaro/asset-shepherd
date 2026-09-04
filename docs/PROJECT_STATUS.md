@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Integrate the immutable Bedrock Guardrail (this file is included)
+**Current commit:** Deploy and accept the immutable Bedrock Guardrail (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary; D105 durable SQS/Lambda command dispatch; D106 bounded observability and verified purge; D107 immutable Bedrock content boundary |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, private AgentCore, and the public ECS/SQS/Lambda browser path pass through accepted download and forced task replacement; the Guardrail is live and passes direct boundary/Kimi probes while application deployment acceptance is in progress; Step 7 auth/notification closure and the full Step 8 remote matrix remain |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary; D105 durable SQS/Lambda command dispatch; D106 bounded observability and verified purge; D107 immutable Bedrock content boundary |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, private AgentCore, and the public ECS/SQS/Lambda browser path pass through accepted download and forced task replacement; the immutable Guardrail now passes direct and rebuilt public-application acceptance; Step 7 auth/notification closure and the full Step 8 remote matrix remain |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -66,7 +66,14 @@ exact-mutation, invariant-verification, and packaging layer.
   `guardrail_intervened` with the exact refusal for extremist recruitment. The checked-in adapter
   now fails closed on partial or `DRAFT` configuration, applies the latest-message/image boundary to
   Strands Kimi turns, and applies the same immutable version to direct target intake. Focused tests
-  and all three deployment templates validate; rebuilt-image and public-route acceptance follow.
+  and all three deployment templates validate. CodeBuild accepted ARM64 and x86_64 images from
+  commit `47d728b`; AgentCore runtime v5 and ECS task definition 7 now use those images with the
+  Guardrail version visible in deployment-owned configuration. The public intake returns the exact
+  refusal once without echoing a blocked request, while an ordinary 30 cm Unreal robot request
+  reaches its target proposal. That allowed test workspace was purged and independently verified
+  empty. A no-model status call cold-started runtime v5 and recovered the accepted workspace at
+  `COMPLETE`. Ten health calls, the accepted notebook, and its exact 24,580-byte GLB download pass;
+  all eight alarms remain `OK`.
 
 - D106 bounded operations foundation: `asset-shepherd-operations` is `CREATE_COMPLETE` with the
   `asset-shepherd-contest` CloudWatch dashboard and eight alarms for Lambda errors/throttling/
@@ -76,8 +83,9 @@ exact-mutation, invariant-verification, and packaging layer.
   phase/state, and duration as shared correlation fields. The administrator-only exact-workspace
   purge was dry-run and then exercised on the known corrupted deployment-test workspace; independent
   queries confirm zero S3 workspace versions, zero Strands session versions, no DynamoDB pointer,
-  and zero command receipts. All eight alarms settled to `OK`. AgentCore runtime version 4 runs the
-  accepted `e0356a6-ops-agentcore` image. A no-model status command crossed SQS/Lambda/AgentCore and
+  and zero command receipts. All eight alarms settled to `OK`. The correlation proof used
+  AgentCore runtime version 4 and accepted image `e0356a6-ops-agentcore`; D107 subsequently promotes
+  runtime v5. A no-model status command crossed SQS/Lambda/AgentCore and
   reached `SUCCEEDED`; its exact command ID appears in bounded start/success events on both services,
   while the accepted workspace remains version 6 and download-ready. Its two recorded Kimi workflow
   turns have an observed provider subtotal of about $0.114 before the separate intake and AWS

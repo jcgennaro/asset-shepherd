@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-04
 
-**Status:** ACCEPTED; direct boundary/Kimi probes pass, application deployment acceptance pending
+**Status:** ACCEPTED; deployed application acceptance passes
 
 **Decision owner:** Codex
 
@@ -45,7 +45,12 @@ explosive, passing the eight-case boundary matrix. Direct Kimi Converse accepts 
 case and returns `guardrail_intervened` with the exact refusal for extremist recruitment. Focused
 adapter tests prove immutable environment validation, exact redaction wording, latest-message
 configuration, intake request wiring, and safe intervention mapping. Rebuilt AgentCore/web images
-and public-route acceptance remain the final deployment evidence for this decision.
+passed their architecture-specific CodeBuild gates. AgentCore runtime v5 and ECS task definition 7
+carry Guardrail version 1. The public intake emits the exact refusal without echoing a blocked
+request and preserves an ordinary 30 cm Unreal robot request through target proposal. The temporary
+allowed workspace was then purged with five object versions removed and `VerifiedEmpty=True`. A
+bounded status call started runtime v5 and recovered the accepted workspace at `COMPLETE`; ten
+health checks, the accepted notebook, its exact GLB download, and all eight alarms pass.
 
 ### D106 — Keep contest operations bounded, correlated, and explicitly erasable
 

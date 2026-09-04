@@ -182,6 +182,8 @@ aws cloudformation deploy `
   --template-file infra/cloudformation/web-express.yaml `
   --capabilities CAPABILITY_IAM `
   --parameter-overrides `
+    GuardrailId=$guardrailId `
+    GuardrailVersion=$guardrailVersion `
     WebSubnetIds='<public-subnet-a>,<public-subnet-b>'
 ```
 
