@@ -105,7 +105,7 @@ Resources:
               - Sid: InvokePrivateAssetShepherdRuntime
                 Effect: Allow
                 Action: bedrock-agentcore:InvokeAgentRuntime
-                Resource: !Ref AgentRuntimeArn
+                Resource: !Sub "${AgentRuntimeArn}/runtime-endpoint/DEFAULT"
       Tags:
         - Key: Project
           Value: asset-shepherd
