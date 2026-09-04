@@ -31,6 +31,7 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --chown=asset-shepherd:asset-shepherd src ./src
 
 ENV ASSET_SHEPHERD_CHROMIUM_PATH=/usr/bin/chromium \
+    ASSET_SHEPHERD_CHROMIUM_DISABLE_SANDBOX=1 \
     PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -40,4 +41,3 @@ USER asset-shepherd
 EXPOSE 8080
 
 CMD ["sh", "-c", "exec uvicorn asset_shepherd.web:app --host 0.0.0.0 --port ${PORT:-8080}"]
-

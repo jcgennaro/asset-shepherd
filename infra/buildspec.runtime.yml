@@ -25,12 +25,13 @@ phases:
       - >-
         docker run --rm "$IMAGE_URI"
         python -c "from asset_shepherd.web import app; assert app.title == 'Asset Shepherd'; print('FastAPI import gate passed')"
+      - touch /tmp/asset-shepherd-runtime-image-accepted
   post_build:
     commands:
+      - test -f /tmp/asset-shepherd-runtime-image-accepted
       - docker push "$IMAGE_URI"
       - printf '{"imageUri":"%s"}\n' "$IMAGE_URI" > image-detail.json
 
 artifacts:
   files:
     - image-detail.json
-

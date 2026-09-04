@@ -378,6 +378,17 @@ def _remove_browser_profile(profile: Path) -> None:
             time.sleep(0.1)
 
 
+def _browser_failure_detail(log_path: Path) -> str:
+    """Return a bounded final Chromium diagnostic without exposing the rendered asset."""
+    if not log_path.is_file():
+        return ""
+    text = log_path.read_text(encoding="utf-8", errors="replace").strip()
+    if not text:
+        return ""
+    compact = " ".join(text.split())
+    return f": {compact[-1600:]}"
+
+
 def render_model_views(
     asset: Path,
     output_dir: Path,
@@ -405,6 +416,7 @@ def render_model_views(
     server_thread.start()
     process: subprocess.Popen[bytes] | None = None
     user_data = Path(tempfile.mkdtemp(prefix="asset-shepherd-render-"))
+    browser_log_path = user_data / "chromium.stderr.log"
     try:
         url = f"http://127.0.0.1:{server.server_port}/renderer.html"
         command = [
@@ -427,21 +439,29 @@ def render_model_views(
             f"--window-size={resolution},{resolution}",
             url,
         ]
-        if os.name != "nt" and hasattr(os, "geteuid") and os.geteuid() == 0:
-            command.insert(1, "--no-sandbox")
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        container_sandbox_disabled = (
+            os.environ.get("ASSET_SHEPHERD_CHROMIUM_DISABLE_SANDBOX", "").strip() == "1"
         )
-        deadline = time.monotonic() + timeout_seconds
-        while not server.done.wait(0.1):
-            if process.poll() is not None:
-                raise WebEvidenceRendererError(
-                    f"Headless Chromium exited before rendering (exit {process.returncode})"
-                )
-            if time.monotonic() >= deadline:
-                raise WebEvidenceRendererError("Headless Chromium rendering timed out")
+        if os.name != "nt" and (
+            container_sandbox_disabled or (hasattr(os, "geteuid") and os.geteuid() == 0)
+        ):
+            command.insert(1, "--no-sandbox")
+        with browser_log_path.open("wb") as browser_log:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=browser_log,
+            )
+            deadline = time.monotonic() + timeout_seconds
+            while not server.done.wait(0.1):
+                if process.poll() is not None:
+                    browser_log.flush()
+                    raise WebEvidenceRendererError(
+                        "Headless Chromium exited before rendering "
+                        f"(exit {process.returncode}){_browser_failure_detail(browser_log_path)}"
+                    )
+                if time.monotonic() >= deadline:
+                    raise WebEvidenceRendererError("Headless Chromium rendering timed out")
         if server.error is not None:
             raise WebEvidenceRendererError(f"Headless Chromium rendering failed: {server.error}")
         paths = tuple(output_dir / name for name in _CAPTURE_NAMES)
