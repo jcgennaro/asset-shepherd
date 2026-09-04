@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-04
 
-**Status:** ACCEPTED; implementation and deployment template ready, live web gate pending
+**Status:** ACCEPTED; live Step 6 gate passed
 
 **Decision owner:** Codex
 
@@ -27,10 +27,12 @@ requires `202 Accepted` and typed status polling.
 The ECS web task validates and records a schema-versioned command receipt in the existing DynamoDB
 table, then sends only that bounded command to an encrypted SQS queue. A one-message Lambda consumer
 invokes the private AgentCore Runtime with the workspace-bound runtime session. It updates the
-receipt to `RUNNING`, `SUCCEEDED`, `FAILED`, or `RETRYING`; the browser polls that receipt and reloads
-the durable notebook only after completion. SQS is at-least-once, while the stable command ID and
-AgentCore's persisted `processed_commands` boundary make the mutation exactly-once. GLB bytes,
-provider secrets, free-form paths, and AWS credentials never enter the message or browser.
+receipt to `RUNNING`, `SUCCEEDED`, or `FAILED`; the browser polls that receipt and reloads the durable
+notebook only after completion. A caught transport failure is terminal for that receipt and requires
+a fresh command ID rather than an automatic replay, because an AgentCore invocation can outlive the
+client transport that started it. SQS is at-least-once, while the stable command ID and AgentCore's
+persisted `processed_commands` boundary make the mutation exactly-once. GLB bytes, provider secrets,
+free-form paths, and AWS credentials never enter the message or browser.
 
 Keep local Uvicorn behavior synchronous when the queue is not configured. Build the AgentCore image
 for ARM64 and the ECS Express web image for x86_64, matching each managed service's runtime contract.
@@ -43,8 +45,21 @@ Focused acceptance proves typed enqueue, actor binding, conflicting command reje
 before dispatch, suppression while running, HTTP 202 receipts, and pollable status without starting
 the local agent. The CloudFormation template creates encrypted command/DLQ queues, a least-privilege
 Lambda dispatcher, separate ECS execution/infrastructure/task roles, and the ECS Express service.
-This adds two small request-driven services but avoids ALB timeouts and replaceable-task coupling.
-Remote deployment and browser replay remain the Step 6 gate.
+The dispatcher disables SDK retries and allows an 850-second response read so one slow AgentCore
+turn cannot become overlapping invocations. Its IAM policy grants only the selected runtime and its
+`DEFAULT` runtime endpoint, both of which AgentCore requires. The web container trusts the managed
+ingress forwarding headers so redirects remain HTTPS.
+
+The live `asset-shepherd-web` stack passed its alarm bake on 2026-09-04 with image `2e206e3-web` at
+`https://as-73038a3f3e8d40819c72ccb90d068ec4.ecs.us-east-1.on.aws`. A clean Kimi workflow returned
+HTTP 202 in about 0.5 seconds, persisted the exact approval interrupt, completed the approved repair,
+and reached accepted record version 6. Its two recorded agent invocations used 175,184 input and
+2,934 output tokens over 84.0 seconds. The 24,580-byte candidate downloads as
+`upright-robot-prop_shepherded_090426.glb` with `model/gltf-binary`. After forcibly replacing the ECS
+task, the gallery, accepted notebook, and download all rehydrated from S3/DynamoDB without rerunning
+the model or mutation. This adds two small request-driven services but avoids load-balancer timeouts
+and replaceable-task coupling. Step 6 is complete; Step 7 operational hardening and the full Step 8
+remote matrix remain.
 
 ### D104 — Build one gated ARM64 image and expose only typed AgentCore commands
 

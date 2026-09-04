@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Complete private AgentCore runtime acceptance (this file is included)
+**Current commit:** Complete the live ECS/AgentCore remote-product gate (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary; D105 durable SQS/Lambda command dispatch |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, and private AgentCore typed invocation/interrupt/resume/completion paths pass, including forced runtime replacement; remote ECS web deployment and remote browser acceptance remain open |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary; D105 durable SQS/Lambda command dispatch |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, private AgentCore, and the public ECS/SQS/Lambda browser path pass through accepted download and forced task replacement; Step 7 operations and the full Step 8 remote matrix remain |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -39,8 +39,8 @@
 M9's local Bedrock-provider gate is complete. D094's fixed matrix gives Kimi 8/8 safety and 8/8
 semantic/visual passes through the least-privilege Bedrock role, and rejects Mistral Large 3 as the
 default. D103 deploys and live-tests the Step 3 foundation: private content-addressed S3 artifacts,
-S3 Strands sessions, and conditional DynamoDB records. The remaining Step 3 gate is the full
-kill-and-replace matrix at intake, approval, repair, refinement, and completion.
+S3 Strands sessions, and conditional DynamoDB records. D104 and D105 prove that state through
+AgentCore replacement and ECS task replacement, including a completed accepted workspace.
 
 D037 replaces the first target-dependent planning pass with
 a live model-authored assessment and exact typed action preview. Agent-mode inspection exposes
@@ -66,7 +66,19 @@ exact-mutation, invariant-verification, and packaging layer.
   conflict rejection, safe pre-dispatch resend, in-flight duplicate suppression, and an accepted
   target route that does not start a local agent. The web build and deployment templates add a
   gated x86_64 image, separate least-privilege roles, encrypted queue/DLQ, dispatcher, and one-task
-  ECS Express service. Live deployment remains open.
+  ECS Express service. The live stack reached `UPDATE_COMPLETE` with a successful deployment alarm
+  bake at
+  `https://as-73038a3f3e8d40819c72ccb90d068ec4.ecs.us-east-1.on.aws`. A clean Kimi run returned HTTP
+  202 in about 0.5 seconds, persisted the exact approval interrupt, completed the approved repair,
+  and reached accepted record version 6. Its two recorded workflow invocations used 175,184 input
+  plus 2,934 output tokens over 84.0 seconds. The 24,580-byte repaired GLB downloads with the exact
+  `model/gltf-binary` type and `upright-robot-prop_shepherded_090426.glb` filename. After forced ECS
+  task replacement, the gallery, terminal notebook, and download rehydrated from S3/DynamoDB with no
+  duplicate model call or mutation. Managed HTTPS forwarding, non-retrying long AgentCore dispatch,
+  exact parent/runtime-endpoint IAM authorization, and terminal accepted-workspace rehydration were
+  all corrected during the live gate. Step 6 is complete. The post-deployment common gate passes
+  with 259 tests, 3 intentional skips, a valid lockfile, Ruff, formatting, Pyright, all four live
+  CloudFormation templates, the editable SVG/rendered PNG architecture pair, and `git diff --check`.
 
 - D104 complete AgentCore acceptance: the frozen `broken-normalization` provider case used its exact
   122 × 182 × 40 cm target through the deployed private runtime. Planning stopped at the approval
@@ -238,15 +250,14 @@ exact-mutation, invariant-verification, and packaging layer.
   The common gate passes with 224 tests, two intentional live-provider skips, lock validation,
   Ruff, formatting, and zero Pyright findings.
 
-- D093 deployment topology: only model inference currently runs in AWS. The browser, FastAPI,
-  Strands loop, GLB tools, Chromium renderer, and workspace files remain local. The runbook now
-  diagrams that current topology separately from the intended AWS topology. A checked-in AWS-style
-  SVG and rendered PNG now make the intended browser, ECS Express Mode, AgentCore, Bedrock, S3,
-  DynamoDB, ECR, IAM, and CloudWatch boundaries explicit for implementation and contest materials.
+- D093 deployment topology: this decision established the AWS boundary before deployment. D103–D105
+  subsequently made the browser-facing ECS Express service, SQS/Lambda bridge, AgentCore/Strands
+  runtime, Bedrock inference, S3/DynamoDB state, ECR/CodeBuild images, and IAM roles live. The
+  checked-in AWS-style SVG and rendered PNG now distinguish that deployed request/data flow from the
+  remaining Step 7 operations and optional external-provider work.
   AWS has closed App Runner to new customers, so D093 supersedes D075 and selects one stateless ECS
   Express Mode web container beside an IAM-controlled AgentCore Runtime, with S3 as immutable
-  artifact/session storage and DynamoDB as the conditional workspace/command pointer. No ECS, ECR,
-  AgentCore, S3, or DynamoDB resource has been deployed yet.
+  artifact/session storage and DynamoDB as the conditional workspace/command pointer.
 
 - D092 use-case-driven controlled mesh simplification: target confirmation now asks whether the
   asset will normally be seen close-up/showcase, at ordinary gameplay distance, or
@@ -1262,19 +1273,20 @@ exact-mutation, invariant-verification, and packaging layer.
 RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. The least-privilege
 `asset-shepherd` AWS runtime profile, exact Kimi resource access, `us-east-1`, budget alert, and live
 8/8 Kimi gate are confirmed. Luna remains unavailable behind its account agreement but no longer
-blocks the recommended Kimi path. M9 is blocked on implementation proof rather than model access:
-the ECS Express web tier and remote browser acceptance remain. The
-submission also remains blocked on the public-repository, free judge-access,
+blocks the recommended Kimi path. The public ECS/SQS/Lambda/AgentCore path now passes one clean
+acceptance-through-download run and forced web-task replacement. M9 still requires Step 7
+operational hardening and the complete Step 8 remote case matrix. The submission also remains
+blocked on the public-repository, free judge-access,
 architecture, video, disclosure, release-scan, and entrant-attestation gates in
 `docs/CONTEST_COMPLIANCE_PLAN.md`. A human-cleaned reference and manual-time record remain required
 for the full RW4 comparison gate.
 
 ## Next action
 
-Connect the existing FastAPI/Jinja product to the private AgentCore command boundary, deploy that
-thin web tier through ECS Express Mode, and rerun the browser acceptance cases remotely. Preserve the current
-mutation scope, exact authorization, durability, and invariant checks; do not restore deterministic
-target-dependent planning or create a second conversational authority.
+Complete Step 7 guardrails, correlated operational evidence, deletion/retention proof, and cost
+bounds against the live deployment, then run the complete Step 8 browser matrix. Preserve the
+current mutation scope, exact authorization, durability, and invariant checks; do not restore
+deterministic target-dependent planning or create a second conversational authority.
 
 RW2 registration resumes when the user supplies Debug Beetle. Paid Bedrock invocation is limited to
 the bounded runbook matrix; broader AWS resource creation still follows its explicit gates.

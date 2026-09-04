@@ -1,222 +1,130 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100" role="img" aria-labelledby="title description">
-  <title id="title">Asset Shepherd production architecture and deployment status</title>
-  <desc id="description">Target AWS topology annotated with current deployment status. Bedrock inference, IAM, S3 artifacts, DynamoDB workflow state, the ARM64 Chromium image, and private AgentCore Runtime are live. The ECS Express Mode website and complete observability remain planned next. The browser product remains available locally until the remote web gate passes.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1080" viewBox="0 0 1800 1080" role="img" aria-labelledby="title description">
+  <title id="title">Asset Shepherd deployed AWS architecture</title>
+  <desc id="description">A browser uses the live ECS Express Mode web service. The web service stores durable state in S3 and DynamoDB and sends bounded commands through SQS to a Lambda dispatcher. Lambda invokes an IAM-controlled AgentCore Runtime containing the Strands agent, deterministic GLB tools, and Chromium evidence renderer. The runtime uses Amazon Bedrock Kimi. CodeBuild and ECR publish the web and AgentCore images. A separate box lists remaining operational hardening and optional OpenAI or Meta provider support through Secrets Manager.</desc>
   <defs>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#17212b" flood-opacity="0.14"/></filter>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#263645"/></marker>
-    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#147eba"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#17212b" flood-opacity="0.13"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#304354"/></marker>
     <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#7b42c3"/></marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#147eba"/></marker>
     <style>
-      .title { font: 700 34px Inter, "Segoe UI", Arial, sans-serif; fill: #17212b; }
-      .subtitle { font: 400 18px Inter, "Segoe UI", Arial, sans-serif; fill: #526170; }
-      .cloud-label { font: 700 18px Inter, "Segoe UI", Arial, sans-serif; fill: #17212b; }
-      .boundary-label { font: 700 18px Inter, "Segoe UI", Arial, sans-serif; }
-      .service-title { font: 700 18px Inter, "Segoe UI", Arial, sans-serif; fill: #17212b; }
-      .service-copy { font: 400 14px Inter, "Segoe UI", Arial, sans-serif; fill: #526170; }
-      .service-copy-strong { font: 600 14px Inter, "Segoe UI", Arial, sans-serif; fill: #263645; }
-      .icon-letter { font: 800 17px Inter, "Segoe UI", Arial, sans-serif; fill: white; text-anchor: middle; dominant-baseline: middle; }
-      .connector { fill: none; stroke: #263645; stroke-width: 2.2; marker-end: url(#arrow); }
-      .connector-purple { fill: none; stroke: #7b42c3; stroke-width: 2.3; marker-end: url(#arrowPurple); }
-      .connector-blue { fill: none; stroke: #147eba; stroke-width: 2.5; stroke-dasharray: 9 7; marker-end: url(#arrowBlue); }
-      .deployment { fill: none; stroke: #697786; stroke-width: 2; stroke-dasharray: 7 7; marker-end: url(#arrow); }
-      .connector-label { font: 600 13px Inter, "Segoe UI", Arial, sans-serif; fill: #263645; paint-order: stroke; stroke: white; stroke-width: 5; stroke-linejoin: round; }
-      .connector-label-blue { font: 600 14px Inter, "Segoe UI", Arial, sans-serif; fill: #147eba; paint-order: stroke; stroke: white; stroke-width: 6; stroke-linejoin: round; }
-      .small-note { font: 400 13px Inter, "Segoe UI", Arial, sans-serif; fill: #526170; }
-      .legend { font: 600 13px Inter, "Segoe UI", Arial, sans-serif; fill: #526170; }
-      .status { font: 800 11px Inter, "Segoe UI", Arial, sans-serif; letter-spacing: 0.35px; text-anchor: middle; dominant-baseline: middle; }
-      .status-live { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.3; }
-      .status-live-text { fill: #116329; }
-      .status-building { fill: #ddf4ff; stroke: #0969da; stroke-width: 1.3; }
-      .status-building-text { fill: #0550ae; }
-      .status-planned { fill: #f6f8fa; stroke: #6e7781; stroke-width: 1.3; stroke-dasharray: 4 3; }
-      .status-planned-text { fill: #57606a; }
-      .status-local { fill: #fff8c5; stroke: #9a6700; stroke-width: 1.3; }
-      .status-local-text { fill: #7d4e00; }
+      text { font-family: Arial; }
+      .title { font-size: 34px; font-weight: 700; fill: #17212b; }
+      .subtitle { font-size: 18px; font-weight: 400; fill: #526170; }
+      .section { font-size: 18px; font-weight: 700; fill: #17212b; }
+      .section-green { font-size: 18px; font-weight: 700; fill: #267326; }
+      .service { font-size: 18px; font-weight: 700; fill: #17212b; }
+      .strong { font-size: 14px; font-weight: 600; fill: #263645; }
+      .copy { font-size: 14px; font-weight: 400; fill: #526170; }
+      .small { font-size: 13px; font-weight: 400; fill: #526170; }
+      .label { font-size: 13px; font-weight: 600; fill: #263645; }
+      .badge { font-size: 11px; font-weight: 800; letter-spacing: .35px; text-anchor: middle; dominant-baseline: middle; }
+      .badge-live { fill: #dafbe1; stroke: #1a7f37; stroke-width: 1.2; }
+      .badge-live-text { fill: #116329; }
+      .badge-next { fill: #f6f8fa; stroke: #6e7781; stroke-width: 1.2; stroke-dasharray: 4 3; }
+      .badge-next-text { fill: #57606a; }
+      .line { fill: none; stroke: #304354; stroke-width: 2.2; marker-end: url(#arrow); }
+      .line-purple { fill: none; stroke: #7b42c3; stroke-width: 2.4; marker-end: url(#arrowPurple); }
+      .line-blue { fill: none; stroke: #147eba; stroke-width: 2.2; marker-end: url(#arrowBlue); }
+      .line-build { fill: none; stroke: #697786; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrow); }
     </style>
   </defs>
 
-  <rect width="1800" height="1100" fill="#f7f8fa"/>
-  <text class="title" x="34" y="52">Asset Shepherd — Production Architecture + Build Status</text>
-  <text class="subtitle" x="34" y="82">The architecture stays fixed while color-coded badges show what exists today and what comes next.</text>
-  <g transform="translate(1138 28)">
-    <rect class="status-live" width="145" height="28" rx="14"/><text class="status status-live-text" x="72.5" y="14">BUILT + LIVE</text>
-    <rect class="status-building" x="155" width="181" height="28" rx="14"/><text class="status status-building-text" x="245.5" y="14">BUILDING + TESTING</text>
-    <rect class="status-planned" x="346" width="132" height="28" rx="14"/><text class="status status-planned-text" x="412" y="14">PLANNED NEXT</text>
-    <rect class="status-local" x="488" width="140" height="28" rx="14"/><text class="status status-local-text" x="558" y="14">LOCAL FOR NOW</text>
+  <rect width="1800" height="1080" fill="#f7f8fa"/>
+  <text class="title" x="32" y="52">Asset Shepherd — Deployed AWS Architecture</text>
+  <text class="subtitle" x="32" y="82">Live contest path, durable authority, and the deliberately smaller hardening backlog.</text>
+  <g transform="translate(1475 30)">
+    <rect class="badge-live" width="125" height="27" rx="14"/><text class="badge badge-live-text" x="62.5" y="13.5">BUILT + LIVE</text>
+    <rect class="badge-next" x="138" width="125" height="27" rx="14"/><text class="badge badge-next-text" x="200.5" y="13.5">PLANNED NEXT</text>
   </g>
 
-  <!-- Planned AWS boundary -->
-  <rect x="170" y="115" width="1595" height="930" rx="4" fill="#ffffff" stroke="#232f3e" stroke-width="2.5"/>
-  <rect x="170" y="115" width="46" height="46" fill="#232f3e"/>
-  <text x="193" y="139" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="13" font-weight="700" fill="#ffffff">aws</text>
-  <text class="cloud-label" x="230" y="144">AWS Cloud • target region: us-east-1</text>
-
-  <!-- Browser outside AWS -->
-  <g transform="translate(20 330)">
-    <rect width="126" height="218" rx="16" fill="#ffffff" stroke="#6b7885" stroke-width="1.7" filter="url(#shadow)"/>
-    <circle cx="63" cy="42" r="18" fill="none" stroke="#263645" stroke-width="3"/>
-    <path d="M29 96 C32 67, 94 67, 97 96" fill="none" stroke="#263645" stroke-width="3" stroke-linecap="round"/>
-    <rect x="21" y="108" width="84" height="48" rx="5" fill="none" stroke="#263645" stroke-width="3"/>
-    <path d="M15 165 H111" stroke="#263645" stroke-width="3" stroke-linecap="round"/>
-    <text class="service-title" x="63" y="190" text-anchor="middle">Users</text>
-    <text class="service-copy" x="63" y="210" text-anchor="middle">Web browser</text>
-    <rect class="status-local" x="13" y="8" width="100" height="22" rx="11"/><text class="status status-local-text" x="63" y="19">LOCAL FOR NOW</text>
+  <g transform="translate(22 260)" filter="url(#shadow)">
+    <rect width="150" height="210" rx="14" fill="#fff" stroke="#6b7885" stroke-width="1.7"/>
+    <circle cx="75" cy="52" r="19" fill="none" stroke="#304354" stroke-width="3"/>
+    <path d="M37 107 C40 75 110 75 113 107" fill="none" stroke="#304354" stroke-width="3" stroke-linecap="round"/>
+    <rect x="30" y="119" width="90" height="48" rx="5" fill="none" stroke="#304354" stroke-width="3"/>
+    <text class="service" x="75" y="191" text-anchor="middle">Browser</text>
   </g>
 
-  <!-- ECS Express Mode -->
-  <rect x="390" y="210" width="675" height="330" rx="5" fill="#fbfff9" stroke="#2e9b21" stroke-width="2"/>
-  <rect x="390" y="210" width="44" height="44" fill="#2e9b21"/>
-  <path d="M402 237 V224 H422 V240 H414 V245 H406 V240 Z" fill="none" stroke="#ffffff" stroke-width="2"/>
-  <text class="boundary-label" x="448" y="239" fill="#2e7d32">Amazon ECS Express Mode</text>
-  <text class="service-copy" x="448" y="263">Managed Fargate deployment for the stateless web application</text>
-  <rect class="status-planned" x="896" y="220" width="148" height="24" rx="12"/><text class="status status-planned-text" x="970" y="232">PLANNED NEXT</text>
+  <rect x="210" y="112" width="1555" height="930" rx="4" fill="#fff" stroke="#232f3e" stroke-width="2.4"/>
+  <rect x="210" y="112" width="46" height="46" fill="#232f3e"/>
+  <text x="233" y="136" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="13" font-weight="700" fill="#fff">aws</text>
+  <text class="section" x="270" y="142">AWS Cloud · us-east-1</text>
 
-  <g transform="translate(500 305)" filter="url(#shadow)">
-    <rect width="455" height="180" rx="10" fill="#ffffff" stroke="#ec7211" stroke-width="2"/>
-    <rect x="14" y="17" width="44" height="44" rx="6" fill="#ec7211"/>
-    <path d="M24 29 h24 v20 h-24z M24 36 h24 M31 29 v20" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="70" y="36">FastAPI + Jinja</text>
-    <text class="service-copy-strong" x="70" y="58">Stateless web task</text>
-    <path d="M16 78 H439" stroke="#e5e9ed" stroke-width="1"/>
-    <text class="service-copy-strong" x="22" y="103">Managed HTTPS ingress</text>
-    <text class="service-copy" x="196" y="103">Application Load Balancer • TLS • health checks</text>
-    <text class="service-copy" x="22" y="128">Gallery • notebook UI • authentication • typed status</text>
-    <text class="service-copy" x="22" y="151">Signs exact-object S3 transfers; returns 202 during agent work</text>
+  <rect x="250" y="175" width="1475" height="505" rx="8" fill="#fbfff9" stroke="#2e9b21" stroke-width="2"/>
+  <text class="section-green" x="275" y="207">LIVE CONTEST DEPLOYMENT</text>
+  <rect class="badge-live" x="1570" y="187" width="125" height="25" rx="13"/><text class="badge badge-live-text" x="1632.5" y="199.5">BUILT + LIVE</text>
+
+  <path class="line" d="M172 365 H292"/><text class="label" x="192" y="350">managed HTTPS</text>
+
+  <g transform="translate(292 270)" filter="url(#shadow)">
+    <rect width="260" height="180" rx="10" fill="#fff" stroke="#ec7211" stroke-width="2"/>
+    <rect x="16" y="16" width="42" height="42" rx="6" fill="#ec7211"/><text x="37" y="38" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="13" font-weight="800" fill="#fff">WEB</text>
+    <text class="service" x="72" y="36">ECS Express Mode</text><text class="strong" x="72" y="58">FastAPI + Jinja</text>
+    <path d="M16 75 H244" stroke="#e5e9ed"/><text class="copy" x="18" y="101">Gallery + notebook UI</text><text class="copy" x="18" y="124">Typed commands + status polling</text><text class="copy" x="18" y="147">Authorized GLB transfer routes</text><text class="small" x="18" y="168">Image: 2e206e3-web · x86_64</text>
   </g>
 
-  <!-- IAM-controlled agent runtime -->
-  <rect x="390" y="630" width="675" height="300" rx="5" fill="#fdfaff" stroke="#7b42c3" stroke-width="2.2"/>
-  <rect x="390" y="630" width="44" height="44" fill="#7b42c3"/>
-  <circle cx="412" cy="652" r="12" fill="none" stroke="#ffffff" stroke-width="2"/>
-  <path d="M405 653 l5 5 10-12" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-  <text class="boundary-label" x="448" y="659" fill="#6332a5">Amazon Bedrock AgentCore Runtime • IAM-controlled</text>
-  <text class="service-copy" x="448" y="682">Managed runtime • ARM64 container • /invocations and /ping</text>
-  <rect class="status-live" x="930" y="641" width="114" height="24" rx="12"/><text class="status status-live-text" x="987" y="653">BUILT + LIVE</text>
-
-  <!-- Connectors sit beneath service cards to keep the main path readable. -->
-  <path class="connector" d="M146 430 H500"/>
-  <text class="connector-label" x="253" y="418">HTTPS • UI, commands, status</text>
-
-  <path class="connector-purple" d="M728 485 V630"/>
-  <text class="connector-label" x="728" y="561" text-anchor="middle">IAM-authorized InvokeAgentRuntime</text>
-  <path class="connector-purple" d="M680 786 H735"/>
-  <text class="connector-label" x="687" y="772">typed tools</text>
-
-  <path class="connector" d="M1065 740 H1085 V455 H1110"/>
-  <path class="connector" d="M1065 775 H1110"/>
-  <path class="connector" d="M1065 875 H1400 V760 H1435"/>
-  <path class="connector" d="M900 485 V600 H1390 V760 H1435"/>
-  <path class="connector-purple" d="M1065 675 H1080 V620 H1400 V455 H1435"/>
-
-  <path class="deployment" d="M1110 265 H1035 V350 H955"/>
-  <text class="connector-label" x="1005" y="282">container images</text>
-
-  <path class="connector-blue" d="M83 548 C92 978 635 1010 1110 790"/>
-  <text class="connector-label-blue" x="455" y="1023">Direct presigned GLB upload • candidate / evidence / package download</text>
-
-  <g transform="translate(440 735)" filter="url(#shadow)">
-    <rect width="240" height="102" rx="9" fill="#ffffff" stroke="#7b42c3" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="22" fill="#7b42c3"/>
-    <path d="M25 43 C25 29 47 29 47 43 M28 47 H44" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
-    <text class="service-title" x="72" y="39">Strands agent</text>
-    <text class="service-copy-strong" x="72" y="60">Semantic orchestrator</text>
-    <text class="service-copy" x="14" y="86">Plans • interrupts • conversation</text>
+  <g transform="translate(620 285)" filter="url(#shadow)">
+    <rect width="205" height="150" rx="10" fill="#fff" stroke="#ec7211" stroke-width="2"/>
+    <rect x="16" y="16" width="42" height="42" rx="6" fill="#ec7211"/><text x="37" y="38" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="16" font-weight="800" fill="#fff">Q</text>
+    <text class="service" x="72" y="36">Amazon SQS</text><text class="strong" x="72" y="58">Command queue</text>
+    <path d="M16 75 H189" stroke="#e5e9ed"/><text class="copy" x="18" y="101">Encrypted + bounded</text><text class="copy" x="18" y="124">Stable command IDs</text>
   </g>
 
-  <g transform="translate(735 710)" filter="url(#shadow)">
-    <rect width="260" height="145" rx="9" fill="#ffffff" stroke="#167d93" stroke-width="1.8"/>
-    <rect x="14" y="17" width="44" height="44" rx="6" fill="#167d93"/>
-    <path d="M26 28 h20 v24 h-20z M30 34 h12 M30 40 h12 M30 46 h8" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="38">Deterministic GLB tools</text>
-    <text class="service-copy-strong" x="72" y="60">Bounded action + proof</text>
-    <text class="service-copy" x="14" y="87">Inspect • mutate • hash • verify</text>
-    <text class="service-copy" x="14" y="108">Exact approval/action receipts</text>
-    <text class="service-copy" x="14" y="129">Headless Chromium evidence renderer</text>
+  <g transform="translate(890 285)" filter="url(#shadow)">
+    <rect width="220" height="150" rx="10" fill="#fff" stroke="#ec7211" stroke-width="2"/>
+    <rect x="16" y="16" width="42" height="42" rx="6" fill="#ec7211"/><text x="37" y="38" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="16" font-weight="800" fill="#fff">λ</text>
+    <text class="service" x="72" y="36">AWS Lambda</text><text class="strong" x="72" y="58">Agent dispatcher</text>
+    <path d="M16 75 H204" stroke="#e5e9ed"/><text class="copy" x="18" y="101">One message at a time</text><text class="copy" x="18" y="124">Long call; SDK retry disabled</text>
   </g>
 
-  <!-- Managed services -->
-  <text class="cloud-label" x="1110" y="185">AWS managed services</text>
-  <path d="M1110 195 H1715" stroke="#d7dce1" stroke-width="1.5"/>
-
-  <g transform="translate(1110 215)" filter="url(#shadow)">
-    <rect width="260" height="100" rx="9" fill="#ffffff" stroke="#ec7211" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="6" fill="#ec7211"/>
-    <path d="M25 29 l11-6 11 6 v18 l-11 6-11-6z M25 29 l11 6 11-6 M36 35 v18" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="38">CodeBuild + ECR</text>
-    <text class="service-copy-strong" x="72" y="60">ARM64 build + image registry</text>
-    <text class="service-copy" x="14" y="86">Chromium gate • versioned images</text>
-    <rect class="status-live" x="164" y="8" width="88" height="22" rx="11"/><text class="status status-live-text" x="208" y="19">LIVE</text>
+  <g transform="translate(1175 250)" filter="url(#shadow)">
+    <rect width="295" height="220" rx="10" fill="#fff" stroke="#7b42c3" stroke-width="2.2"/>
+    <rect x="16" y="16" width="42" height="42" rx="21" fill="#7b42c3"/><text x="37" y="38" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="16" font-weight="800" fill="#fff">A</text>
+    <text class="service" x="72" y="36">AgentCore Runtime</text><text class="strong" x="72" y="58">Private ARM64 runtime</text>
+    <path d="M16 75 H279" stroke="#e5e9ed"/><text class="strong" x="18" y="101">Strands semantic orchestrator</text><text class="copy" x="18" y="124">Plans + exact approval interrupts</text><text class="strong" x="18" y="151">Deterministic GLB tools</text><text class="copy" x="18" y="174">Inspect · mutate · hash · verify</text><text class="copy" x="18" y="197">Packaged Chromium evidence</text>
   </g>
 
-  <g transform="translate(1435 215)" filter="url(#shadow)">
-    <rect width="260" height="115" rx="9" fill="#ffffff" stroke="#dd344c" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="22" fill="#dd344c"/>
-    <path d="M36 27 a7 7 0 1 1 0 14 a7 7 0 1 1 0-14 M25 55 c2-12 20-12 22 0" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="38">AWS IAM</text>
-    <text class="service-copy-strong" x="72" y="60">Least-privilege roles</text>
-    <text class="service-copy" x="14" y="84">Web task + AgentCore runtime</text>
-    <text class="service-copy" x="14" y="101">SigV4 service identities</text>
-    <rect class="status-live" x="164" y="8" width="88" height="22" rx="11"/><text class="status status-live-text" x="208" y="19">LIVE</text>
+  <g transform="translate(1530 285)" filter="url(#shadow)">
+    <rect width="165" height="150" rx="10" fill="#fff" stroke="#7b42c3" stroke-width="2"/>
+    <rect x="16" y="16" width="42" height="42" rx="21" fill="#7b42c3"/><text x="37" y="38" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="14" font-weight="800" fill="#fff">AI</text>
+    <text class="service" x="72" y="36">Bedrock</text><text class="strong" x="72" y="58">Kimi K2.5</text>
+    <path d="M16 75 H149" stroke="#e5e9ed"/><text class="copy" x="18" y="101">Multimodal</text><text class="copy" x="18" y="124">Converse API</text>
   </g>
 
-  <g transform="translate(1110 400)" filter="url(#shadow)">
-    <rect width="260" height="110" rx="9" fill="#ffffff" stroke="#7b42c3" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="22" fill="#7b42c3"/>
-    <path d="M26 42 C27 28 45 28 46 42 C45 53 27 53 26 42 Z M31 37 C35 33 40 33 44 37" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="38">Amazon Bedrock</text>
-    <text class="service-copy-strong" x="72" y="60">Kimi K2.5 • Converse</text>
-    <text class="service-copy" x="14" y="86">Multimodal planning and review</text>
-    <text class="service-copy" x="14" y="103">No direct browser access</text>
-    <rect class="status-live" x="164" y="8" width="88" height="22" rx="11"/><text class="status status-live-text" x="208" y="19">LIVE</text>
+  <path class="line" d="M552 360 H620"/><text class="label" x="564" y="346">202 + queue</text>
+  <path class="line" d="M825 360 H890"/><path class="line-purple" d="M1110 360 H1175"/><text class="label" x="1118" y="346">IAM invoke</text><path class="line-purple" d="M1470 360 H1530"/>
+
+  <text class="section" x="292" y="515">Durable workspace authority</text>
+  <g transform="translate(292 535)" filter="url(#shadow)">
+    <rect width="310" height="110" rx="9" fill="#fff" stroke="#3f8624" stroke-width="1.8"/><rect x="16" y="17" width="42" height="42" rx="6" fill="#3f8624"/><text x="37" y="39" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="15" font-weight="800" fill="#fff">S3</text>
+    <text class="service" x="72" y="37">Private Amazon S3</text><text class="copy" x="72" y="60">GLBs · evidence · packages</text><text class="copy" x="18" y="88">Immutable manifests + Strands snapshots</text>
+  </g>
+  <g transform="translate(675 535)" filter="url(#shadow)">
+    <rect width="310" height="110" rx="9" fill="#fff" stroke="#3b48cc" stroke-width="1.8"/><rect x="16" y="17" width="42" height="42" rx="6" fill="#3b48cc"/><text x="37" y="39" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="14" font-weight="800" fill="#fff">DB</text>
+    <text class="service" x="72" y="37">Amazon DynamoDB</text><text class="copy" x="72" y="60">Workspace + receipt state</text><text class="copy" x="18" y="88">Conditional versions · exact command IDs</text>
+  </g>
+  <g transform="translate(1058 535)" filter="url(#shadow)">
+    <rect width="300" height="110" rx="9" fill="#fff" stroke="#dd344c" stroke-width="1.8"/><rect x="16" y="17" width="42" height="42" rx="21" fill="#dd344c"/><text x="37" y="39" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="12" font-weight="800" fill="#fff">IAM</text>
+    <text class="service" x="72" y="37">Least-privilege IAM</text><text class="copy" x="72" y="60">Separate service roles</text><text class="copy" x="18" y="88">Browser receives no AWS credentials</text>
+  </g>
+  <g transform="translate(1430 535)" filter="url(#shadow)">
+    <rect width="265" height="110" rx="9" fill="#fff" stroke="#b0084d" stroke-width="1.8"/><rect x="16" y="17" width="42" height="42" rx="6" fill="#b0084d"/><text x="37" y="39" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="11" font-weight="800" fill="#fff">LOG</text>
+    <text class="service" x="72" y="37">CloudWatch</text><text class="copy" x="72" y="60">Service logs</text><text class="copy" x="18" y="88">Managed deployment alarm is live</text>
   </g>
 
-  <g transform="translate(1435 400)" filter="url(#shadow)">
-    <rect width="260" height="110" rx="9" fill="#ffffff" stroke="#b0084d" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="6" fill="#b0084d"/>
-    <path d="M23 52 l8-10 6 4 10-16 M23 55 h26" fill="none" stroke="#ffffff" stroke-width="2.2"/>
-    <text class="service-title" x="72" y="38">Amazon CloudWatch</text>
-    <text class="service-copy-strong" x="72" y="60">Metrics • logs • traces</text>
-    <text class="service-copy" x="14" y="86">Web + runtime correlation IDs</text>
-    <text class="service-copy" x="14" y="103">No private reasoning in logs</text>
-    <rect class="status-planned" x="151" y="8" width="101" height="22" rx="11"/><text class="status status-planned-text" x="201.5" y="19">NEXT</text>
-  </g>
+  <path class="line-blue" d="M422 450 V535"/><path class="line-blue" d="M482 450 V500 H1322 V470"/><text class="label" x="700" y="492">workspace artifacts + sessions</text>
+  <path class="line" d="M506 450 V515 H830 V535"/><path class="line" d="M1000 435 V500 H900 V535"/><path class="line" d="M1290 470 V515 H955 V535"/>
 
-  <g transform="translate(1110 665)" filter="url(#shadow)">
-    <rect width="275" height="185" rx="9" fill="#ffffff" stroke="#3f8624" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="6" fill="#3f8624"/>
-    <path d="M25 29 c0-7 22-7 22 0 v23 c0 7-22 7-22 0z M25 29 c0 7 22 7 22 0 M25 40 c0 7 22 7 22 0" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text class="service-title" x="72" y="38">Amazon S3</text>
-    <text class="service-copy-strong" x="72" y="60">Immutable artifact store</text>
-    <text class="service-copy" x="18" y="91">• Source GLBs + candidate iterations</text>
-    <text class="service-copy" x="18" y="114">• Evidence renders + packages</text>
-    <text class="service-copy" x="18" y="137">• Strands session snapshots</text>
-    <text class="service-copy" x="18" y="160">• Hashes, versions, lifecycle policy</text>
-    <rect class="status-live" x="179" y="8" width="88" height="22" rx="11"/><text class="status status-live-text" x="223" y="19">LIVE</text>
-  </g>
+  <rect x="250" y="715" width="1475" height="155" rx="8" fill="#fffaf5" stroke="#ec7211" stroke-width="1.6"/>
+  <text class="section" x="275" y="747">LIVE BUILD + RELEASE PLANE</text>
+  <g transform="translate(460 770)" filter="url(#shadow)"><rect width="300" height="70" rx="9" fill="#fff" stroke="#ec7211" stroke-width="1.7"/><text class="service" x="20" y="30">AWS CodeBuild</text><text class="copy" x="20" y="53">ARM64 AgentCore + x86_64 web gates</text></g>
+  <g transform="translate(920 770)" filter="url(#shadow)"><rect width="300" height="70" rx="9" fill="#fff" stroke="#ec7211" stroke-width="1.7"/><text class="service" x="20" y="30">Amazon ECR</text><text class="copy" x="20" y="53">Private, versioned container images</text></g>
+  <path class="line-build" d="M760 805 H920"/><path class="line-build" d="M1070 770 V700 H430 V450"/><path class="line-build" d="M1110 770 V690 H1322 V470"/>
 
-  <g transform="translate(1435 665)" filter="url(#shadow)">
-    <rect width="260" height="185" rx="9" fill="#ffffff" stroke="#3b48cc" stroke-width="1.8"/>
-    <rect x="14" y="18" width="44" height="44" rx="6" fill="#3b48cc"/>
-    <path d="M24 28 h24 v25 h-24z M30 28 v25 M42 28 v25 M24 36 h24 M24 45 h24" fill="none" stroke="#ffffff" stroke-width="1.8"/>
-    <text class="service-title" x="72" y="38">Amazon DynamoDB</text>
-    <text class="service-copy-strong" x="72" y="60">Workflow coordination</text>
-    <text class="service-copy" x="18" y="91">• Workspace phase + version</text>
-    <text class="service-copy" x="18" y="114">• Current iteration pointers</text>
-    <text class="service-copy" x="18" y="137">• Commands + approval receipts</text>
-    <text class="service-copy" x="18" y="160">• Conditional idempotent updates</text>
-    <rect class="status-live" x="164" y="8" width="88" height="22" rx="11"/><text class="status status-live-text" x="208" y="19">LIVE</text>
-  </g>
-
-  <g transform="translate(1110 890)">
-    <rect width="585" height="112" rx="9" fill="#f6f8fa" stroke="#ccd3da" stroke-width="1.3"/>
-    <text class="service-copy-strong" x="18" y="27">Security boundary</text>
-    <text class="small-note" x="18" y="49">Browser gets an application session and exact-object presigned URLs—never AWS credentials.</text>
-    <text class="small-note" x="18" y="67">AgentCore uses its IAM-authorized regional API; PrivateLink and custom VPC networking are deferred.</text>
-    <line x1="18" y1="91" x2="74" y2="91" stroke="#263645" stroke-width="2.2" marker-end="url(#arrow)"/>
-    <text class="legend" x="84" y="96">runtime/control</text>
-    <line x1="210" y1="91" x2="266" y2="91" stroke="#147eba" stroke-width="2.5" stroke-dasharray="9 7" marker-end="url(#arrowBlue)"/>
-    <text class="legend" x="276" y="96">presigned data</text>
-    <line x1="405" y1="91" x2="461" y2="91" stroke="#697786" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
-    <text class="legend" x="471" y="96">container deploy</text>
-  </g>
+  <rect x="250" y="905" width="1475" height="105" rx="8" fill="#f6f8fa" stroke="#6e7781" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text class="section" x="275" y="936">STEP 7 / PRODUCTION HARDENING — PLANNED NEXT</text>
+  <text class="copy" x="275" y="965">Multi-user authentication · correlated alarms/traces · deletion and retention proof · per-run cost bounds</text>
+  <text class="copy" x="275" y="990">Optional OpenAI or Meta provider: AgentCore reads an approved key from Secrets Manager and calls the external API over outbound HTTPS</text>
+  <rect class="badge-next" x="1570" y="921" width="125" height="25" rx="13"/><text class="badge badge-next-text" x="1632.5" y="933.5">PLANNED NEXT</text>
+  <text class="small" x="275" y="1032">Public endpoint: as-73038a3f3e8d40819c72ccb90d068ec4.ecs.us-east-1.on.aws · Current access model: documented single-owner contest demo</text>
 </svg>

@@ -1,11 +1,11 @@
 # Bedrock and Strands Deployment Runbook
 
 **Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate, private S3/DynamoDB state
-and Strands sessions are live, and the private AgentCore runtime has completed direct typed
-invocation, approval, execution, rendering, and verification; full successful phase replay and the
-remote web deployment remain open
+and Strands sessions are live, and the public ECS/SQS/Lambda/AgentCore path has completed one clean
+acceptance-through-download run plus forced web-task replacement; Step 7 operations and the full
+Step 8 remote matrix remain open
 
-**Last verified against official documentation:** 2026-09-03
+**Last verified against the live deployment:** 2026-09-04
 
 **Milestone:** M9 hosted Bedrock conversation and deployment
 
@@ -77,7 +77,9 @@ until the remote-product gate passes.
   packaging paths are live. The frozen broken-normalization case completed with a verified,
   packaged candidate; exact duplicate approval and a forced runtime replacement both rehydrated
   the same durable version without repeating the mutation.
-- [ ] Step 6 remote web product.
+- [x] Step 6 remote web product. The managed HTTPS endpoint completed upload, HTTP 202 dispatch,
+  exact approval, deterministic repair, acceptance, download, gallery return, and forced ECS task
+  replacement without losing the durable workspace.
 - [ ] Step 7 operations and cleanup.
 - [ ] Step 8 remote M9 acceptance.
 
@@ -166,12 +168,12 @@ Detailed model invocation logging is disabled by default and has not been enable
 Do not enable request/response or image logging casually: it can persist user prompts and evidence
 to CloudWatch Logs or S3 and needs an explicit privacy/retention decision.
 
-### Intended complete AWS topology (partially deployed)
+### Deployed AWS topology
 
-The following AWS-style diagram is the canonical visual for the contest deployment. Status badges
-distinguish components already live in AWS, the current ARM64/AgentCore build, planned web work,
-and the local browser that remains available until remote acceptance. Its source is an editable
-SVG; the checked-in PNG is the presentation-ready rendered copy.
+The following AWS-style diagram is the canonical visual for the contest deployment. It separates
+the live request path, durable state, and build plane from the smaller set of Step 7 hardening and
+optional-provider work that remains. Its source is an editable SVG; the checked-in PNG is the
+presentation-ready rendered copy.
 
 ![Asset Shepherd production architecture and deployment status](assets/asset-shepherd-aws-architecture.svg)
 
@@ -184,7 +186,6 @@ fallback.
 ```mermaid
 flowchart TD
     B[Browser] --> W[ECS Express Mode<br/>Managed HTTPS + FastAPI/Jinja]
-    B -->|presigned upload/download| S3[Private S3 asset storage]
     W -->|typed command + 202 receipt| Q[Encrypted SQS command queue]
     Q --> L[Lambda dispatcher]
     L -->|IAM-authorized InvokeAgentRuntime| A[AgentCore Runtime]
@@ -205,9 +206,12 @@ flowchart TD
     IAM -. service identity .-> A
 ```
 
-The web service authenticates users and enqueues bounded commands with its IAM task role. A
-least-privilege Lambda consumer invokes AgentCore's regional API outside the browser request.
-The browser does not receive AWS credentials and does not invoke the agent runtime directly.
+The web service applies the current contest-demo owner boundary and enqueues bounded commands with
+its IAM task role. A least-privilege Lambda consumer invokes AgentCore's regional API outside the
+browser request. Browser GLB transfers currently pass through exact workspace-authorized web routes;
+the browser does not receive AWS credentials and does not invoke S3 or AgentCore directly.
+Multi-user authentication and presigned direct transfers remain Step 7/production hardening, not
+properties of the public contest-demo endpoint.
 PrivateLink, custom AgentCore VPC connectivity, Route 53, and a custom domain are deferred rather
 than implied by the contest deployment.
 
@@ -224,7 +228,7 @@ The AWS deployment uses the same application contracts with cloud-backed adapter
 
 | Concern | Local configuration | AWS configuration |
 |---|---|---|
-| Browser address | `http://127.0.0.1:8010` | ECS Express HTTPS load-balancer URL or approved custom domain |
+| Browser address | `http://127.0.0.1:8010` | Live ECS Express managed HTTPS endpoint |
 | FastAPI/Jinja web process | Local Uvicorn process | Stateless ECS Express Mode/Fargate task |
 | Workflow execution | Local Strands process | IAM-authorized AgentCore Runtime invocation |
 | Model inference | Bedrock over outbound HTTPS | Bedrock from the AgentCore execution role |
@@ -256,14 +260,14 @@ or agent contracts.
 
 | Concern | Current implementation | Required migration |
 |---|---|---|
-| Workflow model | Capability-aware Bedrock Converse adapter with Kimi accepted by the fixed 8/8 gate; Luna Responses, direct-OpenAI development, opt-in Meta/Muse Responses, and native Gemini evaluation adapters remain | Re-run the same gate in the deployed runtime |
-| Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI/Meta development, native Gemini structured output, and deterministic test adapters | Re-run typed intake in the deployed runtime |
-| Agent session | Local snapshots by default; `S3SessionManager` when the workspace bucket is configured | Live S3 selection passes; prove every approval/refinement resume in a replaced process |
-| Workspace record | Atomic JSON by default; owner-indexed DynamoDB record with monotonic conditional versions when configured | Live process-replacement and stale-write tests pass; complete the full phase matrix |
-| Binary artifacts | Local directories by default; hash-verified S3 objects plus immutable versioned manifests when configured | Live clean-process rehydration and GLB deduplication pass; add browser presigned transfer |
-| Visual sensing | Vendored model-viewer/Three.js through headless Chromium plus masks | Prove the same renderer in the ARM64 Linux runtime image |
-| Interactive preview | Browser-local `<model-viewer>` | Retain; serve GLB URLs from authenticated/presigned object storage |
-| Web application | FastAPI/Jinja/Uvicorn on localhost | Deploy independently from AgentCore through the simplest stable AWS web route |
+| Workflow model | Capability-aware Bedrock Converse adapter; Kimi passes the fixed 8/8 gate and a clean deployed workflow | Keep Kimi for the contest gate; Luna remains optional when its agreement clears |
+| Intake model | Shared constrained-tool adapters; deployed Kimi intake passes on the public workflow | Add only approved provider secrets when external production comparators are enabled |
+| Agent session | Local snapshots by default; deployed runtime uses workspace-scoped S3 sessions | Full Step 8 phase/restart matrix remains |
+| Workspace record | Atomic JSON locally; deployed web/runtime use conditional, owner-indexed DynamoDB records | Multi-user authentication and deletion proof remain |
+| Binary artifacts | Local directories by default; deployed path uses hash-verified S3 objects and immutable manifests | Direct presigned transfer is optional hardening; authorized web routes pass now |
+| Visual sensing | Vendored model-viewer/Three.js through headless Chromium plus masks | Live in the accepted ARM64 AgentCore image |
+| Interactive preview | Browser-local `<model-viewer>` | Live; GLB routes enforce the current server-derived contest owner boundary |
+| Web application | FastAPI/Jinja/Uvicorn on localhost | Live in ECS Express Mode, independently from AgentCore |
 
 ## Step 1 — Workstation and AWS account preflight
 
@@ -662,6 +666,40 @@ launcher continues to serve `127.0.0.1`; it never redirects to or updates the re
 **Step 6 gate:** a fresh user can upload, leave, return through the gallery, approve/refine, and
 download from the remote URL. Restarting or replacing the ECS task does not lose or
 duplicate any workspace state, mutation, decision, or package.
+
+### 6.4 Live acceptance — 2026-09-04
+
+The `asset-shepherd-web` stack is `UPDATE_COMPLETE` and its ECS deployment completed the managed
+alarm bake with zero failures. The accepted image is `2e206e3-web`; the contest endpoint is:
+
+`https://as-73038a3f3e8d40819c72ccb90d068ec4.ecs.us-east-1.on.aws`
+
+A clean run using the public `fixtures/broken_robot.glb` fixture and Bedrock Kimi completed this
+path:
+
+1. Upload and target confirmation redirected only to HTTPS.
+2. Confirmation returned HTTP 202 in about 0.5 seconds; the DynamoDB receipt advanced from
+   `RUNNING` to `SUCCEEDED` while Lambda held the long AgentCore call outside the web request.
+3. AgentCore persisted the exact `execute_selected_repairs` interrupt at record version 3.
+4. Explicit approval resumed the same workspace, ran the authorized repair and visual proof, and
+   reached `COMPLETE` at version 5; final user acceptance advanced it to version 6.
+5. The two recorded workflow invocations used 175,184 input and 2,934 output tokens over 84.0
+   seconds. These counts exclude the separate typed-intake call.
+6. The repaired 24,580-byte GLB returns HTTP 200 as `model/gltf-binary` with filename
+   `upright-robot-prop_shepherded_090426.glb`.
+7. After forcibly stopping the serving ECS task, its replacement rediscovered the gallery entry,
+   reopened the terminal notebook, and served the identical download from S3/DynamoDB without a
+   new model invocation or mutation.
+
+Live debugging also fixed four deployment-specific faults: Uvicorn now trusts the managed ingress
+forwarding headers; the dispatcher uses an 850-second read timeout with SDK retry disabled; its IAM
+role grants both the selected AgentCore runtime ARN and the required `DEFAULT` runtime endpoint;
+and accepted workspaces rehydrate without constructing an unused model session. A failed dispatcher
+receipt is not automatically replayed, because AgentCore may have continued after an uncertain
+client transport result; the user starts a fresh, independently identified command instead.
+
+**Result:** Step 6 passes. Keep this as a single-owner contest-demo endpoint until Step 7 adds and
+tests multi-user authentication, stronger operational alarms, deletion, and retention controls.
 
 ## Step 7 — Guardrails, observability, retention, and cost
 

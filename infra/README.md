@@ -1,7 +1,10 @@
 # Asset Shepherd AWS infrastructure
 
-The checked-in infrastructure is intentionally incremental. The state stack is live; container,
-AgentCore, and public-web stacks follow only after their acceptance gates pass.
+The checked-in infrastructure is intentionally incremental. All four contest stacks are live in
+`us-east-1`: `asset-shepherd-state`, `asset-shepherd-container-build`,
+`asset-shepherd-agentcore`, and `asset-shepherd-web`. The public web gate passed on 2026-09-04;
+operations hardening and the full remote case matrix remain. See
+`docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` for the evidence, current endpoint, and gated procedure.
 
 ## Private workspace state
 
@@ -126,3 +129,24 @@ aws codebuild batch-get-builds `
 
 The ECR repository and image lifecycle are retained if the build stack is deleted. The ephemeral
 source archive expires automatically; never upload a working-directory zip or `.env` file.
+
+## AgentCore and public web stacks
+
+`cloudformation/agentcore-runtime.yaml` deploys the private ARM64 AgentCore Runtime and its
+service-only execution role. `cloudformation/web-express.yaml` deploys the x86_64 ECS Express Mode
+web service, encrypted command/DLQ queues, and the one-message Lambda dispatcher. The dispatcher
+has no provider secret and may invoke only the configured runtime plus its `DEFAULT` endpoint.
+
+The live request path is:
+
+`browser → ECS Express → SQS → Lambda → AgentCore/Strands → Bedrock`
+
+S3 owns immutable GLBs, evidence, packages, and Strands snapshots. DynamoDB owns conditional
+workspace versions and command receipts. Do not place GLB bytes, provider keys, AWS credentials, or
+free-form filesystem paths in SQS messages.
+
+OpenAI and Meta are supported application adapters but are not configured on the public contest
+stack yet. When enabled, store their production keys in AWS Secrets Manager, grant only the exact
+AgentCore execution role `secretsmanager:GetSecretValue` on the selected secret ARNs, and inject
+the chosen provider/model as non-secret configuration. Never put API keys in CloudFormation
+parameters, container images, source archives, task environment values, or browser responses.
