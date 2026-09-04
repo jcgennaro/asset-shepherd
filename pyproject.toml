@@ -8,6 +8,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
     "aws-bedrock-token-generator>=1.0.0",
+    "bedrock-agentcore>=1.9.1",
     "boto3>=1.33.0",
     "botocore[crt]>=1.33.0",
     "fastapi>=0.141.1",

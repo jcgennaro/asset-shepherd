@@ -11,11 +11,11 @@ phases:
       - test -n "$ECR_REPOSITORY_NAME"
       - test -n "$IMAGE_TAG"
       - REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
-      - IMAGE_URI="$REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG"
+      - IMAGE_URI="$REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG-agentcore"
       - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
   build:
     commands:
-      - docker build --platform linux/arm64 --file infra/docker/Dockerfile.runtime --tag "$IMAGE_URI" .
+      - docker build --platform linux/arm64 --target agentcore --file infra/docker/Dockerfile.runtime --tag "$IMAGE_URI" .
       - docker image inspect "$IMAGE_URI" --format '{{.Architecture}}/{{.Os}}' | grep -Fx arm64/linux
       - >-
         docker run --rm
@@ -24,7 +24,16 @@ phases:
         python -c "from pathlib import Path; from PIL import Image; from asset_shepherd.web_evidence_renderer import find_chromium, render_model_views; assert find_chromium() == Path('/usr/bin/chromium'); root=Path('/tmp/renderer-gate'); source=render_model_views(Path('/fixtures/clean_robot.glb'), root/'source', timeout_seconds=60); shared=render_model_views(Path('/fixtures/clean_robot.glb'), root/'shared', reference_asset=Path('/fixtures/broken_robot.glb'), timeout_seconds=60); assert len(source) == len(shared) == 4; [Image.open(path).verify() for path in (*source, *shared)]; assert all(path.with_name(path.name.replace('.png', '.mask.png')).is_file() for path in (*source, *shared)); print('ARM64 Chromium source/shared-scale gate passed')"
       - >-
         docker run --rm "$IMAGE_URI"
-        python -c "from asset_shepherd.web import app; assert app.title == 'Asset Shepherd'; print('FastAPI import gate passed')"
+        python -c "from asset_shepherd.agentcore_runtime import app; assert app is not None; print('AgentCore import gate passed')"
+      - CONTAINER_ID=$(docker run --detach --publish 8080:8080 "$IMAGE_URI")
+      - >-
+        for attempt in $(seq 1 30); do
+          if curl --fail --silent http://127.0.0.1:8080/ping >/tmp/agentcore-ping.json; then break; fi;
+          if ! docker inspect --format '{{.State.Running}}' "$CONTAINER_ID" | grep -q true; then docker logs "$CONTAINER_ID"; exit 1; fi;
+          sleep 1;
+        done
+      - curl --fail --silent http://127.0.0.1:8080/ping | grep -q 'Healthy'
+      - docker stop "$CONTAINER_ID"
       - touch /tmp/asset-shepherd-runtime-image-accepted
   post_build:
     commands:

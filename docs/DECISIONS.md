@@ -4,6 +4,61 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D104 — Build one gated ARM64 image and expose only typed AgentCore commands
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED; AgentCore deployment proof pending
+
+**Decision owner:** Codex
+
+**Milestone:** M9 hosted conversation and deployment
+
+**Context**
+
+AgentCore Runtime requires a Linux ARM64 container with `/ping` and `/invocations`; the Windows
+workstation has no Docker engine. The hosted workflow also cannot safely expose its interactive
+website, arbitrary prompts, GLB bytes, filesystem paths, or provider keys as a generic runtime
+payload. The renderer must be proven in the exact deployment architecture before the runtime can be
+trusted.
+
+**Decision**
+
+Build remotely in a small ARM64 CodeBuild environment from a committed-only S3 source archive.
+Publish to a private immutable-tag ECR repository only after an explicit acceptance marker proves
+the architecture, packaged Chromium source/shared-scale render paths, masks, AgentCore import, and
+`/ping`. Keep the FastAPI web and AgentCore commands as separate container targets over one shared
+base.
+
+Expose a discriminated, schema-versioned AgentCore command union for read-only status, confirmed
+target execution, exact interrupt approval/rejection, typed plan revision, result acceptance or
+refinement, and bounded retry. Bind every command to the configured actor, workspace identifier,
+`workspace-<id>` AgentCore session, and idempotent command identifier. Return only bounded workflow
+state. The runtime hydrates disposable cache state from the D103 S3/Dynamo repository and never
+accepts asset bytes or arbitrary paths.
+
+Create a separate AgentCore-only execution role instead of broadening the local test role. Its
+trust policy is source-account/source-ARN constrained; data, ECR, Bedrock, logs, metrics, and trace
+permissions are scoped to the deployed resources and accepted models. Bedrock uses IAM. Future
+OpenAI and Meta keys must use distinct AgentCore Identity API-key credential providers (or
+referenced Secrets Manager secrets) and exact retrieval grants; keys never enter images,
+CloudFormation parameters, browser code, or ordinary environment variables. Google remains outside
+the deployed allowlist.
+
+**Evidence and consequences**
+
+The initial CodeBuild run surfaced a Chromium sandbox startup failure and also proved that CodeBuild
+post-build phases run after a failed build. The rejected ECR image was deleted, the pipeline now
+requires a success marker before push, and Chromium retains bounded stderr for future diagnosis.
+The accepted rerun proved `arm64/linux`, eight rendered views plus masks, and application import in
+59 build seconds before publishing a 387,633,373-byte compressed image. Chromium's inner sandbox is
+disabled only for the AgentCore container target, which runs inside AgentCore's managed isolation
+and processes loopback-served bounded assets with vendored viewer code. This remains a deliberate
+defense-in-depth tradeoff; the public ECS web target does not inherit that setting. Four boundary
+tests prove actor/session confusion and undeclared prompt fields fail closed. The common gate passes
+with 253 tests and three intentional live skips. Remote AgentCore invocation and full multi-turn
+exactly-once replay remain open.
+
 ### D103 — Back replaceable processes with immutable S3 manifests and conditional DynamoDB state
 
 **Date:** 2026-09-03

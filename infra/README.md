@@ -66,8 +66,10 @@ documented retention and explicit cleanup gate before removing a deployed enviro
 `cloudformation/container-build.yaml` creates a private ECR repository, a two-day build-source
 bucket, and a small ARM64 CodeBuild project. CodeBuild performs the container build remotely, so a
 developer workstation does not need Docker. Its build gate proves the published image is
-`linux/arm64`, renders source and shared-scale evidence through packaged Chromium, imports the
-FastAPI application, and pushes the image only after those checks pass.
+`linux/arm64`, renders source and shared-scale evidence through packaged Chromium, imports and
+starts the AgentCore HTTP application, checks `/ping`, and pushes the image only after those checks
+pass. Published AgentCore tags end in `-agentcore`; the future ECS web image uses a separate tag and
+command while sharing the accepted base.
 
 Deploy or update the build resources:
 

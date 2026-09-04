@@ -68,9 +68,12 @@ until the remote-product gate passes.
   stack, content-addressed S3 artifact manifests, S3 Strands-session selection, owner-indexed
   DynamoDB records, conditional versions, and a live clean-process round trip pass. Full
   kill-and-resume coverage at every workflow phase remains.
-- [ ] Step 4 deployable visual sensing. The portable Chromium/model-viewer implementation and local
-  source/shared-scale gates pass; the clean Linux container gate remains open.
-- [ ] Step 5 AgentCore runtime.
+- [x] Step 4 deployable visual sensing. CodeBuild produced a `linux/arm64` image, then launched that
+  exact image and passed four source views, four shared-scale views, masks, and the application
+  import gate through packaged Debian Chromium. The accepted compressed image is 387,633,373 bytes.
+- [ ] Step 5 AgentCore runtime. The typed invocation boundary, dedicated least-privilege role
+  template, and container entry point are implemented; remote deployment and multi-turn proof are
+  in progress.
 - [ ] Step 6 remote web product.
 - [ ] Step 7 operations and cleanup.
 - [ ] Step 8 remote M9 acceptance.
@@ -118,10 +121,11 @@ flowchart LR
 ```
 
 The browser, web server, agent, tools, renderer, and disposable cache are still local. Bedrock
-inference, a private S3 workspace/session bucket, and a conditional DynamoDB workspace table are
-now in AWS. The authenticated `asset-shepherd` AWS CLI profile assumes the same restricted runtime
-role intended for the service. No Asset Shepherd ECR repository, ECS service, or AgentCore runtime
-exists yet.
+inference, a private S3 workspace/session bucket, a conditional DynamoDB workspace table, the
+remote ARM64 CodeBuild project, and the private ECR repository are now in AWS. The authenticated
+`asset-shepherd` AWS CLI profile assumes the restricted local-test role. The deployed AgentCore
+runtime will use a separate service-only execution role. No ECS service or AgentCore runtime exists
+yet.
 
 The optional Meta/Muse and Google/Gemini comparators are separate local test configurations: local
 Strands calls the selected external API over outbound HTTPS instead of Bedrock. They are
@@ -139,6 +143,12 @@ Current AWS evidence is visible in these places in `us-east-1`:
   friendly local profile name `asset-shepherd` exists in the workstation's AWS configuration, not
   as a console service.
 - **CloudFormation → Stacks → `asset-shepherd-state`:** review the deployed retained state stack.
+- **CloudFormation → Stacks → `asset-shepherd-container-build`:** review the ECR/CodeBuild
+  foundation and short-retention source bucket.
+- **CodeBuild → Build projects → `asset-shepherd-contest-runtime`:** review the ARM64 image gate and
+  its Chromium/source/shared-scale acceptance logs.
+- **ECR → Private registry → Repositories → `asset-shepherd-contest`:** review accepted immutable
+  deployment image tags and scan results.
 - **S3:** the generated private workspace bucket contains content-addressed workspace objects,
   immutable manifests, and Strands session snapshots. Public access is blocked.
 - **DynamoDB:** the generated workspace table contains the owner-scoped active record and its
@@ -542,7 +552,12 @@ before acceptance.
 
 **Step 4 gate:** a clean Linux environment generates nonblank, unclipped, reproducible source,
 candidate, and shared-scale views with no workstation path or interactive desktop dependency. The
-local implementation gate is complete; the container gate is not.
+local and container implementation gates are complete. The accepted CodeBuild run used an ARM64
+Debian image, rendered four source and four shared-scale captures plus masks, verified the runtime
+architecture, and imported the application before publishing to private ECR. Chromium's inner
+sandbox is disabled only in the AgentCore image because the managed runtime supplies the outer
+microVM/container isolation; it still receives only a loopback-served bounded GLB and vendored
+model-viewer code, and the runtime role remains least privilege.
 
 ## Step 5 — Deploy the Strands agent to AgentCore Runtime
 

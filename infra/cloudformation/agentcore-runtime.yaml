@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Asset Shepherd private AgentCore runtime and least-privilege execution role.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: contest
+    AllowedPattern: "[a-z0-9-]+"
+  RuntimeImageUri:
+    Type: String
+    AllowedPattern: "^[0-9]{12}\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/[a-z0-9._/-]+:[A-Za-z0-9._-]+$"
+  ContainerRepositoryArn:
+    Type: String
+    AllowedPattern: "^arn:aws[a-zA-Z-]*:ecr:[a-z0-9-]+:[0-9]{12}:repository/[a-z0-9._/-]+$"
+  WorkspaceBucketName:
+    Type: String
+    AllowedPattern: "^[a-z0-9.-]{3,63}$"
+  WorkspaceTableName:
+    Type: String
+    AllowedPattern: "^[A-Za-z0-9_.-]{3,255}$"
+  WorkspaceOwnerId:
+    Type: String
+    Default: contest-demo
+    AllowedPattern: "^[a-z0-9_.-]{2,80}$"
+  DefaultModelId:
+    Type: String
+    Default: moonshotai.kimi-k2.5
+    AllowedValues:
+      - moonshotai.kimi-k2.5
+      - us.openai.gpt-5.6-luna
+
+Resources:
+  RuntimeExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "AssetShepherdAgentCore-${EnvironmentName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AgentCoreOnly
+            Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub "arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
+      Policies:
+        - PolicyName: AssetShepherdAgentCoreRuntime
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: PullExactRuntimeRepository
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: !Ref ContainerRepositoryArn
+              - Sid: GetEcrAuthorizationToken
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: ListWorkspacePrefixes
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${WorkspaceBucketName}"
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - workspaces/*
+                      - sessions/*
+              - Sid: ManageWorkspaceObjects
+                Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${WorkspaceBucketName}/workspaces/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${WorkspaceBucketName}/sessions/*"
+              - Sid: ManageWorkspaceRecords
+                Effect: Allow
+                Action:
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:DescribeTable
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WorkspaceTableName}"
+                  - !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WorkspaceTableName}/index/*"
+              - Sid: InvokeAcceptedBedrockModels
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/moonshotai.kimi-k2.5"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.openai.gpt-5.6-luna"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:project/default"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/openai.gpt-5.6-luna"
+                  - !Sub "arn:${AWS::Partition}:bedrock:us-east-2::foundation-model/openai.gpt-5.6-luna"
+                  - !Sub "arn:${AWS::Partition}:bedrock:us-west-2::foundation-model/openai.gpt-5.6-luna"
+              - Sid: CreateAndDescribeRuntimeLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:PutResourcePolicy
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+              - Sid: WriteRuntimeLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+              - Sid: WriteRuntimeTraces
+                Effect: Allow
+                Action:
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                  - xray:PutTelemetryRecords
+                  - xray:PutTraceSegments
+                Resource: "*"
+              - Sid: WriteAgentCoreMetrics
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: bedrock-agentcore
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AgentRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    Properties:
+      AgentRuntimeName: AssetShepherdRuntime
+      Description: Asset Shepherd typed Strands workflow runtime; browser UI is deployed separately.
+      AgentRuntimeArtifact:
+        ContainerConfiguration:
+          ContainerUri: !Ref RuntimeImageUri
+      EnvironmentVariables:
+        ASSET_SHEPHERD_AWS_REGION: !Ref AWS::Region
+        ASSET_SHEPHERD_EVIDENCE_RENDERER: web
+        ASSET_SHEPHERD_INTAKE_MODEL: !Ref DefaultModelId
+        ASSET_SHEPHERD_INTAKE_PROVIDER: bedrock-converse
+        ASSET_SHEPHERD_MAX_TURNS: "5"
+        ASSET_SHEPHERD_MODEL_ID: !Ref DefaultModelId
+        ASSET_SHEPHERD_MODEL_PROVIDER: bedrock-converse
+        ASSET_SHEPHERD_SESSION_BUCKET: !Ref WorkspaceBucketName
+        ASSET_SHEPHERD_WORKSPACE_BUCKET: !Ref WorkspaceBucketName
+        ASSET_SHEPHERD_WORKSPACE_OWNER_ID: !Ref WorkspaceOwnerId
+        ASSET_SHEPHERD_WORKSPACE_TABLE: !Ref WorkspaceTableName
+      LifecycleConfiguration:
+        IdleRuntimeSessionTimeout: 900
+        MaxLifetime: 3600
+      NetworkConfiguration:
+        NetworkMode: PUBLIC
+      ProtocolConfiguration: HTTP
+      RoleArn: !GetAtt RuntimeExecutionRole.Arn
+      Tags:
+        Project: asset-shepherd
+        Environment: !Ref EnvironmentName
+
+Outputs:
+  AgentRuntimeArn:
+    Description: IAM-authorized AgentCore Runtime ARN.
+    Value: !GetAtt AgentRuntime.AgentRuntimeArn
+  AgentRuntimeId:
+    Description: AgentCore Runtime identifier.
+    Value: !GetAtt AgentRuntime.AgentRuntimeId
+  AgentRuntimeVersion:
+    Description: Deployed runtime version.
+    Value: !GetAtt AgentRuntime.AgentRuntimeVersion
+  RuntimeExecutionRoleArn:
+    Description: Least-privilege role assumed only by AgentCore Runtime.
+    Value: !GetAtt RuntimeExecutionRole.Arn
+
