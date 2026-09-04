@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Asset Shepherd private ARM64 runtime image build resources.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: contest
+    AllowedPattern: "[a-z0-9-]+"
+  SourceObjectKey:
+    Type: String
+    Default: source/asset-shepherd.zip
+    AllowedPattern: "[A-Za-z0-9!_.*'()/=-]+"
+
+Resources:
+  ContainerRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      EmptyOnDelete: false
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: >-
+          {"rules":[{"rulePriority":1,"description":"Keep ten deployment images",
+          "selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},
+          "action":{"type":"expire"}}]}
+      RepositoryName: !Sub "asset-shepherd-${EnvironmentName}"
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  BuildSourceBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireBuildSources
+            Status: Enabled
+            ExpirationInDays: 2
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  BuildSourceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BuildSourceBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt BuildSourceBucket.Arn
+              - !Sub "${BuildSourceBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  BuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AssetShepherdContainerBuild
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: BuildLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/asset-shepherd-${EnvironmentName}-runtime*"
+              - Sid: ReadBuildSource
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "${BuildSourceBucket.Arn}/${SourceObjectKey}"
+              - Sid: EcrLogin
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: PublishRuntimeImage
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: !GetAtt ContainerRepository.Arn
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  RuntimeImageBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "asset-shepherd-${EnvironmentName}-runtime"
+      Description: Build and verify the Asset Shepherd ARM64 Chromium runtime image.
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: AWS_ACCOUNT_ID
+            Type: PLAINTEXT
+            Value: !Ref AWS::AccountId
+          - Name: ECR_REPOSITORY_NAME
+            Type: PLAINTEXT
+            Value: !Ref ContainerRepository
+          - Name: IMAGE_TAG
+            Type: PLAINTEXT
+            Value: validation
+        Image: aws/codebuild/amazonlinux-aarch64-standard:3.0
+        PrivilegedMode: true
+        Type: ARM_CONTAINER
+      ServiceRole: !GetAtt BuildRole.Arn
+      Source:
+        Type: S3
+        Location: !Sub "${BuildSourceBucket}/${SourceObjectKey}"
+        BuildSpec: infra/buildspec.runtime.yml
+      TimeoutInMinutes: 30
+      QueuedTimeoutInMinutes: 30
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  BuildProjectName:
+    Description: CodeBuild project that verifies and publishes the runtime image.
+    Value: !Ref RuntimeImageBuild
+  BuildSourceBucketName:
+    Description: Short-retention private bucket for deployment source archives.
+    Value: !Ref BuildSourceBucket
+  BuildSourceObjectKey:
+    Description: Object key expected by the CodeBuild project.
+    Value: !Ref SourceObjectKey
+  ContainerRepositoryName:
+    Description: Private ECR repository name.
+    Value: !Ref ContainerRepository
+  ContainerRepositoryUri:
+    Description: Private ECR repository URI.
+    Value: !GetAtt ContainerRepository.RepositoryUri
+

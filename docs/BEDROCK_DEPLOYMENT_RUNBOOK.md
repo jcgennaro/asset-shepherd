@@ -151,10 +151,12 @@ to CloudWatch Logs or S3 and needs an explicit privacy/retention decision.
 
 ### Intended complete AWS topology (partially deployed)
 
-The following AWS-style diagram is the canonical visual for the planned contest deployment.
-Its source is an editable SVG; the checked-in PNG is the presentation-ready rendered copy.
+The following AWS-style diagram is the canonical visual for the contest deployment. Status badges
+distinguish components already live in AWS, the current ARM64/AgentCore build, planned web work,
+and the local browser that remains available until remote acceptance. Its source is an editable
+SVG; the checked-in PNG is the presentation-ready rendered copy.
 
-![Asset Shepherd target AWS contest deployment architecture](assets/asset-shepherd-aws-architecture.svg)
+![Asset Shepherd production architecture and deployment status](assets/asset-shepherd-aws-architecture.svg)
 
 [Open the editable SVG](assets/asset-shepherd-aws-architecture.svg) ·
 [Open the rendered PNG](assets/asset-shepherd-aws-architecture.png)

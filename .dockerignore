@@ -1,0 +1,17 @@
+.git
+.github
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv
+__pycache__
+agentcore
+demo-output
+docs
+infra
+tests
+*.env
+.env*
+*.log
+*.pyc
+
