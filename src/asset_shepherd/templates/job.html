@@ -189,7 +189,7 @@
               <h3 id="result-accepted-title" tabindex="-1">Ready to download.</h3>
               <div class="result-download-actions">
                 {% if job.ready_candidate %}
-                  <a class="primary-button" href="{{ url_for('repaired_asset', job_id=job.job_id) }}" download>Download fixed model <span aria-hidden="true">↓</span></a>
+                  <a class="primary-button" href="{{ url_for('repaired_asset', job_id=job.job_id) }}" download="{{ shepherded_download_filename }}">Download fixed model <span aria-hidden="true">↓</span></a>
                   <a class="text-link" href="{{ url_for('download_result', job_id=job.job_id) }}">Evidence package</a>
                 {% else %}
                   <a class="primary-button" href="{{ url_for('download_result', job_id=job.job_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>

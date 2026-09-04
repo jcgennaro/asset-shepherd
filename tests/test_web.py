@@ -5,6 +5,7 @@
 
 import json
 import re
+from datetime import date
 from html import unescape
 from pathlib import Path
 from urllib.parse import urlparse
@@ -38,6 +39,7 @@ from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.target_intake import TargetIntakeContract
 from asset_shepherd.web import (
     _persisted_workflow_error_message,  # pyright: ignore[reportPrivateUsage]
+    _shepherded_download_filename,  # pyright: ignore[reportPrivateUsage]
     create_app,
     gallery_status,
 )
@@ -75,6 +77,14 @@ _USE_DESCRIPTION = {
     AssetTargetUse.RIG_READY_CHARACTER.value: "a rig-ready character",
     AssetTargetUse.PLAYABLE_CHARACTER.value: "a playable character",
 }
+
+
+def test_verified_model_download_name_is_dated_and_shepherded() -> None:
+    """The saved model is recognizable without changing package-internal names."""
+    assert (
+        _shepherded_download_filename("Tabletop Radio", date(2026, 9, 3))
+        == "tabletop-radio_shepherded_090326.glb"
+    )
 
 
 def test_response_limit_failure_is_actionable_without_exposing_provider_diagnostics() -> None:
@@ -867,6 +877,7 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     assert "Did we get it right?" in completed.text
     assert "data-result-accepted hidden" in completed.text
     assert "Download fixed model" in completed.text
+    assert re.search(r'download="[a-z0-9-]+_shepherded_\d{6}\.glb"', completed.text)
     assert "Evidence package" in completed.text
     assert "data-model-comparison" in completed.text
     assert completed.text.count("<model-viewer") == 1
@@ -887,7 +898,7 @@ def test_web_broken_fixture_completes_the_agreed_guarded_flow(tmp_path: Path) ->
     repaired_response = client.get(f"{job_path}/repaired.glb")
     assert repaired_response.status_code == 200
     disposition = repaired_response.headers["content-disposition"]
-    assert disposition.endswith('.glb"')
+    assert re.search(r'_shepherded_\d{6}\.glb"$', disposition)
     assert "repaired.glb" not in disposition
 
     accepted = client.post(

@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-03
-**Current commit:** Durable completed-simplification presentation (this file is included)
+**Current commit:** Dated Shepherd output filenames (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -56,6 +56,13 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D102 verified-model filenames: direct local and hosted GLB downloads now use
+  `<asset-slug>_shepherded_MMDDYY.glb`; `Tabletop Radio` produces
+  `tabletop-radio_shepherded_090326.glb`. The HTML download hint and HTTP
+  `Content-Disposition` agree, while immutable working names and the evidence ZIP's required
+  `repaired.glb` member remain unchanged. The common gate passes with 240 tests, two intentional
+  live-provider skips, lock validation, Ruff lint/format, and zero Pyright findings.
 
 - D101 completed-simplification recovery: Muse workspace
   `ac4d03a975844b8cb8b3d6b721767517` successfully executed and verified the second repair turn for

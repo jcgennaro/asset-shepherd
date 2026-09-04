@@ -12,7 +12,7 @@ import shutil
 import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from hashlib import sha256
 from pathlib import Path
 from threading import RLock
@@ -122,6 +122,15 @@ def _asset_download_stem(asset_name: str) -> str:
     ascii_name = unicodedata.normalize("NFKD", asset_name).encode("ascii", "ignore").decode()
     stem = re.sub(r"[^a-z0-9]+", "-", ascii_name.casefold()).strip("-")
     return stem[:64].rstrip("-") or "asset-shepherd-model"
+
+
+def _shepherded_download_filename(
+    asset_name: str,
+    shepherded_on: date | None = None,
+) -> str:
+    """Return the user-facing verified-model filename."""
+    resolved_date = shepherded_on or date.today()
+    return f"{_asset_download_stem(asset_name)}_shepherded_{resolved_date:%m%d%y}.glb"
 
 
 def _static_asset_version() -> str:
@@ -3294,6 +3303,7 @@ def _job_context(job: WebJob, requested_view: str | None = None) -> dict[str, ob
         "workflow_result": job.workflow_result,
         "comparison_scene": comparison_scene,
         "comparison_candidate_ready": job.ready_candidate,
+        "shepherded_download_filename": _shepherded_download_filename(job.target_intake.asset_name),
         "result_presentation": _result_presentation(core),
         "decision_summary": _decision_summary(core),
         "decision_records": decision_records,
@@ -3657,6 +3667,9 @@ def create_app(
                 ),
                 "comparison_scene": comparison_scene,
                 "comparison_candidate_ready": comparison_candidate_ready,
+                "shepherded_download_filename": _shepherded_download_filename(
+                    workspace.record.asset_name
+                ),
                 "comparison_source_only": comparison_source_only,
                 "comparison_before_label": comparison_before_label,
                 "comparison_after_label": comparison_after_label,
@@ -4333,7 +4346,7 @@ def create_app(
         return FileResponse(
             job.output_dir / "repaired.glb",
             media_type="model/gltf-binary",
-            filename=f"{_asset_download_stem(job.target_intake.asset_name)}.glb",
+            filename=_shepherded_download_filename(job.target_intake.asset_name),
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 
@@ -5096,7 +5109,7 @@ def create_app(
         return FileResponse(
             workspace.output_dir / "repaired.glb",
             media_type="model/gltf-binary",
-            filename=f"{_asset_download_stem(workspace.record.asset_name)}.glb",
+            filename=_shepherded_download_filename(workspace.record.asset_name),
             headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         )
 

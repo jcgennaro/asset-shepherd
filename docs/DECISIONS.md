@@ -4,6 +4,38 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D102 — Name direct verified-model downloads as dated Shepherd outputs
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED
+
+**Decision owner:** User
+
+**Milestone:** M9 hosted conversation
+
+**Context**
+
+The browser previously saved a verified model under only the agent-assigned asset slug. That made
+the repaired output difficult to distinguish from its source in an ordinary Downloads folder and
+did not communicate when the output was produced.
+
+**Decision**
+
+Name every direct verified-model download
+`<asset-slug>_shepherded_MMDDYY.glb`, for example
+`tabletop-radio_shepherded_090326.glb`. Use the same name in the HTML download hint and the HTTP
+`Content-Disposition` header. Keep internal immutable candidates and the evidence package's
+contracted `repaired.glb` member unchanged so deterministic consumers and existing provenance do
+not depend on a presentation filename.
+
+**Evidence and consequences**
+
+Local and hosted endpoints now share one filename helper. Focused web tests prove the exact example,
+the dated HTML hint, the response-header suffix, and the unchanged seven-file evidence package.
+The common quality gate passes with 240 tests, two intentional live-provider skips, lock validation,
+Ruff lint/format, and zero Pyright findings.
+
 ### D101 — Render completed simplification from durable verification facts
 
 **Date:** 2026-09-03

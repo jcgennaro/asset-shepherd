@@ -438,6 +438,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert "data-result-accepted hidden" in completed.text
     assert 'id="notebook-download"' in completed.text
     assert "Download fixed model" in completed.text
+    assert re.search(r'download="[a-z0-9-]+_shepherded_\d{6}\.glb"', completed.text)
     assert "Evidence package" in completed.text
     assert f"{workspace_path}/redo" in completed.text
     assert completed.text.count("<summary>Rewind…</summary>") == 2
@@ -485,7 +486,12 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert reopened_terminal.status_code == 200
     assert "Return to gallery" in reopened_terminal.text
     assert "Download fixed model" in reopened_terminal.text
-    assert terminal_restart.get(f"{workspace_path}/repaired.glb").status_code == 200
+    repaired_response = terminal_restart.get(f"{workspace_path}/repaired.glb")
+    assert repaired_response.status_code == 200
+    assert re.search(
+        r'_shepherded_\d{6}\.glb"$',
+        repaired_response.headers["content-disposition"],
+    )
     assert terminal_restart.get(f"{workspace_path}/download").status_code == 200
 
     archive_response = restarted.get(f"{workspace_path}/download")
