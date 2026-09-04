@@ -78,6 +78,20 @@ def _write_fake_views(root: Path) -> None:
     )
 
 
+def _write_dense_sphere(path: Path) -> None:
+    path.write_bytes(
+        cast(
+            bytes, trimesh.Scene(trimesh.creation.icosphere(subdivisions=5)).export(file_type="glb")
+        )
+    )
+    gltf = load_glb(path)
+    assert gltf.meshes is not None
+    assert gltf.nodes is not None
+    gltf.meshes[0].name = "Mesh_000"
+    gltf.nodes[0].name = "Node_000"
+    save_glb(gltf, path)
+
+
 def _record_successful_candidate_reassessment(job: AgentJob, suffix: str) -> None:
     evidence_root = job.output_dir.parent / "agent_evidence"
     _write_fake_views(evidence_root / "candidate_views")
@@ -309,17 +323,7 @@ def test_deferred_simplification_is_presented_as_the_next_separate_refinement(
 ) -> None:
     """An agent-authored deferral is visible instead of looking like an omission."""
     source = tmp_path / "source.glb"
-    source.write_bytes(
-        cast(
-            bytes, trimesh.Scene(trimesh.creation.icosphere(subdivisions=5)).export(file_type="glb")
-        )
-    )
-    source_gltf = load_glb(source)
-    assert source_gltf.meshes is not None
-    assert source_gltf.nodes is not None
-    source_gltf.meshes[0].name = "Mesh_000"
-    source_gltf.nodes[0].name = "Node_000"
-    save_glb(source_gltf, source)
+    _write_dense_sphere(source)
     profile = _profile()
     profile = profile.model_copy(
         update={"budgets": profile.budgets.model_copy(update={"max_triangles": 10})}
@@ -358,6 +362,65 @@ def test_deferred_simplification_is_presented_as_the_next_separate_refinement(
 
     assert "Mesh optimization is queued as the next separate refinement" in topology.action
     assert "agent did not propose optimization" not in topology.action
+
+
+def test_completed_simplification_uses_verified_size_after_candidate_is_packaged(
+    tmp_path: Path,
+) -> None:
+    """The result page reads durable verification facts after candidate.glb is renamed."""
+    source = tmp_path / "source.glb"
+    _write_dense_sphere(source)
+    profile = _profile()
+    profile = profile.model_copy(
+        update={"budgets": profile.budgets.model_copy(update={"max_triangles": 15_000})}
+    )
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text(profile.model_dump_json(indent=2), encoding="utf-8")
+    output = tmp_path / "output"
+    job = AgentJob(
+        source,
+        profile_path,
+        output,
+        asset_intent=_intent(height_cm=200.0).model_copy(
+            update={"viewing_use": AssetViewingUse.NORMAL_GAMEPLAY}
+        ),
+        agent_orchestrated=True,
+    )
+    job.inspect()
+    _write_fake_views(output.parent / "agent_evidence" / "source_views")
+    job.register_agent_plan(
+        initiating_tool_call_id="simplification-plan",
+        disposition="REPAIR",
+        summary="Simplify this over-budget mesh for normal gameplay.",
+        evidence=["The source exceeds the confirmed 15,000-triangle cap."],
+        confidence=0.95,
+        semantic_height_axis=None,
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=False,
+        simplify_mesh=True,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+    job.execute(approved=True, interrupt_id="simplification-approval")
+    _record_successful_candidate_reassessment(job, "simplification")
+    verification, result = job.verify_and_package()
+
+    assert result is not None
+    assert verification.state in {
+        VerificationState.PASSED_PROJECT_READY,
+        VerificationState.PASSED_WITH_REMAINING_WARNINGS,
+    }
+    assert not job.candidate_path.exists()
+    assert (output / "repaired.glb").is_file()
+
+    topology = _inspection_checks(job)[2]
+
+    assert topology.status_label == "Addressed"
+    assert "Mesh optimized" in topology.action
+    assert "file size" in topology.action
+    assert "Original preserved" in topology.action
 
 
 def test_approximate_target_box_uses_one_robust_uniform_scale() -> None:

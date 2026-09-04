@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-03
-**Current commit:** Typed sequential repair continuation and user-facing FAQ (this file is included)
+**Current commit:** Durable completed-simplification presentation (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -56,6 +56,16 @@ remote restart/idempotency acceptance. Deterministic code remains the measuremen
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D101 completed-simplification recovery: Muse workspace
+  `ac4d03a975844b8cb8b3d6b721767517` successfully executed and verified the second repair turn for
+  the 65-part broken-heart collar, reducing 783,571 triangles to 56,831 and the measured GLB from
+  about 28.8 MiB to 7.4 MiB. Its raw 500 page came only from the result renderer reading the transient
+  `candidate.glb` name after packaging had correctly renamed it to `repaired.glb`. Completed
+  summaries now use durable inspection and verification measurements, and hosted approval events
+  record the selected action ID instead of the old normalization constant. Browser verification
+  recovered the existing workspace without another model run. The common gate passes: lock check,
+  239 tests passed with 2 skipped, Ruff lint/format, and Pyright.
 
 - D100 typed sequential repair continuation and FAQ: an agent that selects physical normalization
   before an independently lossy optimization now records `SIMPLIFY_MESH` in a validated deferred

@@ -4,6 +4,46 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D101 — Render completed simplification from durable verification facts
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** M9 hosted conversation / M10 evaluation
+
+**Context**
+
+Muse workspace `ac4d03a975844b8cb8b3d6b721767517` successfully completed the new
+candidate-based simplification turn for the 65-part broken-heart collar. Packaging atomically
+renamed `output/candidate.glb` to `output/repaired.glb`, as designed. The result renderer then
+attempted to `stat()` the obsolete candidate path while building the Topology row and raised an
+uncaught `FileNotFoundError`, replacing the otherwise successful result with a raw 500 page.
+
+Inspection also showed that hosted approval events used the literal `normalize-root-v1` candidate
+ID even when the selected approval action was `simplify-mesh-v1`. Decisions, repair provenance, and
+the output package contained the correct action; the minimized workspace event label did not.
+
+**Decision**
+
+Build the completed simplification summary from the durable verification record. Use the source
+inspection's recorded byte count and `MESH_SIMPLIFICATION_FILE_SIZE_REDUCED.actual` for the measured
+output byte count instead of depending on a transient pre-packaging filename. If an older
+verification lacks the optional size check, show the verified triangle reduction without inventing
+a file size.
+
+Record the selected plan's actual approval action ID in both interrupt-created and decision events.
+Do not encode a repair-kind-specific constant at the provider-neutral workspace boundary.
+
+**Evidence and consequences**
+
+A regression test completes and packages an agent-orchestrated simplification, proves
+`candidate.glb` has been renamed away, then renders an addressed Topology summary with measured
+triangle and file-size changes. The saved collar package remains valid and needs no repair rerun;
+refreshing its page after the server update recovers the completed result.
+
 ### D100 — Make deferred mesh optimization a typed, sequential repair
 
 **Date:** 2026-09-03

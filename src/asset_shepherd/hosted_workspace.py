@@ -1247,11 +1247,20 @@ class HostedWorkspaceStore:
                 },
             )
         if job.pending_interrupt_id is not None and interrupt_event not in event_types:
+            approval_candidate_id = (
+                job.selected_plan.approval_action_ids[0]
+                if job.selected_plan is not None and job.selected_plan.approval_action_ids
+                else None
+            )
             workspace.record = self._append_event(
                 workspace.record,
                 interrupt_event,
                 evidence_refs=(job.pending_interrupt_id,),
-                payload={"candidate_id": "normalize-root-v1"},
+                payload=(
+                    {"candidate_id": approval_candidate_id}
+                    if approval_candidate_id is not None
+                    else {}
+                ),
             )
         if job.result is not None and complete_event not in event_types:
             workspace.record = self._append_event(
@@ -1316,11 +1325,24 @@ class HostedWorkspaceStore:
                 )
             processed = {**workspace.record.processed_commands, command_id: expected_value}
             workspace.record = workspace.record.model_copy(update={"processed_commands": processed})
+            plan = workspace.runtime.job.selected_plan
+            approval_candidate_id = (
+                plan.approval_action_ids[0]
+                if plan is not None and plan.approval_action_ids
+                else None
+            )
             workspace.record = self._append_event(
                 workspace.record,
                 "STRUCTURED_DECISION_SUBMITTED",
                 evidence_refs=(interrupt_id,),
-                payload={"approved": approved, "candidate_id": "normalize-root-v1"},
+                payload={
+                    "approved": approved,
+                    **(
+                        {"candidate_id": approval_candidate_id}
+                        if approval_candidate_id is not None
+                        else {}
+                    ),
+                },
             )
             self._persist(workspace)
             self._reset_activity(

@@ -2156,17 +2156,31 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
                     if core.last_verification is not None
                     else None
                 )
-                source_bytes = core.source.stat().st_size
-                candidate_bytes = core.candidate_path.stat().st_size
+                candidate_bytes = (
+                    next(
+                        (
+                            check.actual
+                            for check in core.last_verification.checks
+                            if check.code == "MESH_SIMPLIFICATION_FILE_SIZE_REDUCED"
+                        ),
+                        None,
+                    )
+                    if core.last_verification is not None
+                    else None
+                )
                 topology_status = "repaired"
                 topology_label = "Addressed"
                 verified_triangles = actual_triangles if isinstance(actual_triangles, int) else 0
                 topology_action = (
                     f"Mesh optimized — {simplification_source_triangles:,} → "
-                    f"{verified_triangles:,} triangles; file size "
-                    f"{source_bytes / (1024 * 1024):.1f} MB → "
-                    f"{candidate_bytes / (1024 * 1024):.1f} MB. Original preserved."
+                    f"{verified_triangles:,} triangles"
                 )
+                if isinstance(candidate_bytes, int):
+                    topology_action += (
+                        f"; file size {inspection.package.byte_size / (1024 * 1024):.1f} MB → "
+                        f"{candidate_bytes / (1024 * 1024):.1f} MB"
+                    )
+                topology_action += ". Original preserved."
             elif verification_incomplete:
                 topology_status = "attention"
                 topology_label = "Verification interrupted"
