@@ -317,6 +317,7 @@ def test_completed_turn_scene_is_lazy_and_hash_bound(tmp_path: Path) -> None:
 
 def test_conversation_route_preflights_then_survives_restart_through_download(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The hosted UI keeps one conversation and Job Contract across application restarts."""
     work_root = tmp_path / "jobs"
@@ -587,6 +588,7 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
         "asset_shepherd.hosted_workspace.build_live_agent",
         side_effect=AssertionError("accepted workspace attempted a live-model restore"),
     ):
+        monkeypatch.setenv("ASSET_SHEPHERD_SESSION_BUCKET", "deployment-session-bucket")
         terminal_restart = TestClient(create_app(project_root=PROJECT_ROOT, work_root=work_root))
         reopened_terminal = terminal_restart.get(workspace_path)
     assert reopened_terminal.status_code == 200

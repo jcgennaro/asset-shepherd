@@ -1241,6 +1241,7 @@ class HostedWorkspaceStore:
             workspace.runtime = build_scripted_agent(
                 runtime_job,
                 activity_sink=self._activity_sink(workspace.root),
+                values={},
             )
         else:
             workspace.runtime = (

@@ -1475,6 +1475,7 @@ def build_scripted_agent(
     session_id: str | None = None,
     session_root: Path | None = None,
     activity_sink: ActivitySink | None = None,
+    values: Mapping[str, str] = environ,
 ) -> AssetShepherdAgent:
     """Build the zero-network harness over the real Strands agent runtime."""
     model = ScriptedWorkflowModel(job)
@@ -1483,6 +1484,6 @@ def build_scripted_agent(
         model,
         provider="scripted",
         model_id="asset-shepherd-scripted-v1",
-        session_manager=_snapshot_session_manager(session_id, session_root),
+        session_manager=_snapshot_session_manager(session_id, session_root, values),
         activity_sink=activity_sink,
     )
