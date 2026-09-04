@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 import tempfile
 import time
@@ -26,8 +25,11 @@ from asset_shepherd.models import ProjectProfile, ProposalResponse
 
 _ID_PATTERN = r"^[0-9a-f]{32}$"
 _OWNER_PATTERN = r"^[a-z0-9_.-]{2,80}$"
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
+
+def _write_runtime_event(value: dict[str, object]) -> None:
+    """Write one bounded JSON event to AgentCore's captured stdout stream."""
+    print(json.dumps(value, separators=(",", ":"), sort_keys=True), flush=True)
 
 
 class RuntimeConfigurationError(RuntimeError):
@@ -293,7 +295,7 @@ def invoke(payload: object, context: object) -> dict[str, object]:
                 "operation": command.operation,
             }
         )
-        logger.info("%s", json.dumps({**correlation, "state": "STARTED"}, sort_keys=True))
+        _write_runtime_event({**correlation, "state": "STARTED"})
         result = execute_runtime_command(
             payload,
             store=build_runtime_store(),
@@ -304,31 +306,23 @@ def invoke(payload: object, context: object) -> dict[str, object]:
         phase: object = None
         if isinstance(state, dict):
             phase = cast(dict[str, object], state).get("phase")
-        logger.info(
-            "%s",
-            json.dumps(
-                {
-                    **correlation,
-                    "state": "SUCCEEDED",
-                    "phase": phase,
-                    "duration_ms": round((time.perf_counter() - started) * 1000),
-                },
-                sort_keys=True,
-            ),
+        _write_runtime_event(
+            {
+                **correlation,
+                "state": "SUCCEEDED",
+                "phase": phase,
+                "duration_ms": round((time.perf_counter() - started) * 1000),
+            }
         )
         return result
     except (RuntimeConfigurationError, RuntimeInvocationError) as error:
-        logger.warning(
-            "%s",
-            json.dumps(
-                {
-                    **correlation,
-                    "state": "REJECTED",
-                    "error_type": type(error).__name__,
-                    "duration_ms": round((time.perf_counter() - started) * 1000),
-                },
-                sort_keys=True,
-            ),
+        _write_runtime_event(
+            {
+                **correlation,
+                "state": "REJECTED",
+                "error_type": type(error).__name__,
+                "duration_ms": round((time.perf_counter() - started) * 1000),
+            }
         )
         return {"ok": False, "error": str(error)}
 
