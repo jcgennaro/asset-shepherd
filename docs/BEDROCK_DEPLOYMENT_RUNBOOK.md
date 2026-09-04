@@ -39,7 +39,8 @@ until the remote-product gate passes.
   allocation. The alert is notification rather than a hard spending cap, and credit eligibility
   remains subject to the account's credit terms. On 2026-09-02 the user reported approximately
   $130 in credits remaining and roughly $20 used; treat that as planning input, not an audited
-  billing balance.
+  billing balance. After earning additional credits, the user reported $158 remaining on
+  2026-09-04; this is also planning input rather than an audited balance.
 - [x] Step 2.1/2.2 Bedrock intake, workflow transport, short-term-token, and launcher implementation.
 - [x] D074 Nova diagnostic: least-privilege connectivity, typed intake, and one complete local
   Strands approval-through-package workflow passed through native Bedrock Converse.
@@ -85,7 +86,7 @@ until the remote-product gate passes.
   bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, observed Kimi
   subtotal, and live idle-cost floor are complete. The immutable Guardrail passes direct 8/8
   boundary and Kimi/Converse probes, and rebuilt public-application acceptance. Authentication,
-  recipient confirmation, and notification delivery proof remain.
+  recipient observation of the notification test remain.
 - [ ] Step 8 remote M9 acceptance.
 
 ## Controlling constraints
@@ -739,9 +740,11 @@ All eight alarms now route entry into `ALARM` to one standard private SNS topic;
 initial-state notifications remain disabled. The recipient address is supplied only as a `NoEcho`
 deployment parameter and is not committed or returned in stack outputs. The operations stack is
 `UPDATE_COMPLETE`, all eight alarm actions are enabled, and all eight alarms remain `OK`. The SNS
-subscription is currently `PendingConfirmation`; click the AWS confirmation link, then run one
-bounded delivery test before treating the route as operational. The existing AWS Budget remains
-the account-level spend alert. Missing metric data is non-breaching.
+subscription is confirmed. A bounded test moved only the dispatcher-throttles alarm to `ALARM`;
+CloudWatch recorded successful execution of its SNS action, and the alarm was restored to `OK`
+without invoking the application or a model. Confirm receipt of that email to finish the
+end-to-end route proof. The existing AWS Budget remains the account-level spend alert. Missing
+metric data is non-breaching.
 
 Run `scripts/Set-AssetShepherdLogRetention.ps1` after creating or replacing managed services. It
 discovers only Asset Shepherd CodeBuild, ECS, Lambda, and AgentCore groups and applies seven-day
@@ -815,8 +818,8 @@ request, while an ordinary 30 cm Unreal robot reached a target proposal. The all
 was purged with five object versions removed and `VerifiedEmpty=True`. A status invocation started
 runtime v5 and recovered the accepted workspace at `COMPLETE`. Ten health calls, the accepted
 notebook, and its 24,580-byte `model/gltf-binary` download pass, and all eight alarms remain `OK`.
-The Guardrail portion is closed and the alarm route is deployed. Multi-user authentication,
-recipient confirmation, and one bounded alarm-delivery proof remain before the Step 7 gate closes.
+The Guardrail portion is closed and the alarm route's AWS path passes. Multi-user authentication and
+recipient observation of the bounded alarm email remain before the Step 7 gate closes.
 
 ## Step 8 — Remote M9 acceptance
 
