@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from asset_shepherd.agent_job import VerificationFunction
+from asset_shepherd.agentcore_dispatch import AgentCoreCommandDispatcher
 from asset_shepherd.glb import load_glb, save_glb
 from asset_shepherd.hosted_workspace import HostedWorkspaceStore
 from asset_shepherd.intake_analyzer import (
@@ -187,6 +188,100 @@ def _hidden(html: str, name: str) -> str:
     match = re.search(rf'name="{name}" value="([^"]+)"', html)
     assert match is not None
     return match.group(1)
+
+
+class _RecordingDispatcher:
+    """Minimal remote-command adapter for route acceptance."""
+
+    actor_id = "contest-demo"
+
+    def __init__(self) -> None:
+        """Start with no submitted commands."""
+        self.payloads: list[object] = []
+
+    def enqueue(self, payload: object) -> object:
+        """Capture an exact route-produced command."""
+        self.payloads.append(payload)
+        return payload
+
+    def status(self, workspace_id: str, command_id: str) -> dict[str, object]:
+        """Return an actor-bound queued receipt."""
+        return {
+            "schema_version": 1,
+            "workspace_id": workspace_id,
+            "command_id": command_id,
+            "state": "QUEUED",
+        }
+
+
+def test_remote_target_confirmation_returns_accepted_receipt_without_running_agent(
+    tmp_path: Path,
+) -> None:
+    """The hosted web tier queues AgentCore work and immediately exposes pollable state."""
+    dispatcher = _RecordingDispatcher()
+    app = create_app(
+        project_root=PROJECT_ROOT,
+        work_root=tmp_path / "jobs",
+        agentcore_dispatcher=cast(AgentCoreCommandDispatcher, dispatcher),
+    )
+    client = TestClient(app)
+    uploaded = client.post(
+        "/workspace/new/upload",
+        files={"asset": (BROKEN_PATH.name, BROKEN_PATH.read_bytes(), "model/gltf-binary")},
+        follow_redirects=False,
+    )
+    describe_path = urlparse(uploaded.headers["location"]).path
+    created = client.post(
+        describe_path,
+        data={"description": DESCRIPTION},
+        follow_redirects=False,
+    )
+    workspace_path = urlparse(created.headers["location"]).path
+    page = client.get(workspace_path)
+    command_id = _hidden(page.text, "command_id")
+
+    assert "data-remote-command" in page.text
+    response = client.post(
+        f"{workspace_path}/target",
+        data={
+            "command_id": command_id,
+            "accept_supported_goal": "true",
+            "viewing_use": "NORMAL_GAMEPLAY",
+        },
+    )
+
+    assert response.status_code == 202
+    receipt = response.json()
+    assert receipt["state"] == "QUEUED"
+    assert receipt["status_url"].endswith(f"/commands/{command_id}")
+    assert dispatcher.payloads == [
+        {
+            "schema_version": 1,
+            "operation": "confirm_target",
+            "actor_id": "contest-demo",
+            "workspace_id": workspace_path.rsplit("/", 1)[-1],
+            "command_id": command_id,
+            "accept_supported_goal": True,
+            "viewing_use": "NORMAL_GAMEPLAY",
+            "custom_values": {
+                "custom_height_tolerance_cm": None,
+                "custom_require_y_up": None,
+                "custom_require_ground_contact": None,
+                "custom_ground_tolerance_cm": None,
+                "custom_naming_pattern": None,
+                "custom_max_triangles": None,
+                "custom_max_materials": None,
+                "custom_max_textures": None,
+                "custom_max_texture_dimension": None,
+            },
+        }
+    ]
+    status = client.get(urlparse(cast(str, receipt["status_url"])).path)
+    assert status.status_code == 200
+    assert status.json()["state"] == "QUEUED"
+    assert not (
+        tmp_path / "jobs" / "hosted" / workspace_path.rsplit("/", 1)[-1] / "output"
+    ).exists()
 
 
 def test_completed_turn_scene_is_lazy_and_hash_bound(tmp_path: Path) -> None:

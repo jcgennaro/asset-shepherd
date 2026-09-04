@@ -1,0 +1,319 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Asset Shepherd public ECS Express web tier and durable AgentCore dispatcher.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: contest
+    AllowedPattern: "[a-z0-9-]+"
+  WebImageUri:
+    Type: String
+    AllowedPattern: "^[0-9]{12}\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/[a-z0-9._/-]+:[A-Za-z0-9._-]+$"
+  WorkspaceBucketName:
+    Type: String
+    AllowedPattern: "^[a-z0-9.-]{3,63}$"
+  WorkspaceTableName:
+    Type: String
+    AllowedPattern: "^[A-Za-z0-9_.-]{3,255}$"
+  WorkspaceOwnerId:
+    Type: String
+    Default: contest-demo
+    AllowedPattern: "^[a-z0-9_.-]{2,80}$"
+  AgentRuntimeArn:
+    Type: String
+    AllowedPattern: "^arn:aws[a-zA-Z-]*:bedrock-agentcore:[a-z0-9-]+:[0-9]{12}:runtime/[A-Za-z0-9_-]+$"
+  DispatcherCodeBucket:
+    Type: String
+    AllowedPattern: "^[a-z0-9.-]{3,63}$"
+  DispatcherCodeKey:
+    Type: String
+    Default: lambda/asset-shepherd-agentcore-dispatch.zip
+    AllowedPattern: "[A-Za-z0-9!_.*'()/=-]+"
+  DefaultModelId:
+    Type: String
+    Default: moonshotai.kimi-k2.5
+    AllowedValues:
+      - moonshotai.kimi-k2.5
+      - us.openai.gpt-5.6-luna
+
+Resources:
+  AgentCommandDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub "asset-shepherd-${EnvironmentName}-agent-commands-dlq"
+      SqsManagedSseEnabled: true
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AgentCommandQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 86400
+      QueueName: !Sub "asset-shepherd-${EnvironmentName}-agent-commands"
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt AgentCommandDeadLetterQueue.Arn
+        maxReceiveCount: 3
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: 5400
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  DispatcherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AssetShepherdAgentCoreDispatch
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: WriteFunctionLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/asset-shepherd-${EnvironmentName}-agent-dispatch*"
+              - Sid: ConsumeAgentCommands
+                Effect: Allow
+                Action:
+                  - sqs:ChangeMessageVisibility
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ReceiveMessage
+                Resource: !GetAtt AgentCommandQueue.Arn
+              - Sid: UpdateExactCommandReceipts
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WorkspaceTableName}"
+              - Sid: InvokePrivateAssetShepherdRuntime
+                Effect: Allow
+                Action: bedrock-agentcore:InvokeAgentRuntime
+                Resource: !Ref AgentRuntimeArn
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AgentCommandDispatcher:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - x86_64
+      Code:
+        S3Bucket: !Ref DispatcherCodeBucket
+        S3Key: !Ref DispatcherCodeKey
+      Description: Invokes one private typed Asset Shepherd AgentCore command from SQS.
+      Environment:
+        Variables:
+          AGENT_RUNTIME_ARN: !Ref AgentRuntimeArn
+          WORKSPACE_OWNER_ID: !Ref WorkspaceOwnerId
+          WORKSPACE_TABLE: !Ref WorkspaceTableName
+      FunctionName: !Sub "asset-shepherd-${EnvironmentName}-agent-dispatch"
+      Handler: dispatch_agentcore.lambda_handler
+      MemorySize: 256
+      Role: !GetAtt DispatcherRole.Arn
+      Runtime: python3.13
+      Timeout: 900
+      TracingConfig:
+        Mode: PassThrough
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AgentCommandEventSource:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn: !GetAtt AgentCommandQueue.Arn
+      FunctionName: !Ref AgentCommandDispatcher
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      MaximumBatchingWindowInSeconds: 0
+
+  WebExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WebInfrastructureRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAccessInfrastructureForECSExpressServices
+            Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices"
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WebTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AssetShepherdWebRuntime
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ListWorkspaceArtifacts
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${WorkspaceBucketName}"
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - workspaces/*
+                      - sessions/*
+              - Sid: ManageWorkspaceArtifacts
+                Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${WorkspaceBucketName}/workspaces/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${WorkspaceBucketName}/sessions/*"
+              - Sid: ManageWorkspaceAndCommandRecords
+                Effect: Allow
+                Action:
+                  - dynamodb:DeleteItem
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WorkspaceTableName}"
+                  - !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WorkspaceTableName}/index/*"
+              - Sid: QueueTypedAgentCommands
+                Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt AgentCommandQueue.Arn
+              - Sid: DraftTargetWithAcceptedModels
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/moonshotai.kimi-k2.5"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.openai.gpt-5.6-luna"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:project/default"
+                  - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/openai.gpt-5.6-luna"
+                  - !Sub "arn:${AWS::Partition}:bedrock:us-east-2::foundation-model/openai.gpt-5.6-luna"
+                  - !Sub "arn:${AWS::Partition}:bedrock:us-west-2::foundation-model/openai.gpt-5.6-luna"
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  WebService:
+    Type: AWS::ECS::ExpressGatewayService
+    Properties:
+      Cpu: "1024"
+      ExecutionRoleArn: !GetAtt WebExecutionRole.Arn
+      HealthCheckPath: /healthz
+      InfrastructureRoleArn: !GetAtt WebInfrastructureRole.Arn
+      Memory: "2048"
+      PrimaryContainer:
+        ContainerPort: 8080
+        Environment:
+          - Name: ASSET_SHEPHERD_ALLOWED_MODEL_IDS
+            Value: moonshotai.kimi-k2.5,us.openai.gpt-5.6-luna
+          - Name: ASSET_SHEPHERD_AGENT_COMMAND_QUEUE_URL
+            Value: !Ref AgentCommandQueue
+          - Name: ASSET_SHEPHERD_AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: ASSET_SHEPHERD_INTAKE_MODEL
+            Value: !Ref DefaultModelId
+          - Name: ASSET_SHEPHERD_INTAKE_PROVIDER
+            Value: bedrock-converse
+          - Name: ASSET_SHEPHERD_MAX_TURNS
+            Value: "5"
+          - Name: ASSET_SHEPHERD_MODEL_ID
+            Value: !Ref DefaultModelId
+          - Name: ASSET_SHEPHERD_MODEL_PROVIDER
+            Value: bedrock-converse
+          - Name: ASSET_SHEPHERD_SESSION_BUCKET
+            Value: !Ref WorkspaceBucketName
+          - Name: ASSET_SHEPHERD_WORK_ROOT
+            Value: /tmp/asset-shepherd-web
+          - Name: ASSET_SHEPHERD_WORKSPACE_BUCKET
+            Value: !Ref WorkspaceBucketName
+          - Name: ASSET_SHEPHERD_WORKSPACE_OWNER_ID
+            Value: !Ref WorkspaceOwnerId
+          - Name: ASSET_SHEPHERD_WORKSPACE_TABLE
+            Value: !Ref WorkspaceTableName
+        Image: !Ref WebImageUri
+      ScalingTarget:
+        MaxTaskCount: 1
+        MinTaskCount: 1
+      ServiceName: !Sub "asset-shepherd-${EnvironmentName}-web"
+      TaskRoleArn: !GetAtt WebTaskRole.Arn
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  AgentCommandQueueUrl:
+    Description: Private SQS URL used only by the web task role.
+    Value: !Ref AgentCommandQueue
+  DispatcherFunctionArn:
+    Description: SQS-triggered long-running AgentCore dispatcher.
+    Value: !GetAtt AgentCommandDispatcher.Arn
+  WebEndpoint:
+    Description: Managed public HTTPS endpoint for the Asset Shepherd web product.
+    Value: !GetAtt WebService.Endpoint
+  WebServiceArn:
+    Description: ECS Express Mode service ARN.
+    Value: !GetAtt WebService.ServiceArn

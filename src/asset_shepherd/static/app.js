@@ -581,6 +581,97 @@ function appendPendingUserTurn(form, submitter) {
   );
 }
 
+function restoreRemoteForm(form, submitter, message) {
+  const scope = form.closest(".conversation-pane");
+  if (scope) {
+    scope.classList.remove("is-working");
+    scope.removeAttribute("aria-busy");
+    for (const cell of scope.querySelectorAll(".notebook-locked")) {
+      cell.inert = false;
+      cell.classList.remove("notebook-locked");
+    }
+  }
+  for (const button of form.querySelectorAll("[data-submit-button]")) {
+    button.disabled = false;
+  }
+  if (submitter instanceof HTMLButtonElement) {
+    submitter.textContent = submitter.dataset.originalLabel || "Try again";
+    submitter.removeAttribute("aria-busy");
+    submitter.style.pointerEvents = "";
+  }
+  const host = scope?.querySelector("[data-workflow-activity-cell]") || form;
+  let error = host.querySelector("[data-remote-command-error]");
+  if (!error) {
+    error = document.createElement("p");
+    error.className = "form-error";
+    error.dataset.remoteCommandError = "";
+    error.setAttribute("role", "alert");
+    host.append(error);
+  }
+  error.textContent = message;
+}
+
+function updateRemoteCommandLabel(form, state) {
+  const scope = form.closest(".conversation-pane");
+  const labels = scope?.querySelectorAll(
+    "[data-workflow-activity] .workflow-activity-item span:last-child",
+  );
+  const label = labels?.[labels.length - 1];
+  if (label) {
+    label.textContent = state === "QUEUED" ? "Waiting for Asset Shepherd" : "Asset Shepherd is working";
+  }
+}
+
+async function pollRemoteCommand(form, submitter, receipt) {
+  try {
+    const response = await fetch(receipt.status_url, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("The command receipt is unavailable.");
+    }
+    const status = await response.json();
+    if (status.state === "SUCCEEDED") {
+      window.location.assign(status.redirect_url || receipt.redirect_url);
+      return;
+    }
+    if (status.state === "FAILED") {
+      restoreRemoteForm(
+        form,
+        submitter,
+        status.error || "Asset Shepherd could not continue. Try again.",
+      );
+      return;
+    }
+    updateRemoteCommandLabel(form, status.state);
+  } catch (_error) {
+    updateRemoteCommandLabel(form, "RUNNING");
+  }
+  window.setTimeout(() => pollRemoteCommand(form, submitter, receipt), 1000);
+}
+
+async function submitRemoteCommand(form, submitter) {
+  try {
+    const response = await fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      headers: { Accept: "application/json" },
+    });
+    if (response.status !== 202) {
+      throw new Error(`The command was not accepted (${response.status}).`);
+    }
+    const receipt = await response.json();
+    if (!receipt.status_url || !receipt.redirect_url) {
+      throw new Error("The command receipt is incomplete.");
+    }
+    await pollRemoteCommand(form, submitter, receipt);
+  } catch (error) {
+    restoreRemoteForm(
+      form,
+      submitter,
+      error instanceof Error ? error.message : "The command could not be queued.",
+    );
+  }
+}
+
 for (const form of document.querySelectorAll("[data-busy-form]")) {
   form.addEventListener("submit", (event) => {
     const submitter = event.submitter;
@@ -610,6 +701,10 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
           cell.classList.add("notebook-locked");
         }
       }
+    }
+    if (form.hasAttribute("data-remote-command")) {
+      event.preventDefault();
+      void submitRemoteCommand(form, submitter);
     }
   });
 }

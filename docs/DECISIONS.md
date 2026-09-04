@@ -4,11 +4,53 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D105 — Dispatch long AgentCore turns through durable SQS receipts and Lambda
+
+**Date:** 2026-09-04
+
+**Status:** ACCEPTED; implementation and deployment template ready, live web gate pending
+
+**Decision owner:** Codex
+
+**Milestone:** M9 hosted conversation and deployment
+
+**Context**
+
+The existing FastAPI routes synchronously ran Strands and the deterministic tools inside the web
+process. Representative AgentCore turns take roughly two minutes and can run longer, so forwarding
+the same blocking request through an Application Load Balancer would couple browser availability to
+model latency and lose in-flight work when an ECS task is replaced. The D093 contract already
+requires `202 Accepted` and typed status polling.
+
+**Decision**
+
+The ECS web task validates and records a schema-versioned command receipt in the existing DynamoDB
+table, then sends only that bounded command to an encrypted SQS queue. A one-message Lambda consumer
+invokes the private AgentCore Runtime with the workspace-bound runtime session. It updates the
+receipt to `RUNNING`, `SUCCEEDED`, `FAILED`, or `RETRYING`; the browser polls that receipt and reloads
+the durable notebook only after completion. SQS is at-least-once, while the stable command ID and
+AgentCore's persisted `processed_commands` boundary make the mutation exactly-once. GLB bytes,
+provider secrets, free-form paths, and AWS credentials never enter the message or browser.
+
+Keep local Uvicorn behavior synchronous when the queue is not configured. Build the AgentCore image
+for ARM64 and the ECS Express web image for x86_64, matching each managed service's runtime contract.
+Use one ECS task for the contest gate to keep cost and pre-workspace upload staging predictable; S3
+and DynamoDB remain authoritative after workspace creation.
+
+**Evidence and consequences**
+
+Focused acceptance proves typed enqueue, actor binding, conflicting command rejection, safe resend
+before dispatch, suppression while running, HTTP 202 receipts, and pollable status without starting
+the local agent. The CloudFormation template creates encrypted command/DLQ queues, a least-privilege
+Lambda dispatcher, separate ECS execution/infrastructure/task roles, and the ECS Express service.
+This adds two small request-driven services but avoids ALB timeouts and replaceable-task coupling.
+Remote deployment and browser replay remain the Step 6 gate.
+
 ### D104 — Build one gated ARM64 image and expose only typed AgentCore commands
 
 **Date:** 2026-09-03
 
-**Status:** ACCEPTED; runtime deployed, successful-completion replay pending
+**Status:** ACCEPTED; runtime deployed and full acceptance gate passed
 
 **Decision owner:** Codex
 
@@ -71,7 +113,17 @@ again rejected the candidate after 434,254 input and 4,958 output tokens. Replay
 approval returned the same state without advancing durable record version 8, proving persisted
 command idempotency. This establishes the deployed invocation, interrupt/resume, tool, renderer,
 verification, persistence, and duplicate-command boundaries; a representative fully specified
-successful candidate and replaced-runtime replay remain open.
+successful candidate and replaced-runtime replay remained open at that checkpoint.
+
+The final gate used the frozen `broken-normalization` case with a fully specified 122 × 182 × 40 cm
+target. Approval completed normalization, name repair, Chromium evidence, deterministic verification,
+visual reassessment, and packaging. The durable result was `COMPLETE` and download-ready with no
+failed checks and only the expected material-budget warning. Kimi confirmed the intended dimensions,
+orientation, grounding, retained parts, and names at 0.95 confidence. The turn took 114.76 seconds
+and recorded 169,391 input plus 1,909 output tokens. An identical approval replay preserved durable
+record version 5. After `StopRuntimeSession` terminated the managed microVM, the same runtime session
+and command rehydrated the identical complete version 5. The private runtime therefore passes the
+multi-turn success, exact interruption, idempotency, and replaceable-compute requirements.
 
 ### D103 — Back replaceable processes with immutable S3 manifests and conditional DynamoDB state
 
@@ -573,8 +625,9 @@ Persist an artifact to S3 and verify its hash before conditionally advancing the
 Key every consequential command by a stable action hash so retries return the existing receipt
 instead of mutating twice. The web tier submits a command and returns `202 Accepted`; the notebook
 polls typed status while AgentCore runs. Browser clients never receive AWS credentials and never
-invoke the runtime directly. The web task calls the normal regional `InvokeAgentRuntime` API with
-its IAM role; PrivateLink and custom AgentCore VPC connectivity are deferred unless a later
+invoke the runtime directly. D105 refines the call path: the web task queues the typed command and a
+least-privilege Lambda dispatcher calls the normal regional `InvokeAgentRuntime` API. PrivateLink
+and custom AgentCore VPC connectivity are deferred unless a later
 requirement justifies them. Route 53 and a custom domain are optional polish rather than contest
 dependencies. Preserve the local Uvicorn/offline configuration as the same
 product with local storage/runtime adapters.

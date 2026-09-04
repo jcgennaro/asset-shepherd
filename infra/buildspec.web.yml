@@ -1,0 +1,41 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  pre_build:
+    commands:
+      - test -n "$AWS_ACCOUNT_ID"
+      - test -n "$AWS_DEFAULT_REGION"
+      - test -n "$ECR_REPOSITORY_NAME"
+      - test -n "$IMAGE_TAG"
+      - REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+      - IMAGE_URI="$REGISTRY/$ECR_REPOSITORY_NAME:$IMAGE_TAG-web"
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+  build:
+    commands:
+      - docker build --platform linux/amd64 --target web --file infra/docker/Dockerfile.runtime --tag "$IMAGE_URI" .
+      - docker image inspect "$IMAGE_URI" --format '{{.Architecture}}/{{.Os}}' | grep -Fx amd64/linux
+      - >-
+        CONTAINER_ID=$(docker run --detach --publish 8080:8080
+        --env ASSET_SHEPHERD_WORK_ROOT=/tmp/asset-shepherd-web "$IMAGE_URI")
+      - >-
+        for attempt in $(seq 1 30); do
+          if curl --fail --silent http://127.0.0.1:8080/healthz >/tmp/web-health.json; then break; fi;
+          if ! docker inspect --format '{{.State.Running}}' "$CONTAINER_ID" | grep -q true; then docker logs "$CONTAINER_ID"; exit 1; fi;
+          sleep 1;
+        done
+      - curl --fail --silent http://127.0.0.1:8080/healthz | grep -q 'ok'
+      - curl --fail --silent http://127.0.0.1:8080/workspace | grep -q 'Asset Shepherd'
+      - docker stop "$CONTAINER_ID"
+      - touch /tmp/asset-shepherd-web-image-accepted
+  post_build:
+    commands:
+      - test -f /tmp/asset-shepherd-web-image-accepted
+      - docker push "$IMAGE_URI"
+      - printf '{"imageUri":"%s"}\n' "$IMAGE_URI" > image-detail.json
+
+artifacts:
+  files:
+    - image-detail.json

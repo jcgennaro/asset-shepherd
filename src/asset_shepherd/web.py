@@ -34,6 +34,7 @@ from asset_shepherd.agent_runtime import (
     build_scripted_agent,
     workflow_model_available,
 )
+from asset_shepherd.agentcore_dispatch import AgentCoreCommandDispatcher, AgentCoreDispatchError
 from asset_shepherd.bedrock_converse import (
     BedrockConverseModel,
     resolve_bedrock_converse_model,
@@ -109,7 +110,14 @@ from asset_shepherd.verification import verify_repair
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
 _DEFAULT_PROJECT_ROOT = _PACKAGE_ROOT.parents[1]
-_DEFAULT_WORK_ROOT = _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
+_CONFIGURED_WORK_ROOT = os.environ.get("ASSET_SHEPHERD_WORK_ROOT", "").strip()
+_DEFAULT_WORK_ROOT = (
+    Path(_CONFIGURED_WORK_ROOT)
+    if _CONFIGURED_WORK_ROOT
+    else _DEFAULT_PROJECT_ROOT / "build" / "web" / "jobs"
+)
+if _CONFIGURED_WORK_ROOT and not _DEFAULT_WORK_ROOT.is_absolute():
+    raise ValueError("ASSET_SHEPHERD_WORK_ROOT must be an absolute path")
 mimetypes.add_type("model/gltf-binary", ".glb")
 logger = logging.getLogger(__name__)
 
@@ -3329,6 +3337,7 @@ def create_app(
     intake_analyzer: TargetIntakeAnalyzer | None = None,
     max_agent_turns: int | None = None,
     verification_function: VerificationFunction = verify_repair,
+    agentcore_dispatcher: AgentCoreCommandDispatcher | None = None,
 ) -> FastAPI:
     """Create a local Asset Shepherd web application and isolated job store."""
     family = discover_policy_family(project_root.resolve(strict=True))
@@ -3344,6 +3353,7 @@ def create_app(
             "ASSET_SHEPHERD_WORKSPACE_TABLE, and ASSET_SHEPHERD_WORKSPACE_OWNER_ID"
         )
     workspace_repository: WorkspaceRepository | None = None
+    workspace_region: str | None = None
     if workspace_bucket and workspace_table and workspace_owner:
         workspace_region = (
             os.environ.get("ASSET_SHEPHERD_AWS_REGION")
@@ -3359,8 +3369,31 @@ def create_app(
             region=workspace_region,
             aws_profile=os.environ.get("AWS_PROFILE"),
         )
+    command_queue_url = os.environ.get("ASSET_SHEPHERD_AGENT_COMMAND_QUEUE_URL", "").strip()
+    remote_dispatcher = agentcore_dispatcher
+    if command_queue_url and remote_dispatcher is None:
+        if not workspace_table or not workspace_owner or not workspace_region:
+            raise ValueError("Remote AgentCore dispatch requires complete cloud workspace settings")
+        remote_dispatcher = AgentCoreCommandDispatcher(
+            queue_url=command_queue_url,
+            table=workspace_table,
+            actor_id=workspace_owner,
+            region=workspace_region,
+        )
+    runtime_actor_id = remote_dispatcher.actor_id if remote_dispatcher is not None else None
+    configured_allowed_models = {
+        value.strip()
+        for value in os.environ.get("ASSET_SHEPHERD_ALLOWED_MODEL_IDS", "").split(",")
+        if value.strip()
+    }
     agent_model_choices: tuple[BedrockConverseModel, ...] = (
-        supported_bedrock_converse_models() if configured_provider == "bedrock-converse" else ()
+        tuple(
+            model
+            for model in supported_bedrock_converse_models()
+            if not configured_allowed_models or model.model_id in configured_allowed_models
+        )
+        if configured_provider == "bedrock-converse"
+        else ()
     )
     default_agent_model = next(
         (model for model in agent_model_choices if model.recommended),
@@ -3421,6 +3454,7 @@ def create_app(
     )
     app.state.job_store = store
     app.state.hosted_workspace_store = hosted_store
+    app.state.agentcore_dispatcher = remote_dispatcher
     app.mount("/static", StaticFiles(directory=_PACKAGE_ROOT / "static"), name="static")
 
     def persist_hosted_start_draft(draft: HostedStartDraft) -> None:
@@ -3776,6 +3810,7 @@ def create_app(
                     )
                 ),
                 "command_id": uuid4().hex,
+                "remote_commands_enabled": remote_dispatcher is not None,
                 "can_continue": bool(
                     runtime_job
                     and runtime_job.agent_orchestrated
@@ -4702,6 +4737,27 @@ def create_app(
             raise HostedWorkspaceError("This asset workspace is unavailable.")
         return workspace
 
+    def _remote_command_response(
+        request: Request, workspace_id: str, command_id: str
+    ) -> JSONResponse:
+        """Return an accepted receipt that the notebook can poll without holding the request."""
+        return JSONResponse(
+            {
+                "schema_version": 1,
+                "state": "QUEUED",
+                "status_url": str(
+                    request.url_for(
+                        "hosted_command_status",
+                        workspace_id=workspace_id,
+                        command_id=command_id,
+                    )
+                ),
+                "redirect_url": _workspace_notebook_url(request, workspace_id),
+            },
+            status_code=202,
+            headers={"Cache-Control": "private, no-store"},
+        )
+
     def hosted_workspace_page(request: Request, workspace_id: str) -> Response:
         """Resume one durable conversation and Job Contract."""
         try:
@@ -4828,24 +4884,39 @@ def create_app(
         """Freeze the typed target and derived policy before policy inspection."""
         try:
             workspace = require_hosted_workspace(workspace_id)
+            custom_values = {
+                "custom_height_tolerance_cm": custom_height_tolerance_cm,
+                "custom_require_y_up": custom_require_y_up,
+                "custom_require_ground_contact": custom_require_ground_contact,
+                "custom_ground_tolerance_cm": custom_ground_tolerance_cm,
+                "custom_naming_pattern": custom_naming_pattern,
+                "custom_max_triangles": custom_max_triangles,
+                "custom_max_materials": custom_max_materials,
+                "custom_max_textures": custom_max_textures,
+                "custom_max_texture_dimension": custom_max_texture_dimension,
+            }
+            if remote_dispatcher is not None:
+                remote_dispatcher.enqueue(
+                    {
+                        "schema_version": 1,
+                        "operation": "confirm_target",
+                        "actor_id": runtime_actor_id,
+                        "workspace_id": workspace_id,
+                        "command_id": command_id,
+                        "accept_supported_goal": accept_supported_goal == "true",
+                        "viewing_use": viewing_use,
+                        "custom_values": custom_values,
+                    }
+                )
+                return _remote_command_response(request, workspace_id, command_id)
             hosted_store.confirm_target(
                 workspace,
                 accept_supported_goal=accept_supported_goal == "true",
                 command_id=command_id,
                 viewing_use_value=viewing_use,
-                custom_values={
-                    "custom_height_tolerance_cm": custom_height_tolerance_cm,
-                    "custom_require_y_up": custom_require_y_up,
-                    "custom_require_ground_contact": custom_require_ground_contact,
-                    "custom_ground_tolerance_cm": custom_ground_tolerance_cm,
-                    "custom_naming_pattern": custom_naming_pattern,
-                    "custom_max_triangles": custom_max_triangles,
-                    "custom_max_materials": custom_max_materials,
-                    "custom_max_textures": custom_max_textures,
-                    "custom_max_texture_dimension": custom_max_texture_dimension,
-                },
+                custom_values=custom_values,
             )
-        except HostedWorkspaceError as error:
+        except (HostedWorkspaceError, AgentCoreDispatchError) as error:
             try:
                 workspace = require_hosted_workspace(workspace_id)
             except HostedWorkspaceError:
@@ -4951,6 +5022,21 @@ def create_app(
                 response.disposition is not ProposalDisposition.ACCEPT for response in responses
             )
             if decision == "revise" or requests_revision:
+                if remote_dispatcher is not None:
+                    remote_dispatcher.enqueue(
+                        {
+                            "schema_version": 1,
+                            "operation": "revise_plan",
+                            "actor_id": runtime_actor_id,
+                            "workspace_id": workspace_id,
+                            "command_id": command_id,
+                            "interrupt_id": interrupt_id,
+                            "responses": [
+                                response.model_dump(mode="json") for response in responses
+                            ],
+                        }
+                    )
+                    return _remote_command_response(request, workspace_id, command_id)
                 hosted_store.revise_plan(
                     workspace,
                     interrupt_id=interrupt_id,
@@ -4958,13 +5044,31 @@ def create_app(
                     command_id=command_id,
                 )
             else:
+                if remote_dispatcher is not None:
+                    remote_dispatcher.enqueue(
+                        {
+                            "schema_version": 1,
+                            "operation": "decision",
+                            "actor_id": runtime_actor_id,
+                            "workspace_id": workspace_id,
+                            "command_id": command_id,
+                            "interrupt_id": interrupt_id,
+                            "approved": decision == "approve",
+                        }
+                    )
+                    return _remote_command_response(request, workspace_id, command_id)
                 hosted_store.decide(
                     workspace,
                     interrupt_id=interrupt_id,
                     approved=decision == "approve",
                     command_id=command_id,
                 )
-        except (HostedWorkspaceError, AgentWorkflowError, ValueError) as error:
+        except (
+            HostedWorkspaceError,
+            AgentCoreDispatchError,
+            AgentWorkflowError,
+            ValueError,
+        ) as error:
             if workspace is None:
                 return render_hosted_home(request, str(error), status_code=404)
             return render_hosted_workspace(request, workspace, str(error), status_code=409)
@@ -4986,6 +5090,20 @@ def create_app(
             workspace = require_hosted_workspace(workspace_id)
             if decision not in {"accept", "continue"}:
                 raise HostedWorkspaceError("Choose whether the result is right.")
+            if remote_dispatcher is not None:
+                remote_dispatcher.enqueue(
+                    {
+                        "schema_version": 1,
+                        "operation": "review_result",
+                        "actor_id": runtime_actor_id,
+                        "workspace_id": workspace_id,
+                        "command_id": command_id,
+                        "accepted": decision == "accept",
+                        "feedback": feedback,
+                        "continuation_source": continue_from.upper(),
+                    }
+                )
+                return _remote_command_response(request, workspace_id, command_id)
             hosted_store.review_result(
                 workspace,
                 accepted=decision == "accept",
@@ -4993,7 +5111,7 @@ def create_app(
                 command_id=command_id,
                 continuation_source=cast(Literal["INPUT", "CANDIDATE"], continue_from.upper()),
             )
-        except HostedWorkspaceError as error:
+        except (HostedWorkspaceError, AgentCoreDispatchError) as error:
             try:
                 workspace = require_hosted_workspace(workspace_id)
             except HostedWorkspaceError:
@@ -5014,8 +5132,19 @@ def create_app(
         """Resume only the unfinished evidence and packaging portion of one iteration."""
         try:
             workspace = require_hosted_workspace(workspace_id)
+            if remote_dispatcher is not None:
+                remote_dispatcher.enqueue(
+                    {
+                        "schema_version": 1,
+                        "operation": "retry",
+                        "actor_id": runtime_actor_id,
+                        "workspace_id": workspace_id,
+                        "command_id": command_id,
+                    }
+                )
+                return _remote_command_response(request, workspace_id, command_id)
             hosted_store.retry_incomplete_turn(workspace, command_id=command_id)
-        except HostedWorkspaceError as error:
+        except (HostedWorkspaceError, AgentCoreDispatchError) as error:
             try:
                 workspace = require_hosted_workspace(workspace_id)
             except HostedWorkspaceError:
@@ -5118,6 +5247,21 @@ def create_app(
         if activity is None:
             return Response(status_code=404)
         return JSONResponse(activity, headers={"Cache-Control": "private, no-store"})
+
+    def hosted_command_status(workspace_id: str, command_id: str) -> Response:
+        """Expose one actor-bound dispatch receipt for notebook polling."""
+        if remote_dispatcher is None:
+            return Response(status_code=404)
+        if (
+            re.fullmatch(r"[0-9a-f]{32}", workspace_id) is None
+            or re.fullmatch(r"[0-9a-f]{32}", command_id) is None
+        ):
+            return Response(status_code=404)
+        status = remote_dispatcher.status(workspace_id, command_id)
+        if status is None:
+            return Response(status_code=404)
+        status["redirect_url"] = f"/workspace/{workspace_id}#current-turn"
+        return JSONResponse(status, headers={"Cache-Control": "private, no-store"})
 
     def hosted_draft_source_asset(draft_id: str) -> Response:
         """Serve a staged GLB preview for a resumable description draft."""
@@ -5439,6 +5583,12 @@ def create_app(
         hosted_workspace_activity,
         methods=["GET"],
         name="hosted_workspace_activity",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/commands/{command_id}",
+        hosted_command_status,
+        methods=["GET"],
+        name="hosted_command_status",
     )
     app.add_api_route(
         "/workspace/new/{draft_id}/source.glb",

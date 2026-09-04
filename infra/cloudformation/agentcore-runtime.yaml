@@ -154,6 +154,7 @@ Resources:
         ContainerConfiguration:
           ContainerUri: !Ref RuntimeImageUri
       EnvironmentVariables:
+        ASSET_SHEPHERD_ALLOWED_MODEL_IDS: moonshotai.kimi-k2.5,us.openai.gpt-5.6-luna
         ASSET_SHEPHERD_AWS_REGION: !Ref AWS::Region
         ASSET_SHEPHERD_EVIDENCE_RENDERER: web
         ASSET_SHEPHERD_INTAKE_MODEL: !Ref DefaultModelId
@@ -189,4 +190,3 @@ Outputs:
   RuntimeExecutionRoleArn:
     Description: Least-privilege role assumed only by AgentCore Runtime.
     Value: !GetAtt RuntimeExecutionRole.Arn
-

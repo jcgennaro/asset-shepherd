@@ -179,12 +179,13 @@
                 activity_step="3",
                 activity_label="Shepherd",
                 viewing_use_value=target_draft.viewing_use.value,
-                ask_viewing_use=ask_viewing_use
+                ask_viewing_use=ask_viewing_use,
+                remote_commands=remote_commands_enabled
               ) }}
             </div>
           {% endif %}
         {% elif approval_card and record.pending_interrupt_id %}
-          <form id="hosted-plan-response" action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="turn_comment"{% if job.agent_orchestrated %} data-plan-response-form{% endif %}>
+          <form id="hosted-plan-response" action="{{ url_for('decide_hosted_workspace', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form{% if remote_commands_enabled %} data-remote-command{% endif %} data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="turn_comment"{% if job.agent_orchestrated %} data-plan-response-form{% endif %}>
             <input type="hidden" name="interrupt_id" value="{{ record.pending_interrupt_id }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
             {% if job.agent_orchestrated %}
@@ -204,7 +205,7 @@
             {% endif %}
           </form>
         {% elif can_retry_iteration %}
-          <form action="{{ url_for('retry_hosted_iteration', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
+          <form action="{{ url_for('retry_hosted_iteration', workspace_id=record.workspace_id) }}" method="post" class="decision-actions hosted-decision" data-busy-form{% if remote_commands_enabled %} data-remote-command{% endif %} data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}">
             <input type="hidden" name="command_id" value="{{ command_id }}">
             <button type="submit" class="primary-button" data-submit-button>{% if retry_is_planning %}Retry Shepherd{% else %}Finish this iteration{% endif %} <span aria-hidden="true">→</span></button>
           </form>
@@ -230,7 +231,7 @@
             <div class="blocked-result-controls{% if can_continue %} has-refinement{% endif %}"{% if can_continue %} data-blocked-refinement{% endif %}>
               {% if can_continue %}
                 <button type="button" class="primary-button blocked-refinement-trigger" aria-expanded="false" aria-controls="hosted-blocked-refinement-form" data-blocked-refinement-trigger>Refine…</button>
-                <form id="hosted-blocked-refinement-form" class="blocked-refinement-form" action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback" hidden>
+                <form id="hosted-blocked-refinement-form" class="blocked-refinement-form" action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form{% if remote_commands_enabled %} data-remote-command{% endif %} data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback" hidden>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
                   <input type="hidden" name="decision" value="continue">
                   <input type="hidden" name="continue_from" value="input">
@@ -253,7 +254,7 @@
                   <a class="secondary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download title="Automated verification rejected this candidate; download it for human review">Download candidate</a>
                 {% endif %}
                 {% if deferred_simplification and can_continue and workspace.ready_candidate %}
-                  <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback">
+                  <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form{% if remote_commands_enabled %} data-remote-command{% endif %} data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback">
                     <input type="hidden" name="command_id" value="{{ command_id }}">
                     <input type="hidden" name="decision" value="continue">
                     <input type="hidden" name="continue_from" value="candidate">
@@ -261,7 +262,7 @@
                     <button type="submit" class="primary-button" data-submit-button>Continue to mesh optimization <span aria-hidden="true">→</span></button>
                   </form>
                 {% endif %}
-                <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-result-accept>
+                <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form{% if remote_commands_enabled %} data-remote-command{% else %} data-result-accept{% endif %}>
                   <input type="hidden" name="command_id" value="{{ command_id }}">
                   <input type="hidden" name="decision" value="accept">
                   <button type="submit" class="{% if deferred_simplification and can_continue and workspace.ready_candidate %}secondary-button{% else %}primary-button{% endif %}">{% if deferred_simplification and can_continue and workspace.ready_candidate %}Finish with this version{% else %}Use this version{% endif %}</button>
@@ -269,7 +270,7 @@
                 {% if can_continue %}
                   <details>
                     <summary class="secondary-button">Refine…</summary>
-                    <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback">
+                    <form action="{{ url_for('review_hosted_result', workspace_id=record.workspace_id) }}" method="post" data-busy-form{% if remote_commands_enabled %} data-remote-command{% endif %} data-activity-url="{{ url_for('hosted_workspace_activity', workspace_id=record.workspace_id) }}" data-pending-user-turn data-user-turn-field="feedback">
                       <input type="hidden" name="command_id" value="{{ command_id }}">
                       <input type="hidden" name="decision" value="continue">
                       <label for="hosted-refine-source">Continue with</label>

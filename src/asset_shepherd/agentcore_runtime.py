@@ -116,6 +116,14 @@ RuntimeCommand = Annotated[
 _COMMAND_ADAPTER: TypeAdapter[RuntimeCommand] = TypeAdapter(RuntimeCommand)
 
 
+def validate_runtime_command(payload: object) -> RuntimeCommand:
+    """Validate one public runtime command for trusted callers and dispatchers."""
+    try:
+        return _COMMAND_ADAPTER.validate_python(payload)
+    except ValueError as error:
+        raise RuntimeInvocationError("The runtime command is invalid.") from error
+
+
 def _required_environment(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -126,6 +134,13 @@ def _required_environment(name: str) -> str:
 def _model_values(model_id: str) -> dict[str, str]:
     """Resolve one persisted, allowlisted Bedrock model without accepting provider input."""
     capability = resolve_bedrock_converse_model(model_id)
+    allowed_models = {
+        value.strip()
+        for value in os.environ.get("ASSET_SHEPHERD_ALLOWED_MODEL_IDS", "").split(",")
+        if value.strip()
+    }
+    if allowed_models and capability.model_id not in allowed_models:
+        raise RuntimeConfigurationError("The workspace model is not enabled in this deployment")
     values = dict(os.environ)
     values["ASSET_SHEPHERD_MODEL_PROVIDER"] = "bedrock-converse"
     values["ASSET_SHEPHERD_INTAKE_PROVIDER"] = "bedrock-converse"
@@ -207,10 +222,7 @@ def execute_runtime_command(
     session_id: str | None = None,
 ) -> dict[str, object]:
     """Validate and execute exactly one workspace-scoped AgentCore command."""
-    try:
-        command = _COMMAND_ADAPTER.validate_python(payload)
-    except ValueError as error:
-        raise RuntimeInvocationError("The runtime command is invalid.") from error
+    command = validate_runtime_command(payload)
     if command.actor_id != configured_actor_id:
         raise RuntimeInvocationError("The runtime actor is not authorized for this workspace.")
     expected_session_id = f"workspace-{command.workspace_id}"

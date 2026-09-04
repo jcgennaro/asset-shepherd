@@ -63,10 +63,10 @@
   </dialog>
 {%- endmacro %}
 
-{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="", activity_step="", activity_label="", viewing_use_value="NORMAL_GAMEPLAY", ask_viewing_use=true) -%}
+{% macro confirmation_decision(confirm_url, revise_url, description, feedback_url, question_id="confirmation-question-title", command_id="", accept_supported_goal=false, activity_url="", activity_step="", activity_label="", viewing_use_value="NORMAL_GAMEPLAY", ask_viewing_use=true, remote_commands=false) -%}
   <section class="confirmation-question" aria-label="Choose the next step" data-confirmation-decision>
     <div class="confirmation-actions">
-      <form action="{{ confirm_url }}" method="post" data-busy-form{% if activity_url %} data-activity-url="{{ activity_url }}"{% endif %}{% if activity_step %} data-activity-step="{{ activity_step }}"{% endif %}{% if activity_label %} data-activity-label="{{ activity_label }}"{% endif %}>
+      <form action="{{ confirm_url }}" method="post" data-busy-form{% if remote_commands %} data-remote-command{% endif %}{% if activity_url %} data-activity-url="{{ activity_url }}"{% endif %}{% if activity_step %} data-activity-step="{{ activity_step }}"{% endif %}{% if activity_label %} data-activity-label="{{ activity_label }}"{% endif %}>
         {% if command_id %}<input type="hidden" name="command_id" value="{{ command_id }}">{% endif %}
         {% if accept_supported_goal %}<input type="hidden" name="accept_supported_goal" value="true">{% endif %}
         {% if ask_viewing_use %}{{ viewing_use_choice(viewing_use_value, "target-review-use") }}{% endif %}

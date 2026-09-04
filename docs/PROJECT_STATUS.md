@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-09-03
-**Current commit:** Live private AgentCore runtime proof (this file is included)
+**Last updated:** 2026-09-04
+**Current commit:** Complete private AgentCore runtime acceptance (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -18,7 +18,7 @@
 | M6 Deterministic CLI MVP | COMPLETE | Happy, rejected, and clean-control runs; schema/ZIP audit; Blender 5.1.2 import; full gate | a077077ca94c44b9693893672a7208d84d1f05b8 | Completed and checkpoint-reviewed 2026-08-21 |
 | M7 Strands orchestration harness | COMPLETE | Real Strands loop; native interrupt/resume; approve/reject; bounded correction; metrics; offline and opt-in live tests | 02876da55e2dd0bee3dfbe80bd01cd50f87ba76d | Historical tool/interrupt gate; D036 live agent judgment and action choice remain open in M9 |
 | M8 Web product | COMPLETE | Intent-first target-story agreement; D021 single-family policy resolution; D022 ask-only-what-is-missing intake; frozen intent and policy provenance; single-visible-step Rules/Upload and Inspect/Decide/Download; Strands interrupt/resume; dual GLB preview; verification/download | e6b9046c86b96dc43f3f4e255f00e759f2d3d22e | D006–D018 establish the flow; D021/D022 remove implementation choices and repeated target fields without changing acceptance behavior |
-| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, and private AgentCore typed invocation/interrupt/resume paths pass; successful remote completion, full phase replay, and remote ECS web deployment remain open |
+| M9 Hosted Bedrock conversation and deployment | IN_PROGRESS | D019 durable workspace; D036 authority contract; D037 agent-authored planning; D038 bounded multi-turn loop; D039 hosted handoff; D040 named asset gallery; D041 explicit approval; D042 upload-first flow; D043 semantic assembly and mesh health; D044 coordinate-aware yaw sensing; D073 Bedrock Responses adapters; D074 Nova diagnostic; D077 model-neutral Converse allowlist; D078 Claude Haiku 4.5 least-privilege gate; D093 ECS Express/AgentCore topology; D094 fixed provider acceptance; D095 opt-in Muse comparator; D096 opt-in Gemini comparator; D103 cloud state foundation; D104 ARM64 runtime and typed AgentCore boundary; D105 durable SQS/Lambda command dispatch |  | Kimi passes the fixed 8/8 gate; live S3/Dynamo state, Linux ARM64 rendering, and private AgentCore typed invocation/interrupt/resume/completion paths pass, including forced runtime replacement; remote ECS web deployment and remote browser acceptance remain open |
 | M10 Evaluation | IN_PROGRESS | `docs/REAL_WORLD_VALIDATION_PLAN.md`; typed corpus/evidence harness; D026 authority classes, deeper diagnostics/preservation, official Khronos adapter, render comparison | 085545efdda09aa3a77aa115ce521ab4dfecb3b0 | RW0–RW5 addendum controls real-world evaluation; untouched RW2 assets and full human-reference arm remain open |
 | M11 Docs and Builder posts | IN_PROGRESS | Official-rules audit and `docs/CONTEST_COMPLIANCE_PLAN.md` |  | Public repo, final architecture, video, Builder posts, and submission copy remain open |
 | M12 Release and submission | NOT_STARTED |  |  | Mandatory checkpoint before submission |
@@ -52,11 +52,32 @@ executed action cannot verify until the agent compares recorded source and candi
 D038 and D063 make that action cycle repeatable rather than adding a special second pass. After
 Shepherd, the user chooses the current input or candidate as Iteration 1; Refine archives each pass,
 shows 4.1/4.2/4.3 in the rail, and invokes the same workspace-scoped agent with fresh sensing and
-authorization. Remaining D036 work is representative
-remote restart/idempotency acceptance. Deterministic code remains the measurement, enforcement,
+authorization. D036's representative remote restart/idempotency acceptance now passes.
+Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D105 remote web command boundary: hosted agent actions now become schema-versioned DynamoDB
+  receipts and encrypted SQS messages when the deployment queue is configured. The web request
+  returns HTTP 202 immediately; a one-message Lambda consumer invokes the private workspace-bound
+  AgentCore session, and the notebook polls bounded status before reloading durable state. Local
+  Uvicorn keeps its existing synchronous adapter. Focused tests prove actor binding, command-ID
+  conflict rejection, safe pre-dispatch resend, in-flight duplicate suppression, and an accepted
+  target route that does not start a local agent. The web build and deployment templates add a
+  gated x86_64 image, separate least-privilege roles, encrypted queue/DLQ, dispatcher, and one-task
+  ECS Express service. Live deployment remains open.
+
+- D104 complete AgentCore acceptance: the frozen `broken-normalization` provider case used its exact
+  122 × 182 × 40 cm target through the deployed private runtime. Planning stopped at the approval
+  interrupt; approval completed normalization, name repair, packaged Chromium evidence, deterministic
+  verification, and visual reassessment. The durable result is `COMPLETE` and download-ready with no
+  failed checks and only the expected material-budget warning. Kimi confirmed corrected orientation,
+  scale, grounding, retained parts, and names at 0.95 confidence. The paid turn took 114.76 seconds
+  and used 169,391 input plus 1,909 output tokens. An exact duplicate approval preserved record
+  version 5. After `StopRuntimeSession` terminated the managed microVM, the same session and command
+  rehydrated that identical `COMPLETE`, version-5 result, proving exactly-once behavior without
+  process memory. Step 5 of the deployment runbook is complete.
 
 - D104 live AgentCore proof: CloudFormation deployed the immutable ARM64 AgentCore image and a
   separate service-only execution role. A direct typed `status` invocation returned HTTP 200 for a
@@ -1242,7 +1263,7 @@ RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. The least-
 `asset-shepherd` AWS runtime profile, exact Kimi resource access, `us-east-1`, budget alert, and live
 8/8 Kimi gate are confirmed. Luna remains unavailable behind its account agreement but no longer
 blocks the recommended Kimi path. M9 is blocked on implementation proof rather than model access:
-full cloud-state phase replay, an ARM64 Linux Chromium image, AgentCore, and ECS Express deployment. The
+the ECS Express web tier and remote browser acceptance remain. The
 submission also remains blocked on the public-repository, free judge-access,
 architecture, video, disclosure, release-scan, and entrant-attestation gates in
 `docs/CONTEST_COMPLIANCE_PLAN.md`. A human-cleaned reference and manual-time record remain required
@@ -1250,10 +1271,8 @@ for the full RW4 comparison gate.
 
 ## Next action
 
-Complete Step 3's kill-and-replace matrix against the live S3 artifact/session adapter and
-conditional DynamoDB workspace/command adapter. Then package and test the ARM64
-AgentCore/Chromium container, deploy the thin web tier through ECS Express Mode, and rerun the same
-acceptance cases remotely. Preserve the current
+Connect the existing FastAPI/Jinja product to the private AgentCore command boundary, deploy that
+thin web tier through ECS Express Mode, and rerun the browser acceptance cases remotely. Preserve the current
 mutation scope, exact authorization, durability, and invariant checks; do not restore deterministic
 target-dependent planning or create a second conversational authority.
 

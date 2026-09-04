@@ -72,11 +72,11 @@ until the remote-product gate passes.
 - [x] Step 4 deployable visual sensing. CodeBuild produced a `linux/arm64` image, then launched that
   exact image and passed four source views, four shared-scale views, masks, and the application
   import gate through packaged Debian Chromium. The accepted compressed image is 387,633,373 bytes.
-- [ ] Step 5 AgentCore runtime. The private runtime, dedicated service-only role, typed status,
+- [x] Step 5 AgentCore runtime. The private runtime, dedicated service-only role, typed status,
   planning, exact approval interrupt/resume, deterministic execution, Chromium reassessment, and
-  packaging paths are live. The first broken-robot proof reached deterministic verification but
-  correctly stopped `BLOCKED` after Kimi rejected its own candidate; a successful completion and
-  exactly-once replay still remain.
+  packaging paths are live. The frozen broken-normalization case completed with a verified,
+  packaged candidate; exact duplicate approval and a forced runtime replacement both rehydrated
+  the same durable version without repeating the mutation.
 - [ ] Step 6 remote web product.
 - [ ] Step 7 operations and cleanup.
 - [ ] Step 8 remote M9 acceptance.
@@ -185,13 +185,16 @@ fallback.
 flowchart TD
     B[Browser] --> W[ECS Express Mode<br/>Managed HTTPS + FastAPI/Jinja]
     B -->|presigned upload/download| S3[Private S3 asset storage]
-    W -->|IAM-authorized InvokeAgentRuntime| A[AgentCore Runtime]
+    W -->|typed command + 202 receipt| Q[Encrypted SQS command queue]
+    Q --> L[Lambda dispatcher]
+    L -->|IAM-authorized InvokeAgentRuntime| A[AgentCore Runtime]
     A --> ST[Strands agent]
     ST --> BR[Amazon Bedrock model]
     ST --> T[Deterministic GLB tools]
     T --> S3
     ST --> SS[Strands S3 session snapshots]
     W --> D[DynamoDB workspace and command state]
+    L --> D
     A --> D
     A --> CW[CloudWatch logs, metrics, and traces]
     W --> CW
@@ -202,7 +205,8 @@ flowchart TD
     IAM -. service identity .-> A
 ```
 
-The web service authenticates users and invokes AgentCore's regional API with its IAM task role.
+The web service authenticates users and enqueues bounded commands with its IAM task role. A
+least-privilege Lambda consumer invokes AgentCore's regional API outside the browser request.
 The browser does not receive AWS credentials and does not invoke the agent runtime directly.
 PrivateLink, custom AgentCore VPC connectivity, Route 53, and a custom domain are deferred rather
 than implied by the contest deployment.
@@ -600,8 +604,20 @@ problem: the smoke seed bypassed semantic intake, so its height-only description
 to a synthetic 1.8 m cube; log-space fitting selected a 1.0 scale and Kimi correctly rejected the
 remaining 3.4 m height. The two paid turns used 642,488 input and 16,402 output tokens in total. An
 exact replay of the second approval returned the same blocked result while the durable record
-remained version 8, proving persisted command idempotency. A representative fully specified target,
-successful candidate, and replaced-runtime replay remain required before Step 5 is checked.
+remained version 8, proving persisted command idempotency.
+
+The final Step 5 acceptance used the frozen `broken-normalization` provider case and its fully
+specified 122 × 182 × 40 cm target. `confirm_target` stopped at the exact approval interrupt;
+approval then completed normalization, name repair, Chromium source/candidate/shared-scale evidence,
+deterministic verification, visual reassessment, and packaging. The durable result was `COMPLETE`
+and download-ready with no failed checks; its only remaining warning was the expected material
+budget warning. Kimi's candidate reassessment explicitly confirmed the target dimensions, corrected
+orientation, grounding, retained parts, and repaired names at 0.95 confidence. The paid turn took
+114.76 seconds and recorded 169,391 input plus 1,909 output tokens. Replaying the identical approval
+left record version 5 unchanged. Calling `StopRuntimeSession`, waiting for the managed microVM to
+terminate, and invoking the same session and command again rehydrated that same `COMPLETE`,
+download-ready version 5. This closes the successful multi-turn, exactly-once, and replaceable-runtime
+gate without relying on process memory.
 
 ## Step 6 — Deploy the interactive web product
 
@@ -610,9 +626,9 @@ compatibility spike. Do not create an App Runner service; AWS has closed it to n
 
 ### 6.1 Container compatibility
 
-- Add one production Linux container definition that installs only declared project/runtime
+- Build one production x86_64 Linux container that installs only declared project/runtime
   dependencies and starts Uvicorn on the port supplied by the hosting environment.
-- Run that exact image locally with Nova and complete upload, approval, refinement, and download.
+- Run that exact image in CodeBuild and prove `/healthz` plus the workspace entry route before push.
 - Prove the process makes no durability assumption about its container filesystem.
 - Keep visual sensing behind the Step 4 portable-renderer boundary; do not install desktop Blender
   in the ECS web container.
@@ -622,8 +638,8 @@ compatibility spike. Do not create an App Runner service; AWS has closed it to n
 - Push the accepted image to one private ECR repository.
 - Create one ECS Express Mode service for the initial gate, with its generated load balancer,
   health check, bounded CPU/memory, and a task role containing only the required
-  AgentCore/S3/DynamoDB/CloudWatch permissions. Keep the infrastructure role separate from the task
-  execution role and application task role.
+  SQS/S3/DynamoDB/intake-model permissions. Keep the infrastructure role separate from the task
+  execution role, application task role, and Lambda dispatch role.
 - Supply non-secret model, region, bucket, table, retention, and runtime identifiers through service
   configuration. Use AWS-managed identity/secret mechanisms for anything sensitive.
 - Keep at least one explicit version/tag and rollback target until the remote gate passes.
@@ -631,7 +647,8 @@ compatibility spike. Do not create an App Runner service; AWS has closed it to n
 ### 6.3 Browser and service boundaries
 
 The web service owns browser routes, user authentication, gallery authorization, presigned transfer,
-and AgentCore invocation. It does not own model reasoning or bypass the structured workflow state.
+and typed command submission. The Lambda dispatcher owns the long-lived AgentCore invocation but no
+model reasoning or workflow state. Neither layer bypasses the structured workflow authority.
 Keep gallery capacity and workspace isolation exactly as in the local product.
 
 For the competition deployment, provide either logged-out access or one documented test user.
