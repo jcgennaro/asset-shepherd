@@ -31,8 +31,25 @@ Parameters:
     Type: Number
     Default: 5368709120
     MinValue: 1073741824
+  AlarmEmailAddress:
+    Type: String
+    NoEcho: true
+    AllowedPattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
 
 Resources:
+  AlarmNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Asset Shepherd alarms
+      Subscription:
+        - Endpoint: !Ref AlarmEmailAddress
+          Protocol: email
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
   DispatcherErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -50,6 +67,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -73,6 +92,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -97,6 +118,8 @@ Resources:
       Threshold: 840000
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -120,6 +143,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -143,6 +168,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -166,6 +193,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -189,6 +218,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -215,6 +246,8 @@ Resources:
       Threshold: !Ref StorageAlarmBytes
       ComparisonOperator: GreaterThanOrEqualToThreshold
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
       Tags:
         - Key: Project
           Value: asset-shepherd
@@ -346,6 +379,9 @@ Resources:
         }
 
 Outputs:
+  AlarmNotificationTopicArn:
+    Description: SNS topic used by every bounded Asset Shepherd alarm.
+    Value: !Ref AlarmNotificationTopic
   DashboardName:
     Description: CloudWatch dashboard for the bounded contest deployment.
     Value: !Ref OperationsDashboard

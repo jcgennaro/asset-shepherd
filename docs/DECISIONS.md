@@ -4,6 +4,36 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D108 — Route all contest alarms through one confirmed private email topic
+
+**Date:** 2026-09-04
+
+**Status:** ACCEPTED; deployment and recipient confirmation pending
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation and deployment
+
+**Context**
+
+The eight bounded project alarms were live and healthy but deliberately had no notification action.
+Step 7 requires one actionable route. The user supplied a private notification address, which must
+not be committed, logged by the application, or duplicated across alarm resources.
+
+**Decision**
+
+Create one standard SNS topic in the operations stack and subscribe the deployment-supplied email
+through a `NoEcho` CloudFormation parameter. Attach all eight alarms to that topic only for entry
+into `ALARM`; do not emit recovery or initial-state email noise. Require the recipient to confirm
+the AWS subscription before treating the route as operational. Keep the address out of repository
+content, outputs, application configuration, and application logs.
+
+**Evidence and consequences**
+
+Source acceptance requires exactly eight alarm actions, one shared topic, a `NoEcho` address
+parameter, and no committed Gmail address. CloudFormation validation, live deployment, subscription
+confirmation, and a bounded delivery test remain before this decision closes the notification gate.
+
 ### D107 — Bind deployed Bedrock inference to one immutable narrow content boundary
 
 **Date:** 2026-09-04

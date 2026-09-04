@@ -221,8 +221,8 @@ parameters, container images, source archives, task environment values, or brows
 
 ## Operations stack and cleanup
 
-`cloudformation/operations.yaml` creates the low-cost `asset-shepherd-contest` CloudWatch dashboard
-and eight no-notification alarms. Deploy it after the state and web stacks so its parameters can use
+`cloudformation/operations.yaml` creates the low-cost `asset-shepherd-contest` CloudWatch dashboard,
+eight alarms, and one email SNS topic. Deploy it after the state and web stacks so its parameters can use
 their exact generated bucket, function, and queue names. The alarms cover dispatcher errors,
 throttles, duration, command backlog/DLQ depth, selected-model Bedrock errors, and a 5 GiB workspace
 storage soft limit. The account's existing AWS Budget remains the spend alert.
@@ -239,8 +239,12 @@ aws cloudformation deploy `
     DispatcherFunctionName='asset-shepherd-contest-agent-dispatch' `
     CommandQueueName='asset-shepherd-contest-agent-commands' `
     DeadLetterQueueName='asset-shepherd-contest-agent-commands-dlq' `
-    DefaultModelId='moonshotai.kimi-k2.5'
+    DefaultModelId='moonshotai.kimi-k2.5' `
+    AlarmEmailAddress='<notification-email>'
 ```
+
+The email parameter is `NoEcho` and must never be committed. AWS sends one confirmation message;
+the SNS subscription cannot deliver alarm notifications until its recipient confirms it.
 
 Apply bounded log retention with:
 
