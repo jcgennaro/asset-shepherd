@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Asset Shepherd private workspace artifacts and conditional workflow state.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: contest
+    AllowedPattern: "[a-z0-9-]+"
+  RuntimeRoleName:
+    Type: String
+    Default: AssetShepherdBedrockRuntime
+    AllowedPattern: "[A-Za-z0-9+=,.@_-]+"
+  RetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    MaxValue: 30
+
+Resources:
+  WorkspaceBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpirePrivateWorkspaces
+            Status: Enabled
+            ExpirationInDays: !Ref RetentionDays
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+      VersioningConfiguration:
+        Status: Enabled
+
+  WorkspaceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WorkspaceBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt WorkspaceBucket.Arn
+              - !Sub "${WorkspaceBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  WorkspaceTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: owner_id
+          AttributeType: S
+        - AttributeName: updated_at
+          AttributeType: S
+      GlobalSecondaryIndexes:
+        - IndexName: OwnerUpdatedIndex
+          KeySchema:
+            - AttributeName: owner_id
+              KeyType: HASH
+            - AttributeName: updated_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+      TimeToLiveSpecification:
+        AttributeName: expires_at_epoch
+        Enabled: true
+
+  RuntimeDataPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: AssetShepherdWorkspaceData
+      Roles:
+        - !Ref RuntimeRoleName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ListWorkspacePrefixes
+            Effect: Allow
+            Action: s3:ListBucket
+            Resource: !GetAtt WorkspaceBucket.Arn
+            Condition:
+              StringLike:
+                s3:prefix:
+                  - workspaces/*
+                  - sessions/*
+          - Sid: ManageWorkspaceObjects
+            Effect: Allow
+            Action:
+              - s3:DeleteObject
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - !Sub "${WorkspaceBucket.Arn}/workspaces/*"
+              - !Sub "${WorkspaceBucket.Arn}/sessions/*"
+          - Sid: ManageWorkspaceRecords
+            Effect: Allow
+            Action:
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:UpdateItem
+            Resource:
+              - !GetAtt WorkspaceTable.Arn
+              - !Sub "${WorkspaceTable.Arn}/index/*"
+
+Outputs:
+  WorkspaceBucketName:
+    Description: Private bucket for GLBs, evidence, packages, and Strands snapshots.
+    Value: !Ref WorkspaceBucket
+  WorkspaceTableName:
+    Description: Conditional workspace and command-state table.
+    Value: !Ref WorkspaceTable
+  OwnerUpdatedIndexName:
+    Description: Gallery lookup index scoped by application owner identifier.
+    Value: OwnerUpdatedIndex

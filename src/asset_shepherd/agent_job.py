@@ -220,8 +220,22 @@ class AgentJob:
 
     def _persist_runtime_state(self) -> None:
         """Atomically persist the minimum deterministic state needed after a restart."""
+        workspace_root = self.output_dir.parent.resolve(strict=False)
+        working_source: str | None = None
+        schema_version = 2
+        if self.turn_index:
+            try:
+                working_source = (
+                    self.source.resolve(strict=True).relative_to(workspace_root).as_posix()
+                )
+            except ValueError:
+                # Standalone CLI jobs may intentionally reference an immutable source outside
+                # their output tree. Keep their established local-only format; hosted/cloud jobs
+                # always own their source under the workspace and therefore remain schema v2.
+                schema_version = 1
+                working_source = str(self.source.resolve(strict=True))
         state = {
-            "schema_version": 1,
+            "schema_version": schema_version,
             "source_sha256": (
                 self.inspection.package.file_sha256 if self.inspection is not None else None
             ),
@@ -231,7 +245,7 @@ class AgentJob:
             "agent_orchestrated": self.agent_orchestrated,
             "max_turns": self.max_turns,
             "turn_index": self.turn_index,
-            "working_source": str(self.source) if self.turn_index else None,
+            "working_source": working_source,
             "prior_turns": [turn.model_dump(mode="json") for turn in self.prior_turns],
             "accepted": self.accepted,
             "phase": (
@@ -260,7 +274,8 @@ class AgentJob:
         if not state_path.is_file():
             return
         state = json.loads(state_path.read_text(encoding="utf-8"))
-        if state.get("schema_version") != 1:
+        schema_version = state.get("schema_version")
+        if schema_version not in {1, 2}:
             raise AgentWorkflowError("Unsupported agent runtime-state version")
         started_at = state.get("started_at")
         if started_at is not None:
@@ -284,7 +299,13 @@ class AgentJob:
         self.accepted = bool(state.get("accepted", False))
         working_source = state.get("working_source")
         if working_source is not None:
-            restored_source = Path(str(working_source)).resolve(strict=True)
+            persisted_source = Path(str(working_source))
+            if schema_version == 2:
+                if persisted_source.is_absolute() or ".." in persisted_source.parts:
+                    raise AgentWorkflowError("Persisted working source is not workspace-relative")
+                restored_source = (self.output_dir.parent / persisted_source).resolve(strict=True)
+            else:
+                restored_source = persisted_source.resolve(strict=True)
             turn_root = (self.output_dir.parent / "turns").resolve(strict=False)
             original_source = self.original_source.resolve(strict=True)
             if restored_source != original_source:

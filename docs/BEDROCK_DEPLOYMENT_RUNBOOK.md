@@ -1,7 +1,8 @@
 # Bedrock and Strands Deployment Runbook
 
-**Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate through the least-privilege
-runtime role, while cloud-portable state, Linux rendering, and remote deployment remain open
+**Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate and the private S3,
+DynamoDB, and Strands-session foundation is deployed through the least-privilege runtime role;
+full interruption replay, Linux rendering, AgentCore, and remote web deployment remain open
 
 **Last verified against official documentation:** 2026-09-03
 
@@ -52,8 +53,7 @@ until the remote-product gate passes.
   `1.22376 x 0.820321 x 0.268958 m` candidate grounded at `Y=0`. This qualifies Nova as a usable
   diagnostic path, not the default parity model or a completed browser matrix.
 - [x] D093 supersedes D075 and selects ECS Express Mode as the first public FastAPI host beside
-  IAM-controlled AgentCore. AWS has closed App Runner to new customers. No remote resources have
-  been deployed yet.
+  IAM-controlled AgentCore. AWS has closed App Runner to new customers.
 - [x] Step 2.3 fixed Bedrock provider gate. Kimi passes 8/8 safety and 8/8 semantic/visual cases
   through the least-privilege profile. Mistral Large 3 fails two hard semantic cases and is not a
   production default. Luna's optional Bedrock evaluation remains separately blocked by its account
@@ -64,7 +64,10 @@ until the remote-product gate passes.
 - [x] D096 native Gemini comparator implementation. The exact Gemini 3.8 Flash model is available
   for isolated local comparison without entering the canonical AWS deployment. Native structured
   intake and one complete broken-normalization workflow pass; the full release matrix has not run.
-- [ ] Step 3 cloud-portable state and artifacts.
+- [ ] Step 3 cloud-portable state and artifacts. The retained `asset-shepherd-state` CloudFormation
+  stack, content-addressed S3 artifact manifests, S3 Strands-session selection, owner-indexed
+  DynamoDB records, conditional versions, and a live clean-process round trip pass. Full
+  kill-and-resume coverage at every workflow phase remains.
 - [ ] Step 4 deployable visual sensing. The portable Chromium/model-viewer implementation and local
   source/shared-scale gates pass; the clean Linux container gate remains open.
 - [ ] Step 5 AgentCore runtime.
@@ -109,13 +112,16 @@ flowchart LR
     A -->|HTTPS Converse calls| BR[Amazon Bedrock Kimi K2.5]
     A --> T[Local deterministic GLB tools]
     T --> R[Local headless Chromium renderer]
-    A --> F[Local build/web jobs and Strands snapshots]
+    A --> C[Local disposable workspace cache]
+    A -->|session snapshots| S3[Private S3 bucket]
+    W -->|workspace pointers| D[DynamoDB table]
 ```
 
-Only the Bedrock inference box is in AWS. The authenticated `asset-shepherd` AWS CLI profile and
-its short-lived assumed-role session authorize those calls; they do not deploy the site. No Asset
-Shepherd ECR repository, ECS service, AgentCore runtime, S3 workspace bucket, or DynamoDB workspace
-table exists yet.
+The browser, web server, agent, tools, renderer, and disposable cache are still local. Bedrock
+inference, a private S3 workspace/session bucket, and a conditional DynamoDB workspace table are
+now in AWS. The authenticated `asset-shepherd` AWS CLI profile assumes the same restricted runtime
+role intended for the service. No Asset Shepherd ECR repository, ECS service, or AgentCore runtime
+exists yet.
 
 The optional Meta/Muse and Google/Gemini comparators are separate local test configurations: local
 Strands calls the selected external API over outbound HTTPS instead of Bedrock. They are
@@ -132,13 +138,18 @@ Current AWS evidence is visible in these places in `us-east-1`:
 - **IAM → Roles → `AssetShepherdBedrockRuntime`:** review the least-privilege runtime role. The
   friendly local profile name `asset-shepherd` exists in the workstation's AWS configuration, not
   as a console service.
+- **CloudFormation → Stacks → `asset-shepherd-state`:** review the deployed retained state stack.
+- **S3:** the generated private workspace bucket contains content-addressed workspace objects,
+  immutable manifests, and Strands session snapshots. Public access is blocked.
+- **DynamoDB:** the generated workspace table contains the owner-scoped active record and its
+  current manifest/version pointer. TTL is seven days.
 - **Billing and Cost Management:** view Bedrock charges after AWS's normal reporting delay.
 
 Detailed model invocation logging is disabled by default and has not been enabled by this project.
 Do not enable request/response or image logging casually: it can persist user prompts and evidence
 to CloudWatch Logs or S3 and needs an explicit privacy/retention decision.
 
-### Intended AWS topology (not yet deployed)
+### Intended complete AWS topology (partially deployed)
 
 The following AWS-style diagram is the canonical visual for the planned contest deployment.
 Its source is an editable SVG; the checked-in PNG is the presentation-ready rendered copy.
@@ -224,9 +235,9 @@ or agent contracts.
 |---|---|---|
 | Workflow model | Capability-aware Bedrock Converse adapter with Kimi accepted by the fixed 8/8 gate; Luna Responses, direct-OpenAI development, opt-in Meta/Muse Responses, and native Gemini evaluation adapters remain | Re-run the same gate in the deployed runtime |
 | Intake model | Shared Converse constrained-tool adapter, Luna Responses, OpenAI/Meta development, native Gemini structured output, and deterministic test adapters | Re-run typed intake in the deployed runtime |
-| Agent session | `SnapshotSessionManager` with `LocalFileStorage` under one workspace | Replace storage with Strands S3 session storage while retaining `workspace_id` |
-| Workspace record | Atomic JSON files plus process-local locking | DynamoDB record with optimistic/conditional writes |
-| Binary artifacts | Per-workspace local directories | Private S3 prefixes with hashes, lifecycle, and presigned transfer |
+| Agent session | Local snapshots by default; `S3SessionManager` when the workspace bucket is configured | Live S3 selection passes; prove every approval/refinement resume in a replaced process |
+| Workspace record | Atomic JSON by default; owner-indexed DynamoDB record with monotonic conditional versions when configured | Live process-replacement and stale-write tests pass; complete the full phase matrix |
+| Binary artifacts | Local directories by default; hash-verified S3 objects plus immutable versioned manifests when configured | Live clean-process rehydration and GLB deduplication pass; add browser presigned transfer |
 | Visual sensing | Vendored model-viewer/Three.js through headless Chromium plus masks | Prove the same renderer in the ARM64 Linux runtime image |
 | Interactive preview | Browser-local `<model-viewer>` | Retain; serve GLB URLs from authenticated/presigned object storage |
 | Web application | FastAPI/Jinja/Uvicorn on localhost | Deploy independently from AgentCore through the simplest stable AWS web route |
@@ -474,14 +485,18 @@ workspaces/<workspace_id>/packages/<package_id>/result.zip
 sessions/<workspace_id>/...
 ```
 
-Store hashes and object version/ETag metadata in the workspace record. Presigned URLs must be
-short-lived and scoped to one exact object operation.
+The deployed adapter stores each distinct file once under a workspace-scoped content hash and
+writes an immutable manifest for every record version. DynamoDB conditionally advances the active
+manifest pointer, preventing racing callbacks from both becoming authoritative. Hydration rejects
+escaping paths and verifies every SHA-256 before exposing a file. Presigned URLs must be short-lived
+and scoped to one exact object operation.
 
 ### 3.2 Strands session storage
 
-Replace `LocalFileStorage` with Strands S3 session storage. Preserve the same `workspace_id`, stable
-agent ID, and exact interrupt-resume behavior. Define deletion and retention for session messages;
-do not add AgentCore Memory in this phase.
+`ASSET_SHEPHERD_SESSION_BUCKET` now selects Strands `S3SessionManager`; absence of that setting
+retains `SnapshotSessionManager` plus `LocalFileStorage`. Both preserve the same `workspace_id` and
+stable agent ID. The deployed bucket lifecycle supplies seven-day retention; AgentCore Memory is
+not used.
 
 ### 3.3 DynamoDB workspace state
 

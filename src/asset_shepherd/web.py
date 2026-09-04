@@ -39,6 +39,7 @@ from asset_shepherd.bedrock_converse import (
     resolve_bedrock_converse_model,
     supported_bedrock_converse_models,
 )
+from asset_shepherd.cloud_workspace import S3DynamoWorkspaceRepository
 from asset_shepherd.glb import iter_world_matrices, load_glb, world_bounds
 from asset_shepherd.hosted_workspace import (
     MAX_HOSTED_WORKSPACES,
@@ -47,6 +48,7 @@ from asset_shepherd.hosted_workspace import (
     HostedWorkspaceError,
     HostedWorkspaceStore,
     WorkspacePhase,
+    WorkspaceRepository,
     copy_validated_upload,
 )
 from asset_shepherd.inspector import inspect_asset, preflight_asset
@@ -3332,6 +3334,31 @@ def create_app(
     family = discover_policy_family(project_root.resolve(strict=True))
     analyzer = intake_analyzer or DeterministicTargetIntakeAnalyzer()
     configured_provider = os.environ.get("ASSET_SHEPHERD_MODEL_PROVIDER")
+    workspace_bucket = os.environ.get("ASSET_SHEPHERD_WORKSPACE_BUCKET")
+    workspace_table = os.environ.get("ASSET_SHEPHERD_WORKSPACE_TABLE")
+    workspace_owner = os.environ.get("ASSET_SHEPHERD_WORKSPACE_OWNER_ID")
+    cloud_values = (workspace_bucket, workspace_table, workspace_owner)
+    if any(cloud_values) and not all(cloud_values):
+        raise ValueError(
+            "Cloud workspace storage requires ASSET_SHEPHERD_WORKSPACE_BUCKET, "
+            "ASSET_SHEPHERD_WORKSPACE_TABLE, and ASSET_SHEPHERD_WORKSPACE_OWNER_ID"
+        )
+    workspace_repository: WorkspaceRepository | None = None
+    if workspace_bucket and workspace_table and workspace_owner:
+        workspace_region = (
+            os.environ.get("ASSET_SHEPHERD_AWS_REGION")
+            or os.environ.get("AWS_REGION")
+            or os.environ.get("AWS_DEFAULT_REGION")
+        )
+        if not workspace_region:
+            raise ValueError("Cloud workspace storage requires an AWS region")
+        workspace_repository = S3DynamoWorkspaceRepository(
+            bucket=workspace_bucket,
+            table=workspace_table,
+            owner_id=workspace_owner,
+            region=workspace_region,
+            aws_profile=os.environ.get("AWS_PROFILE"),
+        )
     agent_model_choices: tuple[BedrockConverseModel, ...] = (
         supported_bedrock_converse_models() if configured_provider == "bedrock-converse" else ()
     )
@@ -3358,6 +3385,8 @@ def create_app(
         values["ASSET_SHEPHERD_INTAKE_PROVIDER"] = "bedrock-converse"
         values["ASSET_SHEPHERD_MODEL_ID"] = capability.model_id
         values["ASSET_SHEPHERD_INTAKE_MODEL"] = capability.model_id
+        if workspace_bucket:
+            values.setdefault("ASSET_SHEPHERD_SESSION_BUCKET", workspace_bucket)
         values.pop("ASSET_SHEPHERD_WORKFLOW_REASONING", None)
         values.pop("ASSET_SHEPHERD_INTAKE_REASONING", None)
         return values
@@ -3376,6 +3405,7 @@ def create_app(
         configured_turns,
         verification_function,
         model_values if agent_model_choices else None,
+        workspace_repository,
     )
     hosted_start_drafts: dict[str, HostedStartDraft] = {}
     hosted_start_lock = RLock()

@@ -120,6 +120,45 @@ def test_source_route_resolves_the_selected_immutable_iteration(tmp_path: Path) 
     assert store.turn_index(workspace.record.workspace_id) == 1
 
 
+def test_source_route_resolves_portable_relative_iteration_path(tmp_path: Path) -> None:
+    """A cloud-restored workspace resolves its iteration without a workstation path."""
+    store = HostedWorkspaceStore(tmp_path / "hosted", _family())
+    workspace = _create(store)
+    selected = workspace.root / "turns" / "turn-000" / "output" / "repaired.glb"
+    selected.parent.mkdir(parents=True)
+    selected.write_bytes(CLEAN_PATH.read_bytes())
+    (workspace.root / "runtime_state.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "working_source": "turns/turn-000/output/repaired.glb",
+                "turn_index": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert store.source_path(workspace.record.workspace_id) == selected.resolve()
+
+
+def test_source_route_rejects_escaping_relative_iteration_path(tmp_path: Path) -> None:
+    """A portable runtime state cannot escape its downloaded workspace prefix."""
+    store = HostedWorkspaceStore(tmp_path / "hosted", _family())
+    workspace = _create(store)
+    (workspace.root / "runtime_state.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "working_source": "../another-workspace/source.glb",
+                "turn_index": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert store.source_path(workspace.record.workspace_id) is None
+
+
 def test_archived_turn_output_is_resolved_only_by_its_recorded_hash(tmp_path: Path) -> None:
     """Notebook history cannot substitute another GLB for a completed turn."""
     store = HostedWorkspaceStore(tmp_path / "hosted", _family())

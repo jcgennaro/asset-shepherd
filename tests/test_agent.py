@@ -27,6 +27,7 @@ from asset_shepherd.agent_runtime import (
     CompleteResponseMetaModel,
     CompleteResponseOpenAIModel,
     WorkflowActivityCallback,
+    _snapshot_session_manager,
     build_environment_model,
     build_live_agent,
     build_scripted_agent,
@@ -900,6 +901,56 @@ def test_persistent_session_requires_both_identity_and_storage(tmp_path: Path) -
         build_scripted_agent(job, session_id="asset-session")
     with pytest.raises(AgentWorkflowError, match="both an ID and isolated storage"):
         build_scripted_agent(job, session_root=tmp_path / "strands-state")
+
+
+def test_cloud_session_configuration_uses_s3_without_container_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A deployed turn binds its Strands session to the workspace bucket."""
+    captured: dict[str, object] = {}
+
+    class FakeS3SessionManager:
+        """Capture constructor values without making an AWS request."""
+
+        def __init__(self, **values: object) -> None:
+            captured.update(values)
+
+    monkeypatch.setattr(
+        "asset_shepherd.agent_runtime.S3SessionManager",
+        FakeS3SessionManager,
+    )
+
+    manager = _snapshot_session_manager(
+        "workspace-session",
+        tmp_path / "container-cache",
+        {
+            "ASSET_SHEPHERD_SESSION_BUCKET": "private-workspaces",
+            "ASSET_SHEPHERD_SESSION_PREFIX": "sessions/contest",
+            "ASSET_SHEPHERD_AWS_REGION": "us-east-1",
+        },
+    )
+
+    assert manager is not None
+    assert captured == {
+        "session_id": "workspace-session",
+        "bucket": "private-workspaces",
+        "prefix": "sessions/contest",
+        "region_name": "us-east-1",
+    }
+
+
+def test_cloud_session_configuration_rejects_an_unsafe_prefix(tmp_path: Path) -> None:
+    """Deployment configuration cannot escape its reviewed S3 namespace."""
+    with pytest.raises(AgentWorkflowError, match="safe S3 prefix"):
+        _snapshot_session_manager(
+            "workspace-session",
+            tmp_path / "container-cache",
+            {
+                "ASSET_SHEPHERD_SESSION_BUCKET": "private-workspaces",
+                "ASSET_SHEPHERD_SESSION_PREFIX": "sessions/../other",
+            },
+        )
 
 
 @pytest.mark.live

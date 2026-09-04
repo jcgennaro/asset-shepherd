@@ -4,6 +4,53 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D103 — Back replaceable processes with immutable S3 manifests and conditional DynamoDB state
+
+**Date:** 2026-09-03
+
+**Status:** ACCEPTED
+
+**Decision owner:** Codex
+
+**Milestone:** M9 hosted conversation and deployment
+
+**Context**
+
+The local hosted product already survives a process restart because its files remain on one
+workstation. ECS and AgentCore processes are replaceable, so an absolute Windows path, a mutable
+container directory, or a last-writer-wins remote JSON object cannot be the production authority.
+Approval commands also need one atomic version boundary so two callbacks cannot both advance and
+package the same workspace.
+
+**Decision**
+
+Deploy one retained private state stack: an encrypted/versioned S3 bucket with a seven-day
+lifecycle, an encrypted on-demand DynamoDB table with owner/update index and TTL, and an
+exact-resource policy on the restricted runtime role. Preserve local storage as the default.
+Complete cloud configuration selects Strands `S3SessionManager` plus an S3/Dynamo workspace
+repository; partial configuration fails startup instead of silently losing durability.
+
+Persist workspace files as workspace-scoped content-addressed S3 objects. Write one immutable
+manifest per monotonically increasing record version, then conditionally advance DynamoDB from the
+expected version to that manifest. Hydration materializes a disposable local cache, rejects
+absolute or escaping paths, and verifies every SHA-256. Persist iteration references relative to
+the workspace root so the same state can move from Windows to a Linux container; continue to read
+legacy absolute-path schema version 1 locally.
+
+**Evidence and consequences**
+
+Unit acceptance proves clean-process restoration, conditional stale-write rejection, unchanged-GLB
+deduplication, manifest path confinement, and fail-closed cloud configuration. A live proof through
+the restricted `asset-shepherd` role replaced the process cache after intake, after the approval
+interrupt, and after verified packaging; restored exact GLBs and the interrupt; executed one
+authorized repair; preserved an exact duplicate package; queried the owner index; and deleted the
+active smoke pointer. The cloud-configured FastAPI app also returned its gallery.
+
+S3 retains immutable orphan/content history until lifecycle expiration; deleting the active
+DynamoDB pointer does not immediately erase those objects. The full intake/approval/repair/refine/
+agent-orchestrated refinement replacement is still required before Step 3 closes. Browser presigned transfer,
+multi-user authentication, Linux rendering, AgentCore, and ECS remain later gates.
+
 ### D102 — Name direct verified-model downloads as dated Shepherd outputs
 
 **Date:** 2026-09-03

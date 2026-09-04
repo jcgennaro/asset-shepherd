@@ -12,7 +12,7 @@ from hashlib import sha256
 from os import environ
 from pathlib import Path
 from threading import RLock
-from typing import BinaryIO, Literal, Self, cast
+from typing import BinaryIO, Literal, Protocol, Self, cast
 from uuid import uuid4
 
 from pydantic import Field, JsonValue, ValidationError, model_validator
@@ -136,6 +136,7 @@ class HostedWorkspaceRecord(ContractModel):
     """Private, durable source of record for one hosted job conversation."""
 
     schema_version: int = 1
+    record_version: int = Field(default=0, ge=0)
     workspace_id: str = Field(pattern=r"^[0-9a-f]{32}$")
     created_at: datetime
     updated_at: datetime
@@ -211,6 +212,32 @@ class HostedWorkspaceError(ValueError):
     """Safe user-facing hosted-workspace validation failure."""
 
 
+class WorkspaceRepository(Protocol):
+    """Cloud backing contract for one replaceable local workspace cache."""
+
+    def list_record_json(self, *, limit: int) -> tuple[str, ...]:
+        """Return newest active record documents for the configured owner."""
+        raise NotImplementedError
+
+    def hydrate(self, workspace_id: str, destination: Path) -> bool:
+        """Materialize one current immutable workspace snapshot into destination."""
+        raise NotImplementedError
+
+    def persist(
+        self,
+        workspace_root: Path,
+        record_json: str,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Publish files and conditionally advance the authoritative record."""
+        raise NotImplementedError
+
+    def delete(self, workspace_id: str) -> None:
+        """Remove one active record; immutable objects expire by lifecycle policy."""
+        raise NotImplementedError
+
+
 def _write_json_atomic(path: Path, value: object) -> None:
     payload = json.dumps(value, indent=2, sort_keys=True)
     temporary = path.with_suffix(f"{path.suffix}.tmp")
@@ -256,6 +283,7 @@ class HostedWorkspaceStore:
         max_agent_turns: int = 5,
         verification_function: VerificationFunction = verify_repair,
         model_values_factory: Callable[[str], Mapping[str, str]] | None = None,
+        workspace_repository: WorkspaceRepository | None = None,
     ) -> None:
         """Bind durable workspaces to one trusted parameterized policy family."""
         self.work_root = work_root.resolve(strict=False)
@@ -266,6 +294,7 @@ class HostedWorkspaceStore:
         self.max_agent_turns = max_agent_turns
         self.verification_function = verification_function
         self.model_values_factory = model_values_factory
+        self.workspace_repository = workspace_repository
         self._lock = RLock()
 
     def _model_values(self, record: HostedWorkspaceRecord) -> Mapping[str, str]:
@@ -292,6 +321,17 @@ class HostedWorkspaceStore:
 
     def _all_records(self) -> tuple[HostedWorkspaceRecord, ...]:
         """Read active workspace summaries without reconstructing their runtimes."""
+        if self.workspace_repository is not None:
+            records = []
+            for value in self.workspace_repository.list_record_json(limit=MAX_HOSTED_WORKSPACES):
+                try:
+                    record = HostedWorkspaceRecord.model_validate_json(value)
+                except ValueError:
+                    continue
+                if record.deletion_status == "ACTIVE":
+                    records.append(record)
+            records.sort(key=lambda item: item.updated_at, reverse=True)
+            return tuple(records)
         records: list[HostedWorkspaceRecord] = []
         if not self.work_root.is_dir():
             return ()
@@ -312,6 +352,8 @@ class HostedWorkspaceStore:
 
     def source_path(self, workspace_id: str) -> Path | None:
         """Resolve the selected immutable iteration without reconstructing its runtime."""
+        if not self._hydrate(workspace_id):
+            return None
         try:
             root = self._record_path(workspace_id).parent.resolve(strict=True)
         except HostedWorkspaceError:
@@ -323,7 +365,13 @@ class HostedWorkspaceStore:
                 state = json.loads(state_path.read_text(encoding="utf-8"))
                 working_source = state.get("working_source")
                 if working_source:
-                    candidate = Path(str(working_source)).resolve(strict=True)
+                    persisted_source = Path(str(working_source))
+                    if state.get("schema_version") == 2:
+                        if persisted_source.is_absolute() or ".." in persisted_source.parts:
+                            return None
+                        candidate = (root / persisted_source).resolve(strict=True)
+                    else:
+                        candidate = persisted_source.resolve(strict=True)
                     turn_root = (root / "turns").resolve(strict=False)
                     if candidate != path.resolve(strict=True):
                         candidate.relative_to(turn_root)
@@ -336,6 +384,8 @@ class HostedWorkspaceStore:
 
     def original_source_path(self, workspace_id: str) -> Path | None:
         """Resolve the immutable R0 upload without selecting a later iteration."""
+        if not self._hydrate(workspace_id):
+            return None
         try:
             root = self._record_path(workspace_id).parent.resolve(strict=True)
             path = (root / "source.glb").resolve(strict=True)
@@ -347,6 +397,8 @@ class HostedWorkspaceStore:
     def archived_turn_output_path(self, workspace_id: str, turn_index: int) -> Path | None:
         """Resolve one completed turn's exact hash-bound GLB inside its workspace."""
         if turn_index < 0:
+            return None
+        if not self._hydrate(workspace_id):
             return None
         try:
             root = self._record_path(workspace_id).parent.resolve(strict=True)
@@ -393,6 +445,8 @@ class HostedWorkspaceStore:
 
     def turn_index(self, workspace_id: str) -> int:
         """Return the durable Refine iteration number without loading a model runtime."""
+        if not self._hydrate(workspace_id):
+            return 0
         try:
             state_path = self._record_path(workspace_id).parent / "runtime_state.json"
             if not state_path.is_file():
@@ -405,6 +459,8 @@ class HostedWorkspaceStore:
 
     def _replacement_root(self, workspace_id: str) -> Path:
         """Resolve an explicitly selected replacement inside the hosted root."""
+        if not self._hydrate(workspace_id):
+            raise HostedWorkspaceError("Choose an existing workspace to replace.")
         path = self._record_path(workspace_id)
         if not path.is_file():
             raise HostedWorkspaceError("Choose an existing workspace to replace.")
@@ -414,11 +470,33 @@ class HostedWorkspaceStore:
         return root
 
     def _persist(self, workspace: HostedWorkspace) -> None:
-        workspace.record = workspace.record.model_copy(update={"updated_at": datetime.now(UTC)})
+        expected_version = workspace.record.record_version
+        workspace.record = workspace.record.model_copy(
+            update={
+                "updated_at": datetime.now(UTC),
+                "record_version": expected_version + 1,
+            }
+        )
         _write_json_atomic(
             workspace.root / "workspace.json",
             workspace.record.model_dump(mode="json"),
         )
+        if self.workspace_repository is not None:
+            self.workspace_repository.persist(
+                workspace.root,
+                workspace.record.model_dump_json(),
+                expected_version=expected_version,
+            )
+
+    def _hydrate(self, workspace_id: str) -> bool:
+        """Refresh one local cache from the authoritative repository when configured."""
+        try:
+            destination = self._record_path(workspace_id).parent
+        except HostedWorkspaceError:
+            return False
+        if self.workspace_repository is None:
+            return (destination / "workspace.json").is_file()
+        return self.workspace_repository.hydrate(workspace_id, destination)
 
     def _activity_path(self, workspace_root: Path) -> Path:
         """Return the isolated observable-activity file for one workspace."""
@@ -493,6 +571,8 @@ class HostedWorkspaceStore:
 
     def activity(self, workspace_id: str) -> dict[str, object] | None:
         """Return one workspace's concise observable activity, never model reasoning text."""
+        if not self._hydrate(workspace_id):
+            return None
         try:
             root = self._record_path(workspace_id).parent
         except HostedWorkspaceError:
@@ -627,6 +707,8 @@ class HostedWorkspaceStore:
                 workspace = HostedWorkspace(record=record, root=root)
                 self._persist(workspace)
                 if replacement_root is not None and replacement_root != root:
+                    if self.workspace_repository is not None and replace_workspace_id is not None:
+                        self.workspace_repository.delete(replace_workspace_id)
                     shutil.rmtree(replacement_root)
                 return workspace
             except Exception:
@@ -1275,6 +1357,8 @@ class HostedWorkspaceStore:
 
     def get(self, workspace_id: str) -> HostedWorkspace | None:
         """Load a workspace and reconstruct its Strands/deterministic runtime after restart."""
+        if not self._hydrate(workspace_id):
+            return None
         try:
             path = self._record_path(workspace_id)
         except HostedWorkspaceError:

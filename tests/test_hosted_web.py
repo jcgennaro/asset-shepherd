@@ -40,6 +40,17 @@ PACKAGE_NAMES = {
 }
 
 
+def test_cloud_workspace_configuration_fails_closed_when_incomplete(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A partial cloud-state configuration cannot silently use local durability."""
+    monkeypatch.setenv("ASSET_SHEPHERD_WORKSPACE_BUCKET", "private-workspaces")
+
+    with pytest.raises(ValueError, match="requires ASSET_SHEPHERD_WORKSPACE_BUCKET"):
+        create_app(project_root=PROJECT_ROOT, work_root=tmp_path / "jobs")
+
+
 def test_upload_rejects_pathological_world_bounds_before_description(tmp_path: Path) -> None:
     """Objective extent-ratio rejection happens before target intake or agent work."""
     pathological_path = tmp_path / "pathological-bounds.glb"

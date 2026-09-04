@@ -23,7 +23,7 @@ from strands.models import Model
 from strands.models.bedrock import BedrockModel
 from strands.models.gemini import GeminiModel
 from strands.models.openai_responses import OpenAIResponsesModel
-from strands.session import SessionManager, SnapshotSessionManager
+from strands.session import S3SessionManager, SessionManager, SnapshotSessionManager
 from strands.storage import LocalFileStorage
 from strands.types.agent import AgentInput
 from strands.types.content import Messages, SystemContentBlock
@@ -1419,11 +1419,26 @@ class AssetShepherdAgent:
 def _snapshot_session_manager(
     session_id: str | None,
     session_root: Path | None,
+    values: Mapping[str, str] = environ,
 ) -> SessionManager | None:
     """Build one provider-neutral durable Strands session when requested."""
-    if session_id is None and session_root is None:
+    session_bucket = values.get("ASSET_SHEPHERD_SESSION_BUCKET", "").strip()
+    if session_id is None and session_root is None and not session_bucket:
         return None
-    if session_id is None or session_root is None:
+    if session_id is None:
+        raise AgentWorkflowError("A persistent session requires both an ID and isolated storage")
+    if session_bucket:
+        prefix = values.get("ASSET_SHEPHERD_SESSION_PREFIX", "sessions").strip("/")
+        if not prefix or any(part in {"", ".", ".."} for part in prefix.split("/")):
+            raise AgentWorkflowError("ASSET_SHEPHERD_SESSION_PREFIX must be a safe S3 prefix")
+        region = values.get("ASSET_SHEPHERD_AWS_REGION") or values.get("AWS_REGION")
+        return S3SessionManager(
+            session_id=session_id,
+            bucket=session_bucket,
+            prefix=prefix,
+            region_name=region,
+        )
+    if session_root is None:
         raise AgentWorkflowError("A persistent session requires both an ID and isolated storage")
     return SnapshotSessionManager(
         session_id,
@@ -1449,7 +1464,7 @@ def build_live_agent(
         model,
         provider=configuration.provider,
         model_id=configuration.model_id,
-        session_manager=_snapshot_session_manager(session_id, session_root),
+        session_manager=_snapshot_session_manager(session_id, session_root, values),
         activity_sink=activity_sink,
     )
 
