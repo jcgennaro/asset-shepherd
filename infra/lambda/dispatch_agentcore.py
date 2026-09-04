@@ -83,7 +83,7 @@ def _claim(command: dict[str, Any]) -> bool:
             ),
             ConditionExpression=(
                 "dispatch_owner = :owner AND "
-                "(#state IN (:queued, :retrying, :failed) OR "
+                "(#state IN (:queued, :retrying) OR "
                 "(#state = :running AND lease_until_epoch < :now))"
             ),
             ExpressionAttributeNames={"#state": "state"},
@@ -91,7 +91,6 @@ def _claim(command: dict[str, Any]) -> bool:
                 ":owner": {"S": _ACTOR_ID},
                 ":queued": {"S": "QUEUED"},
                 ":retrying": {"S": "RETRYING"},
-                ":failed": {"S": "FAILED"},
                 ":running": {"S": "RUNNING"},
                 ":updated": {"S": datetime.now(UTC).isoformat()},
                 ":lease": {"N": str(now + 840)},
