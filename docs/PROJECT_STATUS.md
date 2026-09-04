@@ -66,9 +66,13 @@ exact-mutation, invariant-verification, and packaging layer.
   evidence through packaged Chromium, passed every deterministic invariant, and wrote the evidence
   package and monotonically versioned state back to AWS. Kimi rejected its own synthetic-robot
   candidate as visually inverted, so the workflow correctly persisted `BLOCKED` rather than
-  declaring success. Metrics report 168.65 seconds, 208,234 input tokens, 11,444 output tokens, one
-  interrupt, and successful inspect/plan/render/verify tools. This proves the remote architecture
-  path but intentionally leaves successful completion and exactly-once replay open.
+  declaring success. A second turn fixed orientation but retained 3.4 m height because this smoke
+  seed bypassed semantic intake: its height-only target had been expanded to a synthetic 1.8 m cube,
+  whose deterministic log-space fit selected scale 1.0. Kimi again rejected the candidate. The two
+  paid turns recorded 642,488 input and 16,402 output tokens in total. Replaying the exact second
+  approval returned the same result with durable record version unchanged at 8, proving persisted
+  command idempotency. This proves the remote architecture path but intentionally leaves a
+  representative fully specified successful completion and replaced-runtime replay open.
 
 - D104 ARM64 runtime and typed AgentCore boundary: the retained
   `asset-shepherd-container-build` stack now owns a private immutable-tag ECR repository, a

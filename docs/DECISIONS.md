@@ -64,9 +64,14 @@ produced an exact approval interrupt, and approval resumed deterministic mutatio
 rendering, invariant verification, evidence packaging, and versioned S3/DynamoDB persistence in the
 managed runtime. Every deterministic check passed, but Kimi rejected the synthetic robot candidate
 as visually inverted, so the workflow correctly persisted `BLOCKED`. The run took 168.65 seconds
-and recorded 208,234 input plus 11,444 output tokens. This proves the deployed invocation,
-interrupt/resume, tool, renderer, verification, and persistence boundaries; a successful candidate
-and full duplicate-command/replaced-runtime replay remain open.
+and recorded 208,234 input plus 11,444 output tokens. A second turn fixed orientation but left the
+height at 3.4 m: this smoke seed bypassed semantic intake, and its height-only description had been
+expanded to a synthetic 1.8 m cube whose deterministic log-space best fit selected scale 1.0. Kimi
+again rejected the candidate after 434,254 input and 4,958 output tokens. Replaying the exact second
+approval returned the same state without advancing durable record version 8, proving persisted
+command idempotency. This establishes the deployed invocation, interrupt/resume, tool, renderer,
+verification, persistence, and duplicate-command boundaries; a representative fully specified
+successful candidate and replaced-runtime replay remain open.
 
 ### D103 — Back replaceable processes with immutable S3 manifests and conditional DynamoDB state
 

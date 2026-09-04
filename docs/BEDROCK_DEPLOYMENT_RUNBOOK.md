@@ -595,8 +595,13 @@ returned HTTP 200 from a cloud-hydrated workspace; `confirm_target` invoked Bedr
 at the exact approval interrupt; and the approved `decision` resumed execution, rendered evidence,
 verified every deterministic invariant, and packaged its evidence. Kimi then rejected the synthetic
 robot candidate as visually inverted, so the durable workspace correctly ended `BLOCKED` rather
-than being mislabeled complete. That run used 208,234 input and 11,444 output tokens. A successful
-candidate and duplicate-command/replaced-runtime replay remain required before Step 5 is checked.
+than being mislabeled complete. A second turn correctly flipped the robot but exposed a fixture
+problem: the smoke seed bypassed semantic intake, so its height-only description had been expanded
+to a synthetic 1.8 m cube; log-space fitting selected a 1.0 scale and Kimi correctly rejected the
+remaining 3.4 m height. The two paid turns used 642,488 input and 16,402 output tokens in total. An
+exact replay of the second approval returned the same blocked result while the durable record
+remained version 8, proving persisted command idempotency. A representative fully specified target,
+successful candidate, and replaced-runtime replay remain required before Step 5 is checked.
 
 ## Step 6 — Deploy the interactive web product
 
