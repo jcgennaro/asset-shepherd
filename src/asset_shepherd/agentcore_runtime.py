@@ -27,6 +27,7 @@ from asset_shepherd.models import ProjectProfile, ProposalResponse
 _ID_PATTERN = r"^[0-9a-f]{32}$"
 _OWNER_PATTERN = r"^[a-z0-9_.-]{2,80}$"
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class RuntimeConfigurationError(RuntimeError):
