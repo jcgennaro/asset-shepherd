@@ -97,8 +97,8 @@ exact-mutation, invariant-verification, and packaging layer.
   the tagged Express ALB, then applied and verified `us-east-1a` plus `us-east-1b`; the ALB and managed
   endpoint DNS now expose two addresses. Ten health requests, the accepted notebook, and exact GLB
   download passed after the resize, with all eight alarms still `OK`. Detailed model logging remains
-  disabled; Guardrail wording/compatibility, multi-user authentication, notification routing, and
-  the full remote failure matrix remain open.
+  disabled. D107 subsequently closes Guardrail wording/compatibility; multi-user authentication,
+  notification routing, and the full remote failure matrix remain open.
 
 - D105 remote web command boundary: hosted agent actions now become schema-versioned DynamoDB
   receipts and encrypted SQS messages when the deployment queue is configured. The web request
@@ -1316,19 +1316,19 @@ RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. The least-
 `asset-shepherd` AWS runtime profile, exact Kimi resource access, `us-east-1`, budget alert, and live
 8/8 Kimi gate are confirmed. Luna remains unavailable behind its account agreement but no longer
 blocks the recommended Kimi path. The public ECS/SQS/Lambda/AgentCore path now passes one clean
-acceptance-through-download run and forced web-task replacement. M9 still requires Step 7
-operational hardening and the complete Step 8 remote case matrix. The submission also remains
-blocked on the public-repository, free judge-access,
-architecture, video, disclosure, release-scan, and entrant-attestation gates in
+acceptance-through-download run, forced web-task replacement, and immutable Guardrail acceptance.
+M9 still requires a Step 7 multi-user access choice, one alarm notification destination, and the
+complete Step 8 remote case matrix. The submission also remains blocked on the public-repository,
+free judge-access, video, disclosure, release-scan, and entrant-attestation gates in
 `docs/CONTEST_COMPLIANCE_PLAN.md`. A human-cleaned reference and manual-time record remain required
 for the full RW4 comparison gate.
 
 ## Next action
 
-Complete Step 7 guardrails, correlated operational evidence, deletion/retention proof, and cost
-bounds against the live deployment, then run the complete Step 8 browser matrix. Preserve the
-current mutation scope, exact authorization, durability, and invariant checks; do not restore
-deterministic target-dependent planning or create a second conversational authority.
+Choose and implement the free judge-access identity boundary, attach one approved alarm notification
+destination without committing personal contact data, then run the complete Step 8 browser matrix.
+Preserve the current mutation scope, exact authorization, durability, and invariant checks; do not
+restore deterministic target-dependent planning or create a second conversational authority.
 
 RW2 registration resumes when the user supplies Debug Beetle. Paid Bedrock invocation is limited to
 the bounded runbook matrix; broader AWS resource creation still follows its explicit gates.
