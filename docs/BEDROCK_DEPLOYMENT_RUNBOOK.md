@@ -82,7 +82,8 @@ until the remote-product gate passes.
   replacement without losing the durable workspace.
 - [ ] Step 7 operations and cleanup. The dashboard, eight project alarms, seven-day log retention,
   bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, and observed Kimi
-  subtotal are complete. Guardrail/authentication acceptance and notification routing remain.
+  subtotal and live idle-cost floor are complete. Guardrail/authentication acceptance and
+  notification routing remain.
 - [ ] Step 8 remote M9 acceptance.
 
 ## Controlling constraints
@@ -755,6 +756,34 @@ The accepted public workspace was not touched. Its two recorded Kimi workflow in
 that as the observed workflow-model subtotal: the separate intake call, ECS, Lambda, AgentCore, S3,
 DynamoDB, logs, and taxes are not included.
 
+The fixed public-hosting floor is now bounded from the deployed resources and AWS's published
+US East (N. Virginia) rates. The web task is 0.5 vCPU and 1 GiB, or about $0.02469/hour of Fargate
+compute. ECS Express Mode adds no service fee, but its shared Application Load Balancer has a
+$0.0225/hour base charge. Two public load-balancer addresses plus the task's public address add
+$0.015/hour. The resulting fixed floor is about **$0.0622/hour, $1.49/day, or $44.77 per 30-day
+month**. It excludes variable LCU traffic, data transfer, logs, storage, model calls, AgentCore
+active compute, Lambda, SQS, DynamoDB, and taxes. At low contest traffic those variable AWS charges
+should be small, but the Cost Explorer bill remains authoritative.
+
+The initial Express default selected all six default-VPC subnets and a 1-vCPU/2-GiB task, producing
+seven public addresses and an approximately $76.95/month fixed floor. The template now requires
+exactly two public subnets in different Availability Zones. Because an existing Express shared ALB
+can retain its original zone set, run `scripts/Set-AssetShepherdExpressIngressSubnets.ps1` first with
+`-WhatIf` and then explicitly apply it after every create or network update. The script validates the
+two zones, public-subnet behavior, VPC, tagged ALB identity, and resulting subnet set. Live ECS
+metrics from the accepted run, forced replacement, and operations checks peaked at 43.1% CPU and
+11.5% of 2 GiB (about 235 MiB), so the 0.5-vCPU/1-GiB task preserves measured headroom while saving
+another $17.77/month. AgentCore Runtime remains serverless consumption-based; with its session
+stopped it has no preallocated idle compute charge. Keep the public endpoint continuously available
+only for an intentional test or review window; deleting and later recreating only the web stack
+preserves S3/DynamoDB state and the private runtime, but may assign a new public URL.
+
+The live reconciliation dry run named only `ecs-express-gateway-alb-7e861923` in `us-east-1a` and
+`us-east-1b`. The applied run returned `Verified=True`; both the ALB API and managed endpoint DNS
+then exposed only the selected zones/addresses. After the 0.5-vCPU/1-GiB canary completed, ten
+consecutive health requests, the accepted notebook page, and its 24,580-byte GLB download returned
+HTTP 200 with the exact media type and filename. All eight project alarms remained `OK`.
+
 AgentCore runtime version 4 uses `e0356a6-ops-agentcore`; the Lambda dispatcher package is the
 content-addressed
 `dispatch-247c24908e3cdf07345f8ee59ba8fd0093c9696a135e672feaf3c1f809b9892e.zip`. One no-model
@@ -812,3 +841,7 @@ before public release or submission work.
 - [AWS App Runner availability change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)
 - [Amazon ECS Express Mode overview](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-overview.html)
 - [Amazon ECS Express Mode considerations](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-considerations.html)
+- [AWS Fargate pricing](https://aws.amazon.com/fargate/pricing/)
+- [Elastic Load Balancing pricing](https://aws.amazon.com/elasticloadbalancing/pricing/)
+- [Amazon VPC public IPv4 pricing](https://aws.amazon.com/vpc/pricing/)
+- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/)

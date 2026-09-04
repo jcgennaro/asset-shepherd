@@ -35,6 +35,11 @@ Parameters:
     AllowedValues:
       - moonshotai.kimi-k2.5
       - us.openai.gpt-5.6-luna
+  WebSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >-
+      Exactly two public subnets in different Availability Zones. Two zones keep the
+      public demo highly available without allocating an IPv4 address in every default-VPC zone.
 
 Resources:
   AgentCommandDeadLetterQueue:
@@ -260,11 +265,13 @@ Resources:
   WebService:
     Type: AWS::ECS::ExpressGatewayService
     Properties:
-      Cpu: "1024"
+      Cpu: "512"
       ExecutionRoleArn: !GetAtt WebExecutionRole.Arn
       HealthCheckPath: /healthz
       InfrastructureRoleArn: !GetAtt WebInfrastructureRole.Arn
-      Memory: "2048"
+      Memory: "1024"
+      NetworkConfiguration:
+        Subnets: !Ref WebSubnetIds
       PrimaryContainer:
         ContainerPort: 8080
         Environment:

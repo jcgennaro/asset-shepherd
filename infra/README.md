@@ -138,6 +138,40 @@ service-only execution role. `cloudformation/web-express.yaml` deploys the x86_6
 web service, encrypted command/DLQ queues, and the one-message Lambda dispatcher. The dispatcher
 has no provider secret and may invoke only the configured runtime plus its `DEFAULT` endpoint.
 
+The web template requires exactly two public subnets in different Availability Zones and deploys
+one 0.5-vCPU/1-GiB task. Do not omit `WebSubnetIds`: the ECS Express default otherwise enables every
+default-VPC subnet and allocates a paid public IPv4 address in each zone. For an existing stack,
+apply the bounded network/task configuration with:
+
+```powershell
+aws cloudformation deploy `
+  --profile asset-shepherd-admin `
+  --region us-east-1 `
+  --stack-name asset-shepherd-web `
+  --template-file infra/cloudformation/web-express.yaml `
+  --capabilities CAPABILITY_IAM `
+  --parameter-overrides `
+    WebSubnetIds='<public-subnet-a>,<public-subnet-b>'
+```
+
+The two subnets must be in separate Availability Zones. Existing parameter values are retained on
+stack update; a first deployment must also supply every required image, state, and runtime value.
+Express applies `WebSubnetIds` to the service tasks, but an already-created shared ALB can retain its
+older zone set. Reconcile and verify the managed ingress after every create or network update:
+
+```powershell
+./scripts/Set-AssetShepherdExpressIngressSubnets.ps1 `
+  -SubnetIds '<public-subnet-a>','<public-subnet-b>' `
+  -Profile asset-shepherd-admin `
+  -Region us-east-1 `
+  -WhatIf
+
+# After checking the exact ALB and zones, repeat without -WhatIf.
+```
+
+At published us-east-1 rates, the live task, ALB base, and three public IPv4 addresses establish an
+approximately $1.49/day fixed floor before traffic and other variable service usage.
+
 The live request path is:
 
 `browser → ECS Express → SQS → Lambda → AgentCore/Strands → Bedrock`

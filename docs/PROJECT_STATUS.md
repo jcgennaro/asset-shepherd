@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Complete the live ECS/AgentCore remote-product gate (this file is included)
+**Current commit:** Bound the live AWS hosting floor (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -71,8 +71,16 @@ exact-mutation, invariant-verification, and packaging layer.
   reached `SUCCEEDED`; its exact command ID appears in bounded start/success events on both services,
   while the accepted workspace remains version 6 and download-ready. Its two recorded Kimi workflow
   turns have an observed provider subtotal of about $0.114 before the separate intake and AWS
-  compute. Detailed model logging remains disabled; Guardrail wording/compatibility, multi-user
-  authentication, notification routing, and the full remote failure matrix remain open.
+  compute. The web service is now bounded to one 0.5-vCPU/1-GiB task and two public subnets after
+  live metrics showed only 43.1% peak CPU and about 235 MiB peak memory on the larger task. Published
+  us-east-1 Fargate, ALB-base, and three-public-IPv4 rates put the fixed hosting floor at about
+  $1.49/day or $44.77 per 30-day month, down from the six-subnet default's $76.95/month; traffic and
+  other variable service charges remain additional. A fail-closed subnet script dry-ran against only
+  the tagged Express ALB, then applied and verified `us-east-1a` plus `us-east-1b`; the ALB and managed
+  endpoint DNS now expose two addresses. Ten health requests, the accepted notebook, and exact GLB
+  download passed after the resize, with all eight alarms still `OK`. Detailed model logging remains
+  disabled; Guardrail wording/compatibility, multi-user authentication, notification routing, and
+  the full remote failure matrix remain open.
 
 - D105 remote web command boundary: hosted agent actions now become schema-versioned DynamoDB
   receipts and encrypted SQS messages when the deployment queue is configured. The web request

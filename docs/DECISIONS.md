@@ -38,6 +38,14 @@ and public wording are tested separately; do not claim an unverified Guardrail i
 the existing user-created AWS Budget as the spend alert rather than duplicating account billing
 configuration in the application stack.
 
+Keep the contest web tier in two public subnets in different Availability Zones, not every subnet
+in the default VPC. Size its single task from measured utilization at 0.5 vCPU and 1 GiB. This keeps
+managed HTTPS and multi-AZ ingress while bounding public IPv4 and Fargate idle spend. Treat a
+continuously available endpoint as an explicit test/review-window choice rather than a free default.
+Because an existing Express shared ALB can retain its old zone set when service networking changes,
+reconcile it with a separate fail-closed script that discovers only the tagged project ALB, validates
+the two public subnets and VPC, applies the exact set, waits for availability, and verifies the result.
+
 Provide an administrator-only, `ShouldProcess`-protected cleanup script. It accepts exactly one
 32-hex workspace ID, verifies the application owner when a pointer exists, and deletes only that
 workspace's current and noncurrent S3 object/session versions plus its DynamoDB pointer and command
@@ -64,9 +72,20 @@ duration. The accepted workspace remained version 6 and download-ready.
 
 The accepted public workflow's recorded Kimi planning and approval turns cost about $0.114 at the
 documented $0.60/M input and $3.00/M output rates (175,184 input and 2,934 output tokens), excluding
-the separate intake call and AWS compute. This is an observed provider subtotal, not an estimate of
-the complete bill. Alarm notification routing, multi-user authentication, Guardrail acceptance, and
-the full Step 8 failure matrix remain open.
+the separate intake call and AWS compute. The first ECS Express default used a 1-vCPU/2-GiB task and
+all six default-VPC subnets, which allocated seven public IPv4 addresses and implied an approximately
+$76.95/month fixed floor. The accepted configuration uses 0.5 vCPU/1 GiB and two subnets. Published
+us-east-1 Fargate, Application Load Balancer, and three-public-IPv4 rates bound its fixed floor at
+about $0.0622/hour, $1.49/day, or $44.77 per 30-day month before variable traffic and service usage.
+Live metrics peaked at 43.1% of the old vCPU and 11.5% of its 2 GiB, leaving measured headroom in the
+smaller task. AgentCore has no preallocated idle compute charge while its session is stopped. This
+is an observed provider subtotal and infrastructure floor, not an estimate of the complete bill.
+The live subnet script first named only the tagged Express ALB in `us-east-1a` and `us-east-1b`, then
+applied and verified those exact zones. The ALB API and managed endpoint DNS now expose only the two
+selected addresses. Ten consecutive health requests, the accepted notebook, and the 24,580-byte GLB
+download passed after the resize; all eight project alarms remained `OK`.
+Alarm notification routing, multi-user authentication, Guardrail acceptance, and the full Step 8
+failure matrix remain open.
 
 ### D105 — Dispatch long AgentCore turns through durable SQS receipts and Lambda
 

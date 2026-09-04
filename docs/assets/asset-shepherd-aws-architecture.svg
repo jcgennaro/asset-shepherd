@@ -60,7 +60,7 @@
     <rect width="260" height="180" rx="10" fill="#fff" stroke="#ec7211" stroke-width="2"/>
     <rect x="16" y="16" width="42" height="42" rx="6" fill="#ec7211"/><text x="37" y="38" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="13" font-weight="800" fill="#fff">WEB</text>
     <text class="service" x="72" y="36">ECS Express Mode</text><text class="strong" x="72" y="58">FastAPI + Jinja</text>
-    <path d="M16 75 H244" stroke="#e5e9ed"/><text class="copy" x="18" y="101">Gallery + notebook UI</text><text class="copy" x="18" y="124">Typed commands + status polling</text><text class="copy" x="18" y="147">Authorized GLB transfer routes</text><text class="small" x="18" y="168">Image: 2e206e3-web · x86_64</text>
+    <path d="M16 75 H244" stroke="#e5e9ed"/><text class="copy" x="18" y="101">Gallery + notebook UI</text><text class="copy" x="18" y="124">Typed commands + status polling</text><text class="copy" x="18" y="147">Authorized GLB transfer routes</text><text class="small" x="18" y="168">0.5 vCPU · 1 GiB · 2 AZs · x86_64</text>
   </g>
 
   <g transform="translate(620 285)" filter="url(#shadow)">
