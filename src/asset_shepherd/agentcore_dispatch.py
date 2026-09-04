@@ -120,7 +120,7 @@ class AgentCoreCommandDispatcher:
                 raise AgentCoreDispatchError(
                     "This command identifier was already used for a different action."
                 ) from error
-            should_send = _string_attribute(existing, "state") in {"QUEUED", "RETRYING", "FAILED"}
+            should_send = _string_attribute(existing, "state") in {"QUEUED", "RETRYING"}
         if should_send:
             self.sqs.send_message(QueueUrl=self.queue_url, MessageBody=body)
         return command

@@ -3,16 +3,27 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from datetime import UTC, datetime
 from typing import Any, TypeGuard
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 _dynamodb = boto3.client("dynamodb")
-_agentcore = boto3.client("bedrock-agentcore")
+_agentcore = boto3.client(
+    "bedrock-agentcore",
+    config=Config(
+        connect_timeout=5,
+        read_timeout=850,
+        retries={"total_max_attempts": 1, "mode": "standard"},
+    ),
+)
 _TABLE = os.environ["WORKSPACE_TABLE"]
 _RUNTIME_ARN = os.environ["AGENT_RUNTIME_ARN"]
 _ACTOR_ID = os.environ["WORKSPACE_OWNER_ID"]
@@ -131,9 +142,11 @@ def lambda_handler(event: dict[str, Any], _context: object) -> dict[str, list[di
                 continue
             _invoke(command)
         except Exception:
-            try:
-                if _receipt_addressable(command):
-                    _set_state(command, "RETRYING", safe_error="The agent call will be retried.")
-            finally:
-                failures.append({"itemIdentifier": message_id})
+            logger.exception("AgentCore dispatch failed for SQS message %s", message_id)
+            if _receipt_addressable(command):
+                _set_state(
+                    command,
+                    "FAILED",
+                    safe_error="The agent could not be reached. Reload before retrying.",
+                )
     return {"batchItemFailures": failures}

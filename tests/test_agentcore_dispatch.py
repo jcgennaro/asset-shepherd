@@ -112,6 +112,18 @@ def test_exact_queued_retry_is_safe_but_running_receipt_is_not_duplicated() -> N
     assert len(sqs.messages) == 2
 
 
+def test_failed_receipt_requires_a_fresh_command_identifier() -> None:
+    """An uncertain failed transport is not automatically launched a second time."""
+    dispatcher, sqs, dynamo = _dispatcher()
+    dispatcher.enqueue(_payload())
+
+    item = next(iter(dynamo.items.values()))
+    item["state"] = {"S": "FAILED"}
+    dispatcher.enqueue(_payload())
+
+    assert len(sqs.messages) == 1
+
+
 def test_command_id_cannot_be_reused_for_another_payload() -> None:
     """One stable command ID cannot authorize two different actions."""
     dispatcher, _sqs, _dynamo = _dispatcher()
