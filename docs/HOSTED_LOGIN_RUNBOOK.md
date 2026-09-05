@@ -45,6 +45,13 @@ before doing that. The website login is separate from AWS console/IAM login.
 
 ## Deployment
 
+### Sign-in branding (D114)
+
+The live classic hosted login now uses the existing static mascot and Asset Shepherd wordmark,
+dark application colors, mint actions, and matching password-reset styling. Branding assets and
+the exact-client publication procedure live in `infra/branding/README.md`. This uses Cognito's
+existing Lite/classic customization API; it does not replace authentication or change the tier.
+
 ### Native-form correction (D113, 2026-09-05)
 
 Code commit `3aad485` fixes the application/auth response-policy split without weakening the

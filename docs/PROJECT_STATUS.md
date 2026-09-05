@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** Correct native form origin policy behind the hosted login gate (this file is included)
+**Current commit:** Brand hosted sign-in with the existing static mascot (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,14 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D114: live Cognito classic client now uses the static mascot/Asset Shepherd wordmark, dark card,
+  mint actions, rounded fields, readable labels, and matching reset-screen contrast. CSS version
+  `20260905065315`; checked-in assets/publication script in `infra/branding/` and `scripts/`.
+  Actual hosted desktop capture and fetched-markup 320/390 px preview frames were visually checked;
+  no form was submitted and no user browser was attached. OAuth, session, service tier, web/runtime
+  images, and model configuration are unchanged. Common gate: 285 passed, 3 skipped; lock, Ruff,
+  format, Pyright pass. See `infra/branding/README.md` for acceptance limitations and reapplication.
 
 - D113: fixes the hosted Redo rejection by using same-origin referrer policy for app responses,
   while keeping no-referrer on authentication routes and the exact-origin CSRF check unchanged.

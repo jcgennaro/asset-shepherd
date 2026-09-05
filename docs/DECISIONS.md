@@ -4,6 +4,21 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D114 — Brand the existing Cognito sign-in with the static mascot
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; applied to the live app client and visually checked
+
+The user requested implementation of on-brand sign-in, including the mascot. Keep Cognito Lite
+and classic hosted login; apply supported client-level CSS and a custom PNG logo through
+SetUICustomization. Reuse the existing static mascot frame in a code-native wordmark lockup.
+Do not replace password handling, change OAuth/session settings, upgrade tiers, or regenerate the
+mascot. Scope the change to the existing auth stack's client, with checked-in assets and an explicit
+publication script. Correct reset-screen text contrast as part of the same stylesheet. The classic
+outer layout remains AWS-controlled. See `infra/branding/README.md` for reproducibility and the
+distinction between actual hosted desktop capture and narrow fetched-markup preview validation.
+
 ### D113 — Preserve same-origin native forms behind the login gate
 
 **Date:** 2026-09-05
