@@ -61,7 +61,12 @@ exact-mutation, invariant-verification, and packaging layer.
 - D119: user-requested 24-hour absolute session expiry, with matching Cognito ID-token validity.
   Existing cookies retain their deadline; fresh sign-in required after rollout. Thirteen focused
   auth tests pass; common gate: 310 passed, three skipped, clean Ruff/format/Pyright and lock checks.
-  Auth change-set modifies only ID-token validity without replacement. Auth/web rollout pending.
+  Auth change-set modifies only ID-token validity without replacement and is UPDATE_COMPLETE.
+  CodeBuild `eff2149b-e6be-48e9-b518-2473218d57ec` passed; web image
+  `d7553e2-session-welcome-web` / revision 17 serves all traffic: auth/web stacks UPDATE_COMPLETE,
+  ECS SUCCESSFUL, zero old tasks. Live OAuth-initiation
+  cookie Max-Age is 86400 with secure flags intact; Cognito readback confirms ID tokens 24 hours
+  and access tokens one hour. Health 200, anonymous workspace 401, all eight alarms OK.
   Includes the requested Welcome! tour introduction and contest credit before the four navigation
   tips, with passing browser checks and desktop/mobile previews. No signing-key or model change.
 

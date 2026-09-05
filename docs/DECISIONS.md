@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED by user; local common/authentication checks pass; auth/web rollout pending
+**Status:** ACCEPTED by user; auth and web rollouts complete
 
 Extend the fixed application session from one hour to 24 hours and set the Cognito browser
 client's ID-token validity to 24 hours so the callback's verified-expiry cap does not shorten it.
@@ -25,6 +25,21 @@ Thirteen focused tests pass, including simulated passage beyond one hour and rej
 CloudFormation change-set review shows only BrowserClient.IdTokenValidity changes, with no resource
 replacement or signer modification. The common gate passes: 310 tests, three skips, clean
 Ruff/format/Pyright and lock checks. This release also includes the D117 welcome-copy follow-up.
+
+Auth change-set `session-24h-20260905` completed; a readback confirms ID tokens 24 hours and
+access tokens one hour. CodeBuild `eff2149b-e6be-48e9-b518-2473218d57ec` passed from `d7553e2`,
+including Linux upload acknowledgement in 0.012 s / READY in 1.110 s with zero model calls.
+Image `d7553e2-session-welcome-web` has digest
+`sha256:a1719fef631ab60c41844d0559594a1451f6287e25cd9e98e065a8d0e7a86a12`.
+At all-new-task traffic, the live tour JS matches source and contains Welcome!, health returns 200,
+and a fresh unauthenticated OAuth initiation returns a 302 with Max-Age=86400 and unchanged
+Secure/HttpOnly/SameSite=Lax/host-only cookie flags. No cookie value was printed or real identity
+forged; authenticated callback lifetime is covered by the local verified-claim tests. Anonymous
+workspace requests remain 401 and all eight alarms are OK. A fresh human sign-in receives the new
+session lifetime; existing signed sessions retain their original fixed expiry.
+Final acceptance: auth/web CloudFormation stacks UPDATE_COMPLETE, ECS SUCCESSFUL, one web
+revision-17 task serving 100% of traffic and zero old tasks. No human password was requested or used
+for automated verification; the user can sign in again to exercise the new authenticated lifetime.
 
 ### D118 — Collapsible long sub-component inventories
 

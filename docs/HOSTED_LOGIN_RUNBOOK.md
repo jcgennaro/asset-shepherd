@@ -64,6 +64,13 @@ Local tests use verified-claim stubs and a simulated clock, not real credentials
 They check short-token caps, the 24-hour maximum, validity after one hour, exact-boundary expiry,
 no sliding renewal, cookie flags, logout, and the existing authentication/CSRF failures.
 
+The auth stack update changes only BrowserClient.IdTokenValidity and completed without replacement.
+The combined session/welcome web image is `d7553e2-session-welcome-web` from successful CodeBuild
+`eff2149b-e6be-48e9-b518-2473218d57ec`. At 100% new-task traffic, live OAuth initiation emits
+Max-Age=86400 with Secure/HttpOnly/SameSite=Lax/host-only attributes. Cognito readback confirms
+24-hour ID and one-hour access tokens. No secret or cookie values were exposed and no hosted model
+was invoked. Final rollout status is recorded in `PROJECT_STATUS.md`.
+
 ### Signed-out page and explicit command submission (D115)
 
 `templates/signed_out.html` supplies the public branded signed-out response, including the existing
