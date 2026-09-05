@@ -2,8 +2,12 @@
 
 import base64
 import json
+import subprocess
+import threading
 import time
 from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import cast
 from urllib.parse import parse_qs, urlsplit
 
@@ -13,6 +17,7 @@ from fastapi.testclient import TestClient
 from itsdangerous import TimestampSigner
 
 from asset_shepherd import web_auth
+from asset_shepherd.web_evidence_renderer import find_chromium
 
 VALUES = {
     "ASSET_SHEPHERD_AUTH_REQUIRED": "1",
@@ -96,7 +101,84 @@ def test_callback_requires_matching_oauth_state(client: TestClient) -> None:
     """A callback without the initiating browser session stops before token exchange."""
     response = client.get("/auth/callback?code=unused-example&state=missing")
     assert response.status_code == 401
+    assert response.headers["referrer-policy"] == "no-referrer"
     assert client.get("/workspace").status_code == 401
+
+
+def test_form_pages_preserve_origin_without_relaxing_csrf(client: TestClient) -> None:
+    """Native forms need a non-null Origin; OAuth pages must not leak callback URLs."""
+    client.cookies.set(web_auth.SESSION_COOKIE, _cookie(time.time() + 300))
+    page = client.get("/workspace")
+    assert page.headers["referrer-policy"] == "same-origin"
+    assert page.headers["cache-control"] == "no-store"
+    assert client.post("/workspace", headers={"origin": "null"}).status_code == 403
+    assert client.post("/workspace").status_code == 403
+    response = client.post(
+        "/workspace",
+        data={"action": "redo"},
+        headers={"origin": VALUES["ASSET_SHEPHERD_PUBLIC_ORIGIN"]},
+    )
+    assert response.status_code == 200
+    assert client.get("/auth/signed-out").headers["referrer-policy"] == "no-referrer"
+
+
+@pytest.mark.skipif(find_chromium() is None, reason="Chromium-family browser is not installed")
+def test_native_browser_form_origin(client: TestClient, tmp_path: Path) -> None:
+    """A fresh headless profile submits a real loopback form, never touching user tabs."""
+    browser = find_chromium()
+    assert browser is not None
+    client.cookies.set(web_auth.SESSION_COOKIE, _cookie(time.time() + 300))
+    policy = client.get("/workspace").headers["referrer-policy"]
+    received: list[str | None] = []
+    submitted = threading.Event()
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Referrer-Policy", policy)
+            self.end_headers()
+            self.wfile.write(
+                b'<form method="post" action="/redo"><button>Redo</button></form>'
+                b'<script>document.querySelector("form").requestSubmit()</script>'
+            )
+
+        def do_POST(self) -> None:
+            received.append(self.headers.get("Origin"))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"Form received")
+            submitted.set()
+
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    origin = f"http://127.0.0.1:{server.server_port}"
+    try:
+        subprocess.run(
+            [
+                str(browser),
+                "--headless=new",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--no-first-run",
+                f"--user-data-dir={tmp_path / 'browser-profile'}",
+                "--dump-dom",
+                origin,
+            ],
+            capture_output=True,
+            check=True,
+            timeout=30,
+        )
+        assert submitted.wait(2), "The native browser form did not submit"
+        assert received == [origin], "Normal form submissions must not send Origin: null"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
 
 
 def test_login_uses_pkce_and_fixed_callback(
@@ -114,6 +196,7 @@ def test_login_uses_pkce_and_fixed_callback(
     monkeypatch.setattr(app.state.login_client, "load_server_metadata", metadata)
     response = client.get("/auth/login")
     assert response.status_code == 302
+    assert response.headers["referrer-policy"] == "no-referrer"
     parameters = parse_qs(urlsplit(response.headers["location"]).query)
     assert parameters["response_type"] == ["code"]
     assert parameters["redirect_uri"] == [VALUES["ASSET_SHEPHERD_PUBLIC_ORIGIN"] + "/auth/callback"]
@@ -145,6 +228,7 @@ def test_callback_retains_identity_but_not_tokens(
     monkeypatch.setattr(app.state.login_client, "authorize_access_token", verified_token)
     response = client.get("/auth/callback?code=unit-test")
     assert response.status_code == 303
+    assert response.headers["referrer-policy"] == "no-referrer"
     cookie_header = response.headers["set-cookie"].lower()
     assert (
         "httponly" in cookie_header

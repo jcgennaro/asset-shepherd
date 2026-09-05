@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** Enable explicit hosted OpenAI Luna with a backend-only Secrets Manager key (this file is included)
+**Current commit:** Correct native form origin policy behind the hosted login gate (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,13 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D113: fixes the hosted Redo rejection by using same-origin referrer policy for app responses,
+  while keeping no-referrer on authentication routes and the exact-origin CSRF check unchanged.
+  Eight focused auth tests pass, including real native form submission in isolated headless
+  Chromium; no owner browser attachment, model invocation, or injection-attempt testing occurred.
+  Common quality gate passes: 285 passed, 3 skipped; lock, Ruff, formatting, and Pyright pass.
+  Web-only deployment is pending; runtime/model configuration stays unchanged.
 
 - D112: one renewed administrator Bedrock Responses/Luna xhigh request still returns 403 account
   unavailability. The existing DPAPI-protected OpenAI key is now in a separate Secrets Manager

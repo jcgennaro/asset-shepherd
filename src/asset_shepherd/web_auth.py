@@ -149,7 +149,13 @@ class LoginGate(BaseHTTPMiddleware):
         response = await call_next(request)
         if not request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-store"
-            response.headers["Referrer-Policy"] = "no-referrer"
+            # no-referrer makes native POST forms send Origin: null, which our
+            # strict CSRF check correctly rejects. Preserve the origin within
+            # the app without disclosing referrers to other sites. OAuth pages
+            # retain no-referrer to protect callback codes and login state.
+            response.headers["Referrer-Policy"] = (
+                "no-referrer" if request.url.path.startswith("/auth/") else "same-origin"
+            )
         return response
 
 

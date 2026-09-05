@@ -4,6 +4,21 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D113 — Preserve same-origin native forms behind the login gate
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; local browser regression passes; web deployment pending
+
+The hosted Redo form failed before its handler because D111 applied `no-referrer` to every page.
+For native non-CORS POST navigation, that policy produces `Origin: null`; the exact-origin CSRF
+gate then rejects a legitimate same-site action. Use `Referrer-Policy: same-origin` for application
+responses and retain `no-referrer` on `/auth/` routes, including callback redirects. Keep exact
+configured-origin enforcement, signed sessions, and rejection of missing/null origins unchanged.
+No Referer fallback, cross-origin exception, new secret, or model run is needed. A fresh headless
+Chromium profile verifies native loopback form submission using the actual application policy,
+without attaching to the owner's browser. See `HOSTED_LOGIN_RUNBOOK.md`.
+
 ### D112 — Explicit hosted OpenAI Luna after the renewed Bedrock denial
 
 **Date:** 2026-09-05

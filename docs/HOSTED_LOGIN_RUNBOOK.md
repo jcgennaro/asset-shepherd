@@ -30,6 +30,12 @@ before doing that. The website login is separate from AWS console/IAM login.
   Only static assets, login/callback/signed-out pages, and `/healthz` remain public. Authenticated
   unsafe HTTP methods require the exact configured Origin. Responses with private data and OAuth
   callbacks are `no-store`; app access logging is disabled to avoid recording authorization codes.
+- D113 uses `Referrer-Policy: same-origin` on application responses so native form POSTs retain
+  their origin, with no referrer sent to other sites. `/auth/` responses retain `no-referrer` to
+  protect login/callback URLs. Applying `no-referrer` globally caused ordinary Redo submissions
+  to send `Origin: null` and fail the unchanged exact-origin CSRF check. Missing/null/cross-origin
+  writes remain rejected; there is no exception for Redo. After deployment, reload the Gallery
+  before retrying so its document receives the corrected policy.
 - Incomplete required login configuration or secret retrieval fails startup closed. Local offline
   development remains usable without Cognito when no login configuration is supplied.
 - D112 adds an optional OpenAI provider key in a separate Secrets Manager secret, with a separate
