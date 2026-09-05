@@ -709,6 +709,15 @@ client transport result; the user starts a fresh, independently identified comma
 **Result:** Step 6 passes. Keep this as a single-owner contest-demo endpoint until Step 7 adds and
 tests multi-user authentication, stronger operational alarms, deletion, and retention controls.
 
+The 2026-09-04 hosted browser test exposed two progress defects corrected in web image
+`2dfaac2-progress-web` (ECS task definition 8): an empty web-local activity response erased the
+mascot while AgentCore ran remotely, and same-document fragment navigation failed to reload the
+saved outcome after command completion. Hosted forms now use command receipts for their visible
+status and explicitly reload same-document results. A simulated browser fixture verifies queued,
+running, connection interruption, failure, completion, and the unchanged local sensor-label path
+without model calls; see `tests/browser/README.md`. The web stack reached `UPDATE_COMPLETE`, its
+live script matches the tested source after line-ending normalization, and all eight alarms are OK.
+
 ## Step 7 — Guardrails, observability, retention, and cost
 
 - Apply the existing on-topic/content contract at the model boundary and configure a Bedrock

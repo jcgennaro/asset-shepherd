@@ -66,9 +66,19 @@ exact-mutation, invariant-verification, and packaging layer.
   URL after dispatch success, leaving stale content onscreen; completion now explicitly reloads
   saved results for the same document. The browser fixture in
   `tests/browser/workflow_activity.html` exercises these transitions without model calls. Chrome
-  checks pass for queued, running, reconnecting, failure, and same-document completion. Common
+  checks pass for queued, running, reconnecting, failure, same-document completion, and local
+  sensor progress after an initially empty trace. Common
   quality gate: 268 passed, 3 skipped; lock, Ruff, formatting, Pyright, and JS syntax pass.
-  Deployment of this web-only correction is pending.
+  CodeBuild accepted image `2dfaac2-progress-web`; the web stack reached `UPDATE_COMPLETE` with
+  ECS task definition 8, one running task, zero pending tasks, and completed rollout. The public
+  JS matches the committed source after line-ending normalization; health, the saved notebook, and
+  the mascot asset return HTTP 200. All eight project alarms are `OK`. The user's Chrome tab loaded
+  the new script fingerprint `169156b2c775`. No AgentCore image or model configuration changed.
+  The user's Smartpad Tablet run exposed a separate unresolved Guardrail compatibility issue:
+  recorded `stop_reason=guardrail_intervened` after 0.799 seconds, zero tool calls, and zero reported
+  input/output tokens. Its dispatch receipt succeeded but the workspace correctly persisted
+  `ERROR`; the old same-URL navigation hid that outcome. No retry or model call was made while
+  diagnosing this run. D107's earlier probes do not establish acceptance for this ordinary asset.
 
 - D108 private alarm notification route: `asset-shepherd-operations` reached `UPDATE_COMPLETE` with
   one deployment-parameterized SNS topic. All eight `asset-shepherd-contest-*` alarms have exactly
@@ -1347,8 +1357,9 @@ for the full RW4 comparison gate.
 
 ## Next action
 
-Choose and implement the free judge-access identity boundary before running the complete Step 8
-browser matrix. Alarm notification acceptance is complete.
+Investigate the ordinary Smartpad Tablet Guardrail intervention before a paid rerun, then choose
+and implement the free judge-access identity boundary before the complete Step 8 browser matrix.
+Alarm notification acceptance is complete.
 Preserve the current mutation scope, exact authorization, durability, and invariant checks; do not
 restore deterministic target-dependent planning or create a second conversational authority.
 
