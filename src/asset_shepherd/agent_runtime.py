@@ -215,8 +215,17 @@ class CompleteResponseOpenAIModel(OpenAIResponsesModel):
             model_state,
         )
         request["stream"] = False
-        async with openai.AsyncOpenAI(**self._client_args_for_request()) as client:
-            response = cast(Any, await client.responses.create(**request))
+        try:
+            async with openai.AsyncOpenAI(**self._client_args_for_request()) as client:
+                response = cast(Any, await client.responses.create(**request))
+        except openai.APIStatusError as error:
+            # SDK response bodies can echo credential fragments or private request data.
+            raise AgentWorkflowError(
+                f"The workflow model request failed (HTTP {error.status_code}). "
+                "Check provider access, quota, and configuration."
+            ) from None
+        except openai.APIConnectionError:
+            raise AgentWorkflowError("The workflow model could not be reached.") from None
 
         response_id = getattr(response, "id", None)
         if model_state is not None and isinstance(response_id, str):
@@ -606,7 +615,7 @@ def build_environment_model(
             }
         if configuration.provider == "openai":
             model = CompleteResponseOpenAIModel(
-                client_args={"api_key": values["OPENAI_API_KEY"]},
+                client_args={"api_key": values["OPENAI_API_KEY"], "max_retries": 0, "timeout": 300},
                 model_id=configuration.model_id,
                 stateful=True,
                 params=model_parameters,

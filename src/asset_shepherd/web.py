@@ -35,13 +35,13 @@ from asset_shepherd.agent_runtime import (
     workflow_model_available,
 )
 from asset_shepherd.agentcore_dispatch import AgentCoreCommandDispatcher, AgentCoreDispatchError
-from asset_shepherd.bedrock_converse import (
-    BedrockConverseModel,
-    resolve_bedrock_converse_model,
-    supported_bedrock_converse_models,
-)
 from asset_shepherd.cloud_workspace import S3DynamoWorkspaceRepository
 from asset_shepherd.glb import iter_world_matrices, load_glb, world_bounds
+from asset_shepherd.hosted_models import (
+    hosted_model_choices,
+    hosted_model_values,
+    resolve_hosted_model,
+)
 from asset_shepherd.hosted_workspace import (
     MAX_HOSTED_WORKSPACES,
     UNREADABLE_GLB_MESSAGE,
@@ -3353,7 +3353,6 @@ def create_app(
     """Create a local Asset Shepherd web application and isolated job store."""
     family = discover_policy_family(project_root.resolve(strict=True))
     analyzer = intake_analyzer or DeterministicTargetIntakeAnalyzer()
-    configured_provider = os.environ.get("ASSET_SHEPHERD_MODEL_PROVIDER")
     workspace_bucket = os.environ.get("ASSET_SHEPHERD_WORKSPACE_BUCKET")
     workspace_table = os.environ.get("ASSET_SHEPHERD_WORKSPACE_TABLE")
     workspace_owner = os.environ.get("ASSET_SHEPHERD_WORKSPACE_OWNER_ID")
@@ -3392,20 +3391,7 @@ def create_app(
             region=workspace_region,
         )
     runtime_actor_id = remote_dispatcher.actor_id if remote_dispatcher is not None else None
-    configured_allowed_models = {
-        value.strip()
-        for value in os.environ.get("ASSET_SHEPHERD_ALLOWED_MODEL_IDS", "").split(",")
-        if value.strip()
-    }
-    agent_model_choices: tuple[BedrockConverseModel, ...] = (
-        tuple(
-            model
-            for model in supported_bedrock_converse_models()
-            if not configured_allowed_models or model.model_id in configured_allowed_models
-        )
-        if configured_provider == "bedrock-converse"
-        else ()
-    )
+    agent_model_choices = hosted_model_choices(os.environ)
     default_agent_model = next(
         (model for model in agent_model_choices if model.recommended),
         agent_model_choices[0] if agent_model_choices else None,
@@ -3413,27 +3399,18 @@ def create_app(
     configured_model_id = os.environ.get("ASSET_SHEPHERD_MODEL_ID")
     if configured_model_id and agent_model_choices:
         try:
-            configured_model = resolve_bedrock_converse_model(configured_model_id)
+            configured_model = resolve_hosted_model(configured_model_id)
         except ValueError:
             configured_model = None
         if configured_model in agent_model_choices:
             default_agent_model = configured_model
 
     def model_values(model_id: str) -> Mapping[str, str]:
-        """Bind one allowlisted workspace model to deployment-owned AWS settings."""
-        capability = resolve_bedrock_converse_model(model_id)
+        """Bind one allowlisted workspace model to deployment-owned provider settings."""
+        capability = resolve_hosted_model(model_id)
         if capability not in agent_model_choices:
             raise ValueError("Choose an available Asset Shepherd model.")
-        values = dict(os.environ)
-        values["ASSET_SHEPHERD_MODEL_PROVIDER"] = "bedrock-converse"
-        values["ASSET_SHEPHERD_INTAKE_PROVIDER"] = "bedrock-converse"
-        values["ASSET_SHEPHERD_MODEL_ID"] = capability.model_id
-        values["ASSET_SHEPHERD_INTAKE_MODEL"] = capability.model_id
-        if workspace_bucket:
-            values.setdefault("ASSET_SHEPHERD_SESSION_BUCKET", workspace_bucket)
-        values.pop("ASSET_SHEPHERD_WORKFLOW_REASONING", None)
-        values.pop("ASSET_SHEPHERD_INTAKE_REASONING", None)
-        return values
+        return hosted_model_values(model_id, os.environ)
 
     configured_turns = max_agent_turns
     if configured_turns is None:
@@ -4528,7 +4505,7 @@ def create_app(
                 default_agent_model.model_id if default_agent_model is not None else None
             )
             try:
-                selected_capability = resolve_bedrock_converse_model(selected_model_id or "")
+                selected_capability = resolve_hosted_model(selected_model_id or "")
                 if selected_capability not in agent_model_choices:
                     raise ValueError
             except ValueError:

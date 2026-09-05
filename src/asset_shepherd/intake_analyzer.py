@@ -531,10 +531,9 @@ class OpenAITargetIntakeAnalyzer:
                     break
         except httpx.HTTPStatusError as error:
             LOGGER.warning(
-                "%s intake request failed with HTTP %s: %s",
+                "%s intake request failed with HTTP %s",
                 self.provider,
                 error.response.status_code,
-                error.response.text[:1000],
             )
             if error.response.status_code == 429:
                 public_message = "The intake model is busy. Try again in a moment."

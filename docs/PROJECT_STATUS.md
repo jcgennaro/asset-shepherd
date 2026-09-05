@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-09-04
-**Current commit:** Record deployed invite-only login and branded invitation acceptance (this file is included)
+**Last updated:** 2026-09-05
+**Current commit:** Enable explicit hosted OpenAI Luna with a backend-only Secrets Manager key (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,16 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D112: one renewed administrator Bedrock Responses/Luna xhigh request still returns 403 account
+  unavailability. The existing DPAPI-protected OpenAI key is now in a separate Secrets Manager
+  secret; a local SDK check using that secret completes with 16 tokens in 2.91 seconds. This does
+  not yet prove AgentCore access. Runtime/web share one allowlisted model resolver, retain Kimi
+  workspaces, and bind optional OpenAI to an exact role-readable ARN with xhigh for both boundaries.
+  The selector explicitly labels separate OpenAI API billing. Docker access logging and public
+  SDK error-body redaction were corrected during the secret review. Cloud deployment/proposal
+  acceptance remain pending; no repair approval or injection-attempt test was sent.
+  Common gate passes: 283 tests passed, 3 skipped; lock, Ruff, formatting, and Pyright pass.
 
 - D111: user requested a website login after confirming anonymous access was possible. Cognito
   stack creation passes with admin-only signup, code-only OAuth, and no client secret. The app

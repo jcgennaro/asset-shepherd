@@ -13,8 +13,8 @@ from typing import Annotated, Literal, cast
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 
-from asset_shepherd.bedrock_converse import resolve_bedrock_converse_model
 from asset_shepherd.cloud_workspace import S3DynamoWorkspaceRepository
+from asset_shepherd.hosted_models import hosted_model_values
 from asset_shepherd.hosted_workspace import (
     HostedWorkspace,
     HostedWorkspaceError,
@@ -139,20 +139,10 @@ def _required_environment(name: str) -> str:
 
 
 def _model_values(model_id: str) -> dict[str, str]:
-    """Resolve one persisted, allowlisted Bedrock model without accepting provider input."""
-    capability = resolve_bedrock_converse_model(model_id)
-    allowed_models = {
-        value.strip()
-        for value in os.environ.get("ASSET_SHEPHERD_ALLOWED_MODEL_IDS", "").split(",")
-        if value.strip()
-    }
-    if allowed_models and capability.model_id not in allowed_models:
-        raise RuntimeConfigurationError("The workspace model is not enabled in this deployment")
-    values = dict(os.environ)
-    values["ASSET_SHEPHERD_MODEL_PROVIDER"] = "bedrock-converse"
-    values["ASSET_SHEPHERD_INTAKE_PROVIDER"] = "bedrock-converse"
-    values["ASSET_SHEPHERD_MODEL_ID"] = capability.model_id
-    values["ASSET_SHEPHERD_INTAKE_MODEL"] = capability.model_id
+    """Resolve a persisted model using only the runtime role and trusted configuration."""
+    settings = dict(os.environ)
+    settings.pop("AWS_PROFILE", None)
+    values = hosted_model_values(model_id, settings)
     values.setdefault(
         "ASSET_SHEPHERD_SESSION_BUCKET",
         _required_environment("ASSET_SHEPHERD_WORKSPACE_BUCKET"),

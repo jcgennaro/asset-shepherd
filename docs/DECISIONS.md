@@ -4,6 +4,25 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D112 — Explicit hosted OpenAI Luna after the renewed Bedrock denial
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; key/access probe passes; cloud deployment acceptance in progress
+
+The user requested one more Bedrock Luna attempt and, if still blocked, secure AWS storage of the
+OpenAI key and a Luna xhigh trial. The authenticated Bedrock Responses request still returns account
+unavailability. Publish the existing DPAPI-protected key to a separate Secrets Manager secret and
+give only ECS intake and AgentCore workflow roles exact-secret read permission. Use one shared,
+explicit model/provider resolver with a deployment allowlist; preserve every existing workspace's
+model. No automatic fallback, Meta enablement, or Google enablement is authorized here. OpenAI
+billing remains external to AWS credits, and D107's external-provider content-boundary distinction
+still applies. Both intake and workflow use Luna xhigh. See `HOSTED_OPENAI_RUNBOOK.md`.
+
+The first key/access check passes from the developer computer with 16 tokens. Do not call this an
+AWS runtime or completed-asset acceptance until its separate checks pass. Protect secrets and
+OAuth codes from logs; no prompt-injection tests are performed.
+
 ### D111 — Invite-only Cognito gate for the shared contest demo
 
 **Date:** 2026-09-04

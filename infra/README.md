@@ -15,6 +15,12 @@ The fixed `contest-demo` owner is a shared storage partition, not per-user isola
 All invited users share that gallery. Private IAM authorization on AgentCore alone
 does not protect browser routes. Per-user ownership remains necessary for mutually untrusted users.
 
+**External provider opt-in:** D112 adds the optional `OpenAISecretArn` to web and AgentCore templates.
+It grants only the two backend roles exact-secret read access and exposes explicit OpenAI Luna
+xhigh alongside Bedrock Kimi. See `docs/HOSTED_OPENAI_RUNBOOK.md`; current deployment acceptance is
+in `docs/PROJECT_STATUS.md`. Provider keys are not CloudFormation values or container environment
+values: only their ARN references are. OpenAI billing is separate from AWS credits.
+
 ## Private workspace state
 
 `cloudformation/state.yaml` creates:

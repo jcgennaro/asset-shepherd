@@ -28,12 +28,21 @@ Parameters:
     AllowedValues:
       - moonshotai.kimi-k2.5
       - us.openai.gpt-5.6-luna
+      - gpt-5.6-luna
+  OpenAISecretArn:
+    Type: String
+    Default: ""
+    Description: Exact backend-only OpenAI secret ARN; blank disables external OpenAI.
+    AllowedPattern: "^$|^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:asset-shepherd/[a-z0-9-]+/openai-[A-Za-z0-9]{6}$"
   GuardrailId:
     Type: String
     AllowedPattern: "^[a-z0-9]{1,64}$"
   GuardrailVersion:
     Type: String
     AllowedPattern: "^[1-9][0-9]{0,7}$"
+
+Conditions:
+  HasOpenAISecret: !Not [!Equals [!Ref OpenAISecretArn, ""]]
 
 Resources:
   RuntimeExecutionRole:
@@ -118,6 +127,13 @@ Resources:
                 Effect: Allow
                 Action: bedrock:ApplyGuardrail
                 Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${GuardrailId}"
+              - !If
+                - HasOpenAISecret
+                - Sid: ReadExactOpenAIProviderSecret
+                  Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Ref OpenAISecretArn
+                - !Ref AWS::NoValue
               - Sid: CreateAndDescribeRuntimeLogs
                 Effect: Allow
                 Action:
@@ -164,7 +180,11 @@ Resources:
         ContainerConfiguration:
           ContainerUri: !Ref RuntimeImageUri
       EnvironmentVariables:
-        ASSET_SHEPHERD_ALLOWED_MODEL_IDS: moonshotai.kimi-k2.5,us.openai.gpt-5.6-luna
+        ASSET_SHEPHERD_ALLOWED_MODEL_IDS: !If
+          - HasOpenAISecret
+          - moonshotai.kimi-k2.5,us.openai.gpt-5.6-luna,gpt-5.6-luna
+          - moonshotai.kimi-k2.5,us.openai.gpt-5.6-luna
+        ASSET_SHEPHERD_OPENAI_SECRET_ARN: !Ref OpenAISecretArn
         ASSET_SHEPHERD_AWS_REGION: !Ref AWS::Region
         ASSET_SHEPHERD_BEDROCK_GUARDRAIL_ID: !Ref GuardrailId
         ASSET_SHEPHERD_BEDROCK_GUARDRAIL_VERSION: !Ref GuardrailVersion

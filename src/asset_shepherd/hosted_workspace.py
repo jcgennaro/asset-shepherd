@@ -303,7 +303,7 @@ class HostedWorkspaceStore:
             if self.model_values_factory is None:
                 raise HostedWorkspaceError(
                     "This asset's selected agent model is unavailable in the current server "
-                    "configuration. Restart with its Bedrock Converse configuration."
+                    "configuration. Enable its configured provider before continuing."
                 )
             return self.model_values_factory(record.model_id)
         return environ
