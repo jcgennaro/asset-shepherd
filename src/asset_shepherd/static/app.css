@@ -2338,6 +2338,35 @@ details[open] summary::after {
   margin-top: 12px;
 }
 
+.component-disclosure {
+  margin-top: 12px;
+  min-width: 0;
+}
+
+.component-disclosure > summary {
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.component-disclosure > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.component-disclosure .component-hide-rows,
+.component-disclosure[open] .component-show-rows {
+  display: none;
+}
+
+.component-disclosure[open] .component-hide-rows {
+  display: inline;
+}
+
 .component-color-0 {
   --component-color: #83d6ca;
   --component-label-color: #b3f1e8;

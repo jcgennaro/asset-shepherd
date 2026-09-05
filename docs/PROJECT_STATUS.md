@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** First-visit navigation tour and quieter upload progress (this file is included)
+**Current commit:** Collapsible long sub-component inventories (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,11 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D118: inventories above seven sub-components now start collapsed, with all rows available on
+  expansion; shorter lists remain inline. Nine focused tests prove the threshold and retention of
+  all 65 form choices across collapse/reopen. Common gate: 306 passed, three skipped; clean
+  Ruff/format/Pyright and lock checks. Combined D117/D118 web rollout pending.
 
 - D117: removed upload progress's model-running sentence and redundant bottom Gallery link.
   Added a four-step navigation-only tour on first Gallery visit, Skip/Done persistence, native

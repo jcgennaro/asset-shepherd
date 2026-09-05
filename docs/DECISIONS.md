@@ -4,6 +4,26 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D118 — Collapsible long sub-component inventories
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; common and focused template/browser gates pass; rollout pending
+
+At the user's request, wrap inventories of more than seven sub-components in a native details
+disclosure, collapsed initially and labeled with the total count and Show rows/Hide rows. Seven or
+fewer remain inline. The complete inventory stays in the DOM, with unchanged component IDs,
+highlight buttons, form associations, and Keep/Remove controls. Closing the pane neither resets
+choices nor excludes them from the atomic approval/revision submission. No pagination, truncation,
+new model call, or change to repair authorization is introduced. This shared partial also covers
+historical read-only inspection rows; the overall action report stays visible outside the pane.
+
+Focused checks cover zero, seven, eight, and 65 components in editable/read-only rendering. A real
+isolated Chromium test confirms expansion, collapse, re-expansion, and all 65 form entries including
+an edited choice after collapse. Nine focused tests pass; the common gate passes with 306 tests,
+three skips, clean Ruff/format/Pyright and lock checks. Roll out alongside the pending D117 web update;
+the user has confirmed the collar moved beyond its task-local upload draft.
+
 ### D117 — First-visit navigation tour and quieter upload progress
 
 **Date:** 2026-09-05

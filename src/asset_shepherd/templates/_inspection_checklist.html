@@ -14,6 +14,10 @@
           <td class="inspection-action">
             <span>{{ check.action }}</span>
             {% if check.component_proposals %}
+              {% if check.component_proposals|length > 7 %}
+                <details class="component-disclosure">
+                  <summary>{{ check.component_proposals|length }} sub-components <span class="component-show-rows">— Show rows</span><span class="component-hide-rows">— Hide rows</span></summary>
+              {% endif %}
               <div class="component-proposals" aria-label="Disconnected component selection">
                 {% for component in check.component_proposals %}
                   <div class="component-proposal component-color-{{ loop.index0 % 6 }}{% if component.proposed_removal %} remove{% else %} keep{% endif %}" data-component-proposal="{{ component.component_id }}">
@@ -38,6 +42,9 @@
                   </div>
                 {% endfor %}
               </div>
+              {% if check.component_proposals|length > 7 %}
+                </details>
+              {% endif %}
             {% endif %}
             {% if proposal_response_form_id and check.response_lane %}
               {% set response_name = check.response_lane.value|lower %}
