@@ -61,7 +61,12 @@ exact-mutation, invariant-verification, and packaging layer.
 - D118: inventories above seven sub-components now start collapsed, with all rows available on
   expansion; shorter lists remain inline. Nine focused tests prove the threshold and retention of
   all 65 form choices across collapse/reopen. Common gate: 306 passed, three skipped; clean
-  Ruff/format/Pyright and lock checks. Combined D117/D118 web rollout pending.
+  Ruff/format/Pyright and lock checks. CodeBuild `e6006dba-978e-4ac6-a4b0-74d651266dec`
+  passed the Linux upload smoke (0.013 s acknowledgement, READY in 1.112 s, zero model calls).
+  Combined D117/D118 web image `cd489a7-components-web` / task revision 16 serves all traffic;
+  CloudFormation UPDATE_COMPLETE / ECS SUCCESSFUL, with zero old tasks. Live CSS/tour script match
+  source, health 200, anonymous workspace 401,
+  all eight alarms OK. No authentication or model/runtime configuration change.
 
 - D117: removed upload progress's model-running sentence and redundant bottom Gallery link.
   Added a four-step navigation-only tour on first Gallery visit, Skip/Done persistence, native
@@ -70,8 +75,8 @@ exact-mutation, invariant-verification, and packaging layer.
   297 passed, 3 skipped; Ruff, formatting, Pyright and lock checks pass. CodeBuild
   `ae2f9aa0-7e16-4a8c-9f1c-bb4821d32752` succeeded for `bb40c41-navigation-tour-web`;
   Linux upload smoke reached READY in 1.106 s (0.012 s acknowledgement), with zero model calls.
-  live rollout held until the user confirms the current collar is past task-local Upload/Describe
-  staging (or accepts re-uploading). No model/runtime/auth configuration change.
+  Rollout was initially held for the staged collar, now released in the combined D118 web image following
+  the user's confirmation that intake completed. No model/runtime/auth configuration change.
 
 - D116: fixes the collar's synchronous upload/preflight bottleneck in shared local/hosted code.
   The 30 MB collar returned in 0.125 s locally and passed asynchronous validation by 20.19 s;

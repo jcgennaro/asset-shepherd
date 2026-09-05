@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; common and focused template/browser gates pass; rollout pending
+**Status:** ACCEPTED; common/browser/Linux gates pass; web rollout successful
 
 At the user's request, wrap inventories of more than seven sub-components in a native details
 disclosure, collapsed initially and labeled with the total count and Show rows/Hide rows. Seven or
@@ -24,11 +24,23 @@ an edited choice after collapse. Nine focused tests pass; the common gate passes
 three skips, clean Ruff/format/Pyright and lock checks. Roll out alongside the pending D117 web update;
 the user has confirmed the collar moved beyond its task-local upload draft.
 
+Source `cd489a7` passed CodeBuild `e6006dba-978e-4ac6-a4b0-74d651266dec`; web image
+`cd489a7-components-web` has digest
+`sha256:843ced98c714d92839f64fe540ffeb88e3614c6efee38bfd4dbea250a0c34675`.
+Linux upload smoke reached READY in 1.112 s with 0.013 s acknowledgement and zero model calls.
+ECS web task revision 16 serves 100% of traffic; live CSS/tour JS match source, health is 200,
+anonymous workspace JSON requests remain 401, and all eight operational alarms are OK.
+Only the web image changed. Authentication, AgentCore, models, and approval contracts did not.
+Final acceptance: CloudFormation UPDATE_COMPLETE, ECS SUCCESSFUL, one revision-16 task at 100%
+traffic and zero old tasks. The owner's separate final-click 401 maps to the login gate rejecting
+an expired/missing session; the existing absolute one-hour lifetime and shared signer are unchanged.
+The screenshot shows successful mesh simplification before that rejected acceptance request.
+
 ### D117 — First-visit navigation tour and quieter upload progress
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; full local/browser and Linux image gates pass; safe rollout pending
+**Status:** ACCEPTED; full local/browser and Linux image gates pass; released with D118
 
 Remove the upload progress sentence about no model running and its redundant bottom Gallery link;
 retain the mascot home link and existing navigation. Add a short four-step, skippable navigation
@@ -55,8 +67,8 @@ Source `bb40c41` passed CodeBuild `ae2f9aa0-7e16-4a8c-9f1c-bb4821d32752`; the we
 `bb40c41-navigation-tour-web` has digest
 `sha256:128767b35c59dd7bf7bf512699d3dccefe673f3d1786ff06a5f67cbdae3db897`.
 Its Linux upload smoke acknowledged in 0.012 s and reached READY in 1.106 s, with zero model calls.
-Hold live rollout until the user confirms the active collar has become a durable workspace or
-accepts losing/re-uploading its task-local draft; do not replace the task silently during intake.
+Rollout was held until the user confirmed the active collar had become a durable workspace;
+this update ships in the combined D118 web image rather than replacing a task during intake.
 
 ### D116 — Acknowledge uploads before bounded asynchronous preflight
 
