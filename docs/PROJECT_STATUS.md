@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Deploy the private alarm notification route (this file is included)
+**Current commit:** Confirm alarm inbox delivery (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -64,8 +64,8 @@ exact-mutation, invariant-verification, and packaging layer.
   test moved only `asset-shepherd-contest-dispatcher-throttles` to `ALARM`, CloudWatch recorded
   successful execution of its SNS action, and the alarm was immediately restored to `OK`. No
   application workflow or model was invoked. The address is supplied only through a `NoEcho`
-  parameter and is absent from repository content and stack outputs. Recipient observation of the
-  test email remains the last end-to-end check.
+  parameter and is absent from repository content and stack outputs. The recipient confirmed the
+  email for the 2026-09-04 15:36:18 UTC test, completing end-to-end notification acceptance.
 
 - D107 immutable Bedrock content boundary: `asset-shepherd-guardrail` is `CREATE_COMPLETE` with
   Guardrail `xadkxnj292qu`, immutable version `1`, and the exact public refusal. Direct
@@ -107,7 +107,7 @@ exact-mutation, invariant-verification, and packaging layer.
   endpoint DNS now expose two addresses. Ten health requests, the accepted notebook, and exact GLB
   download passed after the resize, with all eight alarms still `OK`. Detailed model logging remains
   disabled. D107 subsequently closes Guardrail wording/compatibility; multi-user authentication,
-  recipient confirmation/delivery proof, and the full remote failure matrix remain open.
+  and the full remote failure matrix remain open; D108 closes notification delivery acceptance.
 
 - D105 remote web command boundary: hosted agent actions now become schema-versioned DynamoDB
   receipts and encrypted SQS messages when the deployment queue is configured. The web request
@@ -1326,8 +1326,8 @@ RW2 requires untouched Debug Beetle and Cloudforge Workbench exports. The least-
 8/8 Kimi gate are confirmed. Luna remains unavailable behind its account agreement but no longer
 blocks the recommended Kimi path. The public ECS/SQS/Lambda/AgentCore path now passes one clean
 acceptance-through-download run, forced web-task replacement, and immutable Guardrail acceptance.
-M9 still requires a Step 7 multi-user access choice, recipient observation of the alarm test, and
-the complete Step 8 remote case matrix. The submission also remains
+M9 still requires a Step 7 multi-user access choice and the complete Step 8 remote case matrix.
+The submission also remains
 blocked on the public-repository, free judge-access, video, disclosure, release-scan, and
 entrant-attestation gates in
 `docs/CONTEST_COMPLIANCE_PLAN.md`. A human-cleaned reference and manual-time record remain required
@@ -1335,8 +1335,8 @@ for the full RW4 comparison gate.
 
 ## Next action
 
-Confirm receipt of the bounded alarm email, then choose and implement the free judge-access identity
-boundary before running the complete Step 8 browser matrix.
+Choose and implement the free judge-access identity boundary before running the complete Step 8
+browser matrix. Alarm notification acceptance is complete.
 Preserve the current mutation scope, exact authorization, durability, and invariant checks; do not
 restore deterministic target-dependent planning or create a second conversational authority.
 

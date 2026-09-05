@@ -2,8 +2,8 @@
 
 **Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate, private S3/DynamoDB state
 and Strands sessions are live, and the public ECS/SQS/Lambda/AgentCore path has completed one clean
-acceptance-through-download run plus forced web-task replacement; Step 7 identity isolation and
-alarm-delivery proof plus the full Step 8 remote matrix remain open
+acceptance-through-download run plus forced web-task replacement; alarm inbox delivery is verified;
+Step 7 identity isolation and the full Step 8 remote matrix remain open
 
 **Last verified against the live deployment:** 2026-09-04
 
@@ -85,8 +85,8 @@ until the remote-product gate passes.
   topic, seven-day log retention,
   bounded correlation fields, exact-workspace purge, S3 lifecycle, DynamoDB TTL, observed Kimi
   subtotal, and live idle-cost floor are complete. The immutable Guardrail passes direct 8/8
-  boundary and Kimi/Converse probes, and rebuilt public-application acceptance. Authentication,
-  recipient observation of the notification test remain.
+  boundary and Kimi/Converse probes, and rebuilt public-application acceptance. Alarm notification
+  delivery is verified through the recipient inbox. Authentication remains.
 - [ ] Step 8 remote M9 acceptance.
 
 ## Controlling constraints
@@ -742,8 +742,9 @@ deployment parameter and is not committed or returned in stack outputs. The oper
 `UPDATE_COMPLETE`, all eight alarm actions are enabled, and all eight alarms remain `OK`. The SNS
 subscription is confirmed. A bounded test moved only the dispatcher-throttles alarm to `ALARM`;
 CloudWatch recorded successful execution of its SNS action, and the alarm was restored to `OK`
-without invoking the application or a model. Confirm receipt of that email to finish the
-end-to-end route proof. The existing AWS Budget remains the account-level spend alert. Missing
+without invoking the application or a model. The recipient supplied the delivered email for the
+2026-09-04 15:36:18 UTC test (11:36 a.m. Eastern), completing the end-to-end route proof.
+The existing AWS Budget remains the account-level spend alert. Missing
 metric data is non-breaching.
 
 Run `scripts/Set-AssetShepherdLogRetention.ps1` after creating or replacing managed services. It
@@ -818,8 +819,8 @@ request, while an ordinary 30 cm Unreal robot reached a target proposal. The all
 was purged with five object versions removed and `VerifiedEmpty=True`. A status invocation started
 runtime v5 and recovered the accepted workspace at `COMPLETE`. Ten health calls, the accepted
 notebook, and its 24,580-byte `model/gltf-binary` download pass, and all eight alarms remain `OK`.
-The Guardrail portion is closed and the alarm route's AWS path passes. Multi-user authentication and
-recipient observation of the bounded alarm email remain before the Step 7 gate closes.
+The Guardrail portion and end-to-end alarm notification acceptance are closed. Multi-user
+authentication remains before the Step 7 gate closes.
 
 ## Step 8 — Remote M9 acceptance
 

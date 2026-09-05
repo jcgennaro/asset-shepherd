@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-04
 
-**Status:** ACCEPTED; deployed and confirmed, recipient delivery observation pending
+**Status:** ACCEPTED; deployed and verified through recipient inbox delivery
 
 **Decision owner:** User and Codex
 
@@ -35,8 +35,9 @@ parameter, and no committed Gmail address. The live `asset-shepherd-operations` 
 `UPDATE_COMPLETE`; all eight alarms have exactly one enabled action on the shared topic and remain
 `OK`. The subscription is confirmed. A bounded test placed only the dispatcher-throttles alarm in
 `ALARM`; CloudWatch recorded successful execution of the SNS action, and the alarm was restored to
-`OK` without invoking an application workflow or model. Recipient observation of the test email is
-the final end-to-end confirmation.
+`OK` without invoking an application workflow or model. The recipient supplied the delivered email
+for the test at 2026-09-04 15:36:18 UTC (11:36 a.m. Eastern), completing the end-to-end notification
+gate. The email body and unsubscribe link are not retained in the repository.
 
 ### D107 — Bind deployed Bedrock inference to one immutable narrow content boundary
 
