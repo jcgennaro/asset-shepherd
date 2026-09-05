@@ -257,3 +257,17 @@ def test_login_configuration_fails_closed() -> None:
         web_auth.login_configuration(
             {**VALUES, "ASSET_SHEPHERD_PUBLIC_ORIGIN": "http://demo.example.test"}
         )
+
+
+def test_signed_out_page_is_branded_and_public(client: TestClient) -> None:
+    """Signing out keeps a static mascot and a clear return path without private data."""
+    response = client.get("/auth/signed-out")
+    assert response.status_code == 200
+    assert "Signed out — Asset Shepherd" in response.text
+    assert "asset-shepherd-thinking.png" in response.text
+    assert "Sign in again" in response.text
+    assert 'href="/auth/login"' in response.text
+    assert 'name="viewport"' in response.text
+    assert "animation:" not in response.text
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["cache-control"] == "no-store"

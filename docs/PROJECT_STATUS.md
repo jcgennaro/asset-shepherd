@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** Brand hosted sign-in with the existing static mascot (this file is included)
+**Current commit:** Preserve remote form decisions and brand signed-out screen (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,13 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D115: fixes missing clicked-button decision in remote FormData, the cause of the user's Apply
+  recommendations 422 before queue dispatch. Four real headless-browser cases retain exact
+  approve/reject/revise/accept values and associated fields; no approval is inferred. The signed-out
+  page now matches the mascot/dark/mint branding, with visually checked desktop and 320 px layouts.
+  Common gate passes: 290 passed, 3 skipped; lock, Ruff, formatting, Pyright clean. Web-only rollout
+  is pending. No user command, model request, or repair was executed during diagnosis/validation.
 
 - D114: live Cognito classic client now uses the static mascot/Asset Shepherd wordmark, dark card,
   mint actions, rounded fields, readable labels, and matching reset-screen contrast. CSS version

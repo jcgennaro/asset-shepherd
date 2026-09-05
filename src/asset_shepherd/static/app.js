@@ -679,7 +679,9 @@ async function submitRemoteCommand(form, submitter) {
   try {
     const response = await fetch(form.action, {
       method: "POST",
-      body: new FormData(form),
+      // Native submission includes the clicked button's name/value. Preserve
+      // that exact decision for remote commands; never infer approval.
+      body: new FormData(form, submitter),
       headers: { Accept: "application/json" },
     });
     if (response.status !== 202) {

@@ -9,6 +9,7 @@ import re
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 from urllib.parse import urlencode, urlsplit
 
@@ -233,7 +234,9 @@ def install_login(app: FastAPI, values: Mapping[str, str] | None = None) -> None
 
     @app.get("/auth/signed-out", include_in_schema=False)
     async def signed_out() -> Response:
-        return HTMLResponse('Signed out of Asset Shepherd. <a href="/auth/login">Sign in</a>.')
+        return HTMLResponse(
+            (Path(__file__).parent / "templates" / "signed_out.html").read_text(encoding="utf-8")
+        )
 
     app.add_middleware(LoginGate, origin=configuration.origin)
     # Last added middleware is outermost: signed session must exist before LoginGate runs.

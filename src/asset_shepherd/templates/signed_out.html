@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signed out — Asset Shepherd</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; min-height: 100svh; padding: 32px 20px;
+      display: grid; place-items: center; background: #0d1514; color: #f4efe7;
+      font-family: "Segoe UI", Arial, sans-serif; }
+    main { width: 100%; max-width: 420px; padding: 36px 28px; text-align: center;
+      background: #131e1c; border: 1px solid #2b3a36; border-radius: 18px; }
+    .mascot { width: 108px; height: 108px; margin: 0 auto 12px;
+      background: url("/static/asset-shepherd-thinking.png") 0 0 / 200% 200% no-repeat;
+      image-rendering: pixelated; }
+    .brand { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
+    .accent { width: 36px; height: 3px; margin: 20px auto 28px; border-radius: 2px;
+      background: #82cbb7; }
+    h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; letter-spacing: -.6px; }
+    .message { margin: 0 auto 28px; max-width: 290px; color: #a9b7b1;
+      font-size: 16px; line-height: 1.6; }
+    .sign-in { display: flex; align-items: center; justify-content: center; gap: 12px;
+      min-height: 48px; padding: 12px 20px; border: 1px solid #a9d8c9;
+      border-radius: 8px; background: #a9d8c9; color: #0d1514;
+      font-size: 16px; font-weight: 700; text-decoration: none; }
+    .sign-in:hover { background: #c1e9dc; border-color: #c1e9dc; }
+    .sign-in:focus-visible { outline: 3px solid #f2bd69; outline-offset: 4px; }
+  </style>
+</head>
+<body>
+  <main aria-labelledby="signed-out-title">
+    <div class="mascot" role="img" aria-label="Asset Shepherd mascot"></div>
+    <p class="brand">Asset Shepherd</p>
+    <div class="accent" aria-hidden="true"></div>
+    <h1 id="signed-out-title">You’re signed out.</h1>
+    <p class="message">Thanks for stopping by. Sign in again whenever you’re ready to work on your next asset.</p>
+    <a class="sign-in" href="/auth/login">Sign in again <span aria-hidden="true">→</span></a>
+  </main>
+</body>
+</html>

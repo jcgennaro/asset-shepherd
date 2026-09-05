@@ -45,6 +45,18 @@ before doing that. The website login is separate from AWS console/IAM login.
 
 ## Deployment
 
+### Signed-out page and explicit command submission (D115)
+
+`templates/signed_out.html` supplies the public branded signed-out response, including the existing
+static mascot and a normal `/auth/login` link. It uses no script, provider call, or external font;
+no-referrer/no-store response policies and logout/session behavior are unchanged. Desktop and
+320 px preview captures are in ignored `build/validation/signed-out/`.
+
+The paired browser fix includes the actual clicked submitter when building remote FormData. Without
+it, Apply recommendations omitted required `decision=approve` and received 422 before queueing.
+Tests use actual app.js with a local typed endpoint; they do not approve or retry hosted assets.
+Reload the workspace after deployment before retrying a rejected action so the new script loads.
+
 ### Sign-in branding (D114)
 
 The live classic hosted login now uses the existing static mascot and Asset Shepherd wordmark,

@@ -4,6 +4,23 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D115 — Preserve explicit browser decisions and brand the signed-out screen
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; local regression/visual checks pass; web rollout pending
+
+The hosted Apply recommendations request used `new FormData(form)`, dropping the clicked submit
+button's `decision` name/value. FastAPI rejected the missing required field with 422 before a
+command could enter SQS. Serialize `new FormData(form, submitter)` so remote requests retain the
+same explicit choice as native submission. Never default a missing value to approval. Real
+headless-browser regressions exercise the actual app.js with approve/reject/revise button values,
+hidden result acceptance, and externally associated proposal fields against a typed local endpoint.
+The user's workspace has only its completed confirm-target command recorded; no rejected request
+was automatically resubmitted. Brand the public signed-out page with the existing static mascot,
+dark/mint palette, responsive layout, and a clear Sign in again link. Session/OAuth behavior,
+provider configuration, and consequential repair authorization remain unchanged.
+
 ### D114 — Brand the existing Cognito sign-in with the static mascot
 
 **Date:** 2026-09-05
