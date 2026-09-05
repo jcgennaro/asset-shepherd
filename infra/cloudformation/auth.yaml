@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Invite-only Cognito access to the shared Asset Shepherd demo.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: contest
+    AllowedPattern: "[a-z0-9-]+"
+  PublicOrigin:
+    Type: String
+    AllowedPattern: "https://[a-z0-9.-]+"
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub "asset-shepherd-${EnvironmentName}"
+      UserPoolTier: LITE
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      UsernameConfiguration:
+        CaseSensitive: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          TemporaryPasswordValidityDays: 7
+      MfaConfiguration: OPTIONAL
+      EnabledMfas: [SOFTWARE_TOKEN_MFA]
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      UserPoolTags:
+        Project: asset-shepherd
+        Environment: !Ref EnvironmentName
+  BrowserClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "asset-shepherd-${EnvironmentName}-web"
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: [!Sub "${PublicOrigin}/auth/callback"]
+      LogoutURLs: [!Sub "${PublicOrigin}/auth/signed-out"]
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH]
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+  LoginDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "asset-shepherd-${EnvironmentName}-${AWS::AccountId}"
+      UserPoolId: !Ref UserPool
+      ManagedLoginVersion: 1
+  SessionSigningSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub "asset-shepherd/${EnvironmentName}/session-signing"
+      Description: Server-only session signer; not a model API key.
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: session_key
+        PasswordLength: 64
+        ExcludePunctuation: true
+      Tags:
+        - Key: Project
+          Value: asset-shepherd
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  ClientId:
+    Value: !Ref BrowserClient
+  LoginDomain:
+    Value: !Sub "https://${LoginDomain}.auth.${AWS::Region}.amazoncognito.com"
+  SessionSecretArn:
+    Value: !Ref SessionSigningSecret
+  PublicOrigin:
+    Value: !Ref PublicOrigin

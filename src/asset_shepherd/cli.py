@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -112,6 +113,7 @@ def run_cli(arguments: list[str] | None = None) -> int:
             build_parser().error(str(error))
         uvicorn.run(
             create_app(work_root=args.work_dir, intake_analyzer=analyzer),
+            access_log=os.environ.get("ASSET_SHEPHERD_AUTH_REQUIRED") != "1",
             host=args.host,
             port=args.port,
         )

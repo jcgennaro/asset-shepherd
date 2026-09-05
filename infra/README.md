@@ -8,6 +8,12 @@ gate passed on 2026-09-04;
 operations hardening and the full remote case matrix remain. See
 `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` for the evidence, current endpoint, and gated procedure.
 
+**Access boundary:** D111 adds an invite-only Cognito gate; see `docs/HOSTED_LOGIN_RUNBOOK.md` for
+deployment and acceptance. Until the auth-enabled web image finishes rollout, the old endpoint is
+still public. The fixed `contest-demo` owner is a shared storage partition, not per-user isolation.
+Once gated, all invited users share that gallery. Private IAM authorization on AgentCore alone
+does not protect browser routes. Per-user ownership remains necessary for mutually untrusted users.
+
 ## Private workspace state
 
 `cloudformation/state.yaml` creates:

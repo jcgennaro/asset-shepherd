@@ -106,6 +106,7 @@ from asset_shepherd.target_intake import (
     confirm_target_viewing_use,
 )
 from asset_shepherd.verification import verify_repair
+from asset_shepherd.web_auth import install_login
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -3463,6 +3464,7 @@ def create_app(
         redoc_url=None,
     )
     app.state.job_store = store
+    install_login(app)
     app.state.hosted_workspace_store = hosted_store
     app.state.agentcore_dispatcher = remote_dispatcher
     app.mount("/static", StaticFiles(directory=_PACKAGE_ROOT / "static"), name="static")

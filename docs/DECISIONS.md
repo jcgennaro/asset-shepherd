@@ -4,6 +4,20 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D111 — Invite-only Cognito gate for the shared contest demo
+
+**Date:** 2026-09-04
+
+**Status:** ACCEPTED; user requested authentication; deployment acceptance in progress
+
+The user confirmed the public endpoint must require login. Use Cognito with administrator-only
+invitations, no public signup, and an application-wide session gate for data and actions. Keep the
+existing shared demo owner: invited users share the gallery. This explicitly does not claim
+per-user private workspaces. Use standard Authlib OIDC/PKCE validation and a Secrets Manager-generated
+server-only signer for Secure/HttpOnly host-only cookies. Keep provider keys out of this change.
+AWS console authentication remains separate from website authentication. No prompt-injection tests
+are authorized or required. Details and remaining limitations: `HOSTED_LOGIN_RUNBOOK.md`.
+
 ### D110 — Fixed-resolution evidence and bounded repeated sensing failures
 
 **Date:** 2026-09-04

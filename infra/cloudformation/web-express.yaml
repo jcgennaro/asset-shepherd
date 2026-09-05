@@ -46,6 +46,21 @@ Parameters:
     Description: >-
       Exactly two public subnets in different Availability Zones. Two zones keep the
       public demo highly available without allocating an IPv4 address in every default-VPC zone.
+  PublicOrigin:
+    Type: String
+    AllowedPattern: "https://[a-z0-9.-]+"
+  CognitoPoolId:
+    Type: String
+    AllowedPattern: "[a-z0-9-]+_[A-Za-z0-9]+"
+  CognitoClientId:
+    Type: String
+    AllowedPattern: "[a-z0-9]+"
+  CognitoDomain:
+    Type: String
+    AllowedPattern: "https://[a-z0-9.-]+"
+  SessionSecretArn:
+    Type: String
+    AllowedPattern: "arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]+"
 
 Resources:
   AgentCommandDeadLetterQueue:
@@ -225,6 +240,10 @@ Resources:
                     s3:prefix:
                       - workspaces/*
                       - sessions/*
+              - Sid: ReadExactSessionSigner
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref SessionSecretArn
               - Sid: ManageWorkspaceArtifacts
                 Effect: Allow
                 Action:
@@ -285,6 +304,18 @@ Resources:
       PrimaryContainer:
         ContainerPort: 8080
         Environment:
+          - Name: ASSET_SHEPHERD_AUTH_REQUIRED
+            Value: "1"
+          - Name: ASSET_SHEPHERD_PUBLIC_ORIGIN
+            Value: !Ref PublicOrigin
+          - Name: ASSET_SHEPHERD_COGNITO_POOL_ID
+            Value: !Ref CognitoPoolId
+          - Name: ASSET_SHEPHERD_COGNITO_CLIENT_ID
+            Value: !Ref CognitoClientId
+          - Name: ASSET_SHEPHERD_COGNITO_DOMAIN
+            Value: !Ref CognitoDomain
+          - Name: ASSET_SHEPHERD_SESSION_SECRET_ARN
+            Value: !Ref SessionSecretArn
           - Name: ASSET_SHEPHERD_ALLOWED_MODEL_IDS
             Value: moonshotai.kimi-k2.5,us.openai.gpt-5.6-luna
           - Name: ASSET_SHEPHERD_AGENT_COMMAND_QUEUE_URL

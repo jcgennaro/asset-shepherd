@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Fix adaptive evidence cropping and bound visual-sensing retries (this file is included)
+**Current commit:** Add invite-only Cognito access for the shared demo (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,17 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D111: user requested a website login after confirming anonymous access was possible. Cognito
+  stack creation passes with admin-only signup, code-only OAuth, and no client secret. The app
+  gates data and actions with Authlib OIDC/PKCE and a Secrets Manager-backed secure session signer;
+  this is a shared-gallery gate, not tenant isolation. An owner invitation was sent by Cognito;
+  the password was not inspected. Deployment and human login acceptance remain to be confirmed.
+  Common gate passes: 277 tests passed, 3 skipped; lock, Ruff, formatting, and Pyright pass.
+- D110 deployment completed: AgentCore runtime 7 READY; web task revision 10 completed its rollout
+  with `0838caf-render` images. Both CodeBuild gates pass, including fixed 512px ARM64 captures;
+  `/healthz` returns 200 and all eight operational alarms are OK. The subsequent auth change is
+  a separate deployment, not part of that completed renderer rollout.
 
 - D110: Smartpad Tablet failed because adaptive rendering cropped the back/left screenshots;
   the evidence validator was correct. Fixed-scale capture produces four 512px images with clear
@@ -1376,8 +1387,9 @@ for the full RW4 comparison gate.
 
 ## Next action
 
-Deploy D110's renderer/retry fix before another hosted Smartpad Tablet run. D109's content false
-positive is resolved; it was separate from this real screenshot-cropping failure.
+Deploy D111 and verify cookie-free denial before inviting any additional demo users. Complete the
+owner's Cognito sign-in/download acceptance. Invited users share the existing gallery; per-user
+isolation and external OpenAI/Meta key enablement remain separate, uncompleted work.
 Choose and implement the free judge-access identity boundary before the complete Step 8 browser
 matrix. Alarm notification acceptance is complete. Do not run injection-attempt tests.
 Preserve the current mutation scope, exact authorization, durability, and invariant checks; do not
