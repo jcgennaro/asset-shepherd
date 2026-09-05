@@ -2,6 +2,42 @@ if (!window.location.hash) {
   window.scrollTo(0, 0);
 }
 
+const uploadCheck = document.querySelector("[data-upload-check]");
+if (uploadCheck) {
+  const message = uploadCheck.querySelector("[data-upload-check-message]");
+  let failedPolls = 0;
+  async function pollUploadCheck() {
+    try {
+      const response = await fetch(uploadCheck.dataset.statusUrl, {
+        credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(10000),
+      });
+      if (response.status === 401 || response.status === 403) {
+        message.textContent = "Your sign-in has expired. Reload to sign in and resume checking this upload.";
+        return;
+      }
+      if (response.status === 404) {
+        message.textContent = "This staged upload is no longer available. Return to Gallery and upload the GLB again.";
+        return;
+      }
+      if (!response.ok) throw new Error("Could not read upload status");
+      const receipt = await response.json();
+      if (receipt.state === "READY" || receipt.state === "FAILED") {
+        window.location.replace(receipt.next_url);
+        return;
+      }
+      failedPolls = 0;
+    } catch (_error) {
+      failedPolls += 1;
+      if (failedPolls >= 3) {
+        message.textContent = "The connection was interrupted. Reload to check this upload; you do not need to upload it again unless it is unavailable.";
+        return;
+      }
+    }
+    window.setTimeout(pollUploadCheck, 2000);
+  }
+  window.setTimeout(pollUploadCheck, 1000);
+}
+
 function readStoredPreference(key) {
   try {
     return window.localStorage.getItem(key);

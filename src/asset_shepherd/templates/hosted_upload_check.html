@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="single-step workflow-notebook" aria-label="Asset workflow notebook">
+    <article class="workflow-cell current" id="notebook-upload">
+      <header class="workflow-cell-header"><span>1</span><strong>Upload</strong></header>
+      <blockquote class="history-user-message"><strong>You</strong><p>Uploaded {{ draft.original_filename }}.</p></blockquote>
+      {% if check and check.state == 'FAILED' %}
+        <p class="history-agent-message" role="alert"><strong>Asset Shepherd</strong><span>{{ check.error }}</span></p>
+        <form action="{{ url_for('retry_upload_check', draft_id=draft.draft_id) }}" method="post" data-busy-form data-busy-message="Restarting the asset check…">
+          <button class="primary-button" type="submit" data-submit-button>Check uploaded file again <span aria-hidden="true">→</span></button>
+        </form>
+        <form action="{{ url_for('upload_hosted_asset') }}" method="post" enctype="multipart/form-data" data-busy-form data-busy-message="Uploading your replacement GLB…">
+          <input type="hidden" name="replace_draft_id" value="{{ draft.draft_id }}">
+          <label>Choose another GLB <input name="asset" type="file" accept=".glb,model/gltf-binary" required></label>
+          <button class="secondary-button" type="submit" data-submit-button>Replace uploaded file</button>
+        </form>
+      {% else %}
+        <div data-upload-check data-status-url="{{ url_for('hosted_upload_status', draft_id=draft.draft_id) }}">
+          <p class="history-agent-message workflow-thinking-message" role="status"><strong>Asset Shepherd</strong><span class="workflow-thinking-body"><span class="shepherd-sprite shepherd-sprite-thinking" aria-hidden="true"></span><span>Upload received—checking your asset…</span></span></p>
+          <p data-upload-check-message aria-live="polite">Measuring geometry and checking its structure. Complex assets may take a few minutes. No model is running yet.</p>
+        </div>
+        <noscript><p>Reload this page to check progress.</p></noscript>
+      {% endif %}
+      <a class="text-link" href="{{ url_for('hosted_home') }}">Return to Gallery</a>
+    </article>
+  </section>
+{% endblock %}

@@ -9,6 +9,15 @@ Cognito login to the shared demo; rollout and human acceptance are tracked in
 
 **Last verified against the live deployment:** 2026-09-05
 
+**D116 upload addendum:** The current upload-first UI acknowledges the GLB before expensive
+profile-free diagnostics. An isolated, one-at-a-time web subprocess performs the check with a
+four-minute deadline; authenticated polling displays progress and explicit failure/retry. The
+description step reuses the exact source-hash-bound result instead of repeating the diagnostic.
+No model call, new AWS service, task-size increase, or ALB timeout increase is required. Task-local
+pre-intake drafts still do not survive ECS task replacement; direct S3/durable draft work remains
+open. The same source implements local and hosted behavior. Test locally, pass the common gate,
+then build the immutable web image (including Linux upload smoke acceptance) and roll it out.
+
 **D112 provider addendum:** Bedrock Luna still returns account unavailability. The hosted app now
 offers explicit Luna xhigh through the OpenAI API, using a separate Secrets Manager key and exact
 backend-role grants. Kimi remains the default; no silent fallback or existing-workspace migration

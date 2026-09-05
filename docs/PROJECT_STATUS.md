@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** Preserve remote form decisions and brand signed-out screen (this file is included)
+**Current commit:** Acknowledge uploads before bounded asynchronous preflight (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,18 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D116: fixes the collar's synchronous upload/preflight bottleneck in shared local/hosted code.
+  The 30 MB collar returned in 0.125 s locally and passed asynchronous validation by 20.19 s;
+  the mascot/progress cell stayed available and health/status requests remained responsive.
+  Cache reuse is bound to source SHA-256 and bytes, avoiding duplicate preflight after Describe.
+  Pending checks block intake/preview, and timeout/interruption offers explicit recovery. No paid
+  model calls or asset mutations. Local full test suite: 293 passed, 3 skipped. Web deployment
+  and image-build Linux upload acceptance are pending; no runtime/model configuration change.
+
+- User-confirmed hosted Luna tablet end-to-end acceptance after D115: the user reports completing
+  the full tablet workflow successfully. This is human acceptance evidence, not a new measured
+  token ledger or proof that the entire hosted acceptance matrix is complete.
 
 - D115: fixes missing clicked-button decision in remote FormData, the cause of the user's Apply
   recommendations 422 before queue dispatch. Four real headless-browser cases retain exact

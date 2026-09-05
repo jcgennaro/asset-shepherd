@@ -28,6 +28,7 @@ from asset_shepherd.target_intake import TargetIntakeContract
 from asset_shepherd.web import create_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+pytestmark = pytest.mark.usefixtures("inline_upload_checks")
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
 DESCRIPTION = "A friendly humanoid robot intended as a 1.8 m static game asset."
 PACKAGE_NAMES = {

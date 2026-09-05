@@ -45,6 +45,7 @@ from asset_shepherd.web import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+pytestmark = pytest.mark.usefixtures("inline_upload_checks")
 BROKEN_PATH = PROJECT_ROOT / "fixtures" / "broken_robot.glb"
 CLEAN_PATH = PROJECT_ROOT / "fixtures" / "clean_robot.glb"
 FAMILY_ID = "unreal-static-game-asset-family-v1"

@@ -4,6 +4,41 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D116 — Acknowledge uploads before bounded asynchronous preflight
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; local collar/regression acceptance passed; web deployment pending
+
+The 30,204,480-byte collar upload produced an ALB 504 at 13:24 Eastern. The web task's
+allocated CPU reached 100% in the 13:24 and 13:25 metric periods; its ALB idle timeout is
+60 seconds, with no task crash/restart. The upload route ran complete profile-free diagnostics
+before responding and the description handler repeated them. Local diagnosis measured 21.84 s
+inside source diagnostics versus about 0.2 s for loading, validation, and bounds.
+
+The shared local/hosted web code now acknowledges the bounded GLB upload and starts an isolated
+model-free preflight subprocess. One heavy check runs per web process, without an unbounded queue;
+the subprocess has a 240-second deadline and single-threaded BLAS settings. Short authenticated
+status polls drive a notebook Upload cell with the existing animated mascot. Intake and preview
+remain gated until validation succeeds. Failures expose an explicit retry or replacement; restoring
+an interrupted receipt fails visibly instead of spinning forever. Completed preflight is reused at
+workspace creation only after exact SHA-256 and byte-size checks. No repair or target inference is
+performed by this worker, no approval is inferred, and no new AWS service or larger task is added.
+
+Upload drafts retain their existing task-local staging durability: a process restart with the same
+disk can resume/recheck, but ECS task replacement can lose a draft before durable workspace creation.
+Private direct-to-S3 uploads and fully durable pre-intake drafts remain separate hardening work.
+This change removes CPU work from the upload request; it does not promise recovery of an interrupted
+file transfer. The legacy combined POST /workspace remains a compatibility route; the current UI
+uses upload-first intake. Local and AWS web releases are built from the same committed code.
+
+The actual collar returned 303 in 0.125 s, displayed progress immediately, and reached READY by the
+20.19-second poll, with 0–16 ms status requests and health 200 throughout. The source remained
+unchanged and no model was called. Tests cover a held worker, blocked early intake, bounded concurrent
+uploads, a real subprocess, restored state, timeout/retry, and source-hash-bound reuse. The web image
+build also performs a real Linux upload-to-description smoke test before pushing the image.
+
+
 ### D115 — Preserve explicit browser decisions and brand the signed-out screen
 
 **Date:** 2026-09-05

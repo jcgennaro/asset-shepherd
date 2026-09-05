@@ -44,7 +44,6 @@ from asset_shepherd.hosted_models import (
 )
 from asset_shepherd.hosted_workspace import (
     MAX_HOSTED_WORKSPACES,
-    UNREADABLE_GLB_MESSAGE,
     HostedWorkspace,
     HostedWorkspaceError,
     HostedWorkspaceStore,
@@ -52,7 +51,7 @@ from asset_shepherd.hosted_workspace import (
     WorkspaceRepository,
     copy_validated_upload,
 )
-from asset_shepherd.inspector import inspect_asset, preflight_asset
+from asset_shepherd.inspector import inspect_asset
 from asset_shepherd.intake_analyzer import (
     DeterministicTargetIntakeAnalyzer,
     TargetIntakeAnalyzer,
@@ -105,6 +104,7 @@ from asset_shepherd.target_intake import (
     clarify_target_intake,
     confirm_target_viewing_use,
 )
+from asset_shepherd.upload_preflight import UploadPreflight
 from asset_shepherd.verification import verify_repair
 from asset_shepherd.web_auth import install_login
 
@@ -3431,6 +3431,7 @@ def create_app(
     hosted_start_drafts: dict[str, HostedStartDraft] = {}
     hosted_start_lock = RLock()
     hosted_staging_root = (work_root / "hosted-start").resolve(strict=False)
+    upload_checks = UploadPreflight()
     feedback_root = work_root / "feedback"
     templates = Jinja2Templates(directory=_PACKAGE_ROOT / "templates")
     cast(dict[str, object], templates.env.globals)["static_version"] = _static_asset_version()
@@ -3443,6 +3444,7 @@ def create_app(
     app.state.job_store = store
     install_login(app)
     app.state.hosted_workspace_store = hosted_store
+    app.state.upload_checks = upload_checks
     app.state.agentcore_dispatcher = remote_dispatcher
     app.mount("/static", StaticFiles(directory=_PACKAGE_ROOT / "static"), name="static")
 
@@ -4522,14 +4524,6 @@ def create_app(
         try:
             draft_root.mkdir(parents=True, exist_ok=False)
             copy_validated_upload(asset.file, source_path)
-            preflight = preflight_asset(source_path)
-            if not preflight.package.parse_success:
-                logger.info("Rejected unreadable hosted GLB: %s", preflight.parse_error)
-                raise HostedWorkspaceError(UNREADABLE_GLB_MESSAGE)
-            if preflight.structural_eligibility is RepairEligibility.INVALID_OR_UNREADABLE:
-                raise HostedWorkspaceError(
-                    preflight.parse_error or "This GLB cannot enter the Shepherd workflow."
-                )
             draft = HostedStartDraft(
                 draft_id=draft_id,
                 original_filename=Path(filename).name,
@@ -4540,10 +4534,21 @@ def create_app(
             persist_hosted_start_draft(draft)
             with hosted_start_lock:
                 hosted_start_drafts[draft_id] = draft
-            if replaced_draft is not None:
-                discard_hosted_start_draft(replaced_draft)
+
+            def retire_previous_upload() -> None:
+                if replaced_draft is not None:
+                    discard_hosted_start_draft(replaced_draft)
+
+            upload_checks.start(draft_root, retire_previous_upload)
+            check = upload_checks.status(draft_root)
+            if check is not None and check.state == "FAILED":
+                raise HostedWorkspaceError(check.error or "This GLB could not be checked.")
         except (HostedWorkspaceError, ValueError, OSError) as upload_error:
+            with hosted_start_lock:
+                hosted_start_drafts.pop(draft_id, None)
             source_path.unlink(missing_ok=True)
+            for name in ("draft.json", "upload-check.json"):
+                (draft_root / name).unlink(missing_ok=True)
             if draft_root.is_dir():
                 draft_root.rmdir()
             return render_hosted_upload(
@@ -4569,6 +4574,15 @@ def create_app(
             draft = require_hosted_start_draft(draft_id)
         except HostedWorkspaceError as draft_error:
             return render_hosted_upload(request, str(draft_error), status_code=404)
+        check = upload_checks.status(draft.source_path.parent)
+        if check is None:
+            try:
+                upload_checks.start(draft.source_path.parent)
+            except ValueError as error:
+                return render_hosted_upload(request, str(error), status_code=409)
+            check = upload_checks.status(draft.source_path.parent)
+        if check is not None and check.state != "READY":
+            return render_upload_check(request, draft, status_code=409)
         try:
             normalized = normalize_intent_description(description)
             target_analyzer = (
@@ -4604,6 +4618,7 @@ def create_app(
                     target_draft=target_draft,
                     model_provider=("bedrock-converse" if draft.model_id is not None else None),
                     model_id=draft.model_id,
+                    preflight_result=check.preflight if check is not None else None,
                 )
         except (HostedWorkspaceError, ValueError, OSError) as error:
             return render_hosted_describe(
@@ -4640,6 +4655,7 @@ def create_app(
         draft_root = draft.source_path.parent
         if draft_root.parent == hosted_staging_root and draft_root.is_dir():
             (draft_root / "draft.json").unlink(missing_ok=True)
+            (draft_root / "upload-check.json").unlink(missing_ok=True)
             draft_root.rmdir()
 
     def hosted_describe(request: Request, draft_id: str) -> Response:
@@ -4648,7 +4664,59 @@ def create_app(
             draft = require_hosted_start_draft(draft_id)
         except HostedWorkspaceError as error:
             return render_hosted_upload(request, str(error), status_code=404)
+        check = upload_checks.status(draft.source_path.parent)
+        if check is None:
+            try:
+                upload_checks.start(draft.source_path.parent)
+            except ValueError as error:
+                return render_hosted_upload(request, str(error), status_code=409)
+            check = upload_checks.status(draft.source_path.parent)
+        if check is not None and check.state != "READY":
+            return render_upload_check(request, draft)
         return render_hosted_describe(request, draft)
+
+    def render_upload_check(
+        request: Request, draft: HostedStartDraft, *, status_code: int = 200
+    ) -> Response:
+        check = upload_checks.status(draft.source_path.parent)
+        return templates.TemplateResponse(
+            request=request,
+            name="hosted_upload_check.html",
+            context={
+                "draft": draft,
+                "check": check,
+                "active_mode": "conversation",
+                "active_style": "Upload",
+                "hosted_step": "upload",
+            },
+            status_code=status_code,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def hosted_upload_status(request: Request, draft_id: str) -> Response:
+        try:
+            draft = require_hosted_start_draft(draft_id)
+        except HostedWorkspaceError as error:
+            return JSONResponse({"error": str(error)}, status_code=404)
+        check = upload_checks.status(draft.source_path.parent)
+        return JSONResponse(
+            {
+                "state": check.state if check is not None else "READY",
+                "error": check.error if check is not None else None,
+                "next_url": str(request.url_for("hosted_describe", draft_id=draft_id)),
+            },
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def retry_upload_check(request: Request, draft_id: str) -> Response:
+        try:
+            draft = require_hosted_start_draft(draft_id)
+            check = upload_checks.status(draft.source_path.parent)
+            if check is None or check.state == "FAILED":
+                upload_checks.start(draft.source_path.parent)
+        except (HostedWorkspaceError, ValueError) as error:
+            return render_hosted_upload(request, str(error), status_code=409)
+        return RedirectResponse(request.url_for("hosted_describe", draft_id=draft_id), 303)
 
     def redo_hosted_workspace(request: Request, workspace_id: str) -> Response:
         """Stage the original GLB for a fresh run without discarding saved progress."""
@@ -4670,6 +4738,7 @@ def create_app(
                 model_id=workspace.record.model_id,
             )
             persist_hosted_start_draft(draft)
+            upload_checks.reuse(draft_root, workspace.record.preflight)
             with hosted_start_lock:
                 hosted_start_drafts[draft_id] = draft
         except (HostedWorkspaceError, OSError) as error:
@@ -5258,6 +5327,9 @@ def create_app(
             draft = require_hosted_start_draft(draft_id)
         except HostedWorkspaceError:
             return Response(status_code=404)
+        check = upload_checks.status(draft.source_path.parent)
+        if check is None or check.state != "READY":
+            return Response(status_code=409)
         return FileResponse(
             draft.source_path,
             media_type="model/gltf-binary",
@@ -5466,6 +5538,18 @@ def create_app(
         upload_hosted_asset,
         methods=["POST"],
         name="upload_hosted_asset",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/upload-status",
+        hosted_upload_status,
+        methods=["GET"],
+        name="hosted_upload_status",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/check",
+        retry_upload_check,
+        methods=["POST"],
+        name="retry_upload_check",
     )
     app.add_api_route(
         "/workspace/new/{draft_id}/describe",

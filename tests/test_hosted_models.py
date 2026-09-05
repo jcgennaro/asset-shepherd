@@ -15,6 +15,7 @@ from asset_shepherd.agentcore_runtime import _model_values  # pyright: ignore[re
 from asset_shepherd.web import create_app
 
 ARN = "arn:aws:secretsmanager:us-east-1:123456789012:secret:asset-shepherd/contest/openai-Ab12Cd"
+pytestmark = pytest.mark.usefixtures("inline_upload_checks")
 KEY = "sk-placeholder-only-not-a-real-credential"
 KIMI = "moonshotai.kimi-k2.5"
 LUNA = hosted_models.OPENAI_LUNA_ID

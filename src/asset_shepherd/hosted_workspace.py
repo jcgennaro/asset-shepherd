@@ -631,6 +631,7 @@ class HostedWorkspaceStore:
         target_draft: TargetIntakeContract | None = None,
         model_provider: str | None = None,
         model_id: str | None = None,
+        preflight_result: PreflightResult | None = None,
     ) -> HostedWorkspace:
         """Create a workspace and run only profile-free objective preflight."""
         normalized = normalize_intent_description(description)
@@ -658,7 +659,16 @@ class HostedWorkspaceStore:
             source_path = root / "source.glb"
             try:
                 copy_validated_upload(stream, source_path)
-                preflight = preflight_asset(source_path)
+                if preflight_result is not None:
+                    if (
+                        preflight_result.package.file_sha256
+                        != sha256(source_path.read_bytes()).hexdigest()
+                        or preflight_result.package.byte_size != source_path.stat().st_size
+                    ):
+                        raise HostedWorkspaceError("The saved asset check does not match this GLB.")
+                    preflight = preflight_result
+                else:
+                    preflight = preflight_asset(source_path)
                 _write_json_atomic(root / "preflight.json", preflight.model_dump(mode="json"))
                 _write_json_atomic(
                     root / "target_intake.json",

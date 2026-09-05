@@ -28,6 +28,9 @@ phases:
         done
       - curl --fail --silent http://127.0.0.1:8080/healthz | grep -q 'ok'
       - curl --fail --silent http://127.0.0.1:8080/workspace | grep -q 'Asset Shepherd'
+      - docker cp scripts/smoke_upload_http.py "$CONTAINER_ID:/tmp/smoke_upload_http.py"
+      - docker cp fixtures/broken_robot.glb "$CONTAINER_ID:/tmp/upload-smoke.glb"
+      - docker exec "$CONTAINER_ID" python /tmp/smoke_upload_http.py --asset /tmp/upload-smoke.glb
       - docker stop "$CONTAINER_ID"
       - touch /tmp/asset-shepherd-web-image-accepted
   post_build:
