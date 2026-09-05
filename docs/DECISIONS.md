@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; key/access probe passes; cloud deployment acceptance in progress
+**Status:** ACCEPTED; AgentCore proposal-stage acceptance and authenticated web deployment pass
 
 The user requested one more Bedrock Luna attempt and, if still blocked, secure AWS storage of the
 OpenAI key and a Luna xhigh trial. The authenticated Bedrock Responses request still returns account
@@ -22,6 +22,12 @@ still applies. Both intake and workflow use Luna xhigh. See `HOSTED_OPENAI_RUNBO
 The first key/access check passes from the developer computer with 16 tokens. Do not call this an
 AWS runtime or completed-asset acceptance until its separate checks pass. Protect secrets and
 OAuth codes from logs; no prompt-injection tests are performed.
+The subsequent AgentCore v8 test reaches native approval with the unchanged saved tablet source:
+75.83 seconds wall time, 47,230 input/4,360 output tokens, and no consequential mutation. Keep Kimi
+as the deployment/legacy default; Luna is an explicit new-workspace choice, not a global migration.
+Web task revision 12 is deployed successfully with zero old tasks. The signed-in browser shows
+both model choices and the probe's proposal/3D preview; anonymous data/actions remain denied.
+Full browser intake-through-repaired-download acceptance remains for an explicitly approved run.
 
 ### D111 — Invite-only Cognito gate for the shared contest demo
 

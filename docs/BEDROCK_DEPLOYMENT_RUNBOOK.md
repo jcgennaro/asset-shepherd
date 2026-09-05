@@ -7,7 +7,13 @@ Step 7 identity isolation and the full Step 8 remote matrix remain open. D111 ad
 Cognito login to the shared demo; rollout and human acceptance are tracked in
 `HOSTED_LOGIN_RUNBOOK.md` and `PROJECT_STATUS.md`.
 
-**Last verified against the live deployment:** 2026-09-04
+**Last verified against the live deployment:** 2026-09-05
+
+**D112 provider addendum:** Bedrock Luna still returns account unavailability. The hosted app now
+offers explicit Luna xhigh through the OpenAI API, using a separate Secrets Manager key and exact
+backend-role grants. Kimi remains the default; no silent fallback or existing-workspace migration
+is enabled. `HOSTED_OPENAI_RUNBOOK.md` controls this opt-in exception to the original Bedrock-only
+production migration steps below, including separate billing and measured AgentCore acceptance.
 
 **Milestone:** M9 hosted Bedrock conversation and deployment
 

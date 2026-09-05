@@ -52,7 +52,7 @@ def main() -> None:
     )
     root: Path = args.source_root
     saved = json.loads((root / "workspace.json").read_text(encoding="utf-8"))
-    target = TargetIntakeContract.model_validate(saved["target_draft"])
+    target = TargetIntakeContract.model_validate_json(json.dumps(saved["target_draft"]))
     if not target.ready_for_confirmation:
         raise ValueError("Use a saved target with all user choices already supplied")
     source = root / "source.glb"

@@ -28,7 +28,6 @@ Parameters:
     AllowedValues:
       - moonshotai.kimi-k2.5
       - us.openai.gpt-5.6-luna
-      - gpt-5.6-luna
   OpenAISecretArn:
     Type: String
     Default: ""

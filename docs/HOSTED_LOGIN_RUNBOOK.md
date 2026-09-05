@@ -14,7 +14,7 @@ before doing that. The website login is separate from AWS console/IAM login.
   state, nonce, signature, issuer, audience, and expiration verification. Redirect destinations
   are deployment-owned fixed HTTPS URLs, never arbitrary browser parameters. The OAuth client
   has no shared client secret; PKCE binds code exchange to the initiating browser session.
-- The web task role may retrieve only the exact session-signing secret ARN. The value is generated
+- For authentication, the web task role may retrieve the exact session-signing secret ARN. The value is generated
   in Secrets Manager, retrieved into server memory, and never passed through CloudFormation values,
   images, browser code, model prompts, or logs. Authorized AWS administrators can retrieve it;
   encryption is not a claim that a compromised administrator/runtime cannot steal a secret.
@@ -32,8 +32,10 @@ before doing that. The website login is separate from AWS console/IAM login.
   callbacks are `no-store`; app access logging is disabled to avoid recording authorization codes.
 - Incomplete required login configuration or secret retrieval fails startup closed. Local offline
   development remains usable without Cognito when no login configuration is supplied.
-- OpenAI/Meta production keys are still not configured. Their future Secrets Manager retrieval
-  must remain separate from the session signer. Bedrock/Kimi remains the deployed model default.
+- D112 adds an optional OpenAI provider key in a separate Secrets Manager secret, with a separate
+  exact-ARN backend read grant; see `HOSTED_OPENAI_RUNBOOK.md`. Meta remains unconfigured.
+  Bedrock/Kimi remains the deployed model default. The OpenAI rollout also corrects the Docker
+  command to disable access logging; the earlier CLI-only setting did not cover that command.
 
 ## Deployment
 

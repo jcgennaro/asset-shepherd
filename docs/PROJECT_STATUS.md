@@ -61,11 +61,19 @@ exact-mutation, invariant-verification, and packaging layer.
 - D112: one renewed administrator Bedrock Responses/Luna xhigh request still returns 403 account
   unavailability. The existing DPAPI-protected OpenAI key is now in a separate Secrets Manager
   secret; a local SDK check using that secret completes with 16 tokens in 2.91 seconds. This does
-  not yet prove AgentCore access. Runtime/web share one allowlisted model resolver, retain Kimi
+  not alone prove AgentCore access. Runtime/web share one allowlisted model resolver, retain Kimi
   workspaces, and bind optional OpenAI to an exact role-readable ARN with xhigh for both boundaries.
   The selector explicitly labels separate OpenAI API billing. Docker access logging and public
-  SDK error-body redaction were corrected during the secret review. Cloud deployment/proposal
-  acceptance remain pending; no repair approval or injection-attempt test was sent.
+  SDK error-body redaction were corrected during the secret review. Both `f0fe26a-openai` images
+  pass CodeBuild. AgentCore runtime 8/DEFAULT are READY and the stack is UPDATE_COMPLETE. Its saved
+  Smartpad probe reached APPROVAL without mutation/error in 75.83 seconds (55.61 seconds inside
+  Strands), using 47,230 input and 4,360 output tokens. Kimi remains the deployment default; the
+  website's explicit Luna selector is deployed as task revision 12. ECS reports SUCCESSFUL,
+  CloudFormation UPDATE_COMPLETE, one new task at 100% traffic, and zero old tasks. Authenticated
+  Chrome shows both choices and the saved proposal/interactive 3D preview; anonymous workspace,
+  activity, download, OpenAPI, and command requests return 401, while health remains 200 and browser
+  navigation redirects to login. No repair approval or injection-attempt test was sent. Full
+  browser intake-through-repaired-download acceptance remains open. See `HOSTED_OPENAI_RUNBOOK.md`.
   Common gate passes: 283 tests passed, 3 skipped; lock, Ruff, formatting, and Pyright pass.
 
 - D111: user requested a website login after confirming anonymous access was possible. Cognito

@@ -68,3 +68,47 @@ Luna workspaces then fail closed rather than silently changing models. Never rol
 unauthenticated image. Do not delete the provider secret while active clients still require it.
 
 Official model settings: [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna).
+
+## 2026-09-05 AgentCore acceptance
+
+Both `f0fe26a-openai` images passed their CodeBuild gates. AgentCore runtime version 8 and its
+DEFAULT endpoint reached READY, and its stack completed the update before the probe. IAM simulation
+confirmed the runtime role's exact OpenAI-secret read permission; the real model invocation then
+proved that retrieval and internet egress worked from AWS.
+
+The probe used a new workspace, `b30b1eac4e894ef882baff23db7cd310`, with the saved Smartpad Tablet
+source and confirmed target from the D110 case. The original workspace/source were not altered.
+The call completed in 75.83 seconds including remote startup/state work; the Strands invocation
+ledger measured 55.61 seconds and 47,230 input + 4,360 output = 51,590 total tokens. The initial
+16-token connectivity request is separate. These are token counts, not dollar estimates.
+
+Luna inspected once, rendered once, proposed once, and attempted the execution tool once. The final
+call stopped at the native human-approval interrupt, before mutation. The SDK counts that interrupt
+as one tool error; the workflow itself returned `ok=true`, phase `APPROVAL`, and `error=null`.
+The model proposed uniform best-fit normalization, grounding, footprint-center-bottom pivot, and
+missing-name cleanup. It correctly declined simplification for the 4,992-triangle normal-gameplay
+asset and did not invent a yaw change when the screenshots did not establish a horizontal front.
+
+This is a successful AWS-hosted proposal-stage test, **not** repaired-output or full browser
+acceptance. No repair approval was sent. The captured source hash remained
+`c4ed1944da0f21561fa15f96bbae734e9a8e92f7c90c20e506af1126ce657dea`.
+Ignored local evidence: `build/validation/hosted-openai-luna-20260905-probe/`, including the hydrated
+cloud result, assessment, command, and invocation ledger. A credential-marker scan of those
+artifacts produced no matches. No injection-attempt tests were run.
+
+Kimi remains the deployment default, including legacy workspaces without a persisted choice.
+Select Luna explicitly for a new upload; enabling it does not change existing assets' providers.
+
+## 2026-09-05 web deployment acceptance
+
+Web task revision 12 (`f0fe26a-openai-web`) reached ECS SUCCESSFUL and CloudFormation
+UPDATE_COMPLETE, with one healthy new task serving 100% traffic and zero old tasks. The web role's
+exact-secret read simulation passes; the task environment contains the secret ARN, not the API key.
+Authenticated Chrome displays the Kimi and Luna choices on upload and renders the probe's saved
+proposal, approval controls, full notebook history, and interactive source preview. Nothing was
+approved or submitted during these UI checks.
+
+Fresh anonymous requests to workspace, activity, repaired-download, OpenAPI, and POST `/intents`
+return 401. `/healthz` returns 200; HTML workspace navigation returns the expected login redirect.
+These are deployment/access checks, not a new end-to-end repaired-output acceptance. The owner can
+now select **Agent model → Luna xhigh — OpenAI API** on a new upload and run the normal workflow.
