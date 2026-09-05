@@ -62,8 +62,12 @@ exact-mutation, invariant-verification, and packaging layer.
   recommendations 422 before queue dispatch. Four real headless-browser cases retain exact
   approve/reject/revise/accept values and associated fields; no approval is inferred. The signed-out
   page now matches the mascot/dark/mint branding, with visually checked desktop and 320 px layouts.
-  Common gate passes: 290 passed, 3 skipped; lock, Ruff, formatting, Pyright clean. Web-only rollout
-  is pending. No user command, model request, or repair was executed during diagnosis/validation.
+  Common gate passes: 290 passed, 3 skipped; lock, Ruff, formatting, Pyright clean. Web-only image
+  `f459c9376886-web-actions-web` passed CodeBuild and is deployed as task revision 14: ECS SUCCESSFUL,
+  CloudFormation UPDATE_COMPLETE, one new task at 100% traffic and zero old tasks. Live signed-out template, normalized JavaScript,
+  health, and anonymous route denial checks pass. No user command, model request, or repair was
+  executed during diagnosis/validation. Reloading and explicitly retrying the pending approval is
+  left to the user.
 
 - D114: live Cognito classic client now uses the static mascot/Asset Shepherd wordmark, dark card,
   mint actions, rounded fields, readable labels, and matching reset-screen contrast. CSS version

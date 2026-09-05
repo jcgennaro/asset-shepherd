@@ -57,6 +57,14 @@ it, Apply recommendations omitted required `decision=approve` and received 422 b
 Tests use actual app.js with a local typed endpoint; they do not approve or retry hosted assets.
 Reload the workspace after deployment before retrying a rejected action so the new script loads.
 
+CodeBuild `asset-shepherd-contest-web:5d1e3b7e-f80d-40d3-aab6-69ec0971851a` passed and published
+`f459c9376886-web-actions-web`, deployed as web task revision 14. At 100% new-task traffic, the
+public signed-out page matches the checked template exactly; deployed app.js matches committed
+source after line-ending normalization and includes the submitter argument. Anonymous workspace,
+source-download, and OpenAPI still return 401; health returns 200. Only the image parameter changed.
+Runtime/model configuration and the existing pending approval were not modified by deployment.
+Final ECS/CloudFormation rollout status is recorded in `PROJECT_STATUS.md`.
+
 ### Sign-in branding (D114)
 
 The live classic hosted login now uses the existing static mascot and Asset Shepherd wordmark,

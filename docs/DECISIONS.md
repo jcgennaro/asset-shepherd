@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; local regression/visual checks pass; web rollout pending
+**Status:** ACCEPTED; local regression/visual checks pass; web rollout successful
 
 The hosted Apply recommendations request used `new FormData(form)`, dropping the clicked submit
 button's `decision` name/value. FastAPI rejected the missing required field with 422 before a
@@ -20,6 +20,10 @@ The user's workspace has only its completed confirm-target command recorded; no 
 was automatically resubmitted. Brand the public signed-out page with the existing static mascot,
 dark/mint palette, responsive layout, and a clear Sign in again link. Session/OAuth behavior,
 provider configuration, and consequential repair authorization remain unchanged.
+Web task revision 14 serves 100% of requests with zero old tasks; ECS reports SUCCESSFUL.
+Live signed-out content and line-ending-normalized JavaScript match the tested source, while
+anonymous workspace/download access remains denied. The user can reload and explicitly retry;
+we did not resubmit the failed approval for them.
 
 ### D114 — Brand the existing Cognito sign-in with the static mascot
 
