@@ -423,7 +423,8 @@ for (const textarea of document.querySelectorAll("textarea")) {
 function showWorkflowActivity(form) {
   const activityUrl = form.dataset.activityUrl;
   const busyMessage = form.dataset.busyMessage;
-  if (!activityUrl && !busyMessage) {
+  const remoteCommand = form.hasAttribute("data-remote-command");
+  if (!activityUrl && !busyMessage && !remoteCommand) {
     return;
   }
   const host = form.closest(".conversation-pane") || form.parentElement;
@@ -490,7 +491,7 @@ function showWorkflowActivity(form) {
     activityHost = workingCell;
   }
 
-  if (!activityUrl) {
+  if (!activityUrl && !remoteCommand) {
     return;
   }
 
@@ -506,6 +507,10 @@ function showWorkflowActivity(form) {
 
   const render = (payload) => {
     const items = Array.isArray(payload?.items) ? payload.items.slice(-3) : [];
+    // A just-started local worker may not have published its first activity yet.
+    if (!items.length) {
+      return;
+    }
     trace.replaceChildren();
     for (const item of items) {
       const row = document.createElement("li");
@@ -528,13 +533,19 @@ function showWorkflowActivity(form) {
 
   render({ items: [{ label: "Starting the agent", status: "ACTIVE" }] });
 
+  // Hosted work runs in AgentCore, not in the web process's local activity store.
+  // Its durable command receipt owns progress until completion or failure.
+  if (remoteCommand) {
+    return;
+  }
+
   const poll = async () => {
     try {
       const response = await fetch(activityUrl, { cache: "no-store" });
       if (response.ok) {
         const payload = await response.json();
         render(payload);
-        if (payload.state === "RUNNING") {
+        if (payload.state === "RUNNING" || payload.state === "IDLE") {
           window.setTimeout(poll, 400);
         }
       }
@@ -584,6 +595,7 @@ function appendPendingUserTurn(form, submitter) {
 function restoreRemoteForm(form, submitter, message) {
   const scope = form.closest(".conversation-pane");
   if (scope) {
+    scope.querySelector("[data-workflow-activity]")?.remove();
     scope.classList.remove("is-working");
     scope.removeAttribute("aria-busy");
     for (const cell of scope.querySelectorAll(".notebook-locked")) {
@@ -618,7 +630,11 @@ function updateRemoteCommandLabel(form, state) {
   );
   const label = labels?.[labels.length - 1];
   if (label) {
-    label.textContent = state === "QUEUED" ? "Waiting for Asset Shepherd" : "Asset Shepherd is working";
+    label.textContent = state === "QUEUED"
+      ? "Waiting for Asset Shepherd"
+      : state === "RECONNECTING"
+        ? "Reconnecting to Asset Shepherd…"
+        : "Asset Shepherd is working";
   }
 }
 
@@ -630,7 +646,18 @@ async function pollRemoteCommand(form, submitter, receipt) {
     }
     const status = await response.json();
     if (status.state === "SUCCEEDED") {
-      window.location.assign(status.redirect_url || receipt.redirect_url);
+      const destination = new URL(status.redirect_url || receipt.redirect_url, window.location.href);
+      if (
+        destination.origin === window.location.origin &&
+        destination.pathname === window.location.pathname &&
+        destination.search === window.location.search
+      ) {
+        // Notebook phases share one URL; fragment navigation does not load saved results.
+        window.history.replaceState(null, "", destination.href);
+        window.location.reload();
+      } else {
+        window.location.assign(destination.href);
+      }
       return;
     }
     if (status.state === "FAILED") {
@@ -643,7 +670,7 @@ async function pollRemoteCommand(form, submitter, receipt) {
     }
     updateRemoteCommandLabel(form, status.state);
   } catch (_error) {
-    updateRemoteCommandLabel(form, "RUNNING");
+    updateRemoteCommandLabel(form, "RECONNECTING");
   }
   window.setTimeout(() => pollRemoteCommand(form, submitter, receipt), 1000);
 }

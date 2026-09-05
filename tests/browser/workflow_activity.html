@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow activity regression fixture</title>
+<link rel="stylesheet" href="/src/asset_shepherd/static/app.css">
+<style>
+  body { padding: 32px; }
+  .shepherd-sprite { background-image: url('/src/asset_shepherd/static/asset-shepherd-thinking.png'); }
+  #controls { margin-bottom: 24px; }
+</style>
+<div id="controls">
+  <p>Local fixture: commands and activity are simulated. No provider requests.</p>
+  <label>Command state
+    <select id="state">
+      <option>QUEUED</option><option>RUNNING</option><option>RECONNECTING</option>
+      <option>FAILED</option><option>SUCCEEDED</option>
+    </select>
+  </label>
+  <label><input id="remote" type="checkbox" checked> Hosted command</label>
+  <button id="assert" type="button">Check visible progress</button>
+  <p id="result" role="status"></p>
+</div>
+<main class="conversation-pane" aria-label="Asset conversation">
+  <article class="workflow-cell current">
+    <header class="workflow-cell-header"><span>2</span><strong>Describe</strong></header>
+    <p class="history-agent-message">Confirmed target remains in the notebook.</p>
+    <form action="/fixture-command" method="post" data-busy-form data-remote-command
+      data-activity-url="/fixture-activity" data-activity-step="3" data-activity-label="Shepherd">
+      <button type="submit" data-submit-button>Start Shepherd</button>
+    </form>
+  </article>
+</main>
+<script>
+  const form = document.querySelector('form');
+  const state = document.querySelector('#state');
+  const remote = document.querySelector('#remote');
+  let activityRequests = 0;
+  let commandRequests = 0;
+  remote.addEventListener('change', () => form.toggleAttribute('data-remote-command', remote.checked));
+  // A local form normally navigates; keep this fixture open to exercise its activity poll.
+  form.addEventListener('submit', event => { if (!remote.checked) event.preventDefault(); });
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (url, options) => {
+    const path = new URL(url, location.href).pathname;
+    if (path === '/fixture-command') {
+      commandRequests++;
+      return Response.json({status_url:'/fixture-status', redirect_url: location.pathname + location.search + '#current-turn'}, {status:202});
+    }
+    if (path === '/fixture-status') {
+      if (state.value === 'RECONNECTING') throw new Error('Simulated connection interruption');
+      if (state.value === 'SUCCEEDED') sessionStorage.setItem('activity-fixture-completed', 'true');
+      return Response.json({state:state.value, error:'Simulated command failure'});
+    }
+    if (path === '/fixture-activity') {
+      activityRequests++;
+      return Response.json(activityRequests === 1
+        ? {state:'IDLE', items:[]}
+        : {state:'RUNNING', items:[{status:'ACTIVE', label:'Measuring the GLB'}]});
+    }
+    return originalFetch(url, options);
+  };
+  document.querySelector('#assert').addEventListener('click', () => {
+    const sprite = document.querySelector('[data-workflow-activity] .shepherd-sprite-thinking');
+    const label = document.querySelector('[data-workflow-activity]')?.textContent || '';
+    const failed = remote.checked && state.value === 'FAILED';
+    const expected = remote.checked ? {
+      QUEUED:'Waiting for Asset Shepherd', RUNNING:'Asset Shepherd is working',
+      RECONNECTING:'Reconnecting to Asset Shepherd…',
+    }[state.value] : 'Measuring the GLB';
+    const pass = failed
+      ? !sprite && document.querySelector('[data-remote-command-error]')?.textContent === 'Simulated command failure'
+        && !document.querySelector('.conversation-pane.is-working')
+      : !!sprite && sprite.getBoundingClientRect().height > 0 && label.includes(expected);
+    const isolated = remote.checked ? activityRequests === 0 && commandRequests > 0 : activityRequests > 1;
+    document.querySelector('#result').textContent = `${pass && isolated ? 'PASS' : 'FAIL'}: ${state.value}; activity requests ${activityRequests}; command requests ${commandRequests}; ${label}`;
+  });
+  if (sessionStorage.getItem('activity-fixture-completed')) {
+    sessionStorage.removeItem('activity-fixture-completed');
+    document.querySelector('#result').textContent = 'PASS: reloaded saved results at the same notebook URL';
+  }
+</script>
+<script src="/src/asset_shepherd/static/app.js"></script>
+</html>

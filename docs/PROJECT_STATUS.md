@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Confirm alarm inbox delivery (this file is included)
+**Current commit:** Restore hosted workflow progress and result refresh (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,18 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- Hosted progress regression: the web-process activity endpoint returned an empty `IDLE` trace
+  while AgentCore ran elsewhere, clearing the mascot from the notebook. Hosted forms now retain
+  their initial sprite and use durable command receipts for queued/running/reconnecting labels;
+  failures remove the busy trace and restore the form. Local empty initial activity preserves the
+  indicator until sensor events arrive. A second bug used fragment navigation on the same notebook
+  URL after dispatch success, leaving stale content onscreen; completion now explicitly reloads
+  saved results for the same document. The browser fixture in
+  `tests/browser/workflow_activity.html` exercises these transitions without model calls. Chrome
+  checks pass for queued, running, reconnecting, failure, and same-document completion. Common
+  quality gate: 268 passed, 3 skipped; lock, Ruff, formatting, Pyright, and JS syntax pass.
+  Deployment of this web-only correction is pending.
 
 - D108 private alarm notification route: `asset-shepherd-operations` reached `UPDATE_COMPLETE` with
   one deployment-parameterized SNS topic. All eight `asset-shepherd-contest-*` alarms have exactly
