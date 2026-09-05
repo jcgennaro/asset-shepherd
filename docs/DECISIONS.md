@@ -4,6 +4,35 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D109 — Reduce prompt-attack sensitivity after an ordinary-asset false positive
+
+**Date:** 2026-09-04
+
+**Status:** ACCEPTED; benign-request acceptance passes, consumer rollout in progress
+
+**Decision owner:** User and Codex
+
+**Milestone:** M9 hosted conversation and deployment
+
+The reconstructed Smartpad Tablet start request was blocked by version 1's `PROMPT_ATTACK` filter:
+confidence `LOW`, configured strength `HIGH`. Every other category and denied topic was undetected.
+The user requested substantially lower sensitivity and explicitly prohibited injection-attempt
+tests. No such tests were run for this change.
+
+Change only prompt-attack input strength to `LOW`, publish a new immutable version, and pin both
+the web intake and AgentCore deployment to it after benign-request acceptance. Preserve version 1
+as a separate CloudFormation resource while consumers roll forward. Keep the existing content
+categories, denied topics, exact refusal, and deterministic approval/tool boundaries unchanged.
+Acceptance uses ordinary asset descriptions and the reconstructed saved tablet job request only;
+it makes no claim about attack-detection performance at the lower sensitivity.
+
+The guardrail stack reached `UPDATE_COMPLETE` and published immutable version `2`. Its input
+checks allow 4/4 benign cases: the complete reconstructed saved tablet start message, the tablet
+description, a tabletop radio, and a city-bus-sized robot dog. The previously blocked full tablet
+message still receives LOW classifier confidence but is allowed at LOW filter strength. No Kimi
+invocation or injection-attempt test was used for these checks. Common quality gate: 268 passed,
+3 skipped, lock/Ruff/format/Pyright clean. AgentCore and web rollout is in progress.
+
 ### D108 — Route all contest alarms through one confirmed private email topic
 
 **Date:** 2026-09-04

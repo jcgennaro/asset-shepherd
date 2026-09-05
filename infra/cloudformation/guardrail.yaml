@@ -61,7 +61,7 @@ Resources:
             InputEnabled: true
             OutputEnabled: true
           - Type: PROMPT_ATTACK
-            InputStrength: HIGH
+            InputStrength: LOW
             OutputStrength: NONE
             InputModalities:
               - TEXT
@@ -125,6 +125,12 @@ Resources:
       Description: !Sub "Asset Shepherd ${EnvironmentName} accepted content boundary"
       GuardrailIdentifier: !GetAtt AssetShepherdGuardrail.GuardrailId
 
+  AssetShepherdGuardrailLowPromptAttackVersion:
+    Type: AWS::Bedrock::GuardrailVersion
+    Properties:
+      Description: !Sub "Asset Shepherd ${EnvironmentName} low prompt-attack sensitivity"
+      GuardrailIdentifier: !GetAtt AssetShepherdGuardrail.GuardrailId
+
 Outputs:
   GuardrailArn:
     Description: Version-independent Guardrail ARN.
@@ -134,4 +140,4 @@ Outputs:
     Value: !GetAtt AssetShepherdGuardrail.GuardrailId
   GuardrailVersion:
     Description: Immutable Guardrail version for deployed inference.
-    Value: !GetAtt AssetShepherdGuardrailVersion.Version
+    Value: !GetAtt AssetShepherdGuardrailLowPromptAttackVersion.Version

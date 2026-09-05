@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Restore hosted workflow progress and result refresh (this file is included)
+**Current commit:** Lower prompt-attack sensitivity for ordinary asset requests (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,14 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D109 reduces prompt-attack input strength from HIGH to LOW after the saved tablet request
+  reproduced a LOW-confidence prompt-attack block with all other categories undetected. Guardrail
+  version 2 is published and passes 4/4 benign input checks, including the full reconstructed
+  tablet start message. Web and AgentCore rollout is in progress. The user explicitly prohibited
+  injection-attempt tests; none were run for this change. Existing content categories and
+  deterministic mutation approvals remain unchanged. Common quality gate: 268 passed, 3 skipped;
+  lock, Ruff, format, and Pyright clean.
 
 - Hosted progress regression: the web-process activity endpoint returned an empty `IDLE` trace
   while AgentCore ran elsewhere, clearing the mascot from the notebook. Hosted forms now retain
