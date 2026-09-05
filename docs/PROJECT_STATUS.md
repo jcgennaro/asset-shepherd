@@ -62,7 +62,9 @@ exact-mutation, invariant-verification, and packaging layer.
   Added a four-step navigation-only tour on first Gallery visit, Skip/Done persistence, native
   keyboard dismissal, and FAQ replay. It does not click controls or interrupt processing screens.
   Real-browser navigation/storage/focus checks pass, with desktop and 390 px visual QA. Common gate:
-  297 passed, 3 skipped; Ruff, formatting, Pyright and lock checks pass. Image build pending;
+  297 passed, 3 skipped; Ruff, formatting, Pyright and lock checks pass. CodeBuild
+  `ae2f9aa0-7e16-4a8c-9f1c-bb4821d32752` succeeded for `bb40c41-navigation-tour-web`;
+  Linux upload smoke reached READY in 1.106 s (0.012 s acknowledgement), with zero model calls.
   live rollout held until the user confirms the current collar is past task-local Upload/Describe
   staging (or accepts re-uploading). No model/runtime/auth configuration change.
 

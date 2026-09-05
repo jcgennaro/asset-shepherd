@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; full local/browser gate passes; image build and safe rollout pending
+**Status:** ACCEPTED; full local/browser and Linux image gates pass; safe rollout pending
 
 Remove the upload progress sentence about no model running and its redundant bottom Gallery link;
 retain the mascot home link and existing navigation. Add a short four-step, skippable navigation
@@ -31,6 +31,10 @@ FAQ replay/focus restoration, and disabled storage with no POST requests. Actual
 models or attach to the user's browser.
 Common gate: 297 passed, 3 skipped; Ruff, formatting, Pyright, and dependency lock checks pass.
 Tour markup is restricted to Gallery/FAQ so working pages retain their uncluttered headings.
+Source `bb40c41` passed CodeBuild `ae2f9aa0-7e16-4a8c-9f1c-bb4821d32752`; the web image
+`bb40c41-navigation-tour-web` has digest
+`sha256:128767b35c59dd7bf7bf512699d3dccefe673f3d1786ff06a5f67cbdae3db897`.
+Its Linux upload smoke acknowledged in 0.012 s and reached READY in 1.106 s, with zero model calls.
 Hold live rollout until the user confirms the active collar has become a durable workspace or
 accepts losing/re-uploading its task-local draft; do not replace the task silently during intake.
 
