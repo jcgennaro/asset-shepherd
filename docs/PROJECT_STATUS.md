@@ -61,7 +61,9 @@ exact-mutation, invariant-verification, and packaging layer.
 - D109 reduces prompt-attack input strength from HIGH to LOW after the saved tablet request
   reproduced a LOW-confidence prompt-attack block with all other categories undetected. Guardrail
   version 2 is published and passes 4/4 benign input checks, including the full reconstructed
-  tablet start message. Web and AgentCore rollout is in progress. The user explicitly prohibited
+  tablet start message. All three stacks reached UPDATE_COMPLETE; AgentCore runtime 6 is READY and
+  ECS task definition 9 completed its rollout with one running task and zero pending tasks. Both
+  consumers explicitly pin Guardrail version 2. All eight project alarms are OK. The user prohibited
   injection-attempt tests; none were run for this change. Existing content categories and
   deterministic mutation approvals remain unchanged. Common quality gate: 268 passed, 3 skipped;
   lock, Ruff, format, and Pyright clean.
@@ -1365,9 +1367,9 @@ for the full RW4 comparison gate.
 
 ## Next action
 
-Investigate the ordinary Smartpad Tablet Guardrail intervention before a paid rerun, then choose
-and implement the free judge-access identity boundary before the complete Step 8 browser matrix.
-Alarm notification acceptance is complete.
+The Smartpad Tablet false positive is resolved by D109 and is ready for a fresh user-driven test.
+Choose and implement the free judge-access identity boundary before the complete Step 8 browser
+matrix. Alarm notification acceptance is complete. Do not run injection-attempt tests.
 Preserve the current mutation scope, exact authorization, durability, and invariant checks; do not
 restore deterministic target-dependent planning or create a second conversational authority.
 

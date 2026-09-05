@@ -828,8 +828,19 @@ request, while an ordinary 30 cm Unreal robot reached a target proposal. The all
 was purged with five object versions removed and `VerifiedEmpty=True`. A status invocation started
 runtime v5 and recovered the accepted workspace at `COMPLETE`. Ten health calls, the accepted
 notebook, and its 24,580-byte `model/gltf-binary` download pass, and all eight alarms remain `OK`.
-The Guardrail portion and end-to-end alarm notification acceptance are closed. Multi-user
-authentication remains before the Step 7 gate closes.
+The first ordinary Smartpad Tablet workflow subsequently exposed a version 1 false positive:
+the reconstructed job-start message was blocked as `PROMPT_ATTACK` at LOW confidence because the
+filter strength was HIGH. D109 changes only that input filter to LOW and publishes immutable
+Guardrail version 2, preserving version 1 during rollout. Version 2 passes four benign checks:
+the complete saved tablet start message, its ordinary description, a tabletop radio, and a robot
+dog. The user explicitly prohibited injection-attempt tests; none were used for this change.
+AgentCore runtime version 6 is READY and ECS task definition 9 completed its rollout; both use
+Guardrail version 2. The guardrail, AgentCore, and web stacks are UPDATE_COMPLETE, with one web task
+running and all eight project alarms OK.
+These checks establish that the observed false positive is resolved, not attack-detection efficacy.
+
+End-to-end alarm notification acceptance and the Guardrail version rollout are complete. Multi-user
+authentication remains before closing Step 7.
 
 ## Step 8 — Remote M9 acceptance
 

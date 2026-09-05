@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-04
 
-**Status:** ACCEPTED; benign-request acceptance passes, consumer rollout in progress
+**Status:** ACCEPTED; deployed to both consumers, benign-request acceptance passes
 
 **Decision owner:** User and Codex
 
@@ -31,7 +31,9 @@ checks allow 4/4 benign cases: the complete reconstructed saved tablet start mes
 description, a tabletop radio, and a city-bus-sized robot dog. The previously blocked full tablet
 message still receives LOW classifier confidence but is allowed at LOW filter strength. No Kimi
 invocation or injection-attempt test was used for these checks. Common quality gate: 268 passed,
-3 skipped, lock/Ruff/format/Pyright clean. AgentCore and web rollout is in progress.
+3 skipped, lock/Ruff/format/Pyright clean. AgentCore runtime version 6 is READY and the web stack
+reached UPDATE_COMPLETE with ECS task definition 9; both explicitly pin Guardrail version 2. The
+content-policy comparison shows only PROMPT_ATTACK changed; all denied topics remain identical.
 
 ### D108 — Route all contest alarms through one confirmed private email topic
 

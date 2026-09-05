@@ -162,6 +162,12 @@ Pass `GuardrailId` and `GuardrailVersion` to both deployment stacks. Their servi
 workflow turns use the immutable boundary; OpenAI and Meta adapters retain the shared application
 boundary because Bedrock Guardrails cannot mediate third-party APIs.
 
+D109 lowers only prompt-attack input sensitivity to LOW after HIGH blocked an ordinary tablet job
+with LOW classifier confidence. The template retains version 1 and publishes version 2 through a
+separate immutable resource so existing consumers keep working during rollout. Always read the
+stack's `GuardrailVersion` output for the selected pin. Acceptance for this change uses ordinary
+asset requests only; injection-attempt testing is explicitly prohibited by the user.
+
 ## AgentCore and public web stacks
 
 `cloudformation/agentcore-runtime.yaml` deploys the private ARM64 AgentCore Runtime and its
