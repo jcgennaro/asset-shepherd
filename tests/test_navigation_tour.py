@@ -56,11 +56,16 @@ def test_navigation_tour_in_real_browser(tmp_path: Path, finish: str) -> None:
           }, 50); return;
         }
         require(dialog.open, 'first visit did not open tour');
+        require(get('title').textContent === 'Welcome!', 'welcome must come before navigation');
+        require(get('copy').textContent.includes('3D assets for games'), 'purpose missing');
+        require(get('context').textContent.includes('Agents for Humans'), 'contest missing');
+        require(get('spotlight').hidden, 'welcome must not spotlight a navigation control');
         require(get('back').disabled, 'back enabled on first step');
-        get('next').click(); require(get('count').textContent === '2 of 4', 'next failed');
-        get('back').click(); require(get('count').textContent === '1 of 4', 'back failed');
+        get('next').click(); require(get('count').textContent === '2 of 5', 'next failed');
+        require(get('title').textContent === 'Your way back to Gallery', 'gallery tip missing');
+        get('back').click(); require(get('count').textContent === '1 of 5', 'back failed');
         if (FINISH === 'complete') {
-          get('next').click(); get('next').click(); get('next').click();
+          for (let i = 0; i < 4; i++) get('next').click();
           require(get('next').textContent === 'Got it', 'last button is unclear');
           get('next').click();
         } else { get('skip').click(); }

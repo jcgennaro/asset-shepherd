@@ -80,7 +80,7 @@ def main() -> None:
                 if args.page == "tour-last" and self.path == "/preview":
                     content = content.replace(
                         b"</body>",
-                        b"<script>window.addEventListener('load',()=>{for(let i=0;i<3;i++)"
+                        b"<script>window.addEventListener('load',()=>{for(let i=0;i<4;i++)"
                         b"document.querySelector('[data-tour-next]').click()})</script></body>",
                     )
                 self.send_response(response.status_code)

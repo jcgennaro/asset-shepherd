@@ -22,7 +22,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.types import ASGIApp
 
 SESSION_COOKIE = "__Host-asset-shepherd-session"
-SESSION_SECONDS = 3600
+# Fixed lifetime from sign-in, not a sliding inactivity timer. Cognito's ID-token
+# lifetime must match; the callback still respects a shorter verified token expiry.
+SESSION_SECONDS = 24 * 60 * 60
 
 
 @dataclass(frozen=True)

@@ -86,7 +86,7 @@ Resources:
       EnableTokenRevocation: true
       ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH]
       AccessTokenValidity: 1
-      IdTokenValidity: 1
+      IdTokenValidity: 24
       RefreshTokenValidity: 1
       TokenValidityUnits:
         AccessToken: hours

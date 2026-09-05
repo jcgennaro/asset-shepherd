@@ -22,7 +22,11 @@ before doing that. The website login is separate from AWS console/IAM login.
   only the verified subject and fixed expiry after login, not OIDC access/refresh/ID tokens or
   provider API keys. Signed cookies are tamper-resistant, not encrypted. Transient OAuth state,
   nonce, and PKCE verifier are kept in that secure cookie during login and cleared at callback.
-- Sessions expire within one hour, without silently refreshing. Cognito account disabling blocks
+- Sessions expire within 24 hours of sign-in, without sliding renewal or silent refresh. The app
+  cookie has a 86,400-second maximum age and a fixed deadline capped by the verified ID token;
+  Cognito ID tokens last 24 hours, while unused access tokens remain at one hour. Existing cookies
+  keep their original deadline: sign in again after the D119 rollout to receive the longer session.
+  Cognito account disabling blocks
   new login but does not immediately revoke an already-issued application cookie. Emergency global
   sign-out requires rotating the session signer and restarting all web tasks. Signing out clears
   this browser's application cookie and then signs it out of Cognito.
@@ -44,6 +48,21 @@ before doing that. The website login is separate from AWS console/IAM login.
   command to disable access logging; the earlier CLI-only setting did not cover that command.
 
 ## Deployment
+
+### Twenty-four-hour sign-in sessions (D119)
+
+The user requested a 24-hour expiry after a completed collar run encountered a final-click 401.
+Change both the app's `SESSION_SECONDS` and the Cognito client's `IdTokenValidity`; changing only
+the cookie would still leave the callback capped at the earlier ID-token expiry. Preserve the
+callback's verified-expiry minimum, cookie protections, exact-origin CSRF checks, and token-free
+cookie contents. Access-token validity remains one hour; no refresh token is retained or used.
+This is an absolute session lifetime, not 24 hours since the last action. A stolen application
+cookie could therefore remain usable for longer; shared-demo access and revocation limits below
+still apply. Do not silently extend old cookies or rotate the signer during this rollout.
+
+Local tests use verified-claim stubs and a simulated clock, not real credentials or model calls.
+They check short-token caps, the 24-hour maximum, validity after one hour, exact-boundary expiry,
+no sliding renewal, cookie flags, logout, and the existing authentication/CSRF failures.
 
 ### Signed-out page and explicit command submission (D115)
 
@@ -155,3 +174,4 @@ budget/operations alerts remain necessary, and app quotas are a separate hardeni
 References: [AWS administrator-created users](https://docs.aws.amazon.com/cognito/latest/developerguide/how-to-create-user-accounts.html),
 [Cognito PKCE](https://docs.aws.amazon.com/cognito/latest/developerguide/using-pkce-in-authorization-code.html),
 [Secrets Manager encryption](https://docs.aws.amazon.com/secretsmanager/latest/userguide/security-encryption.html).
+[Cognito token validity units and one-day maximum](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_TokenValidityUnitsType.html).

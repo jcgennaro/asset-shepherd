@@ -30,6 +30,11 @@
     const touch = window.matchMedia("(hover: none)").matches;
     return [
       {
+        title: "Welcome!",
+        copy: "Asset Shepherd helps you inspect, refine, and prepare 3D assets for games, with you in control of the changes.",
+        target: null, context: "Built for the Agents for Humans hackathon.",
+      },
+      {
         title: "Your way back to Gallery",
         copy: "Click the mascot in the top-left corner to return to your assets. From Gallery, open an asset to pick up where you left off.",
         target: ".workspace-logo", context: "The logo is always your home button.",
@@ -58,7 +63,8 @@
   }
 
   function positionSpotlight() {
-    const target = document.querySelector(steps()[index].target);
+    const selector = steps()[index].target;
+    const target = selector ? document.querySelector(selector) : null;
     if (!dialog.open || !target) { spotlight.hidden = true; return; }
     const rect = target.getBoundingClientRect();
     const visible = rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0;
@@ -77,9 +83,9 @@
     title.textContent = step.title;
     copy.textContent = step.copy;
     context.textContent = step.context;
-    count.textContent = `${index + 1} of 4`;
+    count.textContent = `${index + 1} of ${steps().length}`;
     back.disabled = index === 0;
-    next.textContent = index === 3 ? "Got it" : "Next →";
+    next.textContent = index === steps().length - 1 ? "Got it" : "Next →";
     title.focus({ preventScroll: true });
     positionSpotlight();
   }
@@ -95,7 +101,7 @@
   dialog.querySelector("[data-tour-skip]").addEventListener("click", () => dialog.close());
   back.addEventListener("click", () => { if (index > 0) { index -= 1; render(); } });
   next.addEventListener("click", () => {
-    if (index === 3) dialog.close();
+    if (index === steps().length - 1) dialog.close();
     else { index += 1; render(); }
   });
   dialog.addEventListener("close", () => {

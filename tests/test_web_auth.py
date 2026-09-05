@@ -205,10 +205,13 @@ def test_login_uses_pkce_and_fixed_callback(
     assert parameters["state"][0] and parameters["nonce"][0]
 
 
+@pytest.mark.parametrize("token_seconds", [300, 86400, 172800])
 def test_callback_retains_identity_but_not_tokens(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, token_seconds: int
 ) -> None:
-    """Authlib-verified claims yield a short session without storing OIDC tokens in cookies."""
+    """Verified claims yield a bounded 24-hour session without retaining provider tokens."""
+    now = int(time.time())
+    monkeypatch.setattr(web_auth.time, "time", lambda: now)
 
     async def verified_token(request: Request, **kwargs: object) -> dict[str, object]:
         assert kwargs["claims_options"] == {
@@ -221,7 +224,7 @@ def test_callback_retains_identity_but_not_tokens(
             "id_token": "not-retained",
             "refresh_token": "not-retained",
             "access_token": "not-retained",
-            "userinfo": {"sub": "invited-user", "exp": int(time.time()) + 300},
+            "userinfo": {"sub": "invited-user", "exp": now + token_seconds},
         }
 
     app = cast(FastAPI, client.app)
@@ -235,10 +238,13 @@ def test_callback_retains_identity_but_not_tokens(
         and "secure" in cookie_header
         and "samesite=lax" in cookie_header
     )
+    assert "max-age=86400" in cookie_header
+    assert "path=/" in cookie_header and "domain=" not in cookie_header
     value = client.cookies.get(web_auth.SESSION_COOKIE)
     assert value is not None
     session = json.loads(base64.b64decode(TimestampSigner(TEST_KEY).unsign(value)))
     assert set(session) == {"subject", "expires_at"}
+    assert session["expires_at"] == now + min(token_seconds, 86400)
     assert client.get("/workspace").status_code == 200
     logout = client.post("/auth/logout", headers={"origin": VALUES["ASSET_SHEPHERD_PUBLIC_ORIGIN"]})
     assert logout.status_code == 303
@@ -246,6 +252,36 @@ def test_callback_retains_identity_but_not_tokens(
         VALUES["ASSET_SHEPHERD_COGNITO_DOMAIN"] + "/logout?"
     )
     assert client.get("/workspace").status_code == 401
+
+
+def test_session_lasts_24_hours_without_sliding_renewal(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Activity after one hour remains valid but cannot move the fixed 24-hour boundary."""
+    now = int(time.time())
+    original_cookie = _cookie(now + 86400)
+    client.cookies.set(web_auth.SESSION_COOKIE, original_cookie)
+    for elapsed in (3601, 86399):
+        monkeypatch.setattr(web_auth.time, "time", lambda elapsed=elapsed: now + elapsed)
+        response = client.get("/workspace")
+        assert response.status_code == 200
+        # A read may leave the cookie untouched; any reissue must keep its deadline.
+        value = response.cookies.get(web_auth.SESSION_COOKIE) or original_cookie
+        session = json.loads(base64.b64decode(TimestampSigner(TEST_KEY).unsign(value)))
+        assert session["expires_at"] == now + 86400
+    monkeypatch.setattr(web_auth.time, "time", lambda: now + 86400)
+    assert client.get("/workspace").status_code == 401
+
+
+def test_cognito_identity_lifetime_matches_application_session() -> None:
+    """The deployed ID token must not silently cap the application at the old one hour."""
+    template = (Path(__file__).resolve().parents[1] / "infra/cloudformation/auth.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "IdTokenValidity: 24" in template
+    assert "IdToken: hours" in template
+    assert "AccessTokenValidity: 1" in template
+    assert web_auth.SESSION_SECONDS == 86400
 
 
 def test_login_configuration_fails_closed() -> None:

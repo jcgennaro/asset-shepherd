@@ -4,6 +4,28 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D119 — Twenty-four-hour application sign-in sessions
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED by user; local common/authentication checks pass; auth/web rollout pending
+
+Extend the fixed application session from one hour to 24 hours and set the Cognito browser
+client's ID-token validity to 24 hours so the callback's verified-expiry cap does not shorten it.
+Keep access tokens at one hour, no stored refresh/ID/access tokens, and no sliding renewal.
+Secure/HttpOnly/SameSite=Lax/host-only signing, exact-origin CSRF, invite-only access, and explicit
+logout remain unchanged. Existing signed cookies keep their original expiry; a fresh sign-in is
+required to receive the new lifetime. Do not rotate the signer or retroactively extend old cookies.
+
+The longer lifetime also lengthens the existing stolen-cookie/account-disable revocation window;
+emergency global revocation remains signer rotation plus web-task replacement. This is still a
+trusted shared-demo gate, not per-user isolation. See `HOSTED_LOGIN_RUNBOOK.md`.
+Thirteen focused tests pass, including simulated passage beyond one hour and rejection at exactly
+24 hours, callback expiry caps, unchanged token-free cookie contents/flags, logout, and CSRF checks.
+CloudFormation change-set review shows only BrowserClient.IdTokenValidity changes, with no resource
+replacement or signer modification. The common gate passes: 310 tests, three skips, clean
+Ruff/format/Pyright and lock checks. This release also includes the D117 welcome-copy follow-up.
+
 ### D118 — Collapsible long sub-component inventories
 
 **Date:** 2026-09-05
@@ -41,6 +63,14 @@ The screenshot shows successful mesh simplification before that rejected accepta
 **Date:** 2026-09-05
 
 **Status:** ACCEPTED; full local/browser and Linux image gates pass; released with D118
+
+**User follow-up (2026-09-05, paired with D119):** prepend a Welcome! tile before navigation tips.
+Its concise purpose is helping users inspect, refine, and prepare 3D assets for games while keeping
+control of changes; credit the Agents for Humans hackathon. The four navigation tips remain after
+this introduction (five tiles total). No spotlight on the welcome tile. Keep the existing dismissal
+key so this copy update does not force the tour on returning users; FAQ replay remains available.
+Browser tests assert the welcome/purpose/contest content and the retained Gallery step. Actual
+desktop/mobile previews are under `build/validation/welcome-tour/`.
 
 Remove the upload progress sentence about no model running and its redundant bottom Gallery link;
 retain the mascot home link and existing navigation. Add a short four-step, skippable navigation

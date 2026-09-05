@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** Collapsible long sub-component inventories (this file is included)
+**Current commit:** Twenty-four-hour sign-in sessions and a welcoming tour opening (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,13 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D119: user-requested 24-hour absolute session expiry, with matching Cognito ID-token validity.
+  Existing cookies retain their deadline; fresh sign-in required after rollout. Thirteen focused
+  auth tests pass; common gate: 310 passed, three skipped, clean Ruff/format/Pyright and lock checks.
+  Auth change-set modifies only ID-token validity without replacement. Auth/web rollout pending.
+  Includes the requested Welcome! tour introduction and contest credit before the four navigation
+  tips, with passing browser checks and desktop/mobile previews. No signing-key or model change.
 
 - D118: inventories above seven sub-components now start collapsed, with all rows available on
   expansion; shorter lists remain inline. Nine focused tests prove the threshold and retention of
