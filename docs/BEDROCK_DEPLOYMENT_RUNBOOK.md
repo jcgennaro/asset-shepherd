@@ -17,6 +17,10 @@ No model call, new AWS service, task-size increase, or ALB timeout increase is r
 pre-intake drafts still do not survive ECS task replacement; direct S3/durable draft work remains
 open. The same source implements local and hosted behavior. Test locally, pass the common gate,
 then build the immutable web image (including Linux upload smoke acceptance) and roll it out.
+Deployed September 5 as web task revision 15, image `d02b33bf7b22-upload-check-web`;
+ECS SUCCESSFUL / CloudFormation UPDATE_COMPLETE, 100% traffic and zero old tasks.
+Local collar validation and the built Linux fixture test pass; the user can now retry the collar
+on the authenticated site. This deployment did not run a paid model or change AgentCore.
 
 **D112 provider addendum:** Bedrock Luna still returns account unavailability. The hosted app now
 offers explicit Luna xhigh through the OpenAI API, using a separate Secrets Manager key and exact

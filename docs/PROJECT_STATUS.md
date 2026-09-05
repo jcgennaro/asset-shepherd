@@ -63,8 +63,14 @@ exact-mutation, invariant-verification, and packaging layer.
   the mascot/progress cell stayed available and health/status requests remained responsive.
   Cache reuse is bound to source SHA-256 and bytes, avoiding duplicate preflight after Describe.
   Pending checks block intake/preview, and timeout/interruption offers explicit recovery. No paid
-  model calls or asset mutations. Local full test suite: 293 passed, 3 skipped. Web deployment
-  and image-build Linux upload acceptance are pending; no runtime/model configuration change.
+  model calls or asset mutations. Local full test suite: 293 passed, 3 skipped; Ruff, formatting,
+  Pyright and lock checks pass. Real Linux image upload smoke passed: 0.012 s acknowledgment,
+  READY in 1.11 s for the synthetic fixture, zero model calls. Web image
+  `d02b33bf7b22-upload-check-web` is deployed as task revision 15: ECS SUCCESSFUL,
+  CloudFormation UPDATE_COMPLETE, one new task at 100% traffic and zero old tasks.
+  Live JavaScript matches source, health is 200, and anonymous progress/retry/source requests
+  remain denied. All eight alarms are OK. No runtime/model configuration or task-size change.
+  The authenticated hosted collar retry remains for the user.
 
 - User-confirmed hosted Luna tablet end-to-end acceptance after D115: the user reports completing
   the full tablet workflow successfully. This is human acceptance evidence, not a new measured

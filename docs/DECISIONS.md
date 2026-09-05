@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; local collar/regression acceptance passed; web deployment pending
+**Status:** ACCEPTED; local collar/regression and Linux image checks pass; web rollout successful
 
 The 30,204,480-byte collar upload produced an ALB 504 at 13:24 Eastern. The web task's
 allocated CPU reached 100% in the 13:24 and 13:25 metric periods; its ALB idle timeout is
@@ -37,6 +37,16 @@ The actual collar returned 303 in 0.125 s, displayed progress immediately, and r
 unchanged and no model was called. Tests cover a held worker, blocked early intake, bounded concurrent
 uploads, a real subprocess, restored state, timeout/retry, and source-hash-bound reuse. The web image
 build also performs a real Linux upload-to-description smoke test before pushing the image.
+
+CodeBuild `ee94973d-afc2-43dc-b529-d023221768ca` passed that Linux test: 0.012 s acknowledgment,
+READY in 1.11 s for the synthetic fixture, zero model calls. Web task revision 15 uses image
+`d02b33bf7b22-upload-check-web` (digest
+`sha256:4872e3631f871bfae84d95801722bd8fa92b6bc5de598cb3d5cc18ecc041f9be`).
+ECS reports SUCCESSFUL and CloudFormation UPDATE_COMPLETE: one new task serves 100% of traffic,
+zero old tasks remain. Live JavaScript matches local source, health is 200, anonymous workspace,
+upload-status, staged-source and retry requests return 401, and all eight project alarms are OK.
+CPU/memory remain 512/1024. The owner's 30 MB collar retry on the authenticated hosted site is
+the remaining human acceptance check; no authenticated live upload or model run was performed here.
 
 
 ### D115 — Preserve explicit browser decisions and brand the signed-out screen
