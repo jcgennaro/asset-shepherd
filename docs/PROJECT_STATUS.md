@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Add invite-only Cognito access for the shared demo (this file is included)
+**Current commit:** Record deployed invite-only login and branded invitation acceptance (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -61,8 +61,15 @@ exact-mutation, invariant-verification, and packaging layer.
 - D111: user requested a website login after confirming anonymous access was possible. Cognito
   stack creation passes with admin-only signup, code-only OAuth, and no client secret. The app
   gates data and actions with Authlib OIDC/PKCE and a Secrets Manager-backed secure session signer;
-  this is a shared-gallery gate, not tenant isolation. An owner invitation was sent by Cognito;
-  the password was not inspected. Deployment and human login acceptance remain to be confirmed.
+  this is a shared-gallery gate, not tenant isolation. Web image `70f78cd-auth-web` passes CodeBuild
+  and is deployed as ECS task revision 11. The deployment is SUCCESSFUL, with all traffic on the
+  authenticated task and zero old unauthenticated tasks running. Anonymous data/download/action
+  requests return 401; HTML gallery navigation redirects to Cognito with S256 PKCE. The login page
+  returns 200 and has no public signup link. Health remains 200 and all eight project alarms are OK.
+  The owner rejected the generic invitation (spam/unrecognizable branding); the updated Cognito
+  template names Asset Shepherd and includes responsive HTML/app link. A replacement invitation
+  was delivered, invalidating the temporary password exposed in the owner's screenshot. The new
+  password was not retrieved or printed. Human first-login/password-change acceptance remains open.
   Common gate passes: 277 tests passed, 3 skipped; lock, Ruff, formatting, and Pyright pass.
 - D110 deployment completed: AgentCore runtime 7 READY; web task revision 10 completed its rollout
   with `0838caf-render` images. Both CodeBuild gates pass, including fixed 512px ARM64 captures;

@@ -68,6 +68,28 @@ website back to a pre-auth image while treating it as private; that would reopen
 
 ## Validation and remaining limits
 
+2026-09-04 EDT deployment evidence:
+
+- Auth stack creation and branded-template update pass. The web-only CodeBuild run
+  `asset-shepherd-contest-web:55731896-a5ab-49b4-9665-e2a4f8d07326` succeeds. Its image
+  `70f78cd-auth-web` is deployed as web task revision 11 with `AUTH_REQUIRED=1`; ECS reports
+  SUCCESSFUL, 100% production traffic, one new task, and zero old tasks; the web CloudFormation stack
+  is UPDATE_COMPLETE. AgentCore remains version 7
+  with Kimi; this authentication rollout invokes no models and changes no provider credentials.
+- A fresh cookie-free HTTP client gets 401 for workspace, activity, repaired GLB, evidence-download,
+  OpenAPI, and an empty POST to `/intents` (rejected before application execution). HTML navigation
+  gets 303 to `/auth/login`, then a Cognito authorization-code/S256 PKCE redirect. The Cognito login
+  page returns 200 with a password field and no public signup link. Health remains 200.
+- Live login-state cookie attributes are Secure/HttpOnly/SameSite=Lax with the `__Host-` name.
+  Cookie values were not printed. ALB S3 access logging is disabled; app access logging is also
+  disabled in required-auth mode, avoiding authorization-code query logging. All eight project
+  operational alarms are OK.
+- Common gate: 277 passed, 3 skipped; lock/Ruff/format/Pyright pass. The branded invitation was
+  rendered and inspected at 680px and 375px using placeholder credentials, then sent to the owner
+  as a replacement invitation. No new password was retrieved or displayed.
+- **Open human checkpoint:** owner changes the temporary password, enters the gallery, downloads
+  an existing model, and signs out. Do not claim this authenticated end-to-end check has passed yet.
+
 No-network tests cover anonymous route/action denial, valid/expired/tampered sessions, same-origin
 write enforcement, missing OAuth state, actual Authlib PKCE generation, token-free session contents,
 logout, and fail-closed configuration. These are authentication unit tests, not prompt-injection

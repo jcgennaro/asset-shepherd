@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-04
 
-**Status:** ACCEPTED; user requested authentication; deployment acceptance in progress
+**Status:** ACCEPTED; deployed anonymous-denial checks pass; human first-login acceptance pending
 
 The user confirmed the public endpoint must require login. Use Cognito with administrator-only
 invitations, no public signup, and an application-wide session gate for data and actions. Keep the

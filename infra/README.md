@@ -8,10 +8,11 @@ gate passed on 2026-09-04;
 operations hardening and the full remote case matrix remain. See
 `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` for the evidence, current endpoint, and gated procedure.
 
-**Access boundary:** D111 adds an invite-only Cognito gate; see `docs/HOSTED_LOGIN_RUNBOOK.md` for
-deployment and acceptance. Until the auth-enabled web image finishes rollout, the old endpoint is
-still public. The fixed `contest-demo` owner is a shared storage partition, not per-user isolation.
-Once gated, all invited users share that gallery. Private IAM authorization on AgentCore alone
+**Access boundary:** D111's invite-only Cognito gate is deployed in web task revision 11; see
+`docs/HOSTED_LOGIN_RUNBOOK.md` for deployment and acceptance. Anonymous data/download/action checks
+pass and the old unauthenticated tasks are drained; human first-login acceptance remains pending.
+The fixed `contest-demo` owner is a shared storage partition, not per-user isolation.
+All invited users share that gallery. Private IAM authorization on AgentCore alone
 does not protect browser routes. Per-user ownership remains necessary for mutually untrusted users.
 
 ## Private workspace state
