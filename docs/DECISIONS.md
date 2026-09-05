@@ -4,6 +4,36 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D117 — First-visit navigation tour and quieter upload progress
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; full local/browser gate passes; image build and safe rollout pending
+
+Remove the upload progress sentence about no model running and its redundant bottom Gallery link;
+retain the mascot home link and existing navigation. Add a short four-step, skippable navigation
+tour: mascot/Gallery, hide/reveal/pin sidebar, scroll/jump through conversation history, and the 3D
+view/divider. This is orientation to controls, not an asset-processing tutorial. Highlight existing
+visible controls without clicking them, changing preferences, submitting forms, or creating assets.
+Explain asset-only controls conditionally when they are absent on Gallery.
+
+Automatically show it on the first Gallery visit per browser, never during an upload or agent turn.
+Completion, Skip, and native dialog dismissal remember a versioned boolean in localStorage with
+sessionStorage fallback; no server-side tracking or new cookie. If storage is disabled it remains
+dismissible and manually replayable, but dismissal cannot persist across visits. FAQ offers replay.
+Use a native modal dialog for keyboard containment/Escape, focus the current step heading, restore
+the opener on close, adapt text for touch, and keep layouts readable at narrow widths. No animation
+is added to the static mascot logo. Local/hosted code stays shared; this is a web-only deployment.
+
+Browser regression covers first visit, Next/Back, completion, Skip, remembered Gallery revisit,
+FAQ replay/focus restoration, and disabled storage with no POST requests. Actual desktop and
+390-pixel iframe previews check first/last steps, with no horizontal overflow. Tests do not invoke
+models or attach to the user's browser.
+Common gate: 297 passed, 3 skipped; Ruff, formatting, Pyright, and dependency lock checks pass.
+Tour markup is restricted to Gallery/FAQ so working pages retain their uncluttered headings.
+Hold live rollout until the user confirms the active collar has become a durable workspace or
+accepts losing/re-uploading its task-local draft; do not replace the task silently during intake.
+
 ### D116 — Acknowledge uploads before bounded asynchronous preflight
 
 **Date:** 2026-09-05

@@ -17,11 +17,10 @@
       {% else %}
         <div data-upload-check data-status-url="{{ url_for('hosted_upload_status', draft_id=draft.draft_id) }}">
           <p class="history-agent-message workflow-thinking-message" role="status"><strong>Asset Shepherd</strong><span class="workflow-thinking-body"><span class="shepherd-sprite shepherd-sprite-thinking" aria-hidden="true"></span><span>Upload received—checking your asset…</span></span></p>
-          <p data-upload-check-message aria-live="polite">Measuring geometry and checking its structure. Complex assets may take a few minutes. No model is running yet.</p>
+          <p data-upload-check-message aria-live="polite">Measuring geometry and checking its structure. Complex assets may take a few minutes.</p>
         </div>
         <noscript><p>Reload this page to check progress.</p></noscript>
       {% endif %}
-      <a class="text-link" href="{{ url_for('hosted_home') }}">Return to Gallery</a>
     </article>
   </section>
 {% endblock %}

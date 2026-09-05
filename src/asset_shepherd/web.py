@@ -150,6 +150,7 @@ def _static_asset_version() -> str:
     for asset_name in (
         "app.css",
         "app.js",
+        "navigation-tour.js",
         "banana-scale.glb",
         "favicon.svg",
         "vendor/model-viewer.min.js",

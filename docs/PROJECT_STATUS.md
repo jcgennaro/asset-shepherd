@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** Acknowledge uploads before bounded asynchronous preflight (this file is included)
+**Current commit:** First-visit navigation tour and quieter upload progress (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,14 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D117: removed upload progress's model-running sentence and redundant bottom Gallery link.
+  Added a four-step navigation-only tour on first Gallery visit, Skip/Done persistence, native
+  keyboard dismissal, and FAQ replay. It does not click controls or interrupt processing screens.
+  Real-browser navigation/storage/focus checks pass, with desktop and 390 px visual QA. Common gate:
+  297 passed, 3 skipped; Ruff, formatting, Pyright and lock checks pass. Image build pending;
+  live rollout held until the user confirms the current collar is past task-local Upload/Describe
+  staging (or accepts re-uploading). No model/runtime/auth configuration change.
 
 - D116: fixes the collar's synchronous upload/preflight bottleneck in shared local/hosted code.
   The 30 MB collar returned in 0.125 s locally and passed asynchronous validation by 20.19 s;

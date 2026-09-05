@@ -1,0 +1,18 @@
+<dialog class="navigation-tour" data-navigation-tour{% if hosted_step == 'gallery' %} data-tour-auto{% endif %} aria-labelledby="navigation-tour-title" aria-describedby="navigation-tour-copy">
+  <div class="navigation-tour-spotlight" data-tour-spotlight aria-hidden="true" hidden></div>
+  <div class="navigation-tour-card">
+    <header class="navigation-tour-header">
+      <span class="shepherd-sprite" aria-hidden="true"></span>
+      <span data-tour-count aria-live="polite">1 of 4</span>
+      <button class="secondary-button compact-button" type="button" data-tour-skip>Skip tour</button>
+    </header>
+    <h2 id="navigation-tour-title" tabindex="-1" data-tour-title>Find your way around</h2>
+    <p id="navigation-tour-copy" data-tour-copy></p>
+    <p class="navigation-tour-context" data-tour-context></p>
+    <footer class="navigation-tour-footer">
+      <button class="secondary-button" type="button" data-tour-back>Back</button>
+      <button class="primary-button" type="button" data-tour-next>Next <span aria-hidden="true">→</span></button>
+    </footer>
+    <p class="navigation-tour-replay">You can replay this tour from FAQ.</p>
+  </div>
+</dialog>

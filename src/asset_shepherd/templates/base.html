@@ -27,6 +27,8 @@
         <main id="workspace" class="workspace-body">{% block content %}{% endblock %}</main>
       </section>
     </div>
+    {% if hosted_step == 'gallery' or active_mode == 'faq' %}{% include "_navigation_tour.html" %}{% endif %}
     <script src="{{ url_for('static', path='/app.js') }}?v={{ static_version }}" defer></script>
+    <script src="{{ url_for('static', path='/navigation-tour.js') }}?v={{ static_version }}" defer></script>
   </body>
 </html>

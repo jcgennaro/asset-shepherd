@@ -62,6 +62,10 @@ def test_upload_returns_while_checking_and_blocks_intake_until_ready(
         pending = client.get(describe)
         assert "Upload received—checking your asset" in pending.text
         assert "shepherd-sprite-thinking" in pending.text
+        assert "No model is running yet" not in pending.text
+        assert "Return to Gallery" not in pending.text
+        assert 'aria-label="Asset Shepherd gallery"' in pending.text
+        assert "data-tour-auto" not in pending.text
         assert 'name="description"' not in pending.text
         assert client.get("/healthz").status_code == 200
         assert client.get(status).json()["state"] == "CHECKING"

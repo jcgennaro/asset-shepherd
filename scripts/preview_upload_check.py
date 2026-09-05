@@ -21,6 +21,7 @@ def main() -> None:
     """Capture actual app markup and styles at desktop and narrow viewport sizes."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--page", choices=("upload", "tour", "tour-last"), default="upload")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     browser = find_chromium()
@@ -71,11 +72,21 @@ def main() -> None:
                     self.end_headers()
                     self.wfile.write(b'{"state":"CHECKING"}')
                     return
-                response = client.get(self.path, headers={"host": self.headers["Host"]})
+                page_path = (
+                    "/workspace" if self.path == "/preview" and args.page != "upload" else self.path
+                )
+                response = client.get(page_path, headers={"host": self.headers["Host"]})
+                content = response.content
+                if args.page == "tour-last" and self.path == "/preview":
+                    content = content.replace(
+                        b"</body>",
+                        b"<script>window.addEventListener('load',()=>{for(let i=0;i<3;i++)"
+                        b"document.querySelector('[data-tour-next]').click()})</script></body>",
+                    )
                 self.send_response(response.status_code)
                 self.send_header("Content-Type", response.headers.get("content-type", "text/html"))
                 self.end_headers()
-                self.wfile.write(response.content)
+                self.wfile.write(content)
 
             def log_message(self, format: str, *args: object) -> None:
                 """Keep browser asset requests out of the preview output."""
