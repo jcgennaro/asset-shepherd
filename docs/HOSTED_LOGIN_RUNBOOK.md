@@ -45,6 +45,24 @@ before doing that. The website login is separate from AWS console/IAM login.
 
 ## Deployment
 
+### Native-form correction (D113, 2026-09-05)
+
+Code commit `3aad485` fixes the application/auth response-policy split without weakening the
+exact-origin gate. Common quality checks pass (285 passed, 3 skipped; Ruff, formatting, Pyright,
+and lock check clean). The regression suite includes a native form POST from a fresh headless
+Chromium profile against a loopback-only fixture; it uses the policy returned by the login middleware.
+It neither attaches to user tabs nor contacts a model or the hosted workflow.
+
+CodeBuild `asset-shepherd-contest-web:49fe4779-dcaa-4e32-a2b8-04e9449c6f6b` passed and published
+`3aad48575c31-form-origin-web`. The web update changes only `WebImageUri`, preserving the previous
+template and all other parameters. At 100% traffic, `/healthz` returns 200 with `same-origin`,
+`/auth/signed-out` returns 200 with `no-referrer`, and anonymous workspace, source-download,
+OpenAPI, and Redo requests return 401. No real workspace was restarted for verification.
+Final rollout status is recorded in `PROJECT_STATUS.md`. Reload the Gallery before retrying:
+an already-open document retains its old referrer policy even after the server is updated.
+
+### Initial setup
+
 1. Read the existing web stack's `WebEndpoint`; use its canonical HTTPS origin.
 2. Deploy `infra/cloudformation/auth.yaml` as `asset-shepherd-auth`, passing `PublicOrigin`.
 3. Read `UserPoolId`, `ClientId`, `LoginDomain`, `SessionSecretArn`, and `PublicOrigin` outputs.

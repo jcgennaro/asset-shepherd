@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; local browser regression passes; web deployment pending
+**Status:** ACCEPTED; local browser regression and web deployment pass
 
 The hosted Redo form failed before its handler because D111 applied `no-referrer` to every page.
 For native non-CORS POST navigation, that policy produces `Origin: null`; the exact-origin CSRF
@@ -18,6 +18,9 @@ configured-origin enforcement, signed sessions, and rejection of missing/null or
 No Referer fallback, cross-origin exception, new secret, or model run is needed. A fresh headless
 Chromium profile verifies native loopback form submission using the actual application policy,
 without attaching to the owner's browser. See `HOSTED_LOGIN_RUNBOOK.md`.
+Web task revision 13 reached ECS SUCCESSFUL / CloudFormation UPDATE_COMPLETE, with 100% traffic
+on the fixed task and zero old tasks. Live public-header and anonymous-denial checks pass; the
+owner's authenticated Redo is left for their retry after reloading the Gallery.
 
 ### D112 — Explicit hosted OpenAI Luna after the renewed Bedrock denial
 

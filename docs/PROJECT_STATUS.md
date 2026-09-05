@@ -63,7 +63,11 @@ exact-mutation, invariant-verification, and packaging layer.
   Eight focused auth tests pass, including real native form submission in isolated headless
   Chromium; no owner browser attachment, model invocation, or injection-attempt testing occurred.
   Common quality gate passes: 285 passed, 3 skipped; lock, Ruff, formatting, and Pyright pass.
-  Web-only deployment is pending; runtime/model configuration stays unchanged.
+  Web-only image `3aad48575c31-form-origin-web` passes CodeBuild and is deployed as task revision 13:
+  ECS SUCCESSFUL, CloudFormation UPDATE_COMPLETE, one fixed task at 100% traffic, zero old tasks.
+  Live application/auth policy headers and anonymous workspace/download/OpenAPI/Redo denial pass.
+  Runtime/model configuration stays unchanged. The owner must reload Gallery before retrying their
+  authenticated Redo; no real workspace was restarted or repair approved during acceptance.
 
 - D112: one renewed administrator Bedrock Responses/Luna xhigh request still returns 403 account
   unavailability. The existing DPAPI-protected OpenAI key is now in a separate Secrets Manager
