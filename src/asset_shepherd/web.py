@@ -1067,6 +1067,16 @@ def _persisted_workflow_error_message(error: str | None) -> str | None:
     if error is None:
         return None
     normalized = " ".join(error.split()).strip()
+    if "Standardized visual sensing" in normalized:
+        if "asset is clipped" in normalized:
+            return (
+                "The evidence renderer cut off part of the asset. I stopped because those "
+                "screenshots cannot support a reliable assessment. Your asset and target are saved."
+            )
+        return (
+            "The evidence renderer could not produce usable screenshots. "
+            "I stopped repeated attempts; your asset and target are saved."
+        )
     if "maximum token limit" in normalized.lower():
         return (
             "I reached this model's response limit before I finished the assessment. "

@@ -103,6 +103,18 @@ def test_response_limit_failure_is_actionable_without_exposing_provider_diagnost
     assert "provider.invalid" not in message
 
 
+def test_visual_sensing_failure_explains_renderer_problem() -> None:
+    """Persisted renderer failures are not presented as generic model failures."""
+    message = _persisted_workflow_error_message(
+        "Repeated visual sensing failure: Standardized visual sensing rejected back.png: "
+        "asset is clipped"
+    )
+    assert message is not None
+    assert "renderer cut off" in message
+    assert "saved" in message
+    assert "No repair was applied" not in message  # Could also occur after candidate execution.
+
+
 @pytest.mark.parametrize(
     ("phase", "label", "tone"),
     (

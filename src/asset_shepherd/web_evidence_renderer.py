@@ -287,6 +287,10 @@ def _renderer_page(
     }};
     try {{
       await customElements.whenDefined('model-viewer');
+      // Adaptive resolution can change between captures on software GPUs. Keep the
+      // evidence canvas fixed: toBlob otherwise crops a full-size display canvas
+      // using reduced render-buffer dimensions in the vendored viewer.
+      customElements.get('model-viewer').minimumRenderScale = 1;
       const viewer = document.getElementById('viewer');
       await new Promise((resolve, reject) => {{
         if (viewer.loaded) {{ resolve(); return; }}
@@ -310,6 +314,10 @@ def _renderer_page(
         await new Promise((resolve) => setTimeout(resolve, 120));
         const blob = await viewer.toBlob({{mimeType: 'image/png', idealAspect: false}});
         if (!blob) throw new Error(`capture ${{name}} returned no PNG`);
+        const bitmap = await createImageBitmap(blob);
+        const validSize = bitmap.width === {resolution} && bitmap.height === {resolution};
+        bitmap.close();
+        if (!validSize) throw new Error(`capture ${{name}} changed evidence resolution`);
         const response = await fetch(`/capture/${{name}}`, {{method: 'POST', body: blob}});
         if (!response.ok) throw new Error(`capture upload failed: ${{response.status}}`);
       }}

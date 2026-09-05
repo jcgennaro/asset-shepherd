@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-04
-**Current commit:** Lower prompt-attack sensitivity for ordinary asset requests (this file is included)
+**Current commit:** Fix adaptive evidence cropping and bound visual-sensing retries (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,15 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D110: Smartpad Tablet failed because adaptive rendering cropped the back/left screenshots;
+  the evidence validator was correct. Fixed-scale capture produces four 512px images with clear
+  margins. Repeated identical sensing failures stop after two tool results while retaining usage.
+  Luna xhigh and Muse Contributor/high reached native approval in 53.14s and 69.07s respectively,
+  with the saved source/target unchanged and no consequential mutation. See
+  `TABLET_RENDER_REGRESSION.md`; these are local proposal-stage comparisons, not deployment or
+  full-output acceptance. The public default remains Kimi pending explicit provider enablement.
+  Common quality gate: 271 passed, 3 skipped; lock, Ruff, formatting, and Pyright clean.
 
 - D109 reduces prompt-attack input strength from HIGH to LOW after the saved tablet request
   reproduced a LOW-confidence prompt-attack block with all other categories undetected. Guardrail
@@ -1367,7 +1376,8 @@ for the full RW4 comparison gate.
 
 ## Next action
 
-The Smartpad Tablet false positive is resolved by D109 and is ready for a fresh user-driven test.
+Deploy D110's renderer/retry fix before another hosted Smartpad Tablet run. D109's content false
+positive is resolved; it was separate from this real screenshot-cropping failure.
 Choose and implement the free judge-access identity boundary before the complete Step 8 browser
 matrix. Alarm notification acceptance is complete. Do not run injection-attempt tests.
 Preserve the current mutation scope, exact authorization, durability, and invariant checks; do not

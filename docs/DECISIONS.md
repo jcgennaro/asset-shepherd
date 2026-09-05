@@ -4,6 +4,28 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D110 — Fixed-resolution evidence and bounded repeated sensing failures
+
+**Date:** 2026-09-04
+
+**Status:** ACCEPTED; local regression and proposal-stage provider comparisons pass
+
+The Smartpad Tablet's hosted failure was real screenshot cropping caused by adaptive rendering,
+not a content-policy block. Fix the dedicated capture page at render scale 1, validate capture
+dimensions, and invalidate cached views through contract 7. Preserve the 512px evidence capture,
+existing compact model-facing contact sheet, and all occupancy/clipping checks.
+
+After two identical visual-sensing failures in an invocation, stop the Strands loop after tool
+results are recorded and before another model call. Count the prerequisite across tool names;
+reset only on an explicitly new invocation. Preserve usage and a recognizable error so the UI can
+explain the rendering failure. Do not silently skip visual evidence or authorize a repair.
+
+Luna xhigh and Muse Contributor/high each formed a valid proposal and stopped at approval on the
+same unchanged source and target using the fixed local renderer. This comparison neither changes
+the public model default nor establishes end-to-end repaired-output acceptance. Details, usage,
+timing qualifications, and the replay command are in `TABLET_RENDER_REGRESSION.md`. No injection
+attempts were tested.
+
 ### D109 — Reduce prompt-attack sensitivity after an ordinary-asset false positive
 
 **Date:** 2026-09-04

@@ -104,7 +104,7 @@ def _write_json(path: Path, value: object) -> None:
 
 GLTF_SOURCE_VIEW_CONTRACT: Final[dict[str, object]] = {
     "schema_version": 1,
-    "render_contract_version": 6,
+    "render_contract_version": 7,
     "render_backend": "model-viewer 4.3.1 through headless Chromium",
     "projection": "fixed 24-degree perspective with standardized framing",
     "source_coordinate_system": "glTF right-handed",

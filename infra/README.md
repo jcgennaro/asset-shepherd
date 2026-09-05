@@ -221,9 +221,15 @@ free-form filesystem paths in SQS messages.
 
 OpenAI and Meta are supported application adapters but are not configured on the public contest
 stack yet. When enabled, store their production keys in AWS Secrets Manager, grant only the exact
-AgentCore execution role `secretsmanager:GetSecretValue` on the selected secret ARNs, and inject
+service roles `secretsmanager:GetSecretValue` on the selected secret ARNs (AgentCore for workflow;
+the web task only if its intake also uses that provider), and inject
 the chosen provider/model as non-secret configuration. Never put API keys in CloudFormation
 parameters, container images, source archives, task environment values, or browser responses.
+Store only secret ARNs in configuration; retrieve values server-side into process memory with
+short-lived role credentials. Do not expose them in logs, model context, workspace/session
+artifacts, or queues. This secret-loading path is planned, not yet implemented. Call the deployment
+"AWS-hosted Asset Shepherd": Bedrock is its model service, AgentCore runs the agent, and ECS hosts
+the website. Direct OpenAI/Meta API calls originate in AWS but do not pass through Bedrock.
 
 ## Operations stack and cleanup
 

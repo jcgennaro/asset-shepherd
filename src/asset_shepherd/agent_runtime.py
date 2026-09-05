@@ -70,6 +70,7 @@ from asset_shepherd.models import (
     ProposalResponse,
     RepairKind,
 )
+from asset_shepherd.tool_failure_guard import VisualSensingFailureGuard
 
 logger = logging.getLogger(__name__)
 
@@ -852,7 +853,9 @@ class AssetShepherdAgent:
         self._system_prompt = system_prompt
         self._agent_tools = tools
         self._callback_handler = callback_handler
+        self._visual_failure_guard = VisualSensingFailureGuard()
         self.agent = Agent(
+            hooks=[self._visual_failure_guard],
             model=model,
             tools=tools,
             system_prompt=system_prompt,
@@ -1001,6 +1004,7 @@ class AssetShepherdAgent:
     ) -> AgentResult:
         """Invoke one agent and durably retain its billable usage and elapsed time."""
         started = perf_counter()
+        self._visual_failure_guard.reset()
         try:
             result = agent(prompt, limits={"turns": turn_limit})
         finally:
@@ -1008,6 +1012,8 @@ class AssetShepherdAgent:
             self._invocation_duration_seconds += duration_seconds
         self._record_invocation(result, duration_seconds, agent_identity=id(agent))
         self._latest_result = result
+        if self._visual_failure_guard.stop_error is not None:
+            raise AgentWorkflowError(self._visual_failure_guard.stop_error)
         return result
 
     def _invoke(self, prompt: AgentInput) -> AgentResult:
@@ -1219,6 +1225,7 @@ class AssetShepherdAgent:
             stage: str,
         ) -> AgentResult:
             recovery_agent = Agent(
+                hooks=[self._visual_failure_guard],
                 model=self._model,
                 tools=tools,
                 system_prompt=(
@@ -1284,6 +1291,7 @@ class AssetShepherdAgent:
             raise AgentWorkflowError("There is no persisted inspection to recover")
 
         recovery_agent = Agent(
+            hooks=[self._visual_failure_guard],
             model=self._model,
             tools=self._agent_tools,
             system_prompt=(
