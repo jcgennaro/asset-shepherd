@@ -55,6 +55,14 @@ before doing that. The website login is separate from AWS console/IAM login.
    shared-gallery access is appropriate. Do not enable self-registration to simplify judging.
 
 In the AWS console: **Amazon Cognito → User pools → asset-shepherd-contest → Users → Create user**.
+The invitation subject and HTML body identify Asset Shepherd, link to its configured public origin,
+and explain the shared demo and required first-login password change. The initial generic Cognito
+invitation landed in the owner's spam folder; invitees should check spam and mark the expected
+message as not spam. The sender is still Cognito's default `no-reply@verificationemail.com`.
+A custom sender requires an SES-verified email/domain; branding alone cannot guarantee delivery.
+Use `AdminCreateUser` with `MessageAction=RESEND` for an unactivated invitation when a replacement
+is needed: Cognito delivers a new temporary password and invalidates the previous one. Do not
+inspect or echo either password. Refer to the newest invitation, not an old email or screenshot.
 Deleting the auth stack intentionally retains the user pool and signing secret. Do not roll the
 website back to a pre-auth image while treating it as private; that would reopen anonymous access.
 

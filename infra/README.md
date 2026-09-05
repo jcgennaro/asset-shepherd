@@ -1,9 +1,9 @@
 # Asset Shepherd AWS infrastructure
 
-The checked-in infrastructure is intentionally incremental. All six contest stacks are live in
+The checked-in infrastructure is intentionally incremental. Seven contest stacks are live in
 `us-east-1`: `asset-shepherd-state`, `asset-shepherd-container-build`,
 `asset-shepherd-guardrail`, `asset-shepherd-agentcore`, `asset-shepherd-web`, and
-`asset-shepherd-operations`. The public web
+`asset-shepherd-operations`, plus the new `asset-shepherd-auth` login stack. The public web
 gate passed on 2026-09-04;
 operations hardening and the full remote case matrix remain. See
 `docs/BEDROCK_DEPLOYMENT_RUNBOOK.md` for the evidence, current endpoint, and gated procedure.
@@ -60,7 +60,7 @@ $env:ASSET_SHEPHERD_WORKSPACE_OWNER_ID = 'contest-demo'
 
 `ASSET_SHEPHERD_WORKSPACE_OWNER_ID` is a server-derived application identity boundary. The contest
 demo currently uses one documented identity. Do not accept this value from an arbitrary browser
-parameter when multi-user authentication is added.
+parameter. D111 gates the shared demo with login; per-user ownership remains a separate change.
 
 Run the opt-in live storage proof with the same short-lived role credentials:
 

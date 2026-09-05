@@ -17,6 +17,10 @@ per-user private workspaces. Use standard Authlib OIDC/PKCE validation and a Sec
 server-only signer for Secure/HttpOnly host-only cookies. Keep provider keys out of this change.
 AWS console authentication remains separate from website authentication. No prompt-injection tests
 are authorized or required. Details and remaining limitations: `HOSTED_LOGIN_RUNBOOK.md`.
+The owner rejected Cognito's generic invitation as unrecognizable (it also landed in spam). Use
+an Asset Shepherd-branded subject and responsive HTML invitation, a fixed application link, and
+clear first-login/shared-gallery guidance. Keep AWS's default sender until an SES identity is
+explicitly verified. A branded replacement invitation invalidates the old temporary password.
 
 ### D110 — Fixed-resolution evidence and bounded repeated sensing failures
 

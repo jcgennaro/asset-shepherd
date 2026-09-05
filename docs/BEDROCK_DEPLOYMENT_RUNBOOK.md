@@ -3,7 +3,9 @@
 **Status:** Approved procedure; Kimi passes the fixed 8/8 provider gate, private S3/DynamoDB state
 and Strands sessions are live, and the public ECS/SQS/Lambda/AgentCore path has completed one clean
 acceptance-through-download run plus forced web-task replacement; alarm inbox delivery is verified;
-Step 7 identity isolation and the full Step 8 remote matrix remain open
+Step 7 identity isolation and the full Step 8 remote matrix remain open. D111 adds invite-only
+Cognito login to the shared demo; rollout and human acceptance are tracked in
+`HOSTED_LOGIN_RUNBOOK.md` and `PROJECT_STATUS.md`.
 
 **Last verified against the live deployment:** 2026-09-04
 
@@ -183,6 +185,10 @@ the live request path, durable state, and build plane from the smaller set of St
 optional-provider work that remains. Its source is an editable SVG; the checked-in PNG is the
 presentation-ready rendered copy.
 
+D111 adds the Cognito browser-login boundary and a Secrets Manager session signer to this
+request/data topology. The existing drawing does not yet show those two additions; use
+`HOSTED_LOGIN_RUNBOOK.md` for the current access boundary. Login does not add per-user galleries.
+
 ![Asset Shepherd production architecture and deployment status](assets/asset-shepherd-aws-architecture.svg)
 
 [Open the editable SVG](assets/asset-shepherd-aws-architecture.svg) ·
@@ -218,8 +224,8 @@ The web service applies the current contest-demo owner boundary and enqueues bou
 its IAM task role. A least-privilege Lambda consumer invokes AgentCore's regional API outside the
 browser request. Browser GLB transfers currently pass through exact workspace-authorized web routes;
 the browser does not receive AWS credentials and does not invoke S3 or AgentCore directly.
-Multi-user authentication and presigned direct transfers remain Step 7/production hardening, not
-properties of the public contest-demo endpoint.
+Invite-only Cognito login is the D111 shared-demo access gate; per-user workspace isolation and
+presigned direct transfers remain separate Step 7/production hardening.
 PrivateLink, custom AgentCore VPC connectivity, Route 53, and a custom domain are deferred rather
 than implied by the contest deployment.
 
@@ -839,8 +845,8 @@ Guardrail version 2. The guardrail, AgentCore, and web stacks are UPDATE_COMPLET
 running and all eight project alarms OK.
 These checks establish that the observed false positive is resolved, not attack-detection efficacy.
 
-End-to-end alarm notification acceptance and the Guardrail version rollout are complete. Multi-user
-authentication remains before closing Step 7.
+End-to-end alarm notification acceptance and the Guardrail version rollout are complete. D111 adds
+invite-only shared-demo login; per-user isolation remains before closing Step 7.
 
 ## Step 8 — Remote M9 acceptance
 
