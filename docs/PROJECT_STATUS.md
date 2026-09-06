@@ -36,6 +36,12 @@
 
 ## Current gate
 
+September 6 documentation refresh: README now distinguishes the deployed ECS/AgentCore/Cognito
+app and explicit hosted OpenAI option from local comparators, documents fresh-clone setup and
+tracked sample GLBs, and calls out the ignored collar binary and machine-local credentials/history.
+Relative README links and diff whitespace checks pass. Documentation only; no runtime change,
+deployment, or paid model test. The full application gate recorded below remains the latest run.
+
 D122 implements the user-selected $10/UTC-day shared model-spending emergency ceiling,
 with $5/$8 warnings, covering web intake and every runtime inference. It does not impose
 a judge run quota, count hosting as model spending, or erase accounting when assets are

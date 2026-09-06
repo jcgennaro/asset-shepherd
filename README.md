@@ -4,7 +4,32 @@ Asset Shepherd is an autonomous 3D-asset intake, inspection, repair-planning, an
 verification agent for game developers.
 
 > [!NOTE]
-> This repository is an early hackathon work in progress.
+> Built for the **Agents for Humans** hackathon, Professional Agents track.
+> The authenticated AWS demo is deployed; release validation and submission work remain in progress.
+
+## Current deployment
+
+As recorded on September 6, 2026, the hosted app runs on Amazon ECS Express Mode behind an
+Application Load Balancer, with invite-only Amazon Cognito sign-in. Workflow commands pass through
+SQS and a Lambda dispatcher to the Strands agent in Amazon Bedrock AgentCore Runtime. S3 stores
+artifacts and sessions; DynamoDB stores workspace state and spending reservations. CloudWatch and
+SNS provide operational alerts. Local development uses the same application source with local
+workspace storage.
+
+Kimi K2.5 through **Amazon Bedrock Converse** is the default. **Luna xhigh through the OpenAI API**
+is also available as an explicit hosted selection, using a backend-only AWS Secrets Manager key
+and separate OpenAI billing. This is not Luna through Bedrock: that account-access path remains
+blocked. There is no silent provider fallback. Meta remains an opt-in local comparator, not a
+deployed hosted option; Google is not a hosted option.
+
+The shared demo has a $10/UTC-day **estimated model-spending** emergency ceiling, with $5/$8
+warnings; this does not cap hosting costs or impose a 24-runs/day judge quota. Judge credentials
+are supplied privately, never in this repository. The demo uses a shared gallery, not private
+per-user asset tenancy: use only nonconfidential test assets.
+
+See [current status](docs/PROJECT_STATUS.md), [deployment procedure](docs/BEDROCK_DEPLOYMENT_RUNBOOK.md),
+[sign-in operations](docs/HOSTED_LOGIN_RUNBOOK.md), [hosted OpenAI](docs/HOSTED_OPENAI_RUNBOOK.md),
+and [spending safety](docs/MODEL_SPENDING_RUNBOOK.md) for acceptance evidence and remaining gates.
 
 ## Project control
 
@@ -17,7 +42,8 @@ verification agent for game developers.
 - [Contest compliance plan](docs/CONTEST_COMPLIANCE_PLAN.md)
 - [Web design and flow](docs/WEB_DESIGN_AND_FLOW.md)
 - [Checks and authority](docs/CHECKS_AND_AUTHORITY.md)
-- [Future component labeling and removal](docs/FUTURE_COMPONENT_HANDLING.md) — deferred, not MVP
+- [Original component-handling design](docs/FUTURE_COMPONENT_HANDLING.md) — historical proposal;
+  current capabilities and authority are recorded in project status and the workflow contract
 
 The agent-orchestrated workflow defines the product authority boundary: deterministic tools provide
 measurements, rendered evidence, bounded actions, enforcement, and proof; the workflow agent decides
@@ -41,17 +67,53 @@ distributable real-world demo input. Generated GLBs and ZIPs remain reproducible
 
 ## Local web product
 
+### Fresh laptop setup
+
+Install Git and `uv`, plus Chrome, Edge, or Chromium for evidence rendering. The repository pins
+Python 3.12 in `.python-version`; `uv` can provision it during setup. Blender, Unreal, Node.js,
+Docker, and an AWS deployment are not required for the normal local app. The browser viewer is
+vendored in the repository. AWS CLI and a configured AWS identity are needed only for AWS-backed
+work, not direct-API development or the offline harnesses below.
+
+The repository is currently private, so authenticate Git with an authorized GitHub account first.
+
 ```powershell
-uv sync
+git clone https://github.com/jcgennaro/asset-shepherd.git
+cd asset-shepherd
+uv sync --locked
 ```
+
+The clone includes ordinary Git blobs, with no Git LFS step:
+
+| Sample | Path | Approximate size |
+|---|---|---:|
+| Patchling | `validation/corpus/patchling_01/raw/asset.glb` | 4.9 MB |
+| Shader Lantern | `validation/corpus/shader_lantern_01/raw/asset.glb` | 12.8 MB |
+| Clean and broken robots | `fixtures/clean_robot.glb`, `fixtures/broken_robot.glb` | 24 KB each |
+
+The shattered-heart collar's [runbook](validation/benchmarks/shattered-heart-collar/README.md)
+and run records are included, but its 30 MB raw GLB and screenshots remain ignored pending
+redistribution-rights confirmation. Generated outputs, local gallery history, `.venv`, credentials,
+and `.env` files are not included. Hosted workspaces remain in AWS; cloning does not copy them into
+your local gallery.
+
+API keys must be saved again on the new computer using the helpers below. Do not copy the encrypted
+Windows key files between machines: they are protected for the original Windows user/environment.
+The PowerShell key helpers require Windows; on other systems, supply the selected provider's key
+through a secure process environment and launch `uv run asset-shepherd web` directly. Set
+`ASSET_SHEPHERD_CHROMIUM_PATH` if automatic browser discovery fails.
+
+### Bedrock locally
 
 For the current Bedrock path, authenticate the `asset-shepherd` AWS profile and set the explicit
 environment shown in `.env.example`. It uses AWS session credentials and does not require or send
-an OpenAI API key:
+an OpenAI API key. The named profile must be configured on the laptop; a clone does not create it.
+`.env.example` is a configuration reference, not an automatically loaded dotenv file.
 
 ```powershell
 $env:AWS_PROFILE = 'asset-shepherd'
 $env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'bedrock-converse'
+$env:ASSET_SHEPHERD_INTAKE_MODEL = 'moonshotai.kimi-k2.5'
 $env:ASSET_SHEPHERD_MODEL_PROVIDER = 'bedrock-converse'
 $env:ASSET_SHEPHERD_MODEL_ID = 'moonshotai.kimi-k2.5'
 $env:ASSET_SHEPHERD_AWS_REGION = 'us-east-1'
@@ -65,13 +127,23 @@ Kimi K2.5 is recommended; Claude Haiku 4.5 is an experimental speed/cost compari
 diagnostic. The selected model is stored with that asset, so resume and Refine never silently
 change it. Arbitrary posted model IDs fail closed.
 
-The optional direct-OpenAI development adapter remains available. Save its key once, then start
-without setting `ASSET_SHEPHERD_MODEL_PROVIDER=bedrock`:
+### OpenAI locally
+
+Save the key with Windows user-scoped encryption, then explicitly select Luna for both model
+boundaries. Model calls incur charges on the configured OpenAI account:
 
 ```powershell
 .\scripts\Save-OpenAIKey.ps1
+$env:ASSET_SHEPHERD_INTAKE_PROVIDER = 'openai'
+$env:ASSET_SHEPHERD_MODEL_PROVIDER = 'openai'
+$env:ASSET_SHEPHERD_INTAKE_MODEL = 'gpt-5.6-luna'
+$env:ASSET_SHEPHERD_MODEL_ID = 'gpt-5.6-luna'
+$env:ASSET_SHEPHERD_INTAKE_REASONING = 'xhigh'
+$env:ASSET_SHEPHERD_WORKFLOW_REASONING = 'xhigh'
 .\scripts\Start-AssetShepherd.ps1
 ```
+
+### Optional local comparators
 
 Muse Spark 1.3 is available as an opt-in Meta Model API comparator, not as an AWS production
 fallback. Save its separate key with Windows user-scoped encryption. For evaluation assets whose
@@ -166,7 +238,7 @@ normals, materials, names, and bounds, then reports measured—not predicted—t
 changes. Preservation limits may make the safe result larger than the soft cap.
 
 The recommended provider uses Kimi K2.5 through Amazon Bedrock Converse for semantic intake and
-workflow decisions. The GLB stays local; the provider receives
+workflow decisions. In local mode, the GLB stays local; the provider receives
 the description, structured measurements, and standardized rendered evidence needed for the turn.
 Each workspace owns its own durable Strands session and frozen job state, so refresh and restart
 resume the same asset without sharing conversation state or repeating mutation. Use
@@ -177,7 +249,8 @@ The Windows launch scripts keep optional direct-OpenAI, Meta, and Gemini develop
 current user's local app data, outside the repository. A launcher exposes only the selected key to
 the running server process and removes it when that command ends. In Bedrock mode, the launcher
 removes any inherited OpenAI key and uses only the active AWS session credentials. External APIs
-remain development comparators, not production fallbacks.
+remain explicit selections rather than automatic fallbacks. Direct OpenAI is also supported in the
+hosted deployment through Secrets Manager; Meta and Gemini remain local comparators.
 
 The agent decides which checks and bounded actions are appropriate. Deterministic tools remain
 authoritative for measurements, exact action consequences, authorization, source immutability,
@@ -186,8 +259,27 @@ standardized model-visible evidence use the pinned local `<model-viewer>` distri
 rendering launches an installed Chromium-family browser headlessly; set
 `ASSET_SHEPHERD_CHROMIUM_PATH` when browser discovery is unavailable. Blender is only an explicit
 local compatibility fallback selected with `ASSET_SHEPHERD_EVIDENCE_RENDERER=blender`, not a
-production dependency. Production persistence, judge access, and clean-Linux renderer acceptance
-remain explicit AWS deployment gates rather than being implied by the local product.
+production dependency. Cloud persistence, invite-only access, and Linux rendering are deployed and
+have recorded acceptance evidence; the remaining identity-isolation and full remote validation
+matrix are tracked in `docs/PROJECT_STATUS.md`. Task-local pre-intake upload drafts do not yet
+survive web-task replacement.
+
+### Local checks (no paid model tests)
+
+In a development shell with live-test opt-in disabled:
+
+```powershell
+$env:ASSET_SHEPHERD_RUN_LIVE = '0'
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check
+uv run pyright
+uv lock --check
+```
+
+The last recorded full gate passed 363 tests with three skips. This is recorded project evidence,
+not a claim that every laptop environment has been tested. The offline CLI harnesses below are
+useful first smoke tests before configuring a paid provider.
 
 ## Deterministic repair-engine harness
 
