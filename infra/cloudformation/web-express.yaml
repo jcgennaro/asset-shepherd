@@ -2,6 +2,16 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: Asset Shepherd public ECS Express web tier and durable AgentCore dispatcher.
 
 Parameters:
+  DailyModelUsd:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+    Description: Conservative site-wide UTC-day model-token safety ceiling; excludes hosting.
+  SpendAlertTopicArn:
+    Type: String
+    AllowedPattern: "^arn:aws:sns:[a-z0-9-]+:[0-9]{12}:asset-shepherd-[A-Za-z0-9_-]+$"
+    Description: Existing confirmed owner-only operations SNS topic.
   EnvironmentName:
     Type: String
     Default: contest
@@ -239,6 +249,10 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              - Sid: PublishModelSpendWarnings
+                Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref SpendAlertTopicArn
               - Sid: ListWorkspaceArtifacts
                 Effect: Allow
                 Action: s3:ListBucket
@@ -319,6 +333,12 @@ Resources:
       PrimaryContainer:
         ContainerPort: 8080
         Environment:
+          - Name: ASSET_SHEPHERD_SPEND_TABLE
+            Value: !Ref WorkspaceTableName
+          - Name: ASSET_SHEPHERD_DAILY_MODEL_USD
+            Value: !Ref DailyModelUsd
+          - Name: ASSET_SHEPHERD_SPEND_ALERT_TOPIC
+            Value: !Ref SpendAlertTopicArn
           - Name: ASSET_SHEPHERD_AUTH_REQUIRED
             Value: "1"
           - Name: ASSET_SHEPHERD_PUBLIC_ORIGIN

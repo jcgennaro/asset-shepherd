@@ -97,6 +97,7 @@ from asset_shepherd.models import (
 )
 from asset_shepherd.policy_resolution import PolicyResolution, resolve_policy_family
 from asset_shepherd.profile_policy import canonical_profile_sha256
+from asset_shepherd.spending import PUBLIC_SPEND_MESSAGES
 from asset_shepherd.target_intake import (
     TargetEvidenceSource,
     TargetFieldEvidence,
@@ -1069,6 +1070,9 @@ def _persisted_workflow_error_message(error: str | None) -> str | None:
     if error is None:
         return None
     normalized = " ".join(error.split()).strip()
+    for message in PUBLIC_SPEND_MESSAGES:
+        if message in normalized:
+            return message
     if "Standardized visual sensing" in normalized:
         if "asset is clipped" in normalized:
             return (

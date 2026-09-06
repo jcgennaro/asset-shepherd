@@ -618,7 +618,7 @@ def build_environment_model(
                 client_args={"api_key": values["OPENAI_API_KEY"], "max_retries": 0, "timeout": 300},
                 model_id=configuration.model_id,
                 stateful=True,
-                params=model_parameters,
+                params={**model_parameters, "service_tier": "default"},
             )
         elif configuration.provider == "bedrock":
             try:
@@ -693,6 +693,12 @@ def build_environment_model(
             boto_client_config=_bedrock_client_config(values),
             **converse_config,
         )
+    from asset_shepherd.spending import configured_ledger
+    from asset_shepherd.spending_model import SpendingModel
+
+    ledger = configured_ledger(values)
+    if ledger is not None:
+        model = SpendingModel(model, ledger, configuration.provider, configuration.model_id)
     return model, configuration
 
 

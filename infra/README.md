@@ -246,6 +246,11 @@ the website. Direct OpenAI/Meta API calls originate in AWS but do not pass throu
 
 ## Operations stack and cleanup
 
+For the shared model-token emergency ceiling, both web/runtime stacks now take
+`DailyModelUsd=10` and `SpendAlertTopicArn=<confirmed operations topic ARN>`.
+See [the model-spending runbook](../docs/MODEL_SPENDING_RUNBOOK.md) for conservative
+reservations, $5/$8 warnings, and the distinction from hosting/AWS billing limits.
+
 `cloudformation/operations.yaml` creates the low-cost `asset-shepherd-contest` CloudWatch dashboard,
 eight alarms, and one email SNS topic. Deploy it after the state and web stacks so its parameters can use
 their exact generated bucket, function, and queue names. The alarms cover dispatcher errors,

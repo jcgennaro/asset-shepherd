@@ -4,6 +4,31 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D122 — Shared model-spending emergency ceiling, not a judge run quota
+
+**Date:** 2026-09-06
+
+**Status:** ACCEPTED by user; common gate passes; deployment validation in progress
+
+Use a $10/UTC-day site-wide conservative model-token spending ceiling, with warnings
+at $5/$8 to the existing confirmed operations topic. Do not impose a shared 24-runs/day
+judge limit. One shared judge login will be supplied privately, with practical free access
+through the judging deadline; provisioning remains separate and pending.
+
+Meter both target intake and each workflow model request using atomic DynamoDB
+reservations, conservative rate envelopes, exactly-once refunds, and three expiring call
+leases. Unknown usage stays charged; unsupported providers fail closed. Records are
+separate from assets so deletion cannot restore spent allowance. No model router, new
+persistent service, training-tier judge access, or hosting-cost cap is introduced.
+
+See `docs/MODEL_SPENDING_RUNBOOK.md` for rates, limits, safe public pause messages,
+alert delivery semantics, and zero-model verification. Actual AWS ledger transactions
+passed isolated simultaneous-admission and duplicate-settlement checks; generated test
+records were removed. The user also reports a successful complete Luna riding-crop run
+after D121; that is user-reported validation, not a new agent-initiated model test.
+Common gate: 357 passed, three skipped; Ruff, formatting, Pyright, and lock checks pass.
+Both CloudFormation templates validate; the paid-command queue was empty before rollout.
+
 ### D121 — Refine diagnostics-only turns from their unchanged input
 
 **Date:** 2026-09-05

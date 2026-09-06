@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-09-05
-**Current commit:** Diagnostics-only INPUT refinement recovery (this file is included)
+**Last updated:** 2026-09-06
+**Current commit:** Shared model-spending safety (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -35,6 +35,16 @@
 | RW5 Evaluation report and demo | SCAFFOLDED | Typed adjudication and traceable case-study report renderer | Public claims remain prohibited until evidence exists |
 
 ## Current gate
+
+D122 implements the user-selected $10/UTC-day shared model-spending emergency ceiling,
+with $5/$8 warnings, covering web intake and every runtime inference. It does not impose
+a judge run quota, count hosting as model spending, or erase accounting when assets are
+removed. Isolated real DynamoDB transactions passed simultaneous admission and duplicate
+settlement checks without model calls or changes to saved assets. Common gate: 357 passed,
+three skipped, clean Ruff/format/Pyright and lock checks. Hosted rollout is in progress;
+see `MODEL_SPENDING_RUNBOOK.md`. Dedicated shared judge credentials
+and a concurrency/ownership-safe Gallery trash action remain pending, not claimed complete.
+The user reports a successful full Luna riding-crop run after D121.
 
 M9's local Bedrock-provider gate is complete. D094's fixed matrix gives Kimi 8/8 safety and 8/8
 semantic/visual passes through the least-privilege Bedrock role, and rejects Mistral Large 3 as the

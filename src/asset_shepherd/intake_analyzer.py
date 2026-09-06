@@ -49,6 +49,7 @@ from asset_shepherd.meta_model_api import (
     validate_meta_model_id,
 )
 from asset_shepherd.models import AssetEndpoint, AssetTargetUse, AssetViewingUse, ContractModel
+from asset_shepherd.spending import SpendLedger, SpendLimitError, billable_call, configured_ledger
 from asset_shepherd.target_intake import (
     MINIMUM_TARGET_CONFIDENCE,
     TargetEvidenceSource,
@@ -427,6 +428,7 @@ class OpenAITargetIntakeAnalyzer:
     """OpenAI Responses structured-output implementation of semantic intake."""
 
     provider = "openai"
+    spending_ledger: SpendLedger | None = None
 
     def __init__(
         self,
@@ -480,6 +482,7 @@ class OpenAITargetIntakeAnalyzer:
         """Build one bounded, non-persistent Responses API request."""
         return {
             "model": self.model_id,
+            **({"service_tier": "default"} if self.provider == "openai" else {}),
             "instructions": _target_intake_instructions(require_dimensions=require_dimensions),
             "input": normalize_intent_description(description),
             "reasoning": {"effort": self.configuration.reasoning_effort},
@@ -508,20 +511,12 @@ class OpenAITargetIntakeAnalyzer:
                 }
                 if self._client is None:
                     with httpx.Client(timeout=90.0) as client:
-                        response = client.post(
-                            self.configuration.responses_url,
-                            headers=headers,
-                            json=self._request_payload(
-                                normalized, require_dimensions=require_dimensions
-                            ),
+                        response = self._metered_post(
+                            client, headers, normalized, require_dimensions
                         )
                 else:
-                    response = self._client.post(
-                        self.configuration.responses_url,
-                        headers=headers,
-                        json=self._request_payload(
-                            normalized, require_dimensions=require_dimensions
-                        ),
+                    response = self._metered_post(
+                        self._client, headers, normalized, require_dimensions
                     )
                 response.raise_for_status()
                 inference = TargetIntakeInference.model_validate_json(
@@ -560,6 +555,29 @@ class OpenAITargetIntakeAnalyzer:
             provider=self.provider,
             model_id=self.model_id,
         )
+
+    def _metered_post(
+        self,
+        client: httpx.Client,
+        headers: dict[str, str],
+        description: str,
+        require_dimensions: bool,
+    ) -> httpx.Response:
+        """Admit and settle each intake request separately, including the bounded retry."""
+        try:
+            return billable_call(
+                self.spending_ledger,
+                self.provider,
+                self.model_id,
+                lambda: client.post(
+                    self.configuration.responses_url,
+                    headers=headers,
+                    json=self._request_payload(description, require_dimensions=require_dimensions),
+                ),
+                lambda response: response.json().get("usage") if response.is_success else None,
+            )
+        except SpendLimitError as error:
+            raise TargetIntakeAnalysisError(str(error)) from error
 
 
 def load_meta_target_intake_configuration(
@@ -974,6 +992,8 @@ def load_bedrock_converse_target_intake_configuration(
 class BedrockConverseTargetIntakeAnalyzer:
     """Model-neutral Converse intake using one forced, server-validated tool submission."""
 
+    spending_ledger: SpendLedger | None = None
+
     def __init__(
         self,
         configuration: BedrockConverseTargetIntakeConfiguration,
@@ -1082,9 +1102,20 @@ class BedrockConverseTargetIntakeAnalyzer:
         try:
             inference: TargetIntakeInference | None = None
             for require_dimensions in (False, True):
-                response = self._client.converse(
-                    **self._request_payload(normalized, require_dimensions=require_dimensions)
-                )
+                try:
+                    response = billable_call(
+                        self.spending_ledger,
+                        self.provider,
+                        self.model_id,
+                        lambda require_dimensions=require_dimensions: self._client.converse(
+                            **self._request_payload(
+                                normalized, require_dimensions=require_dimensions
+                            )
+                        ),
+                        lambda value: value.get("usage"),
+                    )
+                except SpendLimitError as error:
+                    raise TargetIntakeAnalysisError(str(error)) from error
                 if response.get("stopReason") == "guardrail_intervened":
                     raise TargetIntakeContentRefusal(INTAKE_REFUSAL_MESSAGE)
                 inference = TargetIntakeInference.model_validate_json(
@@ -1149,14 +1180,21 @@ def build_target_intake_analyzer(
 ) -> TargetIntakeAnalyzer:
     """Build the selected semantic provider behind one stable intake interface."""
     provider = values.get("ASSET_SHEPHERD_INTAKE_PROVIDER", "openai")
+    ledger = configured_ledger(values)
+    if ledger is not None and provider not in {"openai", "bedrock-converse", "deterministic"}:
+        raise TargetIntakeAnalysisError("This provider needs approved hosted spending accounting.")
     if provider == "openai":
-        return OpenAITargetIntakeAnalyzer(load_openai_target_intake_configuration(values))
+        analyzer = OpenAITargetIntakeAnalyzer(load_openai_target_intake_configuration(values))
+        analyzer.spending_ledger = ledger
+        return analyzer
     if provider == "bedrock":
         return BedrockTargetIntakeAnalyzer(load_bedrock_target_intake_configuration(values))
     if provider == "bedrock-converse":
-        return BedrockConverseTargetIntakeAnalyzer(
+        converse = BedrockConverseTargetIntakeAnalyzer(
             load_bedrock_converse_target_intake_configuration(values)
         )
+        converse.spending_ledger = ledger
+        return converse
     if provider == "bedrock-nova":
         return BedrockConverseTargetIntakeAnalyzer(load_nova_target_intake_configuration(values))
     if provider == "meta":
