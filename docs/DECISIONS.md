@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED by user; common gate passes; hosted rollout pending
+**Status:** ACCEPTED by user; common gate passes; web/runtime rollouts complete
 
 The riding-crop workspace `786eb1264ce9437c90ed05dc2e59a993` stopped with an agent-authored
 RETURN_TO_CREATION_TOOL assessment. Its 7,322-byte diagnostic ZIP exists in S3, but no repaired
@@ -32,6 +32,30 @@ Six regressions cover diagnostics-only continuation after hydration, immutable a
 identity, second-turn packaging with null prior output, absent ZIP/candidate/hash, changed source,
 and reset approval state. Full gate: 333 passed, three skipped; Ruff, formatting, Pyright, and lock
 checks pass. No paid model or injection-attempt tests.
+
+The exact saved riding-crop workspace was also hydrated read-only into ignored
+`build/validation/riding-crop-diagnostics-3307ea0/`. Calling the corrected INPUT transition on that
+local copy with the user's C2 feedback advanced to turn 1 and survived a fresh AgentJob restore.
+The source hash remained `61a4d1de6c828e25ff4c32be4913261ec26a067ca706e18cff14564ba4060e49`,
+the prior diagnostic ZIP survived, and no selected plan, decisions, or execution outcome was
+carried forward. This transition check made zero model calls and zero cloud writes; it is not
+evidence that the model has yet proposed or executed the requested component removal.
+
+Source `3307ea0` passed CodeBuild web `b83e7e99-ae72-4975-92eb-77f485d93226` and runtime
+`303d008f-cdb6-46fc-bea7-ba71a275cc71`, including ARM64 Chromium source/shared-scale and runtime
+import/health gates. Images are `3307ea0-diagnostic-refinement-web` (digest
+`sha256:726dd9f06c6b5e7b2f3a0e84b9a2809ccded9d4bbc440e10985479eabc2a24e7`) and
+`3307ea0-diagnostic-refinement-agentcore` (digest
+`sha256:5dd823e675336a0a1a2562157036dc2f3b27c123ca2f40f471509bd15e994d17`).
+The web reader reached all-new-task traffic before runtime change-set
+`diagnostic-refinement-3307ea0` executed; its reviewed scope was only AgentRuntimeArtifact, without
+resource replacement, permission changes, or new secrets. AgentCore version 9 / DEFAULT are READY
+and its stack is UPDATE_COMPLETE. A model-free hosted status call returns the unchanged riding-crop
+record version 4, turn 0, BLOCKED, with no pending approval or output candidate. Health is 200,
+anonymous browser navigation redirects to sign-in, JSON session requests remain 401, and all eight
+alarms are OK. Web revision 19 reached ECS SUCCESSFUL / stack UPDATE_COMPLETE with one task
+serving all traffic and zero old tasks. The user can refresh the saved workspace and submit a
+new refinement request; the failed request was not automatically replayed.
 
 ### D120 — Redirect stale browser sessions to sign-in without replaying commands
 

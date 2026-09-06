@@ -62,7 +62,11 @@ exact-mutation, invariant-verification, and packaging layer.
   Riding-crop diagnostic ZIP is present; the original remains unchanged. Null output lineage is
   explicit, candidate/input hashes are checked before archival, and feedback grants no approval.
   Six regressions plus full gate: 333 passed, three skipped; clean Ruff/format/Pyright/lock checks.
-  Compatible web reader then runtime rollout pending; no cloud workflow/model call submitted.
+  Source `3307ea0` passed both CodeBuild gates and deployed as web revision 19 plus AgentCore 9 /
+  DEFAULT READY. Both stacks UPDATE_COMPLETE, ECS SUCCESSFUL, all-new-task traffic, zero old tasks.
+  The exact saved crop case passes INPUT continuation/restart on a read-only hydrated local copy.
+  A model-free hosted status call confirms record version 4/turn 0 unchanged; no refinement or
+  approval was submitted. Health 200, auth redirect/JSON denial intact, all eight alarms OK.
 
 - D120: unauthenticated navigation and stale-page 401 responses lead to sign-in, with a validated
   workspace return destination and no automatic action replay. Server-relative expiry/entry/focus/
