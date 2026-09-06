@@ -11,6 +11,7 @@ from typing import Annotated, Literal, Protocol, cast
 
 import boto3
 import httpx
+from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from google import genai
 from google.genai import errors as genai_errors
@@ -1012,7 +1013,13 @@ class BedrockConverseTargetIntakeAnalyzer:
             region_name=configuration.region,
         )
         raw_client = session.client(  # pyright: ignore[reportUnknownMemberType]
-            "bedrock-runtime", region_name=configuration.region
+            "bedrock-runtime",
+            region_name=configuration.region,
+            config=Config(
+                connect_timeout=10,
+                read_timeout=90,
+                retries={"total_max_attempts": 1, "mode": "standard"},
+            ),
         )
         self._client = cast(BedrockConverseClient, cast(object, raw_client))
 

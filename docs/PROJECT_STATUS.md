@@ -42,9 +42,15 @@ a judge run quota, count hosting as model spending, or erase accounting when ass
 removed. Isolated real DynamoDB transactions passed simultaneous admission and duplicate
 settlement checks without model calls or changes to saved assets. Common gate: 357 passed,
 three skipped, clean Ruff/format/Pyright and lock checks. Hosted rollout is in progress;
-see `MODEL_SPENDING_RUNBOOK.md`. Dedicated shared judge credentials
-and a concurrency/ownership-safe Gallery trash action remain pending, not claimed complete.
+see `MODEL_SPENDING_RUNBOOK.md`. The shared judge alias is invited and now CONFIRMED;
+fresh judge-account end-to-end acceptance and private Devpost credential handoff remain.
+A concurrency/ownership-safe Gallery trash action remains pending, not claimed complete.
 The user reports a successful full Luna riding-crop run after D121.
+
+D123 adds explicit browser-local tutorial opt-out with FAQ re-enable, preserving the tour
+for other judges' browsers. Nine browser/entry-point checks pass; desktop and 390px-viewport
+rendered layouts were reviewed. The final combined common gate passes: 363 tests, three skips,
+Ruff, formatting, Pyright, and lock validation. The final combined deployment is pending.
 
 M9's local Bedrock-provider gate is complete. D094's fixed matrix gives Kimi 8/8 safety and 8/8
 semantic/visual passes through the least-privilege Bedrock role, and rejects Mistral Large 3 as the

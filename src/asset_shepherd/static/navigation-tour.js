@@ -2,7 +2,10 @@
 (() => {
   const dialog = document.querySelector("[data-navigation-tour]");
   if (!dialog || typeof dialog.showModal !== "function") return;
-  const storageKey = "asset-shepherd:navigation-tour:v1";
+  // Only an explicit opt-out persists, scoped to this browser, not the shared login.
+  // Do not inherit the old automatic "seen" flag.
+  const storageKey = "asset-shepherd:navigation-tour:opt-out:v2";
+  const optOut = dialog.querySelector("[data-tour-opt-out]");
   const title = dialog.querySelector("[data-tour-title]");
   const copy = dialog.querySelector("[data-tour-copy]");
   const context = dialog.querySelector("[data-tour-context]");
@@ -15,14 +18,17 @@
 
   function remembered() {
     for (const name of ["localStorage", "sessionStorage"]) {
-      try { if (window[name].getItem(storageKey) === "seen") return true; } catch (_error) { /* Optional browser storage. */ }
+      try { if (window[name].getItem(storageKey) === "skip") return true; } catch (_error) { /* Optional browser storage. */ }
     }
     return false;
   }
 
-  function remember() {
+  function remember(skip) {
     for (const name of ["localStorage", "sessionStorage"]) {
-      try { window[name].setItem(storageKey, "seen"); } catch (_error) { /* Tour remains dismissible. */ }
+      try {
+        if (skip) window[name].setItem(storageKey, "skip");
+        else window[name].removeItem(storageKey);
+      } catch (_error) { /* Tour remains dismissible. */ }
     }
   }
 
@@ -94,6 +100,7 @@
     if (dialog.open) return;
     returnFocus = document.activeElement;
     index = 0;
+    optOut.checked = remembered();
     dialog.showModal();
     render();
   }
@@ -105,14 +112,17 @@
     else { index += 1; render(); }
   });
   dialog.addEventListener("close", () => {
-    remember();
+    remember(optOut.checked);
     spotlight.hidden = true;
     if (returnFocus instanceof HTMLElement && returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
   });
   window.addEventListener("resize", positionSpotlight);
   window.addEventListener("scroll", positionSpotlight, { passive: true });
   for (const button of document.querySelectorAll("[data-navigation-tour-open]")) {
-    button.addEventListener("click", open);
+    button.addEventListener("click", () => {
+      remember(false);
+      open();
+    });
   }
   if (dialog.hasAttribute("data-tour-auto") && !remembered()) open();
 })();

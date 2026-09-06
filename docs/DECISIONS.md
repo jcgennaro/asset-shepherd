@@ -4,6 +4,28 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D123 — Make the navigation tour explicitly opt-out, per browser
+
+**Date:** 2026-09-06
+
+**Status:** ACCEPTED by user; browser acceptance passes; rollout pending
+
+Add an unchecked "Skip this from now on (re-enable from FAQ)" checkbox. Completing,
+skipping, or dismissing the tour without checking it only hides the current dialog.
+The next Gallery visit can show it again. Only checking the box saves an opt-out in
+that browser, never against the shared judge account. Ignore the previous automatic
+"seen" flag so previous visits do not suppress the new choice. FAQ replay clears
+the opt-out before reopening the tour, re-enabling future automatic Gallery visits.
+
+Existing Welcome!/contest copy, keyboard/focus behavior, and navigation-only scope remain.
+Uploads and in-progress work never auto-start the tour. Browser tests cover completion,
+skip, cancel, each explicit opt-out, old stored flags, unavailable storage, and FAQ
+re-enable/revisit. Desktop and actual 390px iframe-viewport screenshots were checked;
+the checkbox and navigation buttons remain visible. No browser/account/model write or
+workflow POST is made by the tour.
+Combined common gate including the final D122 intake-retry regression: 363 passed,
+three skipped; Ruff, formatting, Pyright, lock validation, and diff whitespace checks pass.
+
 ### D122 — Shared model-spending emergency ceiling, not a judge run quota
 
 **Date:** 2026-09-06
@@ -13,7 +35,9 @@ Record decisions that materially affect architecture, product behavior, cost, se
 Use a $10/UTC-day site-wide conservative model-token spending ceiling, with warnings
 at $5/$8 to the existing confirmed operations topic. Do not impose a shared 24-runs/day
 judge limit. One shared judge login will be supplied privately, with practical free access
-through the judging deadline; provisioning remains separate and pending.
+through the judging deadline. Cognito has invited the owner-approved alias and readback
+now confirms its permanent-password activation (`CONFIRMED`). No password is recorded in
+project files. Fresh judge-account end-to-end acceptance and private Devpost handoff remain.
 
 Meter both target intake and each workflow model request using atomic DynamoDB
 reservations, conservative rate envelopes, exactly-once refunds, and three expiring call
@@ -28,6 +52,10 @@ records were removed. The user also reports a successful complete Luna riding-cr
 after D121; that is user-reported validation, not a new agent-initiated model test.
 Common gate: 357 passed, three skipped; Ruff, formatting, Pyright, and lock checks pass.
 Both CloudFormation templates validate; the paid-command queue was empty before rollout.
+Final review also disables hidden SDK retries in the older Bedrock target-intake client;
+the application-level missing-size retry remains explicitly metered. The existing workflow
+client already limits the SDK to one total attempt. A construction-level regression verifies
+the intake client's single attempt and bounded socket timeout.
 
 ### D121 — Refine diagnostics-only turns from their unchanged input
 

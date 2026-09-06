@@ -284,7 +284,12 @@ a {
 .navigation-tour-footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 24px; }
 .navigation-tour-footer button { min-height: 44px; }
 .navigation-tour-footer button:disabled { opacity: 0.45; cursor: default; }
-.navigation-tour-replay { margin: 18px 0 0; color: var(--muted); font-size: 0.85rem; }
+.navigation-tour-preference {
+  display: flex; align-items: center; gap: 10px; margin-top: 18px;
+  min-height: 44px; font-size: 0.85rem; line-height: 1.5; cursor: pointer;
+}
+.navigation-tour-preference input { width: 18px; height: 18px; margin: 0; flex: 0 0 18px; }
+.navigation-tour-preference-hint { color: var(--muted); }
 .navigation-tour-spotlight {
   position: fixed;
   border: 2px solid var(--success);

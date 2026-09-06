@@ -139,6 +139,11 @@ documents, account IDs, emails, tax information, or Devpost credentials.
 
 ### Gate 3 — Judge-access proof
 
+- September 6 update: one owner-approved shared judge email alias has been invited through
+  Cognito. Permanent-password activation is confirmed; a fresh judge-account browser test remains.
+  Use `JUDGE_TESTING_INSTRUCTIONS_TEMPLATE.md` for Devpost's private testing field; never commit
+  the actual login/password. No individual judge email invitations or shared 24-runs/day cap.
+  `MODEL_SPENDING_RUNBOOK.md` records the $10/day emergency model ceiling and $5/$8 warnings.
 - Complete the remote-product gate in `BEDROCK_DEPLOYMENT_RUNBOOK.md`.
 - Test upload through download from a logged-out browser with a new asset and a resumed asset.
 - Verify restart recovery, per-workspace isolation, explicit approval, bounded failure, and useful

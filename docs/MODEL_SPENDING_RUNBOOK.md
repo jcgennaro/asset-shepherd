@@ -11,7 +11,12 @@ Use one dedicated shared judge login in Devpost's **private testing instructions
 Keep practical free access available through October 8, 2026; an emergency ceiling
 is not proof of unrestricted-access compliance. Monitor warnings and investigate
 unexpected use before adjusting the ceiling. The judge account and private credential
-handoff still need provisioning; this change does not create an account or publish a password.
+handoff require owner activation. On 2026-09-06, Cognito accepted an invitation to the
+owner-approved dedicated Gmail alias, with status `FORCE_CHANGE_PASSWORD`. No password
+was generated locally, read, logged, or stored by the agent. The owner must set its permanent
+password in a private browser window and save it in a password manager before sharing it
+privately. Subsequent readback confirms permanent-password activation (`CONFIRMED`);
+email verification remains false and a fresh judge-account end-to-end test is still needed.
 The existing invite-only Cognito authentication remains in place.
 
 The September screenshot supplied by the user totals $6.39 in AWS service costs.
@@ -28,7 +33,8 @@ receipt, and acquires one of three site-wide model-call leases. No model request
 if the transaction fails, its remaining room is insufficient, or all leases are occupied.
 
 The standard provider service tier and existing output limits remain bounded. Direct
-OpenAI SDK retries are disabled; Bedrock SDK total attempts remain one. New Strands
+OpenAI SDK retries are disabled; Bedrock SDK total attempts are one in both intake and
+workflow clients. New Strands
 requests each need a new reservation. Internal geometry tools do not consume this ledger.
 The wrapper preserves stateful Responses conversation semantics and refuses its unused
 alternative structured-output path rather than permitting an unmetered call.
@@ -114,3 +120,10 @@ A real DynamoDB check in an isolated random `SPENDTEST#` namespace admitted one 
 simultaneous Luna reservations against $1 of room. It settled to 680 micro-USD and stayed
 there after duplicate settlement. Both temporary records were deleted and the namespace
 verified empty. No saved workspace was touched and no model call was made.
+
+The full local gate passes: 357 tests, three opt-in skips, Ruff, formatting, Pyright, and
+lock validation. Source `15b0798` passed both AWS CodeBuild images, including Linux upload
+acknowledgement and ARM64 fixed-resolution evidence-renderer/import/health checks.
+Reviewed deployment changes modify only the two compute resources and their roles, without
+replacement. The sole new permission is SNS Publish to the exact existing operations topic.
+IAM simulations allow the required ledger item actions and that SNS action for both roles.

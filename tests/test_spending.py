@@ -335,3 +335,24 @@ def test_stream_failure_keeps_reservation_without_usage() -> None:
         asyncio.run(collect())
     refund = db.transact_write_items.call_args.kwargs["TransactItems"][1]
     assert refund["Update"]["ExpressionAttributeValues"][":refund"] == {"N": "0"}
+
+
+def test_converse_intake_sdk_cannot_retry_behind_the_ledger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Only the application's metered size-proposal retry may send another request."""
+    from asset_shepherd.intake_analyzer import (
+        BedrockConverseTargetIntakeAnalyzer,
+        BedrockConverseTargetIntakeConfiguration,
+    )
+
+    session = Mock()
+    monkeypatch.setattr("asset_shepherd.intake_analyzer.boto3.Session", Mock(return_value=session))
+    BedrockConverseTargetIntakeAnalyzer(
+        BedrockConverseTargetIntakeConfiguration(
+            model_id="moonshotai.kimi-k2.5", region="us-east-1"
+        )
+    )
+    config = session.client.call_args.kwargs["config"]
+    assert config.retries["total_max_attempts"] == 1
+    assert config.read_timeout == 90

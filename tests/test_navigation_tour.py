@@ -27,9 +27,21 @@ def test_tour_entry_points_and_no_autostart_during_upload(tmp_path: Path) -> Non
 
 
 @pytest.mark.skipif(find_chromium() is None, reason="Chromium is not installed")
-@pytest.mark.parametrize("finish", ["complete", "skip", "storage-disabled"])
+@pytest.mark.parametrize(
+    "finish",
+    [
+        "complete",
+        "skip",
+        "complete-optout",
+        "skip-optout",
+        "escape",
+        "escape-optout",
+        "legacy-seen",
+        "storage-disabled",
+    ],
+)
 def test_navigation_tour_in_real_browser(tmp_path: Path, finish: str) -> None:
-    """Exercise real markup/JS, next/back, dismissal, remembered visits, and FAQ replay."""
+    """Persist only explicit opt-out; dismissal and FAQ re-enable keep the tour available."""
     client = TestClient(create_app(project_root=ROOT, work_root=tmp_path / "jobs"))
     requests: list[str] = []
     script = """
@@ -40,8 +52,14 @@ def test_navigation_tour_in_real_browser(tmp_path: Path, finish: str) -> None:
       function require(value, message) { if (!value) throw new Error(message); }
       try {
         const phase = new URLSearchParams(location.search).get('phase');
+        if (phase === 'reenabled') {
+          require(dialog.open, 'FAQ replay did not re-enable future visits');
+          require(!get('opt-out').checked, 're-enabled tour still opts out');
+          document.body.dataset.tourTest = 'PASS'; return;
+        }
         if (phase === 'revisit') {
-          require(!dialog.open, 'tour repeated on a remembered visit');
+          require(dialog.open !== FINISH.includes('optout'),
+                  'only explicit opt-out may suppress the tour');
           location.replace('/faq?phase=replay'); return;
         }
         if (phase === 'replay') {
@@ -49,10 +67,12 @@ def test_navigation_tour_in_real_browser(tmp_path: Path, finish: str) -> None:
           button.closest('details').open = true;
           button.focus(); button.click();
           require(dialog.open, 'FAQ replay failed');
+          require(!get('opt-out').checked, 'FAQ must clear the stored opt-out');
           get('skip').click();
           setTimeout(() => {
             const restored = !dialog.open && document.activeElement === button;
-            document.body.dataset.tourTest = restored ? 'PASS' : 'FAIL';
+            if (!restored) { document.body.dataset.tourTest = 'FAIL'; return; }
+            location.replace('/workspace?phase=reenabled');
           }, 50); return;
         }
         require(dialog.open, 'first visit did not open tour');
@@ -61,14 +81,17 @@ def test_navigation_tour_in_real_browser(tmp_path: Path, finish: str) -> None:
         require(get('context').textContent.includes('Agents for Humans'), 'contest missing');
         require(get('spotlight').hidden, 'welcome must not spotlight a navigation control');
         require(get('back').disabled, 'back enabled on first step');
+        require(!get('opt-out').checked, 'opt-out must default to unchecked');
+        get('opt-out').checked = FINISH.includes('optout') || FINISH === 'storage-disabled';
         get('next').click(); require(get('count').textContent === '2 of 5', 'next failed');
         require(get('title').textContent === 'Your way back to Gallery', 'gallery tip missing');
         get('back').click(); require(get('count').textContent === '1 of 5', 'back failed');
-        if (FINISH === 'complete') {
+        if (FINISH.startsWith('complete')) {
           for (let i = 0; i < 4; i++) get('next').click();
           require(get('next').textContent === 'Got it', 'last button is unclear');
           get('next').click();
-        } else { get('skip').click(); }
+        } else if (FINISH.startsWith('escape')) { dialog.requestClose(); }
+        else { get('skip').click(); }
         setTimeout(() => {
           if (dialog.open) { document.body.dataset.tourTest = 'FAIL'; return; }
           if (FINISH === 'storage-disabled') document.body.dataset.tourTest = 'PASS';
@@ -85,6 +108,12 @@ def test_navigation_tour_in_real_browser(tmp_path: Path, finish: str) -> None:
             response = client.get(self.path, headers={"host": self.headers["Host"]})
             content = response.content
             if "text/html" in response.headers.get("content-type", ""):
+                if finish == "legacy-seen":
+                    content = content.replace(
+                        b"<head>",
+                        b"<head><script>localStorage.setItem('asset-shepherd:navigation-tour:v1',"
+                        b"'seen')</script>",
+                    )
                 if finish == "storage-disabled":
                     content = content.replace(
                         b"<head>",
