@@ -295,8 +295,12 @@ def test_provider_factories_cannot_lose_hosted_ledger(monkeypatch: pytest.Monkey
     )
 
     ledger, _ = _ledger()
-    monkeypatch.setattr("asset_shepherd.spending.configured_ledger", lambda _values: ledger)
-    monkeypatch.setattr("asset_shepherd.intake_analyzer.configured_ledger", lambda _values: ledger)
+
+    def ledger_for(_values: object) -> SpendLedger:
+        return ledger
+
+    monkeypatch.setattr("asset_shepherd.spending.configured_ledger", ledger_for)
+    monkeypatch.setattr("asset_shepherd.intake_analyzer.configured_ledger", ledger_for)
     values = {
         "ASSET_SHEPHERD_MODEL_PROVIDER": "openai",
         "ASSET_SHEPHERD_MODEL_ID": MODEL,
