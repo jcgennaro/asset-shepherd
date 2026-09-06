@@ -70,9 +70,16 @@
       "title": "Next Source Sha256"
     },
     "output_sha256": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Output Sha256",
-      "type": "string"
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Output Sha256"
     },
     "plan_id": {
       "title": "Plan Id",

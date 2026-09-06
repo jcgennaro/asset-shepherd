@@ -4,6 +4,7 @@
 
 import json
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 from typing import cast
 from zipfile import ZipFile
@@ -27,6 +28,7 @@ from asset_shepherd.models import (
     AssetTargetUse,
     AssetViewingUse,
     Bounds3D,
+    ConversationTurnRecord,
     NormalizationPayload,
     ProjectProfile,
     ProposalDisposition,
@@ -644,6 +646,111 @@ def test_report_only_plan_accepts_cited_views_and_empty_optional_pivot_id(
     verification, result = job.verify_and_package()
     assert result is not None
     assert verification.state.value == "BLOCKED"
+
+
+@pytest.mark.parametrize("failure", [None, "missing_zip", "changed_input", "absent_candidate"])
+def test_diagnostics_only_refinement_retains_input_and_archive(
+    tmp_path: Path, failure: str | None
+) -> None:
+    """A blocked turn has diagnostics but no output; only its unchanged input may continue."""
+    source = tmp_path / "source.glb"
+    source.write_bytes(CLEAN_PATH.read_bytes())
+    output = tmp_path / "output"
+    job = AgentJob(source, PROFILE_PATH, output, asset_intent=_intent(), agent_orchestrated=True)
+    job.inspect()
+    _write_fake_views(tmp_path / "agent_evidence" / "source_views")
+    job.register_agent_plan(
+        initiating_tool_call_id="diagnostics-plan",
+        disposition="RETURN_TO_CREATION_TOOL",
+        summary="The source needs clarification before selecting any components.",
+        evidence=["The source views do not establish which components should be retained."],
+        confidence=0.9,
+        semantic_height_axis="Y",
+        scale_to_confirmed_height=False,
+        rotation_axis=None,
+        rotation_degrees=0,
+        ground_to_y_zero=False,
+        rename_invalid_display_names=False,
+        source_views_used=["front.png", "right.png", "back.png", "left.png"],
+    )
+    job.verify_and_package()
+    assert job.provenance is not None and job.provenance.output_sha256 is None
+    assert not job.candidate_path.exists()
+    original_hash = sha256(source.read_bytes()).hexdigest()
+    archive_hash = sha256((output / "result.zip").read_bytes()).hexdigest()
+    # Hydrate the completed state just as a replacement hosted runtime does.
+    job = AgentJob(source, PROFILE_PATH, output, asset_intent=_intent(), agent_orchestrated=True)
+    if failure == "missing_zip":
+        (output / "result.zip").unlink()
+    elif failure == "changed_input":
+        source.write_bytes(BROKEN_PATH.read_bytes())
+    if failure:
+        expected = {
+            "missing_zip": "missing its evidence package",
+            "changed_input": "no longer matches its recorded hash",
+            "absent_candidate": "has no candidate",
+        }[failure]
+        with pytest.raises(AgentWorkflowError, match=expected):
+            job.begin_next_turn(
+                "Keep C2; propose removing C1 and C3.",
+                continuation_source="CANDIDATE" if failure == "absent_candidate" else "INPUT",
+            )
+        assert job.turn_index == 0
+        assert not (tmp_path / "turns").exists()
+        return
+    record = job.begin_next_turn(
+        "Keep C2; propose removing C1 and C3.", continuation_source="INPUT"
+    )
+    assert record.output_sha256 is None
+    assert record.source_sha256 == record.next_source_sha256 == original_hash
+    assert record.result_zip_sha256 == archive_hash
+    archived = tmp_path / "turns" / "turn-000"
+    assert sha256((archived / "output" / "result.zip").read_bytes()).hexdigest() == archive_hash
+    assert (archived / "agent_evidence" / "source_views" / "front.png").is_file()
+    assert job.source == source.resolve()
+    assert job.selected_plan is job.decisions is job.outcome is job.pending_interrupt_id is None
+    assert not job.candidate_path.exists()
+    assert not job.auto_authorized_execution_available
+    restored = AgentJob(
+        source, PROFILE_PATH, output, asset_intent=_intent(), agent_orchestrated=True
+    )
+    assert restored.prior_turns == (record,)
+    assert restored.turn_index == 1
+    assert restored.inspect().package.file_sha256 == original_hash
+    assert restored.decisions is None and restored.selected_plan is None
+    _complete_accept_turn(restored, "after-diagnostics")
+    with ZipFile(output / "result.zip") as archive:
+        packaged = Provenance.model_validate_json(archive.read("provenance.json"))
+    assert packaged.prior_turns == (record,)
+    assert packaged.prior_turns[0].output_sha256 is None
+    with pytest.raises(ValueError, match="Candidate continuation requires an output hash"):
+        ConversationTurnRecord.model_validate(
+            {**record.model_dump(), "continuation_source": "CANDIDATE"}
+        )
+
+
+@pytest.mark.parametrize("missing_hash", [True, False])
+def test_candidate_refinement_requires_recorded_output_identity(
+    tmp_path: Path, missing_hash: bool
+) -> None:
+    """Candidate promotion cannot bypass the recorded output identity."""
+    job = AgentJob(
+        CLEAN_PATH,
+        PROFILE_PATH,
+        tmp_path / "output",
+        asset_intent=_intent(),
+        agent_orchestrated=True,
+    )
+    _complete_accept_turn(job, "candidate-identity")
+    assert job.provenance is not None
+    if missing_hash:
+        job.provenance = job.provenance.model_copy(update={"output_sha256": None})
+    else:
+        (job.output_dir / "repaired.glb").write_bytes(BROKEN_PATH.read_bytes())
+    with pytest.raises(AgentWorkflowError, match=r"output hash|recorded hash"):
+        job.begin_next_turn("Review the candidate once more.")
+    assert job.turn_index == 0
+    assert not (tmp_path / "turns").exists()
 
 
 def test_bounds_center_pivot_cannot_be_combined_with_grounding() -> None:

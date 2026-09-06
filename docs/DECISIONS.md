@@ -4,6 +4,35 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D121 — Refine diagnostics-only turns from their unchanged input
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED by user; common gate passes; hosted rollout pending
+
+The riding-crop workspace `786eb1264ce9437c90ed05dc2e59a993` stopped with an agent-authored
+RETURN_TO_CREATION_TOOL assessment. Its 7,322-byte diagnostic ZIP exists in S3, but no repaired
+candidate or output hash exists, correctly. The INPUT refinement transition incorrectly coupled
+ZIP availability to a non-null output hash, reporting a missing evidence package. This is a
+workflow defect, not a web-deployment interruption or a failed S3 upload.
+
+Permit a completed diagnostic turn to archive a null output hash only for INPUT continuation.
+Keep its actual source hash, ZIP hash, assessment, and user feedback; do not invent an output or
+silently promote another file. Both input and candidate selections must match their recorded hash
+before anything is archived. Candidate continuation still requires a candidate file and output
+hash; missing ZIPs still fail. The nullable public turn/provenance schemas retain compatibility
+with existing non-null records. Deploy the compatible web reader before enabling the new runtime.
+
+The existing next-turn path re-inspects the chosen input and requires a fresh agent proposal and
+new consequential-action approval. User feedback such as keeping C2 is context, not authorization.
+No special handling of this asset, model, or component label is added. No saved cloud workspace is
+modified or model run submitted by this fix.
+
+Six regressions cover diagnostics-only continuation after hydration, immutable archive and source
+identity, second-turn packaging with null prior output, absent ZIP/candidate/hash, changed source,
+and reset approval state. Full gate: 333 passed, three skipped; Ruff, formatting, Pyright, and lock
+checks pass. No paid model or injection-attempt tests.
+
 ### D120 — Redirect stale browser sessions to sign-in without replaying commands
 
 **Date:** 2026-09-05

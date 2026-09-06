@@ -534,8 +534,18 @@ class AgentJob:
         if continuation_source == "CANDIDATE" and not candidate_source.is_file():
             raise AgentWorkflowError("The completed turn has no candidate to refine")
         result_zip = self.output_dir / "result.zip"
-        if not result_zip.is_file() or self.provenance.output_sha256 is None:
+        if not result_zip.is_file():
             raise AgentWorkflowError("The completed turn is missing its evidence package")
+        if continuation_source == "CANDIDATE" and self.provenance.output_sha256 is None:
+            raise AgentWorkflowError("The completed turn has no recorded output hash to refine")
+        next_source_hash = (
+            self.provenance.output_sha256
+            if continuation_source == "CANDIDATE"
+            else self.inspection.package.file_sha256
+        )
+        selected_source = candidate_source if continuation_source == "CANDIDATE" else current_source
+        if sha256(selected_source.read_bytes()).hexdigest() != next_source_hash:
+            raise AgentWorkflowError("The selected iteration no longer matches its recorded hash")
         record = ConversationTurnRecord(
             turn_index=self.turn_index,
             source_sha256=self.inspection.package.file_sha256,
@@ -553,11 +563,7 @@ class AgentJob:
             result_zip_sha256=sha256(result_zip.read_bytes()).hexdigest(),
             continuation_feedback=feedback,
             continuation_source=continuation_source,
-            next_source_sha256=(
-                self.provenance.output_sha256
-                if continuation_source == "CANDIDATE"
-                else self.inspection.package.file_sha256
-            ),
+            next_source_sha256=next_source_hash,
         )
         turn_root = self.output_dir.parent / "turns" / f"turn-{self.turn_index:03d}"
         if turn_root.exists():

@@ -1003,7 +1003,7 @@ class ConversationTurnRecord(ContractModel):
     schema_version: Literal[1] = 1
     turn_index: NonNegativeInt
     source_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
-    output_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    output_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None
     plan_id: str
     agent_assessment_id: str | None = None
     candidate_reassessment_id: str | None = None
@@ -1012,6 +1012,13 @@ class ConversationTurnRecord(ContractModel):
     continuation_feedback: Annotated[str, Field(min_length=1, max_length=1000)]
     continuation_source: Literal["INPUT", "CANDIDATE"] = "CANDIDATE"
     next_source_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
+
+    @model_validator(mode="after")
+    def candidate_continuation_has_output(self) -> "ConversationTurnRecord":
+        """Diagnostics-only turns may retain their input, but cannot promote an absent output."""
+        if self.continuation_source == "CANDIDATE" and self.output_sha256 is None:
+            raise ValueError("Candidate continuation requires an output hash")
+        return self
 
 
 class PlanSelection(ContractModel):
