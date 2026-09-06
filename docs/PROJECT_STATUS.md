@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-06
-**Current commit:** Shared model-spending safety (this file is included)
+**Current commit:** D122/D123 hosted spending safety and tour opt-out deployment evidence
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -41,7 +41,7 @@ with $5/$8 warnings, covering web intake and every runtime inference. It does no
 a judge run quota, count hosting as model spending, or erase accounting when assets are
 removed. Isolated real DynamoDB transactions passed simultaneous admission and duplicate
 settlement checks without model calls or changes to saved assets. Common gate: 357 passed,
-three skipped, clean Ruff/format/Pyright and lock checks. Hosted rollout is in progress;
+three skipped, clean Ruff/format/Pyright and lock checks. Hosted rollout is complete;
 see `MODEL_SPENDING_RUNBOOK.md`. The shared judge alias is invited and now CONFIRMED;
 fresh judge-account end-to-end acceptance and private Devpost credential handoff remain.
 A concurrency/ownership-safe Gallery trash action remains pending, not claimed complete.
@@ -50,7 +50,12 @@ The user reports a successful full Luna riding-crop run after D121.
 D123 adds explicit browser-local tutorial opt-out with FAQ re-enable, preserving the tour
 for other judges' browsers. Nine browser/entry-point checks pass; desktop and 390px-viewport
 rendered layouts were reviewed. The final combined common gate passes: 363 tests, three skips,
-Ruff, formatting, Pyright, and lock validation. The final combined deployment is pending.
+Ruff, formatting, Pyright, and lock validation. Final source `2cf6362` is deployed as web
+revision 21 and AgentCore version 11 / DEFAULT READY. Both stacks are UPDATE_COMPLETE;
+ECS is SUCCESSFUL with one new task serving 100% and zero old tasks. Both tiers retain
+the $10/day ledger setting. Live tour JS/CSS match source after UTF-8 newline normalization;
+health is 200, anonymous Gallery redirects to sign-in (303), session JSON remains 401,
+and all eight alarms are OK. No paid model or injection-attempt tests were run.
 
 M9's local Bedrock-provider gate is complete. D094's fixed matrix gives Kimi 8/8 safety and 8/8
 semantic/visual passes through the least-privilege Bedrock role, and rejects Mistral Large 3 as the

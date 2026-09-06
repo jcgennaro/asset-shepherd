@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-06
 
-**Status:** ACCEPTED by user; browser acceptance passes; rollout pending
+**Status:** ACCEPTED by user; browser/common acceptance passes; rollout complete
 
 Add an unchecked "Skip this from now on (re-enable from FAQ)" checkbox. Completing,
 skipping, or dismissing the tour without checking it only hides the current dialog.
@@ -26,11 +26,23 @@ workflow POST is made by the tour.
 Combined common gate including the final D122 intake-retry regression: 363 passed,
 three skipped; Ruff, formatting, Pyright, lock validation, and diff whitespace checks pass.
 
+Final source `2cf6362` passed web build `6c81f466-06a4-45e2-8ee8-664e7d6f6287` and
+runtime build `17aedcf0-deb6-4b26-8d6f-400743edd771`. Image tags are `2cf6362-judge-tour-web`
+and `2cf6362-judge-tour-agentcore`, with digests respectively
+`sha256:72a97b260353b905c417aaea65e6c9800df1ec4c474ce71acd412714169db1c6` and
+`sha256:7fcd1b1c84bbe23621bf1af72ebc6d2ab0f2a6ab444231bda40a6dd1d1f5b88d`.
+Reviewed change sets `judge-tour-2cf6362` changed only image URIs, preserving D122's
+configuration and existing authentication/secret permissions. Web revision 21 reached ECS
+SUCCESSFUL / stack UPDATE_COMPLETE, with 100% new-task traffic and zero old tasks.
+AgentCore version 11 and DEFAULT are READY, with its stack UPDATE_COMPLETE. Live JS/CSS
+match the committed source after UTF-8 newline normalization, health is 200, anonymous
+Gallery navigation is 303, session JSON is 401, and all eight alarms are OK.
+
 ### D122 — Shared model-spending emergency ceiling, not a judge run quota
 
 **Date:** 2026-09-06
 
-**Status:** ACCEPTED by user; common gate passes; deployment validation in progress
+**Status:** ACCEPTED by user; common gate and deployment validation pass
 
 Use a $10/UTC-day site-wide conservative model-token spending ceiling, with warnings
 at $5/$8 to the existing confirmed operations topic. Do not impose a shared 24-runs/day
@@ -56,6 +68,10 @@ Final review also disables hidden SDK retries in the older Bedrock target-intake
 the application-level missing-size retry remains explicitly metered. The existing workflow
 client already limits the SDK to one total attempt. A construction-level regression verifies
 the intake client's single attempt and bounded socket timeout.
+D123's final deployment contains this tightened intake boundary. Readback confirms both
+web revision 21 and runtime version 11 use the same state table, private alert topic,
+and `ASSET_SHEPHERD_DAILY_MODEL_USD=10`. No credential values were added to deployment
+configuration, source, or public judge instructions.
 
 ### D121 — Refine diagnostics-only turns from their unchanged input
 

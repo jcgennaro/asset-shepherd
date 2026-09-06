@@ -10,12 +10,12 @@ or individual judge email invitation requirement is introduced.
 Use one dedicated shared judge login in Devpost's **private testing instructions**.
 Keep practical free access available through October 8, 2026; an emergency ceiling
 is not proof of unrestricted-access compliance. Monitor warnings and investigate
-unexpected use before adjusting the ceiling. The judge account and private credential
-handoff require owner activation. On 2026-09-06, Cognito accepted an invitation to the
-owner-approved dedicated Gmail alias, with status `FORCE_CHANGE_PASSWORD`. No password
-was generated locally, read, logged, or stored by the agent. The owner must set its permanent
-password in a private browser window and save it in a password manager before sharing it
-privately. Subsequent readback confirms permanent-password activation (`CONFIRMED`);
+unexpected use before adjusting the ceiling. On 2026-09-06, Cognito accepted an invitation
+to the owner-approved dedicated Gmail alias, initially `FORCE_CHANGE_PASSWORD`. Cognito
+generated and emailed the temporary credential; no temporary password was returned in
+the provisioning tool output or written to project files. The owner completed permanent-
+password activation, confirmed by subsequent `CONFIRMED` readback. Keep credentials in a
+password manager and Devpost's private testing field, not project files or public media;
 email verification remains false and a fresh judge-account end-to-end test is still needed.
 The existing invite-only Cognito authentication remains in place.
 
@@ -121,9 +121,19 @@ simultaneous Luna reservations against $1 of room. It settled to 680 micro-USD a
 there after duplicate settlement. Both temporary records were deleted and the namespace
 verified empty. No saved workspace was touched and no model call was made.
 
-The full local gate passes: 357 tests, three opt-in skips, Ruff, formatting, Pyright, and
+The initial local gate passed: 357 tests, three opt-in skips, Ruff, formatting, Pyright, and
 lock validation. Source `15b0798` passed both AWS CodeBuild images, including Linux upload
 acknowledgement and ARM64 fixed-resolution evidence-renderer/import/health checks.
 Reviewed deployment changes modify only the two compute resources and their roles, without
 replacement. The sole new permission is SNS Publish to the exact existing operations topic.
 IAM simulations allow the required ledger item actions and that SNS action for both roles.
+
+Final source `2cf6362` also explicitly disables automatic Bedrock intake retries, with a
+construction-level regression, and includes D123's opt-out tutorial checkbox. Its combined
+common gate passes 363 tests with three skips and clean lint, formatting, types, and lock
+validation. Both final cloud builds succeeded. Web revision 21 is ECS SUCCESSFUL and
+AgentCore version 11 / DEFAULT are READY; both stacks are UPDATE_COMPLETE. Zero old web
+tasks remain. Both compute tiers have the same $10/day setting, table, and alert topic.
+Live tour JS/CSS match the tested source, health is 200, anonymous navigation redirects
+to sign-in, session JSON stays 401, and all eight operations alarms are OK. See D123 for
+the exact build IDs and image digests. No paid-model acceptance run was submitted by this change.
