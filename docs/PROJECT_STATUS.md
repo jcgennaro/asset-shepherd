@@ -68,7 +68,10 @@ exact-mutation, invariant-verification, and packaging layer.
   workspace return destination and no automatic action replay. Server-relative expiry/entry/focus/
   history-restore checks use a private nonrenewing endpoint. Focused auth and seven real-browser
   scenarios pass; common gate: 327 passed, three skipped, clean Ruff/format/Pyright/lock checks.
-  Web rollout pending. No lifetime, signer, model, or approval change.
+  CodeBuild `d412a574-dc03-4a17-85d8-03dd55fdd589` passed; image
+  `3c19032-session-recovery-web` serves 100% of traffic with zero old tasks. Web UPDATE_COMPLETE,
+  ECS SUCCESSFUL; live JS matches source, anonymous HTML navigations redirect 303 while JSON
+  requests remain 401, health 200, all eight alarms OK. No lifetime, signer, model, or approval change.
 
 - D119: user-requested 24-hour absolute session expiry, with matching Cognito ID-token validity.
   Existing cookies retain their deadline; fresh sign-in required after rollout. Thirteen focused

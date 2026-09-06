@@ -37,7 +37,7 @@ checks pass. No paid model or injection-attempt tests.
 
 **Date:** 2026-09-05
 
-**Status:** ACCEPTED; common/auth/browser gates pass; web rollout pending
+**Status:** ACCEPTED; common/auth/browser gates pass; web rollout complete
 
 The user requested sign-in redirection instead of leaving an expired page with cryptic command
 errors. Unauthenticated browser navigations (including native POSTs) now receive 303 to login;
@@ -64,6 +64,14 @@ OAuth return-to-workspace, private nonrenewing status, and seven isolated Chromi
 arrival, expiry, restored page, action 401, receipt 401, 403, and 503. No owner browser, credentials,
 hosted actions, models, or prompt-injection attempts are used.
 Common gate: 327 passed, three skipped; Ruff, formatting, Pyright, and dependency lock checks pass.
+
+Source `3c19032` passed CodeBuild `d412a574-dc03-4a17-85d8-03dd55fdd589`, including Linux upload
+acknowledgement in 0.014 s / READY in 1.117 s with zero model calls. Image
+`3c19032-session-recovery-web` has digest
+`sha256:f29aceea068dbe6c2943e222222426bfbbf930142ace3ac91a04262651d8ed4f`.
+Web stack UPDATE_COMPLETE, ECS SUCCESSFUL, one target task with 100% traffic and zero old tasks.
+Live app.js matches source; anonymous HTML workspace navigation returns 303 to safe sign-in,
+while JSON workspace/session requests remain 401. Health is 200 and all eight alarms are OK.
 
 ### D119 — Twenty-four-hour application sign-in sessions
 

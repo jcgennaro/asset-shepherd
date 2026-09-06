@@ -66,6 +66,12 @@ external URLs, and unknown destinations cannot become a replay target. No form b
 or comment is automatically resent, and the final cookie still contains only subject and expiry.
 The saved asset remains available; users may need to re-enter text they had not submitted.
 
+Source `3c19032` / image `3c19032-session-recovery-web` passed the common/auth/browser gates and
+CodeBuild `d412a574-dc03-4a17-85d8-03dd55fdd589`. The web rollout completed with all-new-task
+traffic. Live anonymous HTML workspace navigation returns 303 to login with a safe return path;
+JSON workspace and session requests remain 401. Live JS matches source, health is 200, and all
+eight alarms are OK. Existing open pages need a refresh to load the new client recovery code.
+
 ### Twenty-four-hour sign-in sessions (D119)
 
 The user requested a 24-hour expiry after a completed collar run encountered a final-click 401.
