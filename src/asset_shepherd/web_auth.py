@@ -27,6 +27,28 @@ SESSION_COOKIE = "__Host-asset-shepherd-session"
 SESSION_SECONDS = 24 * 60 * 60
 
 
+def login_return_path(value: str) -> str:
+    """Return only known read-only app destinations, never an external URL or action route."""
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return "/workspace"
+    if parsed.scheme or parsed.netloc or "\\" in value:
+        return "/workspace"
+    path = parsed.path
+    if path in {"/workspace", "/workspace/new/upload", "/faq"}:
+        destination = path
+    elif re.fullmatch(r"/workspace/new/[a-f0-9]{32}/describe", path):
+        destination = path
+    elif match := re.fullmatch(r"/workspace/([a-f0-9]{32})(?:/[^?#]*)?", path):
+        destination = f"/workspace/{match[1]}"
+    else:
+        return "/workspace"
+    if re.fullmatch(r"[A-Za-z0-9_.:-]{1,100}", parsed.fragment):
+        destination += f"#{parsed.fragment}"
+    return destination
+
+
 @dataclass(frozen=True)
 class LoginConfiguration:
     """Deployment-owned endpoints and secret reference; no browser-selected destinations."""
@@ -132,11 +154,25 @@ class LoginGate(BaseHTTPMiddleware):
             )
             if not valid:
                 request.session.clear()
-                if request.method in {"GET", "HEAD"} and "text/html" in request.headers.get(
-                    "accept", ""
-                ):
+                browser_navigation = (
+                    "text/html" in request.headers.get("accept", "")
+                    and request.headers.get("sec-fetch-mode", "navigate") == "navigate"
+                    and request.headers.get("x-asset-shepherd-request") != "fetch"
+                    and request.headers.get("x-asset-shepherd-notebook") != "1"
+                )
+                if browser_navigation:
+                    return_to = login_return_path(request.url.path)
+                    if request.method not in {"GET", "HEAD"}:
+                        try:
+                            referer = urlsplit(request.headers.get("referer", ""))
+                        except ValueError:
+                            referer = urlsplit("")
+                        if f"{referer.scheme}://{referer.netloc}" == self.origin:
+                            return_to = login_return_path(referer.path)
                     return RedirectResponse(
-                        "/auth/login", status_code=303, headers={"Cache-Control": "no-store"}
+                        "/auth/login?" + urlencode({"return_to": return_to}),
+                        status_code=303,
+                        headers={"Cache-Control": "no-store"},
                     )
                 return JSONResponse(
                     {"detail": "Sign in required"},
@@ -188,6 +224,9 @@ def install_login(app: FastAPI, values: Mapping[str, str] | None = None) -> None
     @app.get("/auth/login", include_in_schema=False)
     async def login(request: Request) -> Response:
         request.session.clear()
+        request.session["return_to"] = login_return_path(
+            request.query_params.get("return_to", "/workspace")
+        )
         return cast(
             Response,
             await client.authorize_redirect(request, f"{configuration.origin}/auth/callback"),
@@ -218,10 +257,18 @@ def install_login(app: FastAPI, values: Mapping[str, str] | None = None) -> None
                 status_code=401,
             )
         # No access, refresh, ID token, provider credential or email enters the cookie.
+        return_to = login_return_path(str(request.session.get("return_to", "/workspace")))
         request.session.clear()
         request.session["subject"] = subject
         request.session["expires_at"] = min(expires, int(time.time()) + SESSION_SECONDS)
-        return RedirectResponse("/workspace", status_code=303)
+        return RedirectResponse(return_to, status_code=303)
+
+    @app.get("/auth/session", include_in_schema=False)
+    async def session_status(request: Request) -> Response:
+        """Let an open page schedule expiry using server time, without renewing its deadline."""
+        return JSONResponse(
+            {"expires_in_seconds": max(0, request.session["expires_at"] - time.time())}
+        )
 
     @app.post("/auth/logout", include_in_schema=False)
     async def logout(request: Request) -> Response:

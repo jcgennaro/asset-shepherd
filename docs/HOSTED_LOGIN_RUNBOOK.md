@@ -49,6 +49,23 @@ before doing that. The website login is separate from AWS console/IAM login.
 
 ## Deployment
 
+### Stale-page recovery (D120)
+
+Missing/expired sessions send ordinary browser navigation, including native form submissions, to
+login using a 303 redirect. Fetch requests remain 401 so they never follow an OAuth redirect inside
+a JSON/scene request. App.js catches that response and leaves the stale page for sign-in once.
+403 permission/CSRF failures and temporary connection failures are not treated as login expiry.
+
+On authenticated pages, `/auth/session` supplies only remaining seconds with no-store headers.
+The browser checks on entry, focus/visibility return, history-cache restoration, and expiry; a
+healthy page does not continually poll. These checks cannot renew the fixed 24-hour deadline.
+The protected action endpoint still rejects an invalid session before executing any command.
+
+After login, the browser returns to a validated local workspace/read page. Action URL suffixes,
+external URLs, and unknown destinations cannot become a replay target. No form body, approval,
+or comment is automatically resent, and the final cookie still contains only subject and expiry.
+The saved asset remains available; users may need to re-enter text they had not submitted.
+
 ### Twenty-four-hour sign-in sessions (D119)
 
 The user requested a 24-hour expiry after a completed collar run encountered a final-click 401.

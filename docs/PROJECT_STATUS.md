@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-05
-**Current commit:** Twenty-four-hour sign-in sessions and a welcoming tour opening (this file is included)
+**Current commit:** Stale-session sign-in recovery without action replay (this file is included)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -57,6 +57,12 @@ Deterministic code remains the measurement, enforcement,
 exact-mutation, invariant-verification, and packaging layer.
 
 ## Latest evidence
+
+- D120: unauthenticated navigation and stale-page 401 responses lead to sign-in, with a validated
+  workspace return destination and no automatic action replay. Server-relative expiry/entry/focus/
+  history-restore checks use a private nonrenewing endpoint. Focused auth and seven real-browser
+  scenarios pass; common gate: 327 passed, three skipped, clean Ruff/format/Pyright/lock checks.
+  Web rollout pending. No lifetime, signer, model, or approval change.
 
 - D119: user-requested 24-hour absolute session expiry, with matching Cognito ID-token validity.
   Existing cookies retain their deadline; fresh sign-in required after rollout. Thirteen focused

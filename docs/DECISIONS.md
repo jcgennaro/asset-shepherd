@@ -4,6 +4,38 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D120 — Redirect stale browser sessions to sign-in without replaying commands
+
+**Date:** 2026-09-05
+
+**Status:** ACCEPTED; common/auth/browser gates pass; web rollout pending
+
+The user requested sign-in redirection instead of leaving an expired page with cryptic command
+errors. Unauthenticated browser navigations (including native POSTs) now receive 303 to login;
+JSON and explicitly marked fetch requests retain 401. The six application fetch paths handle
+401 by disabling the stale shell and navigating to sign-in once, rather than showing generic
+errors or retrying command polling indefinitely. Genuine 403 and network/5xx failures do not
+masquerade as expired login.
+
+Authenticated pages check a private no-store `/auth/session` endpoint on entry, visible-tab/focus
+return, history-cache restoration, and at the server-relative expiry deadline. It reveals only
+remaining seconds, renews nothing, and needs no model call or persistent polling while healthy.
+Temporary connection failures retry after 30 seconds without ejecting the user. Local unauthenticated
+development has no session timer. The server remains the authoritative check on every action.
+
+Login carries only a validated local read-page destination through OAuth state, then clears that
+hint from the final subject/expiry-only cookie. Workspace action/download suffixes return to the
+workspace page, never replay a POST, and arbitrary external/unknown targets fall back to Gallery.
+No form body or queued approval is saved or automatically re-submitted. Workspace state is durable;
+unsent text is not promised to survive reauthentication. Cookie lifetime/security, signer, CSRF,
+provider configuration, and mutation authorization remain unchanged.
+
+Focused tests cover native navigation versus HTML/JSON fetch, read-only return destinations,
+OAuth return-to-workspace, private nonrenewing status, and seven isolated Chromium scenarios:
+arrival, expiry, restored page, action 401, receipt 401, 403, and 503. No owner browser, credentials,
+hosted actions, models, or prompt-injection attempts are used.
+Common gate: 327 passed, three skipped; Ruff, formatting, Pyright, and dependency lock checks pass.
+
 ### D119 — Twenty-four-hour application sign-in sessions
 
 **Date:** 2026-09-05

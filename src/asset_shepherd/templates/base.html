@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}?v={{ static_version }}">
     <script type="module" src="{{ url_for('static', path='/vendor/model-viewer.min.js') }}?v={{ static_version }}"></script>
   </head>
-  <body class="mode-{{ active_mode }}">
+  <body class="mode-{{ active_mode }}"{% if request.app.state.login_enabled %} data-session-check-url="/auth/session"{% endif %}>
     <div class="app-shell">
       {% include "_mode_rail.html" %}
       <section class="workspace-shell">

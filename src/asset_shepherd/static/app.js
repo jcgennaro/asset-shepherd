@@ -2,17 +2,78 @@ if (!window.location.hash) {
   window.scrollTo(0, 0);
 }
 
+let sessionRedirecting = false;
+
+function redirectIfSignedOut(response) {
+  if (response.status !== 401) return false;
+  if (!sessionRedirecting) {
+    sessionRedirecting = true;
+    document.querySelector(".app-shell")?.setAttribute("inert", "");
+    const returnTo = window.location.pathname + window.location.hash;
+    window.location.replace(`/auth/login?${new URLSearchParams({ return_to: returnTo })}`);
+  }
+  return true;
+}
+
+function fetchApp(url, options = {}) {
+  const headers = new Headers(options.headers);
+  headers.set("X-Asset-Shepherd-Request", "fetch");
+  return fetch(url, { ...options, headers });
+}
+
+const sessionCheckUrl = document.body.dataset.sessionCheckUrl;
+if (sessionCheckUrl) {
+  let checking = false;
+  let timer;
+  let lastCheck = 0;
+  async function checkSession() {
+    if (checking || sessionRedirecting) return;
+    checking = true;
+    lastCheck = Date.now();
+    window.clearTimeout(timer);
+    try {
+      const response = await fetchApp(sessionCheckUrl, {
+        cache: "no-store", credentials: "same-origin", signal: AbortSignal.timeout(10000),
+      });
+      if (redirectIfSignedOut(response)) return;
+      if (!response.ok) throw new Error("Session status unavailable");
+      const status = await response.json();
+      const seconds = Number(status.expires_in_seconds);
+      if (!Number.isFinite(seconds) || seconds < 0) throw new Error("Invalid session status");
+      timer = window.setTimeout(checkSession, Math.max(1000, Math.min(seconds * 1000, 86400000)));
+    } catch (_error) {
+      // Offline/5xx is not proof of sign-out. Retry without discarding the current page.
+      timer = window.setTimeout(checkSession, 30000);
+    } finally { checking = false; }
+  }
+  const recheck = () => {
+    if (!document.hidden && Date.now() - lastCheck > 1000) checkSession();
+  };
+  window.addEventListener("focus", recheck);
+  window.addEventListener("pageshow", (event) => { if (event.persisted) checkSession(); });
+  document.addEventListener("visibilitychange", recheck);
+  checkSession();
+}
+
+document.addEventListener("submit", (event) => {
+  if (sessionRedirecting) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}, true);
+
 const uploadCheck = document.querySelector("[data-upload-check]");
 if (uploadCheck) {
   const message = uploadCheck.querySelector("[data-upload-check-message]");
   let failedPolls = 0;
   async function pollUploadCheck() {
     try {
-      const response = await fetch(uploadCheck.dataset.statusUrl, {
+      const response = await fetchApp(uploadCheck.dataset.statusUrl, {
         credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(10000),
       });
-      if (response.status === 401 || response.status === 403) {
-        message.textContent = "Your sign-in has expired. Reload to sign in and resume checking this upload.";
+      if (redirectIfSignedOut(response)) return;
+      if (response.status === 403) {
+        message.textContent = "This request was refused. Reload the page to check your access.";
         return;
       }
       if (response.status === 404) {
@@ -577,7 +638,8 @@ function showWorkflowActivity(form) {
 
   const poll = async () => {
     try {
-      const response = await fetch(activityUrl, { cache: "no-store" });
+      const response = await fetchApp(activityUrl, { cache: "no-store" });
+      if (redirectIfSignedOut(response)) return;
       if (response.ok) {
         const payload = await response.json();
         render(payload);
@@ -676,7 +738,8 @@ function updateRemoteCommandLabel(form, state) {
 
 async function pollRemoteCommand(form, submitter, receipt) {
   try {
-    const response = await fetch(receipt.status_url, { cache: "no-store" });
+    const response = await fetchApp(receipt.status_url, { cache: "no-store" });
+    if (redirectIfSignedOut(response)) return;
     if (!response.ok) {
       throw new Error("The command receipt is unavailable.");
     }
@@ -713,13 +776,14 @@ async function pollRemoteCommand(form, submitter, receipt) {
 
 async function submitRemoteCommand(form, submitter) {
   try {
-    const response = await fetch(form.action, {
+    const response = await fetchApp(form.action, {
       method: "POST",
       // Native submission includes the clicked button's name/value. Preserve
       // that exact decision for remote commands; never infer approval.
       body: new FormData(form, submitter),
       headers: { Accept: "application/json" },
     });
+    if (redirectIfSignedOut(response)) return;
     if (response.status !== 202) {
       throw new Error(`The command was not accepted (${response.status}).`);
     }
@@ -856,11 +920,12 @@ for (const form of document.querySelectorAll("[data-result-accept]")) {
     button.disabled = true;
     button.textContent = "Saving…";
     try {
-      const response = await fetch(form.action, {
+      const response = await fetchApp(form.action, {
         method: "POST",
         body: new FormData(form),
         headers: { "X-Asset-Shepherd-Transition": "accept" },
       });
+      if (redirectIfSignedOut(response)) return;
       if (!response.ok) {
         throw new Error(`Acceptance failed with ${response.status}`);
       }
@@ -1728,9 +1793,10 @@ function initializeSceneNotebook(notebook) {
     sceneHost.classList.add("loading");
     slot.classList.add("loading");
     try {
-      const response = await fetch(sceneUrl, {
+      const response = await fetchApp(sceneUrl, {
         headers: { Accept: "text/html", "X-Asset-Shepherd-Notebook": "1" },
       });
+      if (redirectIfSignedOut(response)) return;
       if (!response.ok) {
         throw new Error(`Scene request failed with HTTP ${response.status}`);
       }

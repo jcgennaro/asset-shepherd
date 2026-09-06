@@ -76,6 +76,65 @@ def test_every_private_route_requires_login(client: TestClient) -> None:
     assert client.post("/workspace", data={"description": "a tablet"}).status_code == 401
 
 
+def test_expired_navigation_redirects_but_fetch_receives_401(client: TestClient) -> None:
+    """Both native page loads and POSTs leave stale pages without replaying action URLs."""
+    workspace = "/workspace/" + "a" * 32
+    for method, path in (("GET", workspace), ("POST", workspace + "/accept")):
+        response = client.request(
+            method,
+            path,
+            headers={
+                "accept": "text/html",
+                "sec-fetch-mode": "navigate",
+                "referer": VALUES["ASSET_SHEPHERD_PUBLIC_ORIGIN"] + workspace,
+            },
+        )
+        assert response.status_code == 303
+        target = urlsplit(response.headers["location"])
+        assert target.path == "/auth/login"
+        assert parse_qs(target.query)["return_to"] == [workspace]
+    for headers in (
+        {"accept": "application/json"},
+        {"accept": "text/html", "x-asset-shepherd-request": "fetch"},
+        {"accept": "text/html", "x-asset-shepherd-notebook": "1"},
+        {"accept": "text/html", "sec-fetch-mode": "cors"},
+    ):
+        assert client.get(workspace, headers=headers).status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("https://elsewhere.example/workspace", "/workspace"),
+        ("//elsewhere.example", "/workspace"),
+        ("https://[invalid", "/workspace"),
+        ("/auth/logout", "/workspace"),
+        ("/workspace\\elsewhere", "/workspace"),
+        ("/workspace/" + "a" * 32 + "/redo", "/workspace/" + "a" * 32),
+        ("/workspace/new/" + "a" * 32 + "/describe", "/workspace/new/" + "a" * 32 + "/describe"),
+        ("/faq#help", "/faq#help"),
+    ],
+)
+def test_login_return_destinations_are_read_only_app_paths(value: str, expected: str) -> None:
+    """The return hint cannot create an open redirect or resume a mutation endpoint."""
+    assert web_auth.login_return_path(value) == expected
+
+
+def test_session_status_is_private_and_does_not_renew(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Open pages receive only server-relative remaining time, not tokens or identity."""
+    assert client.get("/auth/session").status_code == 401
+    now = int(time.time())
+    monkeypatch.setattr(web_auth.time, "time", lambda: now)
+    client.cookies.set(web_auth.SESSION_COOKIE, _cookie(now + 30))
+    response = client.get("/auth/session")
+    assert response.json() == {"expires_in_seconds": 30}
+    assert response.headers["cache-control"] == "no-store"
+    monkeypatch.setattr(web_auth.time, "time", lambda: now + 30)
+    assert client.get("/auth/session").status_code == 401
+
+
 def test_signed_session_and_same_origin_are_both_required(client: TestClient) -> None:
     """A valid invited session can work, but expiry and cross-origin writes are rejected."""
     client.cookies.set(web_auth.SESSION_COOKIE, _cookie(time.time() + 300))
@@ -194,7 +253,8 @@ def test_login_uses_pkce_and_fixed_callback(
         }
 
     monkeypatch.setattr(app.state.login_client, "load_server_metadata", metadata)
-    response = client.get("/auth/login")
+    destination = "/workspace/" + "a" * 32 + "#current-turn"
+    response = client.get("/auth/login", params={"return_to": destination})
     assert response.status_code == 302
     assert response.headers["referrer-policy"] == "no-referrer"
     parameters = parse_qs(urlsplit(response.headers["location"]).query)
@@ -203,6 +263,18 @@ def test_login_uses_pkce_and_fixed_callback(
     assert parameters["code_challenge_method"] == ["S256"]
     assert len(parameters["code_challenge"][0]) == 43
     assert parameters["state"][0] and parameters["nonce"][0]
+
+    async def verified_token(request: Request, **kwargs: object) -> dict[str, object]:
+        return {"userinfo": {"sub": "invited-user", "exp": int(time.time()) + 86400}}
+
+    monkeypatch.setattr(app.state.login_client, "authorize_access_token", verified_token)
+    callback = client.get("/auth/callback?code=local-test")
+    assert callback.status_code == 303
+    assert callback.headers["location"] == destination
+    value = client.cookies.get(web_auth.SESSION_COOKIE)
+    assert value is not None
+    session = json.loads(base64.b64decode(TimestampSigner(TEST_KEY).unsign(value)))
+    assert set(session) == {"subject", "expires_at"}
 
 
 @pytest.mark.parametrize("token_seconds", [300, 86400, 172800])
