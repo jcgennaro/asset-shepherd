@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-07
-**Current commit:** D122/D123 hosted spending safety and tour opt-out deployment evidence
+**Current commit:** D124 Gallery trash deployment evidence (web source `82f7416`, runtime source `2efeb9d`)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -41,10 +41,21 @@ command/session removal, local draft/redo cleanup, confirmation, and runtime/wri
 The complete common gate passes: 374 tests, three skips, clean Ruff/format/Pyright and lock
 validation. A final queue-admission regression moves SQS delivery outside the mutation lock so
 an immediate consumer can acquire its own token. The first rollout (source `2efeb9d`) completed
-as web revision 22 / runtime 12; the web-only queue fix is awaiting rollout in this entry.
+as web revision 22 / runtime 12. The web-only queue fix (`82f7416`) is now deployed as
+web task definition 23: ECS reports SUCCESSFUL, 100% production traffic, one running target
+task and zero old tasks; the web stack is UPDATE_COMPLETE. AgentCore DEFAULT remains READY
+on version 12. All eight operational alarms are OK. Final anonymous checks return health 200,
+Gallery sign-in redirect 303, and session/Trash POST 401, as intended.
 Disposable AWS fixtures passed version/session/receipt/pointer removal and neighbor preservation;
 both temporary fixtures were then removed and their prefixes/records verified empty. No user
 asset or paid model test was used. See `GALLERY_TRASH_RUNBOOK.md` for scope and limitations.
+
+Deployment provenance: web CodeBuild `asset-shepherd-contest-web:d32daf88-85bd-42c8-a92b-eb36c2f2e39c`
+passed, with live digest `sha256:de85e262996215743a35588285ac4321a901597c87bc09d9240cb489aa648fc2`.
+Runtime CodeBuild `asset-shepherd-contest-runtime:0b72398a-f01f-45ad-8927-ec4ead674690`
+passed, with digest `sha256:85d49244beb1eda32c117b5d109aa35cb3c7f484c31466dbee191120a64014db`.
+Local isolated-browser confirmation rendering was checked; authenticated hosted Gallery deletion
+is left for the user's test, not claimed by the disposable cloud repository acceptance.
 
 The user supplied and authorized public redistribution of a 5,074,436-byte Tripo gaming-peripheral
 set. Its untouched, hash-verified GLB, exact prompt, source URL, and pending headphones-only

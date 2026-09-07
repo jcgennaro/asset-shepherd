@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-07
 
-**Status:** User requested; local common gate passes; hosted rollout pending
+**Status:** User requested; common gate passes; hosted rollout complete
 
 Add a two-step Trash disclosure and confirmed POST for saved Gallery assets and unsubmitted
 upload drafts. Remove asset data rather than hiding the tile: all versions/delete markers in
@@ -23,9 +23,13 @@ Partial cleanup retains a retryable DELETING pointer until completion. Only the 
 version-list/delete permissions on existing workspace/session prefixes. No new service or model
 call is needed. See `GALLERY_TRASH_RUNBOOK.md` for exact scope and recovery limitations.
 
-373 tests pass, three skip; lint, format, type, and lock checks pass. Tests cover deletion scope,
-stale admission, active writers, partial failures, versions, drafts, and authentication. This
-entry is not hosted acceptance evidence and does not authorize deletion of saved user runs.
+374 tests pass, three skip; lint, format, type, and lock checks pass. Tests cover deletion scope,
+stale admission, active writers, partial failures, versions, drafts, and authentication. Queue
+admission releases its mutation token before SQS delivery, with an immediate-consumer regression.
+Web revision 23 (`82f7416`) and runtime version 12 (`2efeb9d`) are deployed; the previous web
+task has retired. Disposable AWS fixtures verified cleanup and neighbor preservation without
+model calls or deletion of saved user runs. See PROJECT_STATUS.md for deployment evidence;
+authenticated hosted UI deletion remains a user acceptance check.
 
 ### D123 — Make the navigation tour explicitly opt-out, per browser
 
