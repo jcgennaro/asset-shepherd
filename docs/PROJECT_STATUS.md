@@ -1,6 +1,6 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-09-06
+**Last updated:** 2026-09-07
 **Current commit:** D122/D123 hosted spending safety and tour opt-out deployment evidence
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
@@ -35,6 +35,13 @@
 | RW5 Evaluation report and demo | SCAFFOLDED | Typed adjudication and traceable case-study report renderer | Public claims remain prohibited until evidence exists |
 
 ## Current gate
+
+September 7 judge-facing documentation: the root README now leads with hosted testing access,
+private Devpost credential instructions, purpose, capabilities, a first-run walkthrough, sample
+GLBs, shared-gallery privacy, and developer contact. The previous developer README is preserved
+in `docs/TECHNICAL_GUIDE.md` with relative links rebased. Documentation only; no credentials,
+application changes, deployment, or paid tests. Both documents' local links and diff whitespace
+checks pass; this does not mark the public-release or judge-account acceptance gates complete.
 
 September 6 documentation refresh: README now distinguishes the deployed ECS/AgentCore/Cognito
 app and explicit hosted OpenAI option from local comparators, documents fresh-clone setup and
