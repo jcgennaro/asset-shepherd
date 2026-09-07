@@ -4,6 +4,29 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D124 — Explicit permanent Gallery trash, fenced against active writers
+
+**Date:** 2026-09-07
+
+**Status:** User requested; local common gate passes; hosted rollout pending
+
+Add a two-step Trash disclosure and confirmed POST for saved Gallery assets and unsubmitted
+upload drafts. Remove asset data rather than hiding the tile: all versions/delete markers in
+the exact S3 workspace/session prefixes, workspace command receipts and STATE pointer, and the
+local workspace and redo drafts. Keep independent cost accounting and operational-log retention.
+The shared Gallery warning applies to deletion too. Existing login and same-origin checks remain.
+
+Use a conditional per-workspace DynamoDB mutation token across runtime invocations, queue
+admission, artifact writes, and trash. Locks fail closed after a process crash until an operator
+verifies the writer has stopped; a timeout alone does not justify deleting data under a writer.
+Partial cleanup retains a retryable DELETING pointer until completion. Only the web task adds
+version-list/delete permissions on existing workspace/session prefixes. No new service or model
+call is needed. See `GALLERY_TRASH_RUNBOOK.md` for exact scope and recovery limitations.
+
+373 tests pass, three skip; lint, format, type, and lock checks pass. Tests cover deletion scope,
+stale admission, active writers, partial failures, versions, drafts, and authentication. This
+entry is not hosted acceptance evidence and does not authorize deletion of saved user runs.
+
 ### D123 — Make the navigation tour explicitly opt-out, per browser
 
 **Date:** 2026-09-06

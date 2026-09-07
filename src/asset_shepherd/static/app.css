@@ -3963,6 +3963,21 @@ model-viewer {
   border-top: 1px solid var(--line);
 }
 
+.asset-trash {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.asset-trash summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.asset-trash p {
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
 .asset-gallery-actions form {
   display: contents;
 }

@@ -60,6 +60,21 @@ class _FakeS3:
         self.objects[key] = body
         return {}
 
+    def list_object_versions(self, **kwargs: object) -> dict[str, object]:
+        return {
+            "Versions": [
+                {"Key": key, "VersionId": "v1"}
+                for key in self.objects
+                if key.startswith(str(kwargs["Prefix"]))
+            ][:2]
+        }
+
+    def delete_objects(self, **kwargs: object) -> dict[str, object]:
+        deletion = cast(dict[str, list[dict[str, str]]], kwargs["Delete"])
+        for item in deletion["Objects"]:
+            self.objects.pop(item["Key"])
+        return {}
+
 
 class _FakeDynamo:
     """Minimal owner-index and optimistic-write DynamoDB surface."""
@@ -69,10 +84,20 @@ class _FakeDynamo:
 
     def query(self, **kwargs: object) -> dict[str, object]:
         expression_values = cast(dict[str, dict[str, str]], kwargs["ExpressionAttributeValues"])
+        if ":pk" in expression_values:
+            return {
+                "Items": [
+                    item for item in self.items.values() if item["PK"] == expression_values[":pk"]
+                ]
+            }
         owner = expression_values[":owner_id"]["S"]
         limit = kwargs["Limit"]
         assert isinstance(limit, int)
-        values = [item for item in self.items.values() if item["owner_id"] == {"S": owner}]
+        values = [
+            item
+            for item in self.items.values()
+            if item.get("owner_id") == {"S": owner} and "updated_at" in item
+        ]
         values.sort(key=lambda item: str(item["updated_at"]), reverse=True)
         return {"Items": values[:limit]}
 
@@ -93,8 +118,11 @@ class _FakeDynamo:
             conflict = existing is not None
         else:
             typed_values = cast(dict[str, dict[str, str]], expected_values)
-            expected = typed_values[":expected_version"]
-            conflict = existing is None or existing["record_version"] != expected
+            if ":expected_version" in typed_values:
+                expected = typed_values[":expected_version"]
+                conflict = existing is None or existing["record_version"] != expected
+            else:
+                conflict = existing is None or existing["owner_id"] != typed_values[":owner_id"]
         if conflict:
             raise ClientError(
                 {

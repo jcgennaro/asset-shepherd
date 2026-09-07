@@ -11,6 +11,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from asset_shepherd.agentcore_runtime import RuntimeCommand, validate_runtime_command
+from asset_shepherd.cloud_workspace import S3DynamoWorkspaceRepository
 
 
 class AgentCoreDispatchError(ValueError):
@@ -47,6 +48,7 @@ class AgentCoreCommandDispatcher:
         region: str,
         sqs_client: _SqsClient | None = None,
         dynamodb_client: _DynamoClient | None = None,
+        workspace_repository: S3DynamoWorkspaceRepository | None = None,
     ) -> None:
         """Bind one deployment actor to its queue and command-state table."""
         if not queue_url or not table or not actor_id or not region:
@@ -55,6 +57,7 @@ class AgentCoreCommandDispatcher:
         self.queue_url = queue_url
         self.table = table
         self.actor_id = actor_id
+        self.workspace_repository = workspace_repository
         self.sqs = sqs_client or cast(
             _SqsClient,
             session.client("sqs"),  # pyright: ignore[reportUnknownMemberType]
@@ -84,6 +87,28 @@ class AgentCoreCommandDispatcher:
         return item if _string_attribute(item, "dispatch_owner") == self.actor_id else None
 
     def enqueue(self, payload: object) -> RuntimeCommand:
+        """Fence queue admission against permanent deletion in hosted deployments."""
+        command = validate_runtime_command(payload)
+        if command.actor_id != self.actor_id:
+            raise AgentCoreDispatchError("The command actor is not authorized for this deployment.")
+        repository = self.workspace_repository
+        if repository is None:
+            return self._enqueue(payload)
+        with repository.exclusive(command.workspace_id):
+            response = self.dynamodb.get_item(
+                TableName=self.table,
+                Key={"PK": {"S": f"WORKSPACE#{command.workspace_id}"}, "SK": {"S": "STATE"}},
+                ConsistentRead=True,
+            )
+            item = cast(dict[str, object], response.get("Item", {}))
+            if (
+                _string_attribute(item, "owner_id") != self.actor_id
+                or _string_attribute(item, "deletion_status") == "DELETING"
+            ):
+                raise AgentCoreDispatchError("This asset has been trashed or is being deleted.")
+            return self._enqueue(payload)
+
+    def _enqueue(self, payload: object) -> RuntimeCommand:
         """Persist and send one idempotent command envelope."""
         command = validate_runtime_command(payload)
         if command.actor_id != self.actor_id:

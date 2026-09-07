@@ -1,0 +1,20 @@
+{
+  "asset_id": "gaming-peripherals-headphones",
+  "source_service": "Tripo",
+  "workspace_url": "https://studio.tripo3d.ai/workspace/generate/7cea46d6-e541-4bf8-b14e-8bbc92b7d182",
+  "prompt": "a set of stylish gamer's PC peripherals, including headphones, keyboard, and mouse. use yellow, blue, and light beige accents.",
+  "original_filename": "colorful gaming peripherals 3d model.glb",
+  "byte_size": 5074436,
+  "sha256": "dde53dfef30fb4d8d71a602f058ed489b4866a3957da63e934df45d589d118ae",
+  "received_date": "2026-09-07",
+  "generation_date_utc": null,
+  "model_or_mode": null,
+  "generation_settings": {},
+  "export_settings": {},
+  "public_use_confirmed": true,
+  "public_use_note": "User explicitly confirmed permission to include this GLB in the public repository on 2026-09-07.",
+  "user_observation": "It generated headphones, a keyboard, a PC, and another unidentified object.",
+  "intended_test": "Keep only the headphones; remove the other generated objects after review and explicit approval.",
+  "run_status": "PENDING_USER_TEST",
+  "notes": "Untouched source copied and hashed only. User observation is not an independently verified component inventory. Exact generation timestamp, mode, and export settings are unreported. The Tripo workspace URL is provenance, not assumed publicly accessible. This is a pending demonstration benchmark, not a completed canonical blind-corpus registration."
+}

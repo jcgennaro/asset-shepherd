@@ -107,7 +107,8 @@ Keep the normal AWS billing budget and provider-side account limits independentl
 
 Gallery deletion must never delete `SPEND#` records. Existing admin purge targets only
 the chosen workspace/session prefixes and `WORKSPACE#`/`COMMAND#` records. A public
-permanent-trash feature still needs its own concurrency/ownership-safe implementation.
+permanent-trash feature is implemented under D124 with separate concurrency/ownership fencing;
+see `GALLERY_TRASH_RUNBOOK.md` and project status for deployment acceptance.
 
 ## Verification
 

@@ -3394,6 +3394,7 @@ def create_app(
             table=workspace_table,
             actor_id=workspace_owner,
             region=workspace_region,
+            workspace_repository=cast(S3DynamoWorkspaceRepository, workspace_repository),
         )
     runtime_actor_id = remote_dispatcher.actor_id if remote_dispatcher is not None else None
     agent_model_choices = hosted_model_choices(os.environ)
@@ -3435,6 +3436,7 @@ def create_app(
     )
     hosted_start_drafts: dict[str, HostedStartDraft] = {}
     hosted_start_lock = RLock()
+    gallery_mutation_lock = RLock()
     hosted_staging_root = (work_root / "hosted-start").resolve(strict=False)
     upload_checks = UploadPreflight()
     feedback_root = work_root / "feedback"
@@ -4483,91 +4485,92 @@ def create_app(
         agent_model: Annotated[str | None, Form()] = None,
     ) -> Response:
         """Validate and stage one GLB, then advance to description."""
-        replaced_draft: HostedStartDraft | None = None
-        if replace_draft_id:
-            try:
-                replaced_draft = require_hosted_start_draft(replace_draft_id)
-            except HostedWorkspaceError as draft_error:
+        with gallery_mutation_lock:
+            replaced_draft: HostedStartDraft | None = None
+            if replace_draft_id:
+                try:
+                    replaced_draft = require_hosted_start_draft(replace_draft_id)
+                except HostedWorkspaceError as draft_error:
+                    asset.file.close()
+                    return render_hosted_upload(request, str(draft_error), status_code=404)
+                replace_workspace_id = replaced_draft.replace_workspace_id
+                if agent_model is None:
+                    agent_model = replaced_draft.model_id
+            valid, error = _validate_hosted_replacement(replace_workspace_id)
+            if not valid:
                 asset.file.close()
-                return render_hosted_upload(request, str(draft_error), status_code=404)
-            replace_workspace_id = replaced_draft.replace_workspace_id
-            if agent_model is None:
-                agent_model = replaced_draft.model_id
-        valid, error = _validate_hosted_replacement(replace_workspace_id)
-        if not valid:
-            asset.file.close()
-            return render_hosted_home(request, error, status_code=400)
-        filename = asset.filename or ""
-        if Path(filename).suffix.lower() != ".glb":
-            asset.file.close()
-            return render_hosted_upload(
-                request,
-                "Choose exactly one file with a .glb extension.",
-                status_code=400,
-                replace_workspace_id=replace_workspace_id,
-            )
-        selected_model_id: str | None = None
-        if agent_model_choices:
-            selected_model_id = agent_model or (
-                default_agent_model.model_id if default_agent_model is not None else None
-            )
-            try:
-                selected_capability = resolve_hosted_model(selected_model_id or "")
-                if selected_capability not in agent_model_choices:
-                    raise ValueError
-            except ValueError:
+                return render_hosted_home(request, error, status_code=400)
+            filename = asset.filename or ""
+            if Path(filename).suffix.lower() != ".glb":
                 asset.file.close()
                 return render_hosted_upload(
                     request,
-                    "Choose an available Asset Shepherd model.",
+                    "Choose exactly one file with a .glb extension.",
                     status_code=400,
                     replace_workspace_id=replace_workspace_id,
                 )
-        draft_id = uuid4().hex
-        draft_root = hosted_staging_root / draft_id
-        source_path = draft_root / "source.glb"
-        try:
-            draft_root.mkdir(parents=True, exist_ok=False)
-            copy_validated_upload(asset.file, source_path)
-            draft = HostedStartDraft(
-                draft_id=draft_id,
-                original_filename=Path(filename).name,
-                source_path=source_path,
-                replace_workspace_id=replace_workspace_id,
-                model_id=selected_model_id,
-            )
-            persist_hosted_start_draft(draft)
-            with hosted_start_lock:
-                hosted_start_drafts[draft_id] = draft
+            selected_model_id: str | None = None
+            if agent_model_choices:
+                selected_model_id = agent_model or (
+                    default_agent_model.model_id if default_agent_model is not None else None
+                )
+                try:
+                    selected_capability = resolve_hosted_model(selected_model_id or "")
+                    if selected_capability not in agent_model_choices:
+                        raise ValueError
+                except ValueError:
+                    asset.file.close()
+                    return render_hosted_upload(
+                        request,
+                        "Choose an available Asset Shepherd model.",
+                        status_code=400,
+                        replace_workspace_id=replace_workspace_id,
+                    )
+            draft_id = uuid4().hex
+            draft_root = hosted_staging_root / draft_id
+            source_path = draft_root / "source.glb"
+            try:
+                draft_root.mkdir(parents=True, exist_ok=False)
+                copy_validated_upload(asset.file, source_path)
+                draft = HostedStartDraft(
+                    draft_id=draft_id,
+                    original_filename=Path(filename).name,
+                    source_path=source_path,
+                    replace_workspace_id=replace_workspace_id,
+                    model_id=selected_model_id,
+                )
+                persist_hosted_start_draft(draft)
+                with hosted_start_lock:
+                    hosted_start_drafts[draft_id] = draft
 
-            def retire_previous_upload() -> None:
-                if replaced_draft is not None:
-                    discard_hosted_start_draft(replaced_draft)
+                def retire_previous_upload() -> None:
+                    if replaced_draft is not None:
+                        discard_hosted_start_draft(replaced_draft)
 
-            upload_checks.start(draft_root, retire_previous_upload)
-            check = upload_checks.status(draft_root)
-            if check is not None and check.state == "FAILED":
-                raise HostedWorkspaceError(check.error or "This GLB could not be checked.")
-        except (HostedWorkspaceError, ValueError, OSError) as upload_error:
-            with hosted_start_lock:
-                hosted_start_drafts.pop(draft_id, None)
-            source_path.unlink(missing_ok=True)
-            for name in ("draft.json", "upload-check.json"):
-                (draft_root / name).unlink(missing_ok=True)
-            if draft_root.is_dir():
-                draft_root.rmdir()
-            return render_hosted_upload(
-                request,
-                str(upload_error),
-                status_code=400,
-                replace_workspace_id=replace_workspace_id,
+                upload_checks.start(draft_root, retire_previous_upload)
+                check = upload_checks.status(draft_root)
+                if check is not None and check.state == "FAILED":
+                    raise HostedWorkspaceError(check.error or "This GLB could not be checked.")
+            except (HostedWorkspaceError, ValueError, OSError) as upload_error:
+                with hosted_start_lock:
+                    hosted_start_drafts.pop(draft_id, None)
+                source_path.unlink(missing_ok=True)
+                for name in ("draft.json", "upload-check.json"):
+                    (draft_root / name).unlink(missing_ok=True)
+                if draft_root.is_dir():
+                    draft_root.rmdir()
+                return render_hosted_upload(
+                    request,
+                    str(upload_error),
+                    status_code=400,
+                    replace_workspace_id=replace_workspace_id,
+                )
+            finally:
+                asset.file.close()
+            return RedirectResponse(
+                request.url_for("hosted_describe", draft_id=draft_id),
+                status_code=303,
             )
-        finally:
-            asset.file.close()
-        return RedirectResponse(
-            request.url_for("hosted_describe", draft_id=draft_id),
-            status_code=303,
-        )
 
     def save_hosted_description(
         request: Request,
@@ -4575,69 +4578,70 @@ def create_app(
         description: Annotated[str, Form()],
     ) -> Response:
         """Infer the target, then create the durable shepherding workspace."""
-        try:
-            draft = require_hosted_start_draft(draft_id)
-        except HostedWorkspaceError as draft_error:
-            return render_hosted_upload(request, str(draft_error), status_code=404)
-        check = upload_checks.status(draft.source_path.parent)
-        if check is None:
+        with gallery_mutation_lock:
             try:
-                upload_checks.start(draft.source_path.parent)
-            except ValueError as error:
-                return render_hosted_upload(request, str(error), status_code=409)
+                draft = require_hosted_start_draft(draft_id)
+            except HostedWorkspaceError as draft_error:
+                return render_hosted_upload(request, str(draft_error), status_code=404)
             check = upload_checks.status(draft.source_path.parent)
-        if check is not None and check.state != "READY":
-            return render_upload_check(request, draft, status_code=409)
-        try:
-            normalized = normalize_intent_description(description)
-            target_analyzer = (
-                build_target_intake_analyzer(model_values(draft.model_id))
-                if draft.model_id is not None
-                else hosted_store.intake_analyzer
-            )
-            target_draft = target_analyzer.analyze(normalized)
-        except TargetIntakeContentRefusal as error:
-            discard_hosted_start_draft(draft)
-            return render_hosted_describe(
-                request,
-                None,
-                str(error),
-                status_code=400,
-                refusal=True,
-            )
-        except ValueError as error:
-            return render_hosted_describe(
-                request,
-                draft,
-                str(error),
-                status_code=400,
-                description=description,
-            )
-        try:
-            with draft.source_path.open("rb") as stream:
-                workspace = hosted_store.create(
-                    normalized,
-                    draft.original_filename,
-                    stream,
-                    replace_workspace_id=draft.replace_workspace_id,
-                    target_draft=target_draft,
-                    model_provider=("bedrock-converse" if draft.model_id is not None else None),
-                    model_id=draft.model_id,
-                    preflight_result=check.preflight if check is not None else None,
+            if check is None:
+                try:
+                    upload_checks.start(draft.source_path.parent)
+                except ValueError as error:
+                    return render_hosted_upload(request, str(error), status_code=409)
+                check = upload_checks.status(draft.source_path.parent)
+            if check is not None and check.state != "READY":
+                return render_upload_check(request, draft, status_code=409)
+            try:
+                normalized = normalize_intent_description(description)
+                target_analyzer = (
+                    build_target_intake_analyzer(model_values(draft.model_id))
+                    if draft.model_id is not None
+                    else hosted_store.intake_analyzer
                 )
-        except (HostedWorkspaceError, ValueError, OSError) as error:
-            return render_hosted_describe(
-                request,
-                draft,
-                str(error),
-                status_code=400,
-                description=description,
+                target_draft = target_analyzer.analyze(normalized)
+            except TargetIntakeContentRefusal as error:
+                discard_hosted_start_draft(draft)
+                return render_hosted_describe(
+                    request,
+                    None,
+                    str(error),
+                    status_code=400,
+                    refusal=True,
+                )
+            except ValueError as error:
+                return render_hosted_describe(
+                    request,
+                    draft,
+                    str(error),
+                    status_code=400,
+                    description=description,
+                )
+            try:
+                with draft.source_path.open("rb") as stream:
+                    workspace = hosted_store.create(
+                        normalized,
+                        draft.original_filename,
+                        stream,
+                        replace_workspace_id=draft.replace_workspace_id,
+                        target_draft=target_draft,
+                        model_provider=("bedrock-converse" if draft.model_id is not None else None),
+                        model_id=draft.model_id,
+                        preflight_result=check.preflight if check is not None else None,
+                    )
+            except (HostedWorkspaceError, ValueError, OSError) as error:
+                return render_hosted_describe(
+                    request,
+                    draft,
+                    str(error),
+                    status_code=400,
+                    description=description,
+                )
+            discard_hosted_start_draft(draft)
+            return RedirectResponse(
+                _workspace_notebook_url(request, workspace.record.workspace_id),
+                status_code=303,
             )
-        discard_hosted_start_draft(draft)
-        return RedirectResponse(
-            _workspace_notebook_url(request, workspace.record.workspace_id),
-            status_code=303,
-        )
 
     def require_hosted_start_draft(draft_id: str) -> HostedStartDraft:
         if re.fullmatch(r"[0-9a-f]{32}", draft_id) is None:
@@ -4714,48 +4718,119 @@ def create_app(
         )
 
     def retry_upload_check(request: Request, draft_id: str) -> Response:
-        try:
-            draft = require_hosted_start_draft(draft_id)
-            check = upload_checks.status(draft.source_path.parent)
-            if check is None or check.state == "FAILED":
-                upload_checks.start(draft.source_path.parent)
-        except (HostedWorkspaceError, ValueError) as error:
-            return render_hosted_upload(request, str(error), status_code=409)
-        return RedirectResponse(request.url_for("hosted_describe", draft_id=draft_id), 303)
+        with gallery_mutation_lock:
+            try:
+                draft = require_hosted_start_draft(draft_id)
+                check = upload_checks.status(draft.source_path.parent)
+                if check is None or check.state == "FAILED":
+                    upload_checks.start(draft.source_path.parent)
+            except (HostedWorkspaceError, ValueError) as error:
+                return render_hosted_upload(request, str(error), status_code=409)
+            return RedirectResponse(request.url_for("hosted_describe", draft_id=draft_id), 303)
 
     def redo_hosted_workspace(request: Request, workspace_id: str) -> Response:
         """Stage the original GLB for a fresh run without discarding saved progress."""
-        draft_root: Path | None = None
-        source_path: Path | None = None
-        try:
-            workspace = require_hosted_workspace(workspace_id)
-            draft_id = uuid4().hex
-            draft_root = hosted_staging_root / draft_id
-            source_path = draft_root / "source.glb"
-            draft_root.mkdir(parents=True, exist_ok=False)
-            shutil.copyfile(workspace.source_path, source_path)
-            draft = HostedStartDraft(
-                draft_id=draft_id,
-                original_filename=workspace.record.original_filename,
-                source_path=source_path,
-                replace_workspace_id=workspace_id,
-                initial_description=workspace.record.private_description,
-                model_id=workspace.record.model_id,
+        with gallery_mutation_lock:
+            draft_root: Path | None = None
+            source_path: Path | None = None
+            try:
+                workspace = require_hosted_workspace(workspace_id)
+                draft_id = uuid4().hex
+                draft_root = hosted_staging_root / draft_id
+                source_path = draft_root / "source.glb"
+                draft_root.mkdir(parents=True, exist_ok=False)
+                shutil.copyfile(workspace.source_path, source_path)
+                draft = HostedStartDraft(
+                    draft_id=draft_id,
+                    original_filename=workspace.record.original_filename,
+                    source_path=source_path,
+                    replace_workspace_id=workspace_id,
+                    initial_description=workspace.record.private_description,
+                    model_id=workspace.record.model_id,
+                )
+                persist_hosted_start_draft(draft)
+                upload_checks.reuse(draft_root, workspace.record.preflight)
+                with hosted_start_lock:
+                    hosted_start_drafts[draft_id] = draft
+            except (HostedWorkspaceError, OSError) as error:
+                if source_path is not None:
+                    source_path.unlink(missing_ok=True)
+                if draft_root is not None and draft_root.is_dir():
+                    draft_root.rmdir()
+                return render_hosted_home(request, str(error), status_code=400)
+            return RedirectResponse(
+                request.url_for("hosted_describe", draft_id=draft_id),
+                status_code=303,
             )
-            persist_hosted_start_draft(draft)
-            upload_checks.reuse(draft_root, workspace.record.preflight)
-            with hosted_start_lock:
-                hosted_start_drafts[draft_id] = draft
-        except (HostedWorkspaceError, OSError) as error:
-            if source_path is not None:
-                source_path.unlink(missing_ok=True)
-            if draft_root is not None and draft_root.is_dir():
-                draft_root.rmdir()
-            return render_hosted_home(request, str(error), status_code=400)
-        return RedirectResponse(
-            request.url_for("hosted_describe", draft_id=draft_id),
-            status_code=303,
-        )
+
+    def trash_hosted_workspace(
+        request: Request,
+        workspace_id: str,
+        confirmation: Annotated[str, Form()],
+    ) -> Response:
+        """Permanently remove a confirmed gallery asset, not merely its tile."""
+        if not gallery_mutation_lock.acquire(blocking=False):
+            return render_hosted_home(
+                request, "An asset operation is running. Try Trash later.", status_code=409
+            )
+        try:
+            if confirmation != workspace_id:
+                return render_hosted_home(
+                    request, "Confirm the exact asset to trash.", status_code=400
+                )
+            try:
+                drafts = [
+                    draft
+                    for draft in list_hosted_start_drafts()
+                    if draft.replace_workspace_id == workspace_id
+                ]
+                for draft in drafts:
+                    check = upload_checks.status(draft.source_path.parent)
+                    if check is not None and check.state == "CHECKING":
+                        raise HostedWorkspaceError("Wait for this asset's upload check to finish.")
+                hosted_store.trash(workspace_id)
+                for draft in drafts:
+                    discard_hosted_start_draft(draft)
+            except HostedWorkspaceError as error:
+                return render_hosted_home(request, str(error), status_code=409)
+            except Exception:
+                return render_hosted_home(
+                    request,
+                    "Deletion could not finish. Please retry Trash; the slot is not yet freed.",
+                    status_code=503,
+                )
+            return RedirectResponse(request.url_for("hosted_home"), status_code=303)
+        finally:
+            gallery_mutation_lock.release()
+
+    def trash_hosted_draft(
+        request: Request,
+        draft_id: str,
+        confirmation: Annotated[str, Form()],
+    ) -> Response:
+        """Discard an unsubmitted upload and free its reserved gallery slot."""
+        if not gallery_mutation_lock.acquire(blocking=False):
+            return render_hosted_home(
+                request, "An asset operation is running. Try Trash later.", status_code=409
+            )
+        try:
+            if confirmation != draft_id:
+                return render_hosted_home(
+                    request, "Confirm the exact upload to trash.", status_code=400
+                )
+            try:
+                draft = require_hosted_start_draft(draft_id)
+                check = upload_checks.status(draft.source_path.parent)
+                if check is not None and check.state == "CHECKING":
+                    raise HostedWorkspaceError(
+                        "Wait for the upload check to finish before trashing it."
+                    )
+                discard_hosted_start_draft(draft)
+            except (HostedWorkspaceError, OSError) as error:
+                return render_hosted_home(request, str(error), status_code=409)
+            return RedirectResponse(request.url_for("hosted_home"), status_code=303)
+        finally:
+            gallery_mutation_lock.release()
 
     def create_hosted_workspace(
         request: Request,
@@ -5587,6 +5662,18 @@ def create_app(
         redo_hosted_workspace,
         methods=["POST"],
         name="redo_hosted_workspace",
+    )
+    app.add_api_route(
+        "/workspace/{workspace_id}/trash",
+        trash_hosted_workspace,
+        methods=["POST"],
+        name="trash_hosted_workspace",
+    )
+    app.add_api_route(
+        "/workspace/new/{draft_id}/trash",
+        trash_hosted_draft,
+        methods=["POST"],
+        name="trash_hosted_draft",
     )
     app.add_api_route(
         "/workspace/{workspace_id}/target",

@@ -21,6 +21,16 @@
             {% endif %}
             {% if gallery_full %}<a class="asset-replace" href="{{ url_for('hosted_upload') }}?replace_workspace_id={{ saved.workspace_id }}">Replace</a>{% endif %}
           </div>
+          <details class="asset-trash">
+            <summary>Trash…</summary>
+            <p>Permanently delete {{ saved.asset_name }}, its original and repaired models,
+              downloads, and conversation history from this shared Gallery and storage.
+              This frees the slot and cannot be undone. Usage accounting is retained.</p>
+            <form action="{{ url_for('trash_hosted_workspace', workspace_id=saved.workspace_id) }}" method="post" data-busy-form>
+              <input type="hidden" name="confirmation" value="{{ saved.workspace_id }}">
+              <button type="submit" class="secondary-button" data-submit-button>Delete permanently</button>
+            </form>
+          </details>
         </article>
       {% endfor %}
       {% for draft in new_drafts %}
@@ -29,6 +39,14 @@
             <model-viewer src="{{ url_for('hosted_draft_source_asset', draft_id=draft.draft_id) }}" alt="{{ draft.display_name }}" camera-orbit="35deg 70deg auto" disable-zoom></model-viewer>
             <span><strong>{{ draft.display_name }}</strong><small class="asset-gallery-status pending"><i aria-hidden="true"></i>Step 2 · Describe</small></span>
           </a>
+          <details class="asset-trash">
+            <summary>Trash…</summary>
+            <p>Permanently delete this uploaded GLB and free its Gallery slot. This cannot be undone.</p>
+            <form action="{{ url_for('trash_hosted_draft', draft_id=draft.draft_id) }}" method="post" data-busy-form>
+              <input type="hidden" name="confirmation" value="{{ draft.draft_id }}">
+              <button type="submit" class="secondary-button" data-submit-button>Delete permanently</button>
+            </form>
+          </details>
         </article>
       {% endfor %}
       {% if can_add_asset %}

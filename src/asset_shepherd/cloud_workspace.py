@@ -1,7 +1,11 @@
 """S3 artifact snapshots and conditional DynamoDB workspace records."""
 
 import json
+import re
 import shutil
+from collections.abc import Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
@@ -21,6 +25,9 @@ class _ReadableBody(Protocol):
 
 
 class _S3Client(Protocol):
+    def list_object_versions(self, **kwargs: object) -> dict[str, object]: ...
+
+    def delete_objects(self, **kwargs: object) -> dict[str, object]: ...
     def get_object(self, **kwargs: object) -> dict[str, object]: ...
 
     def download_file(self, bucket: str, key: str, filename: str) -> None: ...
@@ -76,6 +83,7 @@ class S3DynamoWorkspaceRepository:
         self.bucket = bucket
         self.table = table
         self.owner_id = owner_id
+        self._held: ContextVar[tuple[str, ...]] = ContextVar("workspace_locks", default=())
         self.s3 = s3_client or cast(
             _S3Client,
             session.client("s3"),  # pyright: ignore[reportUnknownMemberType]
@@ -87,7 +95,43 @@ class S3DynamoWorkspaceRepository:
 
     @staticmethod
     def _workspace_key(workspace_id: str) -> dict[str, dict[str, str]]:
+        if re.fullmatch(r"[0-9a-f]{32}", workspace_id) is None:
+            raise HostedWorkspaceError("The workspace identifier is invalid.")
         return {"PK": {"S": f"WORKSPACE#{workspace_id}"}, "SK": {"S": "STATE"}}
+
+    @contextmanager
+    def exclusive(self, workspace_id: str) -> Generator[None]:
+        """Exclude deletion and writers across processes; abandoned locks fail closed."""
+        self._workspace_key(workspace_id)
+        if workspace_id in self._held.get():
+            yield
+            return
+        key = {"PK": {"S": f"LOCK#{workspace_id}"}, "SK": {"S": "MUTATION"}}
+        token = uuid4().hex
+        try:
+            self.dynamodb.put_item(
+                TableName=self.table,
+                Item={**key, "owner_id": {"S": self.owner_id}, "token": {"S": token}},
+                ConditionExpression="attribute_not_exists(PK)",
+            )
+        except ClientError as error:
+            if error.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+                raise HostedWorkspaceError(
+                    "This asset is busy. Wait for its current operation before trying again."
+                ) from error
+            raise
+        context_token = self._held.set((*self._held.get(), workspace_id))
+        try:
+            yield
+        finally:
+            self._held.reset(context_token)
+            self.dynamodb.delete_item(
+                TableName=self.table,
+                Key=key,
+                ConditionExpression="#token = :token",
+                ExpressionAttributeNames={"#token": "token"},
+                ExpressionAttributeValues={":token": {"S": token}},
+            )
 
     def list_record_json(self, *, limit: int) -> tuple[str, ...]:
         """Query the newest active records through the owner-scoped gallery index."""
@@ -106,7 +150,14 @@ class S3DynamoWorkspaceRepository:
         for raw_item in cast(list[object], raw_items):
             if not isinstance(raw_item, dict):
                 continue
-            record_value = _string_attribute(cast(dict[str, object], raw_item), "record_json")
+            key = _string_attribute(cast(dict[str, object], raw_item), "PK") or ""
+            if not key.startswith("WORKSPACE#"):
+                continue
+            # The GSI is eventually consistent; a deleted slot must not reappear.
+            current = self._item(key.removeprefix("WORKSPACE#"))
+            if current is None:
+                continue
+            record_value = _string_attribute(current, "record_json")
             if isinstance(record_value, str):
                 values.append(record_value)
         return tuple(values)
@@ -127,7 +178,7 @@ class S3DynamoWorkspaceRepository:
     def hydrate(self, workspace_id: str, destination: Path) -> bool:
         """Download the current hash-verified manifest into a fresh local cache tree."""
         item = self._item(workspace_id)
-        if item is None:
+        if item is None or _string_attribute(item, "deletion_status") == "DELETING":
             return False
         manifest_key = _string_attribute(item, "manifest_key")
         if not isinstance(manifest_key, str):
@@ -184,6 +235,24 @@ class S3DynamoWorkspaceRepository:
         return True
 
     def persist(
+        self,
+        workspace_root: Path,
+        record_json: str,
+        *,
+        expected_version: int,
+    ) -> None:
+        """Fence every artifact write against deletion, including stale caches."""
+        record = cast(dict[str, object], json.loads(record_json))
+        workspace_id = str(record["workspace_id"])
+        with self.exclusive(workspace_id):
+            item = self._item(workspace_id)
+            if expected_version and (
+                item is None or _string_attribute(item, "deletion_status") == "DELETING"
+            ):
+                raise HostedWorkspaceError("This asset has been trashed or is being deleted.")
+            self._persist_unlocked(workspace_root, record_json, expected_version=expected_version)
+
+    def _persist_unlocked(
         self,
         workspace_root: Path,
         record_json: str,
@@ -287,3 +356,62 @@ class S3DynamoWorkspaceRepository:
         except ClientError as error:
             if error.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
                 raise
+
+    def trash(self, workspace_id: str) -> None:
+        """Permanently erase exact asset prefixes and receipts, retaining spending records."""
+        with self.exclusive(workspace_id):
+            item = self._item(workspace_id)
+            if item is None:
+                raise HostedWorkspaceError("The asset does not exist or is not accessible.")
+            receipts: list[dict[str, object]] = []
+            query: dict[str, object] = {
+                "TableName": self.table,
+                "KeyConditionExpression": "PK = :pk",
+                "ExpressionAttributeValues": {":pk": {"S": f"COMMAND#{workspace_id}"}},
+                "ConsistentRead": True,
+            }
+            while True:
+                page = self.dynamodb.query(**query)
+                for receipt in cast(list[dict[str, object]], page.get("Items", [])):
+                    if _string_attribute(receipt, "dispatch_owner") != self.owner_id:
+                        raise HostedWorkspaceError("A command receipt belongs to another owner.")
+                    receipts.append(receipt)
+                if not page.get("LastEvaluatedKey"):
+                    break
+                query["ExclusiveStartKey"] = page["LastEvaluatedKey"]
+            # Keep the pointer until cleanup succeeds so partial failures remain retryable.
+            item["deletion_status"] = {"S": "DELETING"}
+            self.dynamodb.put_item(
+                TableName=self.table,
+                Item=item,
+                ConditionExpression="owner_id = :owner_id",
+                ExpressionAttributeValues={":owner_id": {"S": self.owner_id}},
+            )
+            for prefix in (f"workspaces/{workspace_id}/", f"sessions/session_{workspace_id}/"):
+                while True:
+                    page = self.s3.list_object_versions(
+                        Bucket=self.bucket, Prefix=prefix, MaxKeys=1000
+                    )
+                    objects: list[dict[str, str]] = []
+                    for kind in ("Versions", "DeleteMarkers"):
+                        for raw in cast(list[dict[str, str]], page.get(kind, [])):
+                            if not raw["Key"].startswith(prefix):
+                                raise HostedWorkspaceError("Deletion found an out-of-scope object.")
+                            objects.append({"Key": raw["Key"], "VersionId": raw["VersionId"]})
+                    if not objects:
+                        break
+                    response = self.s3.delete_objects(
+                        Bucket=self.bucket, Delete={"Objects": objects, "Quiet": True}
+                    )
+                    if response.get("Errors"):
+                        raise HostedWorkspaceError(
+                            "Some stored files could not be deleted. Please retry Trash."
+                        )
+            for receipt in receipts:
+                self.dynamodb.delete_item(
+                    TableName=self.table,
+                    Key={"PK": receipt["PK"], "SK": receipt["SK"]},
+                    ConditionExpression="dispatch_owner = :owner",
+                    ExpressionAttributeValues={":owner": {"S": self.owner_id}},
+                )
+            self.delete(workspace_id)

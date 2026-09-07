@@ -48,6 +48,8 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
         return {"subject": str(request.state.login_subject)}
 
     app.add_api_route("/workspace", protected, methods=["GET", "POST"])
+    app.add_api_route("/workspace/example/trash", protected, methods=["POST"])
+    app.add_api_route("/workspace/new/example/trash", protected, methods=["POST"])
     with TestClient(
         app, base_url=VALUES["ASSET_SHEPHERD_PUBLIC_ORIGIN"], follow_redirects=False
     ) as test_client:
@@ -135,19 +137,19 @@ def test_session_status_is_private_and_does_not_renew(
     assert client.get("/auth/session").status_code == 401
 
 
-def test_signed_session_and_same_origin_are_both_required(client: TestClient) -> None:
+@pytest.mark.parametrize(
+    "path", ["/workspace", "/workspace/example/trash", "/workspace/new/example/trash"]
+)
+def test_signed_session_and_same_origin_are_both_required(client: TestClient, path: str) -> None:
     """A valid invited session can work, but expiry and cross-origin writes are rejected."""
     client.cookies.set(web_auth.SESSION_COOKIE, _cookie(time.time() + 300))
     assert client.get("/workspace").json() == {"subject": "invited-user"}
-    assert client.post("/workspace").status_code == 403
+    assert client.post(path).status_code == 403
     assert (
-        client.post("/workspace", headers={"origin": "https://different.example.test"}).status_code
-        == 403
+        client.post(path, headers={"origin": "https://different.example.test"}).status_code == 403
     )
     assert (
-        client.post(
-            "/workspace", headers={"origin": VALUES["ASSET_SHEPHERD_PUBLIC_ORIGIN"]}
-        ).status_code
+        client.post(path, headers={"origin": VALUES["ASSET_SHEPHERD_PUBLIC_ORIGIN"]}).status_code
         == 200
     )
     client.cookies.set(web_auth.SESSION_COOKIE, _cookie(time.time() - 1))

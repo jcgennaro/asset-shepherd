@@ -36,6 +36,18 @@
 
 ## Current gate
 
+D124 Gallery trash is implemented locally with exact owner-bound, version-aware S3 cleanup,
+command/session removal, local draft/redo cleanup, confirmation, and runtime/writer exclusion.
+The complete common gate passes: 373 tests, three skips, clean Ruff/format/Pyright and lock
+validation. Hosted deployment and disposable-fixture cloud acceptance are pending in this entry;
+see `GALLERY_TRASH_RUNBOOK.md`. No user asset or paid model test was used for deletion acceptance.
+
+The user supplied and authorized public redistribution of a 5,074,436-byte Tripo gaming-peripheral
+set. Its untouched, hash-verified GLB, exact prompt, source URL, and pending headphones-only
+test/voiceover outline are in `validation/benchmarks/gaming-peripherals-headphones/`. Only file
+copy/hash operations were performed; the user will run and adjudicate it after deployment. This
+does not claim a completed blind-corpus registration or a successful demo outcome.
+
 September 7 contact privacy follow-up: README now routes public questions to GitHub Issues,
 and the judge handoff template reserves a placeholder for private developer contact details.
 No personal email was added to the template, and Devpost has not been updated by this change.
@@ -62,7 +74,8 @@ settlement checks without model calls or changes to saved assets. Common gate: 3
 three skipped, clean Ruff/format/Pyright and lock checks. Hosted rollout is complete;
 see `MODEL_SPENDING_RUNBOOK.md`. The shared judge alias is invited and now CONFIRMED;
 fresh judge-account end-to-end acceptance and private Devpost credential handoff remain.
-A concurrency/ownership-safe Gallery trash action remains pending, not claimed complete.
+A concurrency/ownership-safe Gallery trash action is implemented under D124; hosted acceptance
+is tracked separately above.
 The user reports a successful full Luna riding-crop run after D121.
 
 D123 adds explicit browser-local tutorial opt-out with FAQ re-enable, preserving the tour

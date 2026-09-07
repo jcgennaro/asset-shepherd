@@ -85,13 +85,19 @@ def _set_state(
     if lease_until is not None:
         expression += ", lease_until_epoch = :lease"
         values[":lease"] = {"N": str(lease_until)}
-    _dynamodb.update_item(
-        TableName=_TABLE,
-        Key=_key(command),
-        UpdateExpression=expression,
-        ExpressionAttributeNames=names,
-        ExpressionAttributeValues=values,
-    )
+    try:
+        _dynamodb.update_item(
+            TableName=_TABLE,
+            Key=_key(command),
+            ConditionExpression="attribute_exists(PK)",
+            UpdateExpression=expression,
+            ExpressionAttributeNames=names,
+            ExpressionAttributeValues=values,
+        )
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
+            raise
+        # Trash removed this receipt while the completed invocation was returning.
 
 
 def _claim(command: dict[str, Any]) -> bool:

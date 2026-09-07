@@ -5,6 +5,7 @@ import math
 import re
 import shutil
 from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -237,6 +238,14 @@ class WorkspaceRepository(Protocol):
         """Remove one active record; immutable objects expire by lifecycle policy."""
         raise NotImplementedError
 
+    def exclusive(self, workspace_id: str) -> AbstractContextManager[None]:
+        """Exclude destructive cleanup and active cloud writers."""
+        raise NotImplementedError
+
+    def trash(self, workspace_id: str) -> None:
+        """Permanently erase an owner-bound asset and its conversation artifacts."""
+        raise NotImplementedError
+
 
 def _write_json_atomic(path: Path, value: object) -> None:
     payload = json.dumps(value, indent=2, sort_keys=True)
@@ -349,6 +358,30 @@ class HostedWorkspaceStore:
         """Return the seven most recently active workspaces for the gallery."""
         with self._lock:
             return self._all_records()[:MAX_HOSTED_WORKSPACES]
+
+    def exclusive(self, workspace_id: str) -> AbstractContextManager[None]:
+        """Fence a complete remote invocation, including Strands session writes."""
+        self._record_path(workspace_id)
+        if self.workspace_repository is not None:
+            return self.workspace_repository.exclusive(workspace_id)
+        return nullcontext()
+
+    def trash(self, workspace_id: str) -> None:
+        """Remove one complete asset tree without touching siblings or cost accounting."""
+        root = self._record_path(workspace_id).parent
+        if root.is_symlink() or root.resolve(strict=False).parent != self.work_root:
+            raise HostedWorkspaceError("The asset storage path is invalid.")
+        if not self._lock.acquire(blocking=False):
+            raise HostedWorkspaceError("An asset operation is running. Please try Trash later.")
+        try:
+            if self.workspace_repository is not None:
+                self.workspace_repository.trash(workspace_id)
+            elif not (root / "workspace.json").is_file():
+                raise HostedWorkspaceError("The asset does not exist or is no longer active.")
+            if root.exists():
+                shutil.rmtree(root)
+        finally:
+            self._lock.release()
 
     def source_path(self, workspace_id: str) -> Path | None:
         """Resolve the selected immutable iteration without reconstructing its runtime."""

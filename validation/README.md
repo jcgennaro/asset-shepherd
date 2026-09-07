@@ -39,3 +39,6 @@ raw models and visual evidence remain ignored until public-use rights are confir
 - [Shattered-heart collar](benchmarks/shattered-heart-collar/README.md) — extreme scale correction,
   65 exact disconnected components, Kimi K2.5 versus GPT-5.6 Luna xhigh, and interrupt-safe usage
   telemetry.
+- [Gaming peripherals: headphones only](benchmarks/gaming-peripherals-headphones/README.md) —
+  rights-confirmed downloadable Tripo source and a pending user-led selective-removal test;
+  potential voiceover story if the recorded result supports it.

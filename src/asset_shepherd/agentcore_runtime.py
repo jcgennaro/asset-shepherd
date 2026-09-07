@@ -218,6 +218,23 @@ def execute_runtime_command(
     configured_actor_id: str,
     session_id: str | None = None,
 ) -> dict[str, object]:
+    """Fence the full invocation against trash, including session persistence."""
+    command = validate_runtime_command(payload)
+    if command.actor_id != configured_actor_id:
+        raise RuntimeInvocationError("The runtime actor is not authorized for this workspace.")
+    with store.exclusive(command.workspace_id):
+        return _execute_runtime_command(
+            payload, store=store, configured_actor_id=configured_actor_id, session_id=session_id
+        )
+
+
+def _execute_runtime_command(
+    payload: object,
+    *,
+    store: HostedWorkspaceStore,
+    configured_actor_id: str,
+    session_id: str | None = None,
+) -> dict[str, object]:
     """Validate and execute exactly one workspace-scoped AgentCore command."""
     command = validate_runtime_command(payload)
     if command.actor_id != configured_actor_id:
