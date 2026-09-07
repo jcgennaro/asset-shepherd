@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
 **Last updated:** 2026-09-07
-**Current commit:** D124 Gallery trash deployment evidence (web source `82f7416`, runtime source `2efeb9d`)
+**Current commit:** D125 compact Gallery/Luna-default deployment evidence (web source `0b26eb4`, runtime source `2efeb9d`)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -42,7 +42,14 @@ uses a small trashcan in the existing action row with native OK/Cancel confirmat
 retention information stays in FAQ. Isolated headless-browser layout was visually checked.
 The enabled OpenAI API Luna adapter is preselected for new uploads, with no secret retrieval
 needed to display the choice. Saved workspace selections and result-acceptance behavior remain
-unchanged. Hosted web rollout is pending. The headphones runbook now records the user's
+unchanged. Hosted web rollout is complete as task definition 24, source `0b26eb4`:
+ECS SUCCESSFUL, 100% traffic, zero old tasks; CloudFormation UPDATE_COMPLETE; all eight alarms OK.
+CodeBuild `asset-shepherd-contest-web:ce3b1e8c-d728-42ed-805f-c87f2906ace9` passed Linux upload
+smoke checks; live image digest is `sha256:319ba799d48f24af0051346213e72c29d62e813f17c6f46e6fb92685206bfd5b`.
+Live health 200, anonymous Gallery redirect 303, session and Trash POST 401, and new confirmation
+JavaScript availability pass. A no-network JavaScript check verifies Cancel stops submission and
+busy listeners, OK permits submission, and unrelated forms are unchanged. No model call or saved
+asset deletion was performed. The headphones runbook now records the user's
 positive visual assessment separately from the screenshot's rejected-candidate label.
 
 D124 Gallery trash is implemented locally with exact owner-bound, version-aware S3 cleanup,

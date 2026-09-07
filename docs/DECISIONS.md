@@ -8,7 +8,7 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 **Date:** 2026-09-07
 
-**Status:** Requested; implementation under local verification
+**Status:** Requested; local verification passed; web revision 24 deployed
 
 Replace the Gallery deletion disclosure with an accessible trashcan and native OK/Cancel
 confirmation using the user's concise permanence warning. Keep existing confirmed POST,
@@ -19,6 +19,10 @@ Existing per-workspace model selections remain intact. No saved asset deletion i
 The user reports visual success selecting headphones from almost 100 parts; the benchmark
 records this as human assessment, distinct from the screenshot's rejected-candidate status.
 Result acceptance semantics are unchanged pending a separate UX decision.
+The common gate passes (374 tests, three skips); native confirmation handler checks and isolated
+Gallery visual review pass. Web source `0b26eb4` completed rollout with zero old tasks and all
+operational alarms OK. Runtime and infrastructure permissions are unchanged; PROJECT_STATUS.md
+records build and live health/authentication evidence.
 
 ### D124 — Explicit permanent Gallery trash, fenced against active writers
 

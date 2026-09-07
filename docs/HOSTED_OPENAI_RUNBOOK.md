@@ -6,6 +6,10 @@ workflow execution, and both call OpenAI over HTTPS when that workspace selects 
 Kimi workspaces keep Bedrock Converse. No existing workspace is migrated and no silent fallback is
 introduced. Meta and Google are not enabled by this change.
 
+D125 (2026-09-07) makes the enabled Luna xhigh option the default and recommended selection
+for new uploads. Both the allowlist and deployment-owned secret reference remain required;
+model choice display does not fetch the secret. Existing workspaces retain their chosen model.
+
 ## Access evidence
 
 On 2026-09-05, the renewed administrator login reached Bedrock Runtime Responses at `us-east-1`

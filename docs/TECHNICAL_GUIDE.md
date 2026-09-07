@@ -14,16 +14,16 @@ verification agent for game developers.
 
 ## Current deployment
 
-As recorded on September 6, 2026, the hosted app runs on Amazon ECS Express Mode behind an
+As recorded on September 7, 2026, the hosted app runs on Amazon ECS Express Mode behind an
 Application Load Balancer, with invite-only Amazon Cognito sign-in. Workflow commands pass through
 SQS and a Lambda dispatcher to the Strands agent in Amazon Bedrock AgentCore Runtime. S3 stores
 artifacts and sessions; DynamoDB stores workspace state and spending reservations. CloudWatch and
 SNS provide operational alerts. Local development uses the same application source with local
 workspace storage.
 
-Kimi K2.5 through **Amazon Bedrock Converse** is the default. **Luna xhigh through the OpenAI API**
-is also available as an explicit hosted selection, using a backend-only AWS Secrets Manager key
-and separate OpenAI billing. This is not Luna through Bedrock: that account-access path remains
+**Luna xhigh through the OpenAI API** is the new-upload default when enabled, using a backend-only
+AWS Secrets Manager key and separate OpenAI billing. Kimi K2.5 through **Amazon Bedrock Converse**
+remains selectable. This is not Luna through Bedrock: that account-access path remains
 blocked. There is no silent provider fallback. Meta remains an opt-in local comparator, not a
 deployed hosted option; Google is not a hosted option.
 
