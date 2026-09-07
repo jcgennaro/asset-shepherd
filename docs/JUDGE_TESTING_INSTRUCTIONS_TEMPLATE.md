@@ -22,6 +22,9 @@ The demo uses a shared Gallery. Use non-confidential demonstration assets; other
 users can see its assets and history. No personal provider API key or payment is required.
 If a model is busy or analysis is temporarily paused, your saved work remains available.
 
+For sign-in help, testing questions, or direct feedback, contact the developer:
+**[developer contact email — fill in only in Devpost's private testing instructions]**.
+
 ## Owner checklist before sharing
 
 - Open the app in a private browser window and use the emailed temporary judge password.
@@ -33,6 +36,8 @@ If a model is busy or analysis is temporarily paused, your saved work remains av
 - Ensure the shared Gallery has practical room for judging and contains no confidential assets.
 - Insert credentials only in the private testing field, then recheck the public submission
   for accidental credential disclosure. This template is not a submitted Devpost entry.
+- Fill in the developer contact email only in that private field; keep the public repository
+  contact route as GitHub Issues.
 - Keep the account and service available through October 8, 2026; monitor the existing
   operations notifications. The $10/day model safety ceiling is an emergency control,
   not a normal shared judge quota. See `MODEL_SPENDING_RUNBOOK.md`.

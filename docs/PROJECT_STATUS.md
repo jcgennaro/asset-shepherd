@@ -36,6 +36,11 @@
 
 ## Current gate
 
+September 7 contact privacy follow-up: README now routes public questions to GitHub Issues,
+and the judge handoff template reserves a placeholder for private developer contact details.
+No personal email was added to the template, and Devpost has not been updated by this change.
+This removes the README address from the current tree, not existing Git history.
+
 September 7 judge-facing documentation: the root README now leads with hosted testing access,
 private Devpost credential instructions, purpose, capabilities, a first-run walkthrough, sample
 GLBs, shared-gallery privacy, and developer contact. The previous developer README is preserved

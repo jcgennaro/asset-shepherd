@@ -92,8 +92,8 @@ alternative. Model access is provided by the demo, not by the judge.
 I'm the developer behind Asset Shepherd, and I'd be glad to answer questions, help with testing,
 or discuss the design and its limitations.
 
-**Contact:** [jcgennaro@gmail.com](mailto:jcgennaro@gmail.com) ·
-[GitHub: jcgennaro](https://github.com/jcgennaro)
+**Questions or feedback?** [Open a GitHub issue](https://github.com/jcgennaro/asset-shepherd/issues).
+Judges can also use the private contact details supplied with their testing instructions.
 
 For a deeper look:
 
