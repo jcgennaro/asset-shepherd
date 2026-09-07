@@ -2,8 +2,10 @@
 
 ## Scope
 
-Gallery offers **Trash… → Delete permanently** on saved assets and upload drafts. The native
-disclosure names the asset and explains permanence and the shared-Gallery effect before POST.
+Gallery offers a compact trashcan on saved assets and upload drafts. Its accessible label names
+the asset. A native OK/Cancel confirmation asks: "Deletion is permanent and removes the workspace
+and any stored files. Are you sure?" Cancel prevents both POST and the busy state. Detailed
+shared-Gallery, accounting, and retention information remains in FAQ rather than on every card.
 Existing login and same-origin enforcement protect the route. This is not a soft-delete bin.
 
 Local deletion removes only the validated workspace directory, including original/candidate GLBs,

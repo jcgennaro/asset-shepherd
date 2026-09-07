@@ -20,7 +20,7 @@
               {% for model in agent_model_choices %}
                 <label class="agent-model-option">
                   <input type="radio" name="agent_model" value="{{ model.model_id }}" data-agent-model-name="{{ model.display_name }}"{% if model.model_id == selected_agent_model.model_id %} checked{% endif %}>
-                  <span><strong>{{ model.display_name }}{% if model.recommended %} · Recommended{% endif %}</strong><small>{{ model.hint }}</small></span>
+                  <span><strong>{{ model.display_name }}{% if model.model_id == default_agent_model.model_id %} · Recommended{% endif %}</strong><small>{{ model.hint }}</small></span>
                 </label>
               {% endfor %}
             </div>

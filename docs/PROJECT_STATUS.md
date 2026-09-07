@@ -36,6 +36,15 @@
 
 ## Current gate
 
+D125 compact Gallery trash and new-upload Luna xhigh default pass local verification:
+374 tests passed, three skipped; Ruff/format/Pyright and lock checks pass. The Gallery now
+uses a small trashcan in the existing action row with native OK/Cancel confirmation; detailed
+retention information stays in FAQ. Isolated headless-browser layout was visually checked.
+The enabled OpenAI API Luna adapter is preselected for new uploads, with no secret retrieval
+needed to display the choice. Saved workspace selections and result-acceptance behavior remain
+unchanged. Hosted web rollout is pending. The headphones runbook now records the user's
+positive visual assessment separately from the screenshot's rejected-candidate label.
+
 D124 Gallery trash is implemented locally with exact owner-bound, version-aware S3 cleanup,
 command/session removal, local draft/redo cleanup, confirmation, and runtime/writer exclusion.
 The complete common gate passes: 374 tests, three skips, clean Ruff/format/Pyright and lock

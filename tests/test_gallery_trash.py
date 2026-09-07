@@ -91,7 +91,10 @@ def test_gallery_trash_requires_confirmation_and_removes_local_asset(tmp_path: P
     client = TestClient(app)
     workspace_id = asset.record.workspace_id
     url = f"/workspace/{workspace_id}/trash"
-    assert "Delete permanently" in client.get("/workspace").text
+    gallery = client.get("/workspace").text
+    assert "data-trash-form" in gallery
+    assert 'class="asset-trash"' in gallery
+    assert "Usage accounting is retained" not in gallery
     assert client.get(url).status_code == 405
     assert client.post(url, data={"confirmation": "no"}).status_code == 400
     assert asset.source_path.exists()

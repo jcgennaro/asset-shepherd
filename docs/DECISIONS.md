@@ -4,6 +4,22 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D125 — Compact trash confirmation and Luna default for new hosted uploads
+
+**Date:** 2026-09-07
+
+**Status:** Requested; implementation under local verification
+
+Replace the Gallery deletion disclosure with an accessible trashcan and native OK/Cancel
+confirmation using the user's concise permanence warning. Keep existing confirmed POST,
+authentication, storage scope, and concurrency protections. Retention details remain in FAQ.
+Prefer secret-backed, allowlisted OpenAI Luna xhigh for new hosted uploads when available;
+do not route to the previously inaccessible Bedrock Luna profile or silently enable a provider.
+Existing per-workspace model selections remain intact. No saved asset deletion is needed.
+The user reports visual success selecting headphones from almost 100 parts; the benchmark
+records this as human assessment, distinct from the screenshot's rejected-candidate status.
+Result acceptance semantics are unchanged pending a separate UX decision.
+
 ### D124 — Explicit permanent Gallery trash, fenced against active writers
 
 **Date:** 2026-09-07

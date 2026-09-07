@@ -4,6 +4,14 @@ if (!window.location.hash) {
 
 let sessionRedirecting = false;
 
+document.addEventListener("submit", (event) => {
+  if (!event.target.matches("[data-trash-form]")) return;
+  if (!window.confirm("Deletion is permanent and removes the workspace and any stored files. Are you sure?")) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}, true);
+
 function redirectIfSignedOut(response) {
   if (response.status !== 401) return false;
   if (!sessionRedirecting) {

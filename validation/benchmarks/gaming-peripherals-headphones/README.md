@@ -1,6 +1,14 @@
 # Gaming peripherals: keep only the headphones
 
-**Status: pending user test.** Possible voiceover/demo story, not a validated success claim.
+**Status: user-reported visual success with Luna xhigh (2026-09-07).** Saved run artifacts
+and independent verification outcome have not yet been collected.
+
+The user reports that the source contained almost 100 parts and that Luna xhigh successfully
+selected the nontrivial set belonging to the headphones. The supplied screenshot shows the
+headphones separated from the peripherals, but also labels the candidate rejected/not ready.
+Record that distinction: a positive human visual assessment is not proof that automated
+verification passed. Exact counts, selections, workspace ID, tokens, and final download remain
+to be captured before making a quantified demo claim.
 
 ## Source
 

@@ -3964,18 +3964,22 @@ model-viewer {
 }
 
 .asset-trash {
-  padding: 12px 16px;
-  border-top: 1px solid var(--line);
-}
-
-.asset-trash summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 8px;
+  border: 0;
+  background: transparent;
   cursor: pointer;
   color: var(--muted);
 }
 
-.asset-trash p {
-  font-size: 0.875rem;
-  overflow-wrap: anywhere;
+.asset-trash:hover,
+.asset-trash:focus-visible {
+  color: var(--text);
+  background: var(--line);
 }
 
 .asset-gallery-actions form {

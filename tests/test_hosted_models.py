@@ -120,7 +120,7 @@ def test_gallery_lists_explicit_providers_without_loading_or_exposing_credential
     settings.pop("ASSET_SHEPHERD_WORKSPACE_BUCKET")
     for name, value in settings.items():
         monkeypatch.setenv(name, value)
-    monkeypatch.setenv("ASSET_SHEPHERD_MODEL_ID", LUNA)
+    monkeypatch.setenv("ASSET_SHEPHERD_MODEL_ID", KIMI)
 
     def no_secret(*args: object, **kwargs: object) -> str:
         raise AssertionError("Listing model choices must not retrieve provider credentials")
@@ -131,6 +131,8 @@ def test_gallery_lists_explicit_providers_without_loading_or_exposing_credential
     assert response.status_code == 200
     assert "Luna xhigh" in response.text and "OpenAI API" in response.text
     assert "Kimi K2.5" in response.text
+    luna_input = next(line for line in response.text.splitlines() if 'value="gpt-5.6-luna"' in line)
+    assert " checked" in luna_input
     assert ARN not in response.text and KEY not in response.text
 
 

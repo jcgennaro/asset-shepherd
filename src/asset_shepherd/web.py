@@ -3411,6 +3411,13 @@ def create_app(
         if configured_model in agent_model_choices:
             default_agent_model = configured_model
 
+    # Prefer the deployed, secret-backed Luna adapter for new uploads only.
+    # Saved workspaces retain their explicit model selection.
+    default_agent_model = next(
+        (model for model in agent_model_choices if model.model_id == "gpt-5.6-luna"),
+        default_agent_model,
+    )
+
     def model_values(model_id: str) -> Mapping[str, str]:
         """Bind one allowlisted workspace model to deployment-owned provider settings."""
         capability = resolve_hosted_model(model_id)
@@ -3635,6 +3642,7 @@ def create_app(
                 "hosted_step": "upload",
                 "agent_model_choices": agent_model_choices,
                 "selected_agent_model": default_agent_model,
+                "default_agent_model": default_agent_model,
             },
             status_code=status_code,
             headers={"Cache-Control": "no-store"},
