@@ -38,9 +38,13 @@
 
 D124 Gallery trash is implemented locally with exact owner-bound, version-aware S3 cleanup,
 command/session removal, local draft/redo cleanup, confirmation, and runtime/writer exclusion.
-The complete common gate passes: 373 tests, three skips, clean Ruff/format/Pyright and lock
-validation. Hosted deployment and disposable-fixture cloud acceptance are pending in this entry;
-see `GALLERY_TRASH_RUNBOOK.md`. No user asset or paid model test was used for deletion acceptance.
+The complete common gate passes: 374 tests, three skips, clean Ruff/format/Pyright and lock
+validation. A final queue-admission regression moves SQS delivery outside the mutation lock so
+an immediate consumer can acquire its own token. The first rollout (source `2efeb9d`) completed
+as web revision 22 / runtime 12; the web-only queue fix is awaiting rollout in this entry.
+Disposable AWS fixtures passed version/session/receipt/pointer removal and neighbor preservation;
+both temporary fixtures were then removed and their prefixes/records verified empty. No user
+asset or paid model test was used. See `GALLERY_TRASH_RUNBOOK.md` for scope and limitations.
 
 The user supplied and authorized public redistribution of a 5,074,436-byte Tripo gaming-peripheral
 set. Its untouched, hash-verified GLB, exact prompt, source URL, and pending headphones-only

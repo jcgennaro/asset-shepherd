@@ -94,6 +94,7 @@ class AgentCoreCommandDispatcher:
         repository = self.workspace_repository
         if repository is None:
             return self._enqueue(payload)
+        messages: list[str] = []
         with repository.exclusive(command.workspace_id):
             response = self.dynamodb.get_item(
                 TableName=self.table,
@@ -106,9 +107,16 @@ class AgentCoreCommandDispatcher:
                 or _string_attribute(item, "deletion_status") == "DELETING"
             ):
                 raise AgentCoreDispatchError("This asset has been trashed or is being deleted.")
-            return self._enqueue(payload)
+            result = self._enqueue(payload, deferred_messages=messages)
+        # Publish after releasing admission: an immediate consumer can acquire its lock.
+        # If trash wins here, it removes the receipt and the late message is unclaimable.
+        for body in messages:
+            self.sqs.send_message(QueueUrl=self.queue_url, MessageBody=body)
+        return result
 
-    def _enqueue(self, payload: object) -> RuntimeCommand:
+    def _enqueue(
+        self, payload: object, *, deferred_messages: list[str] | None = None
+    ) -> RuntimeCommand:
         """Persist and send one idempotent command envelope."""
         command = validate_runtime_command(payload)
         if command.actor_id != self.actor_id:
@@ -147,7 +155,10 @@ class AgentCoreCommandDispatcher:
                 ) from error
             should_send = _string_attribute(existing, "state") in {"QUEUED", "RETRYING"}
         if should_send:
-            self.sqs.send_message(QueueUrl=self.queue_url, MessageBody=body)
+            if deferred_messages is not None:
+                deferred_messages.append(body)
+            else:
+                self.sqs.send_message(QueueUrl=self.queue_url, MessageBody=body)
         return command
 
     def status(self, workspace_id: str, command_id: str) -> dict[str, object] | None:

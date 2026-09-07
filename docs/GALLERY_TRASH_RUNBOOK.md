@@ -31,6 +31,9 @@ Downloaded user copies are outside this operation's scope. Do not promise forens
 `LOCK#<workspace-id> / MUTATION` is an exclusive DynamoDB token, shared by full AgentCore
 invocations, web queue admission, artifact persistence, and trash. Reentrant calls inside the
 same repository invocation reuse it. The lock is conditionally released by its exact token.
+Queue admission writes the receipt under the lock, then releases it **before** SQS delivery so
+an immediate consumer is not falsely blocked. Trash winning between release and delivery makes
+the late message unclaimable rather than reviving the deleted workspace.
 Queued messages whose receipts were removed cannot claim work. A returning Lambda must not
 recreate a deleted receipt.
 
@@ -50,6 +53,13 @@ commands, then update the web image, dispatcher bundle, and web task IAM policy.
 are `s3:ListBucketVersions` with existing workspace/session prefix restrictions and
 `s3:DeleteObjectVersion` on those artifact prefixes only. No new service or paid model call is
 needed. Existing DynamoDB item permissions cover locks.
+
+Existing AgentCore sessions can retain old code even after DEFAULT points at the new version
+([AWS session-version troubleshooting](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-troubleshooting.html)).
+After proving the queue and workspace receipts idle, retire the known old runtime sessions before
+enabling Trash; this removes process caches, not the durable asset or Strands history. During the
+D124 rollout all six saved Gallery runtime sessions were already absent. Runtime 12 / DEFAULT
+was READY before the web update began.
 
 Validate with a disposable synthetic fixture only: create a workspace and versioned/session
 artifacts, exercise Trash, verify both S3 prefixes and DynamoDB records are empty, and confirm

@@ -153,6 +153,39 @@ def test_deleted_workspace_rejects_queued_admission(tmp_path: Path) -> None:
     assert not dynamo.items
 
 
+def test_queue_delivery_occurs_after_releasing_admission_lock(tmp_path: Path) -> None:
+    """Even an immediate worker can acquire the workspace mutation token."""
+    s3, dynamo, sqs = _FakeS3(), _FakeDynamo(), FakeSqs()
+    repository = _repository(s3, dynamo)
+    store = HostedWorkspaceStore(tmp_path, _family(), workspace_repository=repository)
+    asset = store.create(DESCRIPTION, "robot.glb", BytesIO(CLEAN_PATH.read_bytes()))
+    dispatcher = AgentCoreCommandDispatcher(
+        queue_url="https://sqs.example.test/commands",
+        table="workspace-state",
+        actor_id="contest-demo",
+        region="us-east-1",
+        sqs_client=sqs,
+        dynamodb_client=dynamo,
+        workspace_repository=repository,
+    )
+    worker = _repository(s3, dynamo)
+
+    def immediate_delivery(**kwargs: object) -> dict[str, object]:
+        with worker.exclusive(asset.record.workspace_id):
+            return {"MessageId": "immediate"}
+
+    with patch.object(sqs, "send_message", immediate_delivery):
+        dispatcher.enqueue(
+            {
+                "schema_version": 1,
+                "operation": "retry",
+                "actor_id": "contest-demo",
+                "workspace_id": asset.record.workspace_id,
+                "command_id": "d" * 32,
+            }
+        )
+
+
 def test_trash_removes_all_versions_and_delete_markers(tmp_path: Path) -> None:
     """Version IDs, including delete markers, are passed to S3 deletion explicitly."""
     s3, dynamo = _FakeS3(), _FakeDynamo()

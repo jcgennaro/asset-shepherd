@@ -94,6 +94,7 @@ The clone includes ordinary Git blobs, with no Git LFS step:
 |---|---|---:|
 | Patchling | `validation/corpus/patchling_01/raw/asset.glb` | 4.9 MB |
 | Shader Lantern | `validation/corpus/shader_lantern_01/raw/asset.glb` | 12.8 MB |
+| Gaming peripherals (headphones-only test pending) | `validation/benchmarks/gaming-peripherals-headphones/raw/asset.glb` | 5.1 MB |
 | Clean and broken robots | `fixtures/clean_robot.glb`, `fixtures/broken_robot.glb` | 24 KB each |
 
 The shattered-heart collar's [runbook](../validation/benchmarks/shattered-heart-collar/README.md)
