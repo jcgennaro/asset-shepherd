@@ -185,6 +185,11 @@ def test_safe_component_mismatch_reports_an_unselected_supported_path(tmp_path: 
         "No labeled components were selected in this pass — refine the current iteration to "
         "review a removal proposal."
     )
+    topology = next(check for check in _inspection_checks(job) if check.label == "Topology")
+    assert len(topology.component_proposals) == 3
+    for component in topology.component_proposals:
+        assert component.detail.endswith("triangles · 33.3%")
+        assert "of this primitive" not in component.detail
     assert _completion_sentence(cast(HostedWorkspace, None), job) == (
         "I stopped this pass before choosing which labeled forms to keep. Refine the current "
         "iteration to review a component-removal proposal."

@@ -2359,7 +2359,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
             label=f"C{component.ordinal + 1}",
             detail=(
                 f"{component.triangle_count:,} triangles · "
-                f"{component.triangle_fraction:.1%} of this primitive"
+                f"{component.triangle_fraction:.1%}"
             ),
             proposed_removal=component.component_id in proposed_component_ids,
         )

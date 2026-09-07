@@ -36,6 +36,13 @@
 
 ## Current gate
 
+September 7 component-row copy follow-up: remove the repeated "of this primitive" suffix,
+retaining the measured triangle count and percentage unchanged. Regression coverage checks the
+concise detail string. This copy-only change is pending the next hosted web deployment.
+The user also reports a successful separate gamer-headphones test without the multi-part
+selection challenge; its source/workspace and artifacts have not been supplied, so it is not
+merged into the gaming-peripherals benchmark or counted as independently verified evidence.
+
 D125 compact Gallery trash and new-upload Luna xhigh default pass local verification:
 374 tests passed, three skipped; Ruff/format/Pyright and lock checks pass. The Gallery now
 uses a small trashcan in the existing action row with native OK/Cancel confirmation; detailed
