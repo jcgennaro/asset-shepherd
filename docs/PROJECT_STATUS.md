@@ -36,6 +36,16 @@
 
 ## Current gate
 
+September 7 video production draft: `VIDEO_SCRIPT.md` provides an 18-beat, 4:45 pitch with exact
+narration, footage/still/overlay inventory, five current-architecture reveal frames, evidence
+conditions, and export checklist. `VIDEO_VOICEOVER.md` is the clean recording copy. Founder
+engineering/product-development background and non-art-specialist motivation are owner-confirmed.
+Current official rules were checked: the video must include a working demo and problem/audience/
+importance pitch, be at most five minutes, and be public on YouTube/Vimeo. The script does not
+claim a produced video, complete contest compliance, a quantified Luna success rate, or a measured
+addressable customer market. The exact headphones final run evidence and refreshed architecture
+graphics remain production dependencies. README now matches the deployed Luna default.
+
 September 7 component-row copy follow-up: remove the repeated "of this primitive" suffix,
 retaining the measured triangle count and percentage unchanged. Regression coverage checks the
 concise detail string. This copy-only change is pending the next hosted web deployment.

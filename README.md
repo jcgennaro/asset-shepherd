@@ -84,8 +84,8 @@ the result.
 
 The hosted site runs on **Amazon ECS**, with the agent in **Amazon Bedrock AgentCore Runtime**.
 S3 and DynamoDB preserve artifacts and workflow state; Cognito controls sign-in. The default
-model is **Kimi K2.5 through Amazon Bedrock**; **Luna xhigh through the OpenAI API** is an explicit
-alternative. Model access is provided by the demo, not by the judge.
+model for new uploads is **Luna xhigh through the OpenAI API**; **Kimi K2.5 through Amazon Bedrock**
+remains selectable. Model access is provided by the demo, not by the judge.
 
 ## Learn more or get in touch
 
