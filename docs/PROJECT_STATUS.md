@@ -36,6 +36,14 @@
 
 ## Current gate
 
+September 9 diagnostics download affordance: replaced the overlooked plain Diagnostics link in
+the candidate download step with a secondary "Download diagnostics ↓" button. The verified
+result's evidence-package link uses the same button and label. Both retain the existing ZIP
+endpoint, with an explicit download attribute. Local template update only; not deployed to AWS.
+Verified the saved local page serves the button; successful and rejected-candidate route tests
+assert its styling, text, and arrow. Quality gate: 379 tests passed, four live/injection-boundary
+tests excluded; Ruff check/format, Pyright, lockfile, and diff checks passed.
+
 September 9 focused-axis fix (D129; local only): metric rulers start at the focused model's
 origin marker, including the candidate's comparison display offset, instead of a bounds corner.
 Both retains the last focused model (initially Before); source-only uses the sole origin.

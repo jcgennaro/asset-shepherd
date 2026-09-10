@@ -547,7 +547,11 @@ def test_conversation_route_preflights_then_survives_restart_through_download(
     assert 'id="notebook-download"' in completed.text
     assert "Download fixed model" in completed.text
     assert re.search(r'download="[a-z0-9-]+_shepherded_\d{6}\.glb"', completed.text)
-    assert "Evidence package" in completed.text
+    assert re.search(
+        r'class="secondary-button"[^>]+download>Download diagnostics '
+        r'<span aria-hidden="true">↓</span>',
+        completed.text,
+    )
     assert f"{workspace_path}/redo" in completed.text
     assert completed.text.count("<summary>Rewind…</summary>") == 2
     assert "data-model-comparison" in completed.text
@@ -1020,6 +1024,12 @@ def test_rejected_candidate_remains_downloadable_before_human_acceptance(
     assert "!→✓" not in result.text
     assert "Use this version" in result.text
     assert "Download candidate" in result.text
+    assert re.search(
+        r'class="secondary-button"[^>]+download>Download diagnostics '
+        r'<span aria-hidden="true">↓</span>',
+        result.text,
+    )
+    assert ">Diagnostics</a>" not in result.text
     assert "data-result-accepted hidden" in result.text
     candidate = client.get(f"{workspace_path}/candidate-preview.glb")
     assert candidate.status_code == 200

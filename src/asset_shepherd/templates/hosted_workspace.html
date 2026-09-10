@@ -302,10 +302,10 @@
             <div class="result-download-actions">
               {% if workspace.ready_candidate %}
                 <a class="primary-button" href="{{ url_for('hosted_repaired_asset', workspace_id=record.workspace_id) }}" download="{{ shepherded_download_filename }}">Download fixed model <span aria-hidden="true">↓</span></a>
-                <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Evidence package</a>
+                <a class="secondary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}" download>Download diagnostics <span aria-hidden="true">↓</span></a>
               {% elif comparison_scene %}
                 <a class="primary-button" href="{{ url_for('hosted_rejected_candidate_asset', workspace_id=record.workspace_id) }}" download>Download candidate <span aria-hidden="true">↓</span></a>
-                <a class="text-link" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Diagnostics</a>
+                <a class="secondary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}" download>Download diagnostics <span aria-hidden="true">↓</span></a>
               {% else %}
                 <a class="primary-button" href="{{ url_for('download_hosted_result', workspace_id=record.workspace_id) }}">Download diagnostics <span aria-hidden="true">↓</span></a>
               {% endif %}
