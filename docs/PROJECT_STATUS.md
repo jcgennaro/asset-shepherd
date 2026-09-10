@@ -36,6 +36,19 @@
 
 ## Current gate
 
+September 9 viewport selection follow-up (D128; served locally, not AWS): visible Keep/Remove
+words are removed from component rows, with accessible toggle state retained. Deselected component
+boxes and labels stay gray; hover/focus temporarily isolates one colored box and grays the other
+components and reference HUD labels, then restores selection colors. Fixed D127's desktop binding
+failure by using the shared notebook ancestor instead of the conversation-pane ancestor; added
+selection events and abortable bindings for replaced scenes. Browser tests now reproduce sibling
+conversation/sidebar layout and viewport replacement. HTTP read of local workspace
+`159a89991a784b09b78698bb423f38a5` confirms the updated template and 55 component rows. No model
+rerun, workspace reset, server restart, or cloud deployment.
+Quality gate: 378 tests passed, four excluded (live/injection-boundary); Ruff check/format,
+Pyright, and lockfile checks passed. Narrow/wide browser screenshots were generated and the
+narrow layout checked. Local gallery data and unrelated `demo-output/` are preserved.
+
 September 9 component-selection UI (D127; local only): component dropdowns are replaced with
 colored Keep/grayscale Remove row toggles and a mixed-state Select all control. Hover/focus grays
 out all other component boxes without changing selection. Empty selections disable submission

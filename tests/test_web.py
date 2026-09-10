@@ -1246,13 +1246,11 @@ def test_comparison_viewer_assets_and_controls_are_local_and_metric(tmp_path: Pa
     assert "[5, 7], [6, 7]" in script.text
     assert "const componentColorCount = 6" in script.text
     assert "`comparison-component-box component-color-${colorIndex}`" in script.text
-    assert "bindComponentHighlights(workingScope, componentLayer)" in script.text
+    assert "bindComponentHighlights(comparison, componentLayer)" in script.text
     assert 'box.classList.toggle("active"' in script.text
     assert 'box.classList.toggle("muted"' in script.text
-    assert (
-        'control.classList.toggle("active", control.dataset.componentFocus === id)' in script.text
-    )
-    assert "if (activeId === control.dataset.componentFocus) highlight(null)" in script.text
+    assert 'control.classList.toggle("active", control === activeControl)' in script.text
+    assert 'comparison.closest("[data-scene-notebook]")' in script.text
     assert "targetWidth" not in script.text
     assert "function initializeSceneNotebook(notebook)" in script.text
     assert 'notebook.querySelector("[data-notebook-shared-scene]")' in script.text

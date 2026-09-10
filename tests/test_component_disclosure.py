@@ -2,6 +2,7 @@
 
 # pyright: reportPrivateUsage=false
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -51,6 +52,7 @@ def test_component_disclosure_threshold_and_complete_inventory(count: int, edita
     assert html.count('data-component-proposal="') == count
     assert html.count(' form="decision"') == (count if editable else 0)
     assert '<select name="response_component_' not in html
+    assert "data-component-disposition" not in html
     assert html.count("data-component-toggle") == (count if editable else 0)
     for i in range(count):
         assert f'data-component-focus="body-{i}"' in html
@@ -82,14 +84,18 @@ def test_component_disclosure_preserves_hidden_form_values(tmp_path: Path, width
         '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
         + f'<link rel="stylesheet" href="{(ROOT / "src/asset_shepherd/static/app.css").as_uri()}">'
         + f"<style>body {{ width: {width}px; max-width: 100%; }}</style>"
-        + '<form id="decision" data-plan-response-form><button data-plan-response-submit>'
+        + '<div data-scene-notebook><main class="conversation-pane">'
+        '<form id="decision" data-plan-response-form><button data-plan-response-submit>'
         "Apply recommendations <span>→</span></button></form>"
         + render_components(65)
-        + '<svg id="boxes"><g class="comparison-component-box component-color-0" '
+        + '</main><aside id="comparison"><svg class="comparison-hud" data-comparison-hud>'
+        '<g id="boxes">'
+        '<g class="comparison-component-box component-color-4" '
         'data-component-id="body-0"></g><g class="comparison-component-box component-color-1" '
-        'data-component-id="body-1"></g></svg>'
+        'data-component-id="body-1"></g></g><g data-comparison-target="before"></g>'
+        "</svg></aside></div>"
         + f'<script src="{(ROOT / "src/asset_shepherd/static/app.js").as_uri()}"></script>'
-        + """<script>
+        + r"""<script>
         function require(value, message) { if (!value) throw Error(message); }
         try {
           const pane = document.querySelector('details');
@@ -99,14 +105,24 @@ def test_component_disclosure_preserves_hidden_form_values(tmp_path: Path, width
           const all = document.querySelector('[data-component-select-all]');
           const first = pane.querySelector('[data-component-toggle]');
           const firstValue = pane.querySelector('[data-component-response]');
+          const comparison = document.getElementById('comparison');
+          let boxes = document.getElementById('boxes');
+          bindComponentHighlights(comparison, boxes);
+          const ownBox = boxes.children[0], otherBox = boxes.children[1];
+          require(ownBox.classList.contains('removed'), 'initial removal not synced');
+          require(ownBox.classList.contains('component-color-0'), 'palette mismatches row');
+          require(!otherBox.classList.contains('removed'), 'initial kept box gray');
           require(all.indeterminate && !all.checked, 'mixed initial state missing');
           require(first.getAttribute('aria-pressed') === 'false', 'initial Remove not reflected');
           require(firstValue.value === 'accept', 'initial approval changed');
           all.click();
           require(all.checked && !all.indeterminate, 'select all did not keep all');
           require(firstValue.value === 'reject', 'keep did not reject proposed removal');
+          require(!ownBox.classList.contains('removed'), 'select all did not color box');
           all.click();
           require(!all.checked && submit.disabled, 'empty selection must disable continue');
+          require(ownBox.classList.contains('removed') && otherBox.classList.contains('removed'),
+            'deselect all did not gray boxes');
           require(!document.querySelector('[data-component-selection-error]').hidden,
             'empty hint hidden');
           const blocked = new Event('submit', {bubbles: true, cancelable: true});
@@ -119,29 +135,49 @@ def test_component_disclosure_preserves_hidden_form_values(tmp_path: Path, width
           require(!submit.disabled && all.indeterminate, 'one survivor did not re-enable continue');
           require(first.getBoundingClientRect().right <= document.body.clientWidth,
             'component row overflows narrow layout');
-          require(first.classList.contains('keep') && first.textContent.includes('Keep'),
-            'Keep style/label missing');
+          require(first.classList.contains('keep') && first.getAttribute('aria-pressed') === 'true',
+            'Keep style/state missing');
+          require(!/\b(Keep|Remove)\b/.test(first.textContent), 'visible disposition words remain');
           const keptColor = getComputedStyle(first).getPropertyValue('--component-color');
           first.click();
-          require(first.classList.contains('remove') && first.textContent.includes('Remove'),
-            'Remove style/label missing');
+          require(first.classList.contains('remove') &&
+            first.getAttribute('aria-pressed') === 'false',
+            'Remove style/state missing');
           require(getComputedStyle(first).getPropertyValue('--component-color') !== keptColor,
             'Remove not grayscale');
           first.click();
-          const boxes = document.getElementById('boxes');
-          bindComponentHighlights(document, boxes);
-          const ownBox = boxes.children[0], otherBox = boxes.children[1];
           first.dispatchEvent(new Event('pointerenter'));
           require(ownBox.classList.contains('active') && otherBox.classList.contains('muted'),
             'hover not isolated');
           require(getComputedStyle(otherBox).opacity === '0.28', 'other box not dimmed');
+          const target = comparison.querySelector('[data-comparison-target]');
+          require(getComputedStyle(target).opacity === '0.28', 'overall box not dimmed');
           first.dispatchEvent(new Event('pointerleave'));
           require(!otherBox.classList.contains('muted'), 'hover dimming stuck');
+          require(otherBox.classList.contains('removed'), 'hover lost removal state');
+          first.click();
+          first.dispatchEvent(new Event('pointerenter'));
+          require(ownBox.classList.contains('active'), 'removed box cannot be highlighted');
+          first.dispatchEvent(new Event('pointerleave'));
+          require(!ownBox.classList.contains('active') && ownBox.classList.contains('removed'),
+            'removed box not restored after hover');
+          first.click();
           first.focus();
           require(otherBox.classList.contains('muted'), 'keyboard focus not isolated');
           require(first.getAttribute('aria-pressed') === 'true', 'highlight changed selection');
           first.blur();
           require(!otherBox.classList.contains('muted'), 'blur dimming stuck');
+          // A scene replacement or sidebar/inline move must retain bindings and selection.
+          const replacement = boxes.cloneNode(true);
+          boxes.replaceWith(replacement); boxes = replacement;
+          document.querySelector('.conversation-pane').append(comparison);
+          bindComponentHighlights(comparison, boxes);
+          first.dispatchEvent(new Event('pointerenter'));
+          require(boxes.children[1].classList.contains('muted'), 'replacement hover unbound');
+          first.dispatchEvent(new Event('pointerleave'));
+          all.click();
+          require([...boxes.children].every(box => !box.classList.contains('removed')),
+            'replacement selection did not sync');
           const last = pane.querySelector('[name="response_component_body-64"]');
           last.value = 'reject';
           summary.click(); require(!pane.open, 'cannot collapse');
@@ -172,4 +208,7 @@ def test_component_disclosure_preserves_hidden_form_values(tmp_path: Path, width
         check=True,
         timeout=30,
     )
-    assert b'data-component-test="PASS"' in result.stdout, result.stdout[-4000:]
+    marker = re.search(rb'data-component-test="([^"]+)"', result.stdout)
+    assert marker is not None and marker.group(1) == b"PASS", (
+        marker.group(1) if marker else result.stdout[:1500]
+    )

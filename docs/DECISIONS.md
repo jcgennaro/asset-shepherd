@@ -4,6 +4,29 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D128 — Color-only component rows and shared-viewport selection synchronization
+
+**Date:** 2026-09-09
+
+**Status:** Requested; local implementation, not deployed to AWS
+
+Remove D127's visible per-row Keep/Remove words while retaining the accessible Keep toggle name
+and pressed state. Synchronize each component box and label with the row palette and selected
+state: deselected components remain gray. Hover/focus temporarily highlights only that component,
+including a removed component under inspection, then restores the selection colors on exit.
+Other component boxes and reference HUD boxes/labels are gray and dim during isolation.
+
+The owner exposed a D127 binding bug: the shared viewer's desktop aside is not inside the
+conversation pane. Bind via their common scene-notebook container instead of assuming that
+ancestor relationship. Rebinding a replaced scene aborts old listeners; selection changes update
+the active viewport immediately. The initial browser test used a document-wide helper scope and
+missed the real layout; regression coverage now uses sibling conversation/aside containers and
+also covers scene replacement/inline movement, persistent deselection colors, temporary hover
+override, palette matching, reference-box dimming, and preserved accessibility state.
+
+No model run, cloud mutation, repair behavior, or approval semantics change. The local test
+workspace remains intact; a normal page refresh loads these static/template changes.
+
 ### D127 — Direct Keep/Remove component controls with focused bounding boxes
 
 **Date:** 2026-09-09

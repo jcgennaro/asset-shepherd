@@ -30,7 +30,6 @@
                     <span class="component-focus">
                       <strong>{{ component.label }}</strong><span>{{ component.detail }}</span>
                     </span>
-                    <span class="component-disposition" data-component-disposition>{{ 'Remove' if component.proposed_removal else 'Keep' }}</span>
                   </{{ row_tag }}>
                     {% if proposal_response_form_id %}
                       <input type="hidden" name="response_component_{{ component.component_id }}" form="{{ proposal_response_form_id }}" value="accept" data-proposal-disposition data-component-response="{{ component.component_id }}" data-proposed-removal="{{ 'true' if component.proposed_removal else 'false' }}">

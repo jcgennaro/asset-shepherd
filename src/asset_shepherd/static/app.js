@@ -846,29 +846,60 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
   });
 }
 
-function bindComponentHighlights(scope, layer) {
+const componentHighlightBindings = new WeakMap();
+
+function bindComponentHighlights(comparison, layer) {
+  // The shared viewer moves between an aside and inline slots. Neither placement
+  // makes the conversation pane a reliable ancestor of the viewer.
+  const scope = comparison.closest("[data-scene-notebook]") || comparison.closest(".conversation-pane");
+  if (!scope) return;
+  componentHighlightBindings.get(scope)?.abort();
+  const controller = new AbortController();
+  componentHighlightBindings.set(scope, controller);
+  const options = { signal: controller.signal };
   const controls = [...(scope?.querySelectorAll("[data-component-focus]") || [])];
-  let activeId = null;
-  const highlight = (id) => {
-    activeId = id;
-    for (const box of layer.querySelectorAll("[data-component-id]")) {
-      box.classList.toggle("active", box.dataset.componentId === id);
-      box.classList.toggle("muted", Boolean(id) && box.dataset.componentId !== id);
+  const currentControls = new Map();
+  for (const control of controls) {
+    const id = control.dataset.componentFocus;
+    if (!currentControls.has(id) || control.hasAttribute("data-component-toggle")) {
+      currentControls.set(id, control);
+    }
+  }
+  let activeControl = null;
+  const sync = () => {
+    const id = activeControl?.dataset.componentFocus;
+    const boxes = [...layer.querySelectorAll("[data-component-id]")];
+    const isolating = Boolean(id) && boxes.some((box) => box.dataset.componentId === id);
+    layer.closest("[data-comparison-hud]")?.classList.toggle("component-isolating", isolating);
+    for (const box of boxes) {
+      const control = box.dataset.componentId === id ? activeControl : currentControls.get(box.dataset.componentId);
+      const palette = [...(control?.classList || [])].find((name) => /^component-color-\d+$/.test(name));
+      if (palette) {
+        for (const name of [...box.classList]) {
+          if (/^component-color-\d+$/.test(name)) box.classList.remove(name);
+        }
+        box.classList.add(palette);
+      }
+      box.classList.toggle("removed", Boolean(control?.classList.contains("remove")));
+      box.classList.toggle("active", isolating && box.dataset.componentId === id);
+      box.classList.toggle("muted", isolating && box.dataset.componentId !== id);
     }
     for (const control of controls) {
-      control.classList.toggle("active", control.dataset.componentFocus === id);
+      control.classList.toggle("active", control === activeControl);
     }
   };
   for (const control of controls) {
-    const show = () => highlight(control.dataset.componentFocus);
+    const show = () => { activeControl = control; sync(); };
     const hide = () => {
-      if (activeId === control.dataset.componentFocus) highlight(null);
+      if (activeControl === control) { activeControl = null; sync(); }
     };
-    control.addEventListener("pointerenter", show);
-    control.addEventListener("pointerleave", hide);
-    control.addEventListener("focus", show);
-    control.addEventListener("blur", hide);
+    control.addEventListener("pointerenter", show, options);
+    control.addEventListener("pointerleave", hide, options);
+    control.addEventListener("focus", show, options);
+    control.addEventListener("blur", hide, options);
   }
+  scope.addEventListener("component-selection-change", sync, options);
+  sync();
 }
 
 for (const selection of document.querySelectorAll("[data-component-selection]")) {
@@ -889,7 +920,6 @@ for (const selection of document.querySelectorAll("[data-component-selection]"))
       control.classList.toggle("keep", keep);
       control.classList.toggle("remove", !keep);
       control.setAttribute("aria-pressed", String(keep));
-      control.querySelector("[data-component-disposition]").textContent = keep ? "Keep" : "Remove";
       kept += Number(keep);
     }
     selectAll.checked = kept === controls.length;
@@ -897,6 +927,7 @@ for (const selection of document.querySelectorAll("[data-component-selection]"))
     count.textContent = `${kept} of ${controls.length} kept`;
     error.hidden = kept > 0;
     selection.dataset.selectionEmpty = String(kept === 0);
+    selection.dispatchEvent(new CustomEvent("component-selection-change", { bubbles: true }));
   };
   const setKept = (control, keep) => {
     const response = responses.find((item) => item.dataset.componentResponse === control.dataset.componentFocus);
@@ -1765,7 +1796,7 @@ function initializeModelComparison(comparison) {
     }
   });
 
-  bindComponentHighlights(workingScope, componentLayer);
+  bindComponentHighlights(comparison, componentLayer);
 
   viewer.addEventListener("camera-change", scheduleHud);
   viewer.addEventListener("load", () => {

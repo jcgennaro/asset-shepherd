@@ -3224,9 +3224,21 @@ model-viewer {
   fill: var(--component-label-color, #a9efe2);
 }
 
+.comparison-component-box.removed:not(.active),
 .comparison-component-box.muted {
   --component-color: #858b89;
-  --component-label-color: #a0a6a4;
+  --component-label-color: #b9bfbd;
+}
+
+.comparison-component-box.muted {
+  opacity: 0.28;
+}
+
+.comparison-hud.component-isolating > [data-comparison-target],
+.comparison-hud.component-isolating > [data-comparison-origin],
+.comparison-hud.component-isolating > [data-comparison-axis-layer],
+.comparison-hud.component-isolating > [data-comparison-banana-layer] {
+  filter: grayscale(1);
   opacity: 0.28;
 }
 
