@@ -1206,6 +1206,18 @@ function createSvgElement(name, className) {
   return element;
 }
 
+function focusedAxisFrame(config, mode, previousTarget = "before") {
+  const requested = mode === "both" ? previousTarget : mode;
+  const target = config[requested] ? requested : "before";
+  return { target, bounds: config[target], origin: config.origins?.[target] || [0, 0, 0] };
+}
+
+function metricAxisPosition(origin, axisIndex, value) {
+  const position = [...origin];
+  position[axisIndex] += value;
+  return position;
+}
+
 function initializeModelComparison(comparison) {
   const viewer = comparison.querySelector("[data-comparison-viewer]");
   const hud = comparison.querySelector("[data-comparison-hud]");
@@ -1228,6 +1240,7 @@ function initializeModelComparison(comparison) {
   const sourceOnly = comparison.classList.contains("source-only");
   const workingScope = comparison.closest(".conversation-pane");
   let activeFitMode = "both";
+  let axisFocusTarget = "before";
   let axesVisible = false;
   let bananaVisible = false;
   let renderFrame = 0;
@@ -1585,7 +1598,10 @@ function initializeModelComparison(comparison) {
     return multiplier * magnitude;
   }
 
-  function updateAxes(bounds) {
+  function updateAxes() {
+    const frame = focusedAxisFrame(config, activeFitMode, axisFocusTarget);
+    axisFocusTarget = frame.target;
+    const bounds = frame.bounds;
     const spans = bounds.maximum.map((maximum, index) => maximum - bounds.minimum[index]);
     for (const [axisIndex, axis] of ["x", "y", "z"].entries()) {
       const graphics = axisGraphics.get(axis);
@@ -1595,9 +1611,8 @@ function initializeModelComparison(comparison) {
       const span = spans[axisIndex] > 1e-9 ? spans[axisIndex] : bounds.longest * 0.1;
       const step = niceMeterStep(span);
       graphics.anchors.forEach((anchor, index) => {
-        const position = [...bounds.minimum];
         const value = index * step;
-        position[axisIndex] += value;
+        const position = metricAxisPosition(frame.origin, axisIndex, value);
         anchor.dataset.axisLabel =
           index === graphics.anchors.length - 1
             ? `${axis.toUpperCase()} · ${Number(value.toPrecision(3))} m`
@@ -1741,7 +1756,7 @@ function initializeModelComparison(comparison) {
     cancelBananaAnimation();
     activeFitMode = mode;
     const bounds = config[mode];
-    updateAxes(bounds);
+    updateAxes();
     placeBanana(bounds);
     // Fit is always driven by the selected asset bounds. A 20 cm banana must not make a 1 cm
     // candidate occupy only a few pixels; it is a reference, never a camera target.
@@ -1791,7 +1806,7 @@ function initializeModelComparison(comparison) {
     } else {
       bananaLayer.setAttribute("hidden", "");
       animateBananaOut();
-      updateAxes(config[activeFitMode]);
+      updateAxes();
       frameBounds(config[activeFitMode]);
     }
   });

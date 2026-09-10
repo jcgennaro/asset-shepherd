@@ -98,6 +98,26 @@ def test_component_disclosure_preserves_hidden_form_values(tmp_path: Path, width
         + r"""<script>
         function require(value, message) { if (!value) throw Error(message); }
         try {
+          const scene = {
+            before: { minimum: [-3, -2, -1] }, after: { minimum: [7, 2, 3] },
+            origins: { before: [0, 0, 0], after: [10, 0, 0] }
+          };
+          require(focusedAxisFrame(scene, 'both').target === 'before', 'initial axis focus');
+          const afterFrame = focusedAxisFrame(scene, 'after');
+          require(afterFrame.origin[0] === 10, 'after axes not at translated origin');
+          require(focusedAxisFrame(scene, 'both', afterFrame.target).target === 'after',
+            'both lost last focused model');
+          require(focusedAxisFrame(scene, 'before', 'after').origin[0] === 0,
+            'before axes not restored');
+          require(focusedAxisFrame({before: scene.before}, 'both').origin[0] === 0,
+            'single model origin');
+          for (let axis = 0; axis < 3; axis++) {
+            require(JSON.stringify(metricAxisPosition(afterFrame.origin, axis, 0)) ===
+              '[10,0,0]', 'axis zero ticks diverge');
+            const position = metricAxisPosition(afterFrame.origin, axis, 2);
+            require(position[axis] === afterFrame.origin[axis] + 2, 'metric tick offset');
+          }
+          require(JSON.stringify(afterFrame.origin) === '[10,0,0]', 'origin mutated');
           const pane = document.querySelector('details');
           const summary = pane.querySelector('summary');
           const form = document.getElementById('decision');

@@ -4,6 +4,19 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D129 — Metric axes follow the focused model origin
+
+**Date:** 2026-09-09
+
+**Status:** Locally implemented; not deployed to AWS
+
+Anchor all three metric rulers to the displayed model origin, not its bounding-box minimum.
+The uploaded model uses world zero; the comparison candidate uses world zero plus its display
+offset, matching the existing origin markers. Before/After focus selects the matching origin
+and ruler spans. Both retains the last focused model, initially Before. A source-only view uses
+the sole model origin. Camera bounds, GLB geometry, pivot repairs, and verification are unchanged.
+Regression tests cover initial Python scene data and browser-side focus, offsets, and zero ticks.
+
 ### D128 — Color-only component rows and shared-viewport selection synchronization
 
 **Date:** 2026-09-09

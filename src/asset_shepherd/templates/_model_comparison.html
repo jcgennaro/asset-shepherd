@@ -1,6 +1,6 @@
 {% set before_label = comparison_before_label|default('Before') %}
 {% set ready_after_label = comparison_after_label|default('After') %}
-{% set after_label = ready_after_label if comparison_candidate_ready else 'Candidate not ready' %}
+{% set after_label = ready_after_label if comparison_candidate_ready else 'Latest candidate' %}
 <figure class="model-comparison{% if comparison_source_only %} source-only{% elif not comparison_candidate_ready %} candidate-rejected{% endif %}" data-model-comparison data-before-label="{{ before_label }}" data-after-label="{{ after_label }}">
   <header class="comparison-header{% if comparison_source_only %} source-only{% endif %}">
     {% if not comparison_source_only %}<h3>{% if comparison_candidate_ready %}{{ before_label }} and {{ ready_after_label }}{% else %}{{ before_label }} and rejected candidate{% endif %}</h3>{% endif %}

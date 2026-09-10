@@ -2828,7 +2828,7 @@ def _metric_axis(
     span_m: float,
     fallback_span_m: float,
 ) -> MetricAxisView:
-    """Create one meter ruler beginning at the comparison bounds corner."""
+    """Create one meter ruler beginning at the displayed model origin."""
     displayed_span = span_m if span_m > 1e-9 else fallback_span_m
     step_m = _nice_meter_step(displayed_span)
     ticks: list[MetricAxisTickView] = []
@@ -2897,13 +2897,13 @@ def _comparison_scene(source_path: Path, candidate_path: Path) -> ComparisonScen
             max(before.maximum_m[2], after.maximum_m[2]),
         ),
     )
-    fallback_axis_span = max(combined.longest_m * 0.1, 1e-6)
+    fallback_axis_span = max(before.longest_m * 0.1, 1e-6)
     axes = tuple(
         _metric_axis(
             axis,
             index,
-            combined.minimum_m,
-            combined.dimensions_m[index],
+            (0.0, 0.0, 0.0),
+            before.dimensions_m[index],
             fallback_axis_span,
         )
         for index, axis in enumerate(("x", "y", "z"))
@@ -2923,6 +2923,7 @@ def _comparison_scene(source_path: Path, candidate_path: Path) -> ComparisonScen
         banana_offset_m[2],
     )
     client_data: dict[str, JsonValue] = {
+        "origins": {"before": [0.0, 0.0, 0.0], "after": list(after_offset_m)},
         "before": cast(
             JsonValue,
             {
@@ -2981,7 +2982,7 @@ def _source_scene(
         _metric_axis(
             axis,
             index,
-            before.minimum_m,
+            (0.0, 0.0, 0.0),
             before.dimensions_m[index],
             fallback_axis_span,
         )
@@ -3057,6 +3058,7 @@ def _source_scene(
                         )
                     )
     client_data: dict[str, JsonValue] = {"before": client_bounds, "both": client_bounds}
+    client_data["origins"] = {"before": [0.0, 0.0, 0.0]}
     if proposed_origin_m is not None:
         client_data["proposedOrigin"] = cast(JsonValue, list(proposed_origin_m))
     if component_boxes:

@@ -38,8 +38,10 @@ from asset_shepherd.models import (
 from asset_shepherd.profile_policy import canonical_profile_sha256
 from asset_shepherd.target_intake import TargetIntakeContract
 from asset_shepherd.web import (
+    _comparison_scene,  # pyright: ignore[reportPrivateUsage]
     _persisted_workflow_error_message,  # pyright: ignore[reportPrivateUsage]
     _shepherded_download_filename,  # pyright: ignore[reportPrivateUsage]
+    _source_scene,  # pyright: ignore[reportPrivateUsage]
     create_app,
     gallery_status,
 )
@@ -78,6 +80,20 @@ _USE_DESCRIPTION = {
     AssetTargetUse.RIG_READY_CHARACTER.value: "a rig-ready character",
     AssetTargetUse.PLAYABLE_CHARACTER.value: "a playable character",
 }
+
+
+def test_metric_axes_start_at_model_origin_not_bounds_corner() -> None:
+    """Single and comparison scenes share the actual displayed origin markers."""
+    source = _source_scene(BROKEN_PATH)
+    comparison = _comparison_scene(BROKEN_PATH, CLEAN_PATH)
+    assert source.before.minimum_m != (0.0, 0.0, 0.0)
+    for scene in (source, comparison):
+        assert all(axis.ticks[0].position_m == (0.0, 0.0, 0.0) for axis in scene.axes)
+    assert source.client_data["origins"] == {"before": [0.0, 0.0, 0.0]}
+    assert comparison.client_data["origins"] == {
+        "before": [0.0, 0.0, 0.0],
+        "after": list(comparison.after_offset_m),
+    }
 
 
 def test_verified_model_download_name_is_dated_and_shepherded() -> None:

@@ -36,6 +36,19 @@
 
 ## Current gate
 
+September 9 focused-axis fix (D129; local only): metric rulers start at the focused model's
+origin marker, including the candidate's comparison display offset, instead of a bounds corner.
+Both retains the last focused model (initially Before); source-only uses the sole origin.
+Python scene and narrow/wide browser regression tests cover origins and focus switching.
+The local server was restarted against the same saved gallery; no model run or AWS deployment.
+Quality gate: 379 tests passed, four excluded (live/injection-boundary); Ruff check/format,
+Pyright, lockfile, and diff checks passed. The saved local page returns HTTP 200 and the
+candidate origin at its display offset (0.8215820908546447, 0, 0).
+
+September 9 viewport copy: replace the failed-candidate overlay label "Candidate not ready" with
+"Latest candidate", as requested. This is a display-only change; verification, warnings, and
+download/acceptance behavior remain unchanged.
+
 September 9 viewport selection follow-up (D128; served locally, not AWS): visible Keep/Remove
 words are removed from component rows, with accessible toggle state retained. Deselected component
 boxes and labels stay gray; hover/focus temporarily isolates one colored box and grays the other
