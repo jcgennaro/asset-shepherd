@@ -846,6 +846,88 @@ for (const form of document.querySelectorAll("[data-busy-form]")) {
   });
 }
 
+function bindComponentHighlights(scope, layer) {
+  const controls = [...(scope?.querySelectorAll("[data-component-focus]") || [])];
+  let activeId = null;
+  const highlight = (id) => {
+    activeId = id;
+    for (const box of layer.querySelectorAll("[data-component-id]")) {
+      box.classList.toggle("active", box.dataset.componentId === id);
+      box.classList.toggle("muted", Boolean(id) && box.dataset.componentId !== id);
+    }
+    for (const control of controls) {
+      control.classList.toggle("active", control.dataset.componentFocus === id);
+    }
+  };
+  for (const control of controls) {
+    const show = () => highlight(control.dataset.componentFocus);
+    const hide = () => {
+      if (activeId === control.dataset.componentFocus) highlight(null);
+    };
+    control.addEventListener("pointerenter", show);
+    control.addEventListener("pointerleave", hide);
+    control.addEventListener("focus", show);
+    control.addEventListener("blur", hide);
+  }
+}
+
+for (const selection of document.querySelectorAll("[data-component-selection]")) {
+  const controls = [...selection.querySelectorAll("[data-component-toggle]")];
+  const responses = [...selection.querySelectorAll("[data-component-response]")];
+  const selectAll = selection.querySelector("[data-component-select-all]");
+  const count = selection.querySelector("[data-component-selection-count]");
+  const error = selection.querySelector("[data-component-selection-error]");
+  const form = document.getElementById(selection.dataset.selectionForm);
+  if (!controls.length || !form) continue;
+  const sync = () => {
+    let kept = 0;
+    for (const control of controls) {
+      const response = responses.find((item) => item.dataset.componentResponse === control.dataset.componentFocus);
+      const keep = response.dataset.proposedRemoval === "true"
+        ? response.value === "reject" : response.value !== "request_remove";
+      response.dataset.componentKept = String(keep);
+      control.classList.toggle("keep", keep);
+      control.classList.toggle("remove", !keep);
+      control.setAttribute("aria-pressed", String(keep));
+      control.querySelector("[data-component-disposition]").textContent = keep ? "Keep" : "Remove";
+      kept += Number(keep);
+    }
+    selectAll.checked = kept === controls.length;
+    selectAll.indeterminate = kept > 0 && kept < controls.length;
+    count.textContent = `${kept} of ${controls.length} kept`;
+    error.hidden = kept > 0;
+    selection.dataset.selectionEmpty = String(kept === 0);
+  };
+  const setKept = (control, keep) => {
+    const response = responses.find((item) => item.dataset.componentResponse === control.dataset.componentFocus);
+    response.value = response.dataset.proposedRemoval === "true"
+      ? (keep ? "reject" : "accept") : (keep ? "accept" : "request_remove");
+  };
+  const notify = () => {
+    sync();
+    for (const response of responses) response.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  for (const control of controls) {
+    control.addEventListener("click", () => {
+      setKept(control, control.getAttribute("aria-pressed") !== "true");
+      notify();
+    });
+  }
+  selectAll.addEventListener("change", () => {
+    for (const control of controls) setKept(control, selectAll.checked);
+    notify();
+  });
+  form.addEventListener("submit", (event) => {
+    if (selection.dataset.selectionEmpty === "true") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      error.hidden = false;
+      selectAll.focus();
+    }
+  }, true);
+  sync();
+}
+
 for (const form of document.querySelectorAll("[data-plan-response-form]")) {
   const submit = form.querySelector("[data-plan-response-submit]");
   const turnComment = form.querySelector("[data-turn-comment]");
@@ -866,7 +948,9 @@ for (const form of document.querySelectorAll("[data-plan-response-form]")) {
     const requestsRevision = hasStructuredRevision || hasComment || commentOpen;
     if (submit instanceof HTMLButtonElement) {
       submit.value = requestsRevision ? "revise" : "approve";
-      submit.disabled = commentOpen && !hasStructuredRevision && !hasComment;
+      const components = dispositions.filter((item) => item.hasAttribute("data-component-response"));
+      const noneKept = components.length > 0 && components.every((item) => item.dataset.componentKept === "false");
+      submit.disabled = noneKept || (commentOpen && !hasStructuredRevision && !hasComment);
       const label = submit.firstChild;
       if (label) {
         label.textContent = commentOpen
@@ -1129,7 +1213,6 @@ function initializeModelComparison(comparison) {
   const axisGraphics = new Map();
   const componentGraphics = [];
   const componentColorCount = 6;
-  let activeComponentId = null;
   const boundingBoxEdges = [
     [0, 1], [0, 2], [0, 4],
     [1, 3], [1, 5], [2, 3],
@@ -1402,7 +1485,6 @@ function initializeModelComparison(comparison) {
         continue;
       }
       graphics.group.removeAttribute("visibility");
-      graphics.group.classList.toggle("active", graphics.id === activeComponentId);
       graphics.box.setAttribute(
         "d",
         boundingBoxEdges
@@ -1683,30 +1765,7 @@ function initializeModelComparison(comparison) {
     }
   });
 
-  const componentControls = [
-    ...(workingScope?.querySelectorAll("[data-component-focus]") || []),
-  ];
-  for (const control of componentControls) {
-    const proposal = control.closest("[data-component-proposal]");
-    const show = () => {
-      activeComponentId = control.dataset.componentFocus;
-      control.setAttribute("aria-pressed", "true");
-      proposal?.classList.add("active");
-      scheduleHud();
-    };
-    const hide = () => {
-      if (activeComponentId === control.dataset.componentFocus) {
-        activeComponentId = null;
-      }
-      control.setAttribute("aria-pressed", "false");
-      proposal?.classList.remove("active");
-      scheduleHud();
-    };
-    control.addEventListener("pointerenter", show);
-    control.addEventListener("pointerleave", hide);
-    control.addEventListener("focus", show);
-    control.addEventListener("blur", hide);
-  }
+  bindComponentHighlights(workingScope, componentLayer);
 
   viewer.addEventListener("camera-change", scheduleHud);
   viewer.addEventListener("load", () => {

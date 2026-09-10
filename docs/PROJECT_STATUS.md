@@ -36,6 +36,16 @@
 
 ## Current gate
 
+September 9 component-selection UI (D127; local only): component dropdowns are replaced with
+colored Keep/grayscale Remove row toggles and a mixed-state Select all control. Hover/focus grays
+out all other component boxes without changing selection. Empty selections disable submission
+with an inline explanation and are also rejected server-side before dispatch. Existing exact
+proposal-response semantics and approval boundaries remain intact. Headless Chromium interaction
+tests pass at 420px and 1200px with the 65-row disclosure; screenshots were checked for narrow
+layout. Diagnostics download styling remains deferred. No AWS deployment or paid model call.
+Quality gate: 378 tests passed; four deselected (three live and one injection-boundary test).
+Ruff check/format, Pyright, and lockfile validation passed. Unrelated `demo-output/` is untouched.
+
 September 9 headphones diagnostics follow-up (D126; locally fixed, not deployed):
 the owner's downloaded candidate matches evidence output SHA-256
 `b28b5c90d7a149caa087b5e281a052340e1e78af143e782157abd795fb2b77a4`.

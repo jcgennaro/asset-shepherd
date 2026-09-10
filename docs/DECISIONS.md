@@ -4,6 +4,31 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D127 — Direct Keep/Remove component controls with focused bounding boxes
+
+**Date:** 2026-09-09
+
+**Status:** Requested; locally implemented, not deployed
+
+Replace component-only disposition dropdowns with keyboard-accessible row toggle buttons.
+Kept rows use the existing component palette and explicit Keep labels; removed rows are
+grayscale and labeled Remove. Select all sits above the optional (>7 rows) disclosure, reflects
+mixed selections, and checks/unchecks every row without dropping collapsed form values.
+Mouse hover and keyboard focus brighten the matching bounding box and gray out the other boxes;
+highlight state must never overwrite the toggle's Keep/Remove accessibility state.
+
+The browser disables submission and explains an empty retained selection. The web endpoint also
+validates component choices against the current server-derived proposal inventory before local
+execution or remote dispatch, rejects unknown/duplicate IDs, and refuses an all-remove selection.
+This does not expand mutation authority: original choices still submit exact proposal acceptance;
+changed choices use the existing typed plan-feedback/reapproval path, and the deterministic repair
+engine still refuses unsupported or total primitive deletion. Other action-lane dropdowns and the
+deferred Diagnostics download styling are unchanged.
+
+Local headless Chromium coverage uses the real JS/CSS at 420px and 1200px with 65 rows, checking
+mixed/all/empty/single-survivor states, form serialization, collapsed persistence, hover/focus,
+grayscale styling, and narrow layout. No hosted mutation or paid model call is involved.
+
 ### D126 — Verify component removal with the selection inventory's connectivity
 
 **Date:** 2026-09-09

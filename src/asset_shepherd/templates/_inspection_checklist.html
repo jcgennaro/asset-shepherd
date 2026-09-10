@@ -14,37 +14,33 @@
           <td class="inspection-action">
             <span>{{ check.action }}</span>
             {% if check.component_proposals %}
+              <div data-component-selection data-selection-form="{{ proposal_response_form_id }}">
+              {% if proposal_response_form_id %}
+                <label class="component-select-all"><input type="checkbox" data-component-select-all> Select all <span data-component-selection-count></span></label>
+                <p class="component-selection-error" data-component-selection-error role="alert" hidden>Keep at least one component to continue.</p>
+              {% endif %}
               {% if check.component_proposals|length > 7 %}
                 <details class="component-disclosure">
                   <summary>{{ check.component_proposals|length }} sub-components <span class="component-show-rows">— Show rows</span><span class="component-hide-rows">— Hide rows</span></summary>
               {% endif %}
               <div class="component-proposals" aria-label="Disconnected component selection">
                 {% for component in check.component_proposals %}
-                  <div class="component-proposal component-color-{{ loop.index0 % 6 }}{% if component.proposed_removal %} remove{% else %} keep{% endif %}" data-component-proposal="{{ component.component_id }}">
-                    <button type="button" class="component-focus" data-component-focus="{{ component.component_id }}" title="Highlight {{ component.label }} in the 3D view — {{ component.detail }}">
+                  {% set row_tag = 'button' if proposal_response_form_id else 'div' %}
+                  <{{ row_tag }} {% if proposal_response_form_id %}type="button" data-component-toggle aria-pressed="{{ 'false' if component.proposed_removal else 'true' }}" aria-label="Keep {{ component.label }}"{% else %}tabindex="0"{% endif %} class="component-proposal component-color-{{ loop.index0 % 6 }}{% if component.proposed_removal %} remove{% else %} keep{% endif %}" data-component-proposal="{{ component.component_id }}" data-component-focus="{{ component.component_id }}" title="Highlight {{ component.label }} in the 3D view — {{ component.detail }}">
+                    <span class="component-focus">
                       <strong>{{ component.label }}</strong><span>{{ component.detail }}</span>
-                    </button>
+                    </span>
+                    <span class="component-disposition" data-component-disposition>{{ 'Remove' if component.proposed_removal else 'Keep' }}</span>
+                  </{{ row_tag }}>
                     {% if proposal_response_form_id %}
-                      <div class="inspection-proposal-response" data-proposal-response>
-                        <select name="response_component_{{ component.component_id }}" form="{{ proposal_response_form_id }}" aria-label="Disposition for {{ component.label }}" data-proposal-disposition>
-                          {% if component.proposed_removal %}
-                            <option value="accept" selected>Remove</option>
-                            <option value="reject">Keep</option>
-                          {% else %}
-                            <option value="accept" selected>Keep</option>
-                            <option value="request_remove">Remove</option>
-                          {% endif %}
-                        </select>
-                      </div>
-                    {% else %}
-                      <span class="component-disposition">Keep</span>
+                      <input type="hidden" name="response_component_{{ component.component_id }}" form="{{ proposal_response_form_id }}" value="accept" data-proposal-disposition data-component-response="{{ component.component_id }}" data-proposed-removal="{{ 'true' if component.proposed_removal else 'false' }}">
                     {% endif %}
-                  </div>
                 {% endfor %}
               </div>
               {% if check.component_proposals|length > 7 %}
                 </details>
               {% endif %}
+              </div>
             {% endif %}
             {% if proposal_response_form_id and check.response_lane %}
               {% set response_name = check.response_lane.value|lower %}

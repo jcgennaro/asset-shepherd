@@ -1768,6 +1768,25 @@ def _supported_component_recovery(core: AgentJob) -> bool:
     )
 
 
+def _validate_component_choices(
+    components: tuple[ComponentProposalView, ...], choices: dict[str, str]
+) -> None:
+    """Reject an empty retained selection before dispatching any model work."""
+    known = {component.component_id for component in components}
+    if set(choices) - known:
+        raise HostedWorkspaceError(
+            "A component selection is no longer available. Reload this page."
+        )
+    if components and not any(
+        choices.get(component.component_id, "accept") != "request_remove"
+        and not (
+            component.proposed_removal and choices.get(component.component_id, "accept") == "accept"
+        )
+        for component in components
+    ):
+        raise HostedWorkspaceError("Keep at least one component to continue.")
+
+
 def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
     """Build one non-repeating table of findings and phase-aware actions."""
     inspection = core.inspection
@@ -5136,6 +5155,24 @@ def create_app(
                 )
             submitted_form = await request.form()
             component_prefix = "response_component_"
+            component_choices: dict[str, str] = {}
+            for field_name, raw_value in submitted_form.multi_items():
+                if field_name.startswith(component_prefix):
+                    component_id = field_name.removeprefix(component_prefix)
+                    if component_id in component_choices:
+                        raise HostedWorkspaceError("A component selection was submitted twice.")
+                    component_choices[component_id] = str(raw_value)
+            if component_choices:
+                if workspace.runtime is None:
+                    raise HostedWorkspaceError(
+                        "The component selection is unavailable. Reload this page."
+                    )
+                components = tuple(
+                    component
+                    for check in _inspection_checks(workspace.runtime.job)
+                    for component in check.component_proposals
+                )
+                _validate_component_choices(components, component_choices)
             for field_name, raw_value in submitted_form.multi_items():
                 if not field_name.startswith(component_prefix):
                     continue
