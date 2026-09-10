@@ -1334,10 +1334,18 @@ def verify_repair(
                 for primitive in component_removal.primitives
             }
             actual_components = {
-                key: output_primitives[
-                    (primitive.mesh_index, primitive.primitive_index)
-                ].virtual_weld_connected_component_count
+                # Selection IDs use exact-position vertex connectivity, not the
+                # edge-connected face islands reported by virtual-weld topology.
+                # Never accept a partial inventory as an exact count.
+                key: len(
+                    output_primitives[
+                        (primitive.mesh_index, primitive.primitive_index)
+                    ].disconnected_components
+                )
                 if (primitive.mesh_index, primitive.primitive_index) in output_primitives
+                and not output_primitives[
+                    (primitive.mesh_index, primitive.primitive_index)
+                ].component_inventory_truncated
                 else -1
                 for key, primitive in (
                     (
@@ -1351,7 +1359,8 @@ def verify_repair(
                 _check(
                     "DISCONNECTED_COMPONENT_REMOVAL_CONFIRMED",
                     expected_components == actual_components,
-                    "Fresh inspection confirms only the approved component selection remains.",
+                    "Fresh exact-position vertex-connected inventory confirms the approved "
+                    "retained component count; exact surviving geometry is checked separately.",
                     expected=cast(JsonValue, expected_components),
                     actual=cast(JsonValue, actual_components),
                 )

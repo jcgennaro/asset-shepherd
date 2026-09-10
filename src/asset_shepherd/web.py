@@ -2357,10 +2357,7 @@ def _inspection_checks(core: AgentJob) -> tuple[InspectionCheckView, ...]:
         ComponentProposalView(
             component_id=component.component_id,
             label=f"C{component.ordinal + 1}",
-            detail=(
-                f"{component.triangle_count:,} triangles · "
-                f"{component.triangle_fraction:.1%}"
-            ),
+            detail=(f"{component.triangle_count:,} triangles · {component.triangle_fraction:.1%}"),
             proposed_removal=component.component_id in proposed_component_ids,
         )
         for primitive in diagnostic_primitives

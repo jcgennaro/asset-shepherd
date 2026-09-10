@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
+import pytest
 from pygltflib import (
     ARRAY_BUFFER,
     ELEMENT_ARRAY_BUFFER,
@@ -227,6 +228,88 @@ def test_exact_components_can_be_approved_removed_and_verified(tmp_path: Path) -
         for check in verification.checks
         if check.status == "FAIL"
     ]
+
+
+@pytest.mark.parametrize("gap, retained_count", [(0.0, 1), (0.0005, 2)])
+def test_removal_verification_uses_exact_vertex_connectivity(
+    tmp_path: Path, gap: float, retained_count: int
+) -> None:
+    """Point-contact bodies share an exact component; nearby bodies never do."""
+    source = tmp_path / "source.glb"
+    candidate = tmp_path / "candidate.glb"
+    _write_components(source, ((0, 0, 0), (1 + gap, 0, 0), (4, 0, 0)))
+    profile = fixture_profile()
+    original = inspect_asset(source, profile)
+    assert original.diagnostics is not None
+    primitive = original.diagnostics.primitives[0]
+    assert primitive.virtual_weld_connected_component_count == 3
+    assert len(primitive.disconnected_components) == retained_count + 1
+    plan = plan_agent_repairs(
+        original,
+        profile,
+        _assessment((primitive.disconnected_components[-1].component_id,)),
+        confirmed_target_height_m=1.0,
+    )
+    decided_at = datetime(2026, 9, 9, tzinfo=UTC)
+    decisions = create_decisions(
+        plan, {"remove-disconnected-components-v1": True}, decided_at=decided_at
+    )
+    outcome = apply_repairs(source, candidate, plan, decisions)
+    provenance = build_provenance(
+        profile, plan, decisions, outcome, started_at=decided_at, completed_at=decided_at
+    )
+    result = verify_repair(
+        source, candidate, profile, original, plan, decisions, outcome, provenance
+    )
+    output = inspect_asset(candidate, profile)
+    assert output.diagnostics is not None
+    assert output.diagnostics.primitives[0].virtual_weld_connected_component_count == 2
+    assert len(output.diagnostics.primitives[0].disconnected_components) == retained_count
+    confirmation = next(
+        check for check in result.checks if check.code == "DISCONNECTED_COMPONENT_REMOVAL_CONFIRMED"
+    )
+    assert confirmation.expected == confirmation.actual == {"0:0": retained_count}
+    assert all(check.status != "FAIL" for check in result.checks), [
+        (check.code, check.expected, check.actual)
+        for check in result.checks
+        if check.status == "FAIL"
+    ]
+
+
+def test_matching_component_count_does_not_accept_the_wrong_survivors(tmp_path: Path) -> None:
+    """Matching counts cannot replace the exact authorized corner-attribute proof."""
+    source = tmp_path / "source.glb"
+    candidate = tmp_path / "candidate.glb"
+    _write_components(source, ((0, 0, 0), (3, 0, 0), (6, 0, 0)))
+    profile = fixture_profile()
+    original = inspect_asset(source, profile)
+    assert original.diagnostics is not None
+    parts = original.diagnostics.primitives[0].disconnected_components
+    plan = plan_agent_repairs(
+        original, profile, _assessment((parts[-1].component_id,)), confirmed_target_height_m=1.0
+    )
+    wrong_plan = plan_agent_repairs(
+        original, profile, _assessment((parts[0].component_id,)), confirmed_target_height_m=1.0
+    )
+    decided_at = datetime(2026, 9, 9, tzinfo=UTC)
+    decisions = create_decisions(
+        plan, {"remove-disconnected-components-v1": True}, decided_at=decided_at
+    )
+    wrong_decisions = create_decisions(
+        wrong_plan, {"remove-disconnected-components-v1": True}, decided_at=decided_at
+    )
+    outcome = apply_repairs(source, candidate, wrong_plan, wrong_decisions)
+    provenance = build_provenance(
+        profile, plan, decisions, outcome, started_at=decided_at, completed_at=decided_at
+    )
+    result = verify_repair(
+        source, candidate, profile, original, plan, decisions, outcome, provenance
+    )
+    checks = {check.code: check for check in result.checks}
+    assert checks["DISCONNECTED_COMPONENT_REMOVAL_CONFIRMED"].status == "PASS"
+    assert checks["TRIANGLE_COUNT_PRESERVED"].status == "PASS"
+    assert checks["MESH_PRIMITIVES_PRESERVED"].status == "FAIL"
+    assert result.state == "FAILED"
 
 
 def test_component_specific_feedback_reopens_planning_without_mutation(tmp_path: Path) -> None:

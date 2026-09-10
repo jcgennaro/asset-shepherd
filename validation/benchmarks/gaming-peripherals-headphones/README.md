@@ -1,14 +1,36 @@
 # Gaming peripherals: keep only the headphones
 
-**Status: user-reported visual success with Luna xhigh (2026-09-07).** Saved run artifacts
-and independent verification outcome have not yet been collected.
+**Status: user-reported visual success with Luna xhigh; downloaded candidate passes corrected
+offline deterministic verification with remaining warnings (2026-09-09, D126).**
 
-The user reports that the source contained almost 100 parts and that Luna xhigh successfully
-selected the nontrivial set belonging to the headphones. The supplied screenshot shows the
-headphones separated from the peripherals, but also labels the candidate rejected/not ready.
-Record that distinction: a positive human visual assessment is not proof that automated
-verification passed. Exact counts, selections, workspace ID, tokens, and final download remain
-to be captured before making a quantified demo claim.
+The initial user estimate was almost 100 parts. The saved evidence establishes **55 exact
+components**, of which 43 were removed and 12 retained. The screenshots show headphones separated
+from the peripherals, but label the candidate rejected/not ready. D126 traced that rejection to
+incompatible component-count definitions in verification, not a failed triangle budget. The
+offline correction does not rewrite the historical hosted result or establish full target readiness.
+
+## Saved run and offline reverification
+
+- Workspace: `5488cf452a504f28ba302bdb0348d290`.
+- Hosted execution: 2026-09-10 02:14:02–02:15:59 UTC (September 9 evening in New York).
+- Approved action: retain only the headphones; remove 43 selected components and rename node/mesh.
+- Triangles: **18,417 → 12,459**, below the normal-gameplay 15,000 soft cap.
+- Output SHA-256: `b28b5c90d7a149caa087b5e281a052340e1e78af143e782157abd795fb2b77a4`.
+- Downloaded GLB: 5,149,560 bytes. Index-only removal retains unused source vertex data, so this
+  operation is not file-size optimization.
+- Original verification: failed only the count comparison (12 planned vertex-connected components
+  versus 25 edge-connected islands). Exact surviving geometry and resources passed.
+- D126 offline verification: all 30 deterministic checks pass, including a consistent 12 → 12
+  component count and independent Trimesh reload. Source/output hashes and frozen profile hash
+  were checked against the downloaded provenance; neither GLB was rewritten.
+- Remaining warnings: disconnected forms, non-manifold/inconsistently wound edges, unused vertices.
+- Candidate dimensions: approximately 48.05 × 50.78 × 29.30 cm; target was 18 × 20 × 9 cm.
+  Scaling was not part of this executed turn. No new model call or visual reassessment was made.
+
+The owner supplied `gaming-headphones-evidence.zip` and `gaming-headphones-candidate.glb` locally.
+The regenerated local report is `build/headphones-reverification.json`; original evidence remains
+unchanged. The evidence ZIP does not establish model ID, token usage, or cost; Luna xhigh remains
+owner-reported. No downstream Unreal acceptance or general success-rate claim follows from this run.
 
 ## Source
 

@@ -338,7 +338,7 @@ def enumerate_connected_components(
 ) -> ConnectedComponentInventory:
     """Enumerate exact components and bounded, non-mutating near-contact hints.
 
-    Exact byte-identical positions are projected before edge connectivity is measured so ordinary
+    Exact byte-identical positions are projected before vertex connectivity is measured so ordinary
     UV and hard-normal seams do not become false bodies. Near-contact probes group component AABBs
     only for agent/human interpretation; their tolerance never changes geometry or authorizes a
     deletion.

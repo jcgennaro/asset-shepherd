@@ -36,6 +36,32 @@
 
 ## Current gate
 
+September 9 headphones diagnostics follow-up (D126; locally fixed, not deployed):
+the owner's downloaded candidate matches evidence output SHA-256
+`b28b5c90d7a149caa087b5e281a052340e1e78af143e782157abd795fb2b77a4`.
+An offline read of that GLB reproduces 12 exact selection components versus 25 virtual-weld
+topology components. The removal verifier previously compared vertex-connected selection inventory
+counts with edge-connected topology counts, causing the sole failed check
+`DISCONNECTED_COMPONENT_REMOVAL_CONFIRMED`. It now uses the fresh complete selection inventory,
+rejects truncated/missing inventories, and retains the exact surviving geometry proof. The
+candidate has 12,459 triangles (source 18,417),
+already below the normal-gameplay 15,000 soft cap; the displayed source-count recommendation
+must not be mistaken for the output count. Component removal and renaming did not normalize
+the candidate to the requested dimensions. Offline reverification of the hash-matched candidate
+and reconstructed hash-matched frozen profile passes all 30 deterministic checks, with remaining
+warnings. Local evidence: `build/headphones-reverification.json`; neither input GLB nor the
+original evidence ZIP was changed. Nine component-removal tests pass, including the reproduced
+point-contact failure, a real-gap control, and a wrong-survivor negative control. No model rerun
+or microphone removal is warranted by this failure. Hosted history has not been rewritten.
+Quality gate: 376 tests passed; four deselected (three opt-in live tests and the injection-boundary
+test, respecting the owner's restriction). Ruff check/format, Pyright, and `uv lock --check`
+passed. The existing component-label line received a formatter-only change; no download UI
+behavior changed. Unrelated `demo-output/` remains untouched.
+
+Deferred UI request from the owner: in the next UI batch, style the Diagnostics/evidence ZIP
+download as an explicit download action with a down arrow, following the Download candidate
+pattern, instead of an ordinary text link. Do not change that UI in this diagnostic pass.
+
 September 7 video production draft: `VIDEO_SCRIPT.md` provides an 18-beat, 4:45 pitch with exact
 narration, footage/still/overlay inventory, five current-architecture reveal frames, evidence
 conditions, and export checklist. `VIDEO_VOICEOVER.md` is the clean recording copy. Founder

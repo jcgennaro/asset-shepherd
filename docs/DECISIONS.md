@@ -4,6 +4,29 @@ Record decisions that materially affect architecture, product behavior, cost, se
 
 ## Decisions
 
+### D126 — Verify component removal with the selection inventory's connectivity
+
+**Date:** 2026-09-09
+
+**Status:** Accepted; local fix and offline candidate reverification (not deployed)
+
+The downloaded gaming-headphones candidate exposed a verifier mismatch: component selection
+uses exact-position vertex connectivity, while the final count check used edge-connected
+virtual-weld topology. The approved 12 retained components contain 25 edge-connected islands.
+Compare the fresh, complete selection inventory count with the approved retained count instead.
+Missing or truncated inventories fail closed. Keep the separate exact surviving corner-attribute
+and metadata proof, approvals, hashes, resource preservation, and independent reload checks.
+Do not merge near-contact components, lower safety thresholds, or change the approved selection.
+
+Regression coverage includes point-contact shapes (one exact component, two edge islands),
+nearby shapes with a real gap (two exact components), and the wrong survivors with matching
+component/triangle counts (still rejected by exact geometry preservation). The point-contact
+test failed before the fix. Offline verification of the owner's unchanged downloaded GLB now
+passes with remaining warnings; its 12,459 triangles are already below the 15,000 soft cap.
+This verifies the executed component-removal/rename turn, not an unexecuted scale correction,
+a new visual assessment, or downstream Unreal acceptance. No paid model call or cloud state
+change is needed for this diagnosis and reverification. Download UI changes remain deferred.
+
 ### D125 — Compact trash confirmation and Luna default for new hosted uploads
 
 **Date:** 2026-09-07
