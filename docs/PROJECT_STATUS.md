@@ -1,7 +1,7 @@
 # Asset Shepherd Project Status
 
-**Last updated:** 2026-09-07
-**Current commit:** D125 compact Gallery/Luna-default deployment evidence (web source `0b26eb4`, runtime source `2efeb9d`)
+**Last updated:** 2026-09-10
+**Current commit:** UI/verifier rollout source `1131bee` (runtime 13; web task revision 25)
 **Current milestone:** M9 agent-led sensing and disposition / RW2 Minimum Asset Flock / M10 evaluation
 **Overall state:** IN_PROGRESS
 
@@ -35,6 +35,29 @@
 | RW5 Evaluation report and demo | SCAFFOLDED | Typed adjudication and traceable case-study report renderer | Public claims remain prohibited until evidence exists |
 
 ## Current gate
+
+September 10 AWS rollout: source `1131bee` was archived from committed Git files only and both
+CodeBuild image gates passed. Runtime build `9989a757-0127-44de-9f6e-f36b0ad70c7b` and web build
+`4d20a2a8-08f2-4cea-a494-7b9134bf6538` published tags `1131bee-ui-verifier-agentcore` and
+`1131bee-ui-verifier-web`. Reviewed CloudFormation change sets modify only AgentRuntime and
+WebService images, without replacement, retaining templates and all other parameters.
+Runtime 13 and DEFAULT reached READY before web rollout. The queue was empty and the five
+saved Gallery workspaces had no active receipts or remaining runtime sessions; no assets,
+history, authentication, provider secrets, or spending settings were removed or changed.
+
+This ships the D126 exact-connectivity verifier fix, D127/D128 component selection and hover
+interaction, D129 focused-origin axes, Latest candidate label, shortened triangle detail,
+and Download diagnostics button. The predeployment gate passed 379 tests (four live/injection
+tests excluded), Ruff check/format, Pyright, lockfile, and diff checks. Container smoke tests
+used fixtures only. No paid model calls, injection tests, or destructive acceptance were run.
+At 100% traffic, public health is 200, anonymous workspace/OpenAPI/download requests are 401,
+HTML workspace navigation redirects to login, and hosted app.js/app.css exactly match the
+normalized committed files. These checks do not substitute for a new authenticated end-to-end
+model run. The local development server and saved local workspace remain unchanged.
+Final rollout: both stacks are UPDATE_COMPLETE; ECS deployment
+`JOgMSadertSRwz3MI2fyK` is SUCCESSFUL, with one new task, zero old tasks, and 100% traffic
+on web revision 25. No rollback alarms fired. Read-only hosted acceptance passed again after
+cleanup. Deployment helpers and output archives remain ignored under `build/`.
 
 September 9 diagnostics download affordance: replaced the overlooked plain Diagnostics link in
 the candidate download step with a secondary "Download diagnostics ↓" button. The verified
