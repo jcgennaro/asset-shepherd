@@ -36,6 +36,17 @@
 
 ## Current gate
 
+September 11 video production assets: `demo-output/pitch/cover/` and `demo-output/pitch/slides/`
+contain screenshot-ready HTML and visually checked 1920x1080 PNGs. Slides include the audience,
+human/AI/tools boundary, supported repairs/open-source credits, four cumulative deployment
+architecture stages, and observed model-choice rationale. NARRATION.md contains spoken copy
+without production annotations. Footer credits Joey Gennaro (and Codex), Agents for Humans,
+the September 11 date and package version 0.1.0. The 11.1M audience figure is sourced to
+SlashData Q1 2024; 2–5M is explicitly a working estimate, not a measured count. Source images
+are actual saved headphones evidence, not synthetic outputs. Only named presentation files
+are staged; unrelated demo-output files, raw video, and local browser profiles stay out of Git.
+This is a presentation-only update; no app code, AWS deployment or model run changed.
+
 September 10 AWS rollout: source `1131bee` was archived from committed Git files only and both
 CodeBuild image gates passed. Runtime build `9989a757-0127-44de-9f6e-f36b0ad70c7b` and web build
 `4d20a2a8-08f2-4cea-a494-7b9134bf6538` published tags `1131bee-ui-verifier-agentcore` and

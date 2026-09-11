@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asset Shepherd — Video Cover</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#070f0d;color:#f5f0e6;font-family:Segoe UI,Arial,sans-serif}
+body{display:grid;place-items:center}.stage{width:1920px;height:1080px;position:relative;flex:none;transform-origin:center;background:#081411;overflow:hidden}
+.grid{position:absolute;inset:0;background-image:linear-gradient(#91d5bb09 1px,transparent 1px),linear-gradient(90deg,#91d5bb09 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(transparent,#000)}
+.brand{position:absolute;top:55px;left:80px;display:flex;align-items:center;gap:20px;font-size:37px;font-weight:750;letter-spacing:-1px}
+.mascot{width:90px;height:90px;background:url('mascot.png') 0 0/200% 200% no-repeat;image-rendering:pixelated}
+.tag{position:absolute;top:88px;right:88px;font-size:19px;letter-spacing:4px;text-transform:uppercase;color:#9db7ab}
+h1{position:absolute;top:163px;left:85px;margin:0;font-size:104px;line-height:1.05;letter-spacing:-5px;font-weight:800}h1 span{color:#f3ce59}
+.cards{position:absolute;top:327px;left:85px;right:85px;bottom:126px;display:grid;grid-template-columns:1fr 1.13fr;gap:100px}
+.card{position:relative;border:1px solid #40574d;border-radius:28px;background:#06120f;overflow:hidden}.card.after{border:2px solid #91cfb9;box-shadow:0 0 80px #94d4b00b}
+.label{position:absolute;top:30px;left:34px;z-index:2;font-size:19px;font-weight:700;letter-spacing:3px;color:#acc2b7}.after .label{color:#9bdec7}
+.card img{position:absolute;width:100%;height:100%;object-fit:contain}.before img{transform:scale(1.38);top:28px}.after img{transform:scale(1.05);top:15px}
+.caption{position:absolute;bottom:25px;left:34px;right:34px;font-size:25px;font-weight:650;z-index:2}.caption span{color:#8ea79c;font-weight:400}
+.arrow{position:absolute;left:calc(50% - 91px);top:586px;width:82px;height:82px;border-radius:50%;background:#9bd6bf;color:#092019;display:grid;place-items:center;font-size:48px;box-shadow:0 0 0 10px #081411;z-index:3}
+.footer{position:absolute;left:88px;right:88px;bottom:51px;display:flex;justify-content:space-between;align-items:center;font-size:25px;color:#afc4b9}.footer strong{color:#edf2e9;font-weight:500}.contest{font-size:19px;color:#8ea79c}
+</style>
+</head>
+<body>
+<main class="stage" aria-label="Asset Shepherd video cover: a peripherals scene becomes extracted headphones">
+<div class="grid"></div>
+<div class="brand"><div class="mascot" role="img" aria-label="Asset Shepherd mascot"></div>Asset Shepherd</div>
+<div class="tag">AI-guided 3D asset cleanup</div>
+<h1>I only needed <span>the headphones.</span></h1>
+<div class="cards">
+  <section class="card before"><div class="label">THE GENERATED SCENE</div><img src="before.png" alt="Original headphones, keyboard and computer"><div class="caption">Lots of parts. <span>One thing I need.</span></div></section>
+  <section class="card after"><div class="label">THE EXTRACTED HEADPHONES</div><img src="after.png" alt="Actual extracted headphones including microphone"><div class="caption">Your intent. <span>A usable asset.</span></div></section>
+</div>
+<div class="arrow" aria-hidden="true">→</div>
+<div class="footer" style="font-size:22px"><span>Made by Joey Gennaro (and Codex) for Agents for Humans</span><span style="font-size:22px">Asset Shepherd v0.1.0 · September 11, 2026</span></div>
+</main>
+<script>
+function fit(){document.querySelector('.stage').style.transform=`scale(${Math.min(innerWidth/1920,innerHeight/1080)})`}
+addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>
