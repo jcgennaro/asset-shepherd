@@ -14,6 +14,7 @@ for name in (
     "architecture-3",
     "architecture-4",
     "models",
+    "thanks",
 ):
     subprocess.run(
         [

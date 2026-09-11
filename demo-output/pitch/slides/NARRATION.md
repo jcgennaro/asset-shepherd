@@ -37,3 +37,5 @@ We tested Luna, Kimi, Muse and Gemini on real assets. Luna’s visual selection 
 # Closing
 
 Asset Shepherd. Less asset cleanup. More time making your game.
+
+Thank you to the Agents for Humans organizers, judges, and open-source community. I'd love to hear what you'd make with Asset Shepherd.
